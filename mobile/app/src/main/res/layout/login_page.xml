@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- White background -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF" />
+
+    <!-- Top wave -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="350dp"
+        android:layout_gravity="top"
+        android:background="@drawable/wave_top_design" />
+
+    <!-- Bottom wave with fixed position -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_gravity="bottom"
+        android:fitsSystemWindows="true"
+        android:background="@drawable/wave_bottom_design" />
+
+    <!-- Content container (direct RelativeLayout, no ScrollView) -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- App Name / Branding -->
+        <TextView
+            android:id="@+id/titleName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="175dp"
+            android:fontFamily="@font/league_spartan_bold"
+            android:letterSpacing="0.05"
+            android:padding="16dp"
+            android:shadowColor="#33000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            android:text="WILDTIMED"
+            android:textColor="#8B0000"
+            android:textSize="45sp"
+            android:textStyle="bold" />
+
+        <!-- ID Input Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/outline_Idnumber"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/titleName"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="32dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxStrokeColor="#8B0000"
+            app:hintTextColor="#8B0000"
+            app:startIconDrawable="@drawable/ic_person"
+            app:startIconTint="#8B0000">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_idnumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Enter ID No."
+                android:inputType="text"
+                android:padding="16dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Password Input Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/outline_Password"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/outline_Idnumber"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="32dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxStrokeColor="#8B0000"
+            app:hintTextColor="#8B0000"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="#8B0000"
+            app:startIconDrawable="@drawable/ic_lock"
+            app:startIconTint="#8B0000">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_Password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Enter password"
+                android:inputType="textPassword"
+                android:padding="16dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Forgot Password -->
+        <TextView
+            android:id="@+id/highlight_forgotPassword"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/outline_Password"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="32dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:padding="4dp"
+            android:text="Forgot Password?"
+            android:textColor="#8B0000"
+            android:textSize="14sp" />
+
+        <!-- Login Button -->
+        <Button
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/highlight_forgotPassword"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="32dp"
+            android:backgroundTint="#FFC107"
+            android:elevation="6dp"
+            android:padding="16dp"
+            android:text="LOGIN"
+            android:textColor="#8B0000"
+            android:textSize="16sp"
+            android:fontFamily="@font/league_spartan_medium"
+            android:textStyle="bold"
+            app:cornerRadius="24dp" />
+
+        <!-- Terms Agreement Section -->
+        <CheckBox
+            android:id="@+id/cbTerms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/btnLogin"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="24dp"
+            android:buttonTint="#8B0000" />
+
+        <TextView
+            android:id="@+id/text_Terms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@id/cbTerms"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="32dp"
+            android:layout_toEndOf="@id/cbTerms"
+            android:layout_alignParentEnd="true"
+            android:linksClickable="true"
+            android:text="I agree to the Terms of Service and Privacy Policy"
+            android:textColor="#333333"
+            android:textColorLink="#8B0000" />
+
+    </RelativeLayout>
+</FrameLayout>
