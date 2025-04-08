@@ -45,7 +45,7 @@
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
-            android:text="WILDTIMED"
+            android:text="WILDTIMed"
             android:textColor="#8B0000"
             android:textSize="45sp"
             android:textStyle="bold" />

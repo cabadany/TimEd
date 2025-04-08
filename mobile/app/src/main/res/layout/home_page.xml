@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- White background -->
+    <View
+        android:id="@+id/background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF" />
+
+    <!-- Top wave -->
+    <View
+        android:id="@+id/top_wave"
+        android:layout_width="match_parent"
+        android:layout_height="425dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/wave_top_design" />
+
+    <!-- Title Name -->
+    <TextView
+        android:id="@+id/titleName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="66dp"
+        android:fontFamily="@font/league_spartan_bold"
+        android:letterSpacing="0.05"
+        android:padding="16dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="WILDTIMed"
+        android:textColor="#8B0000"
+        android:textSize="45sp"
+        android:textStyle="bold" />
+
+    <!-- Event Month Date -->
+    <TextView
+        android:id="@+id/event_month_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/titleName"
+        android:layout_alignStart="@id/titleName"
+        android:layout_marginStart="-10dp"
+        android:layout_marginTop="0dp"
+        android:fontFamily="@font/roboto_bold"
+        android:letterSpacing="0.05"
+        android:padding="4dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="March 2025"
+        android:textColor="@color/black"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Event box List -->
+    <ImageView
+        android:id="@+id/event_box_list"
+        android:layout_width="333dp"
+        android:layout_height="230dp"
+        android:layout_below="@id/event_month_date"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:contentDescription="Event list"
+        app:srcCompat="@drawable/event_box_list" />
+
+    <!-- Event Reminder -->
+    <TextView
+        android:id="@+id/event_reminder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/event_box_list"
+        android:layout_alignStart="@id/event_box_list"
+        android:layout_marginTop="10dp"
+        android:fontFamily="@font/roboto_bold"
+        android:letterSpacing="0.05"
+        android:padding="4dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="No event/s today..."
+        android:textColor="@color/black"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Time in button -->
+    <Button
+        android:id="@+id/btntime_in"
+        android:layout_width="250dp"
+        android:layout_height="50dp"
+        android:layout_below="@id/event_reminder"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="25dp"
+        android:backgroundTint="@color/yellow_gold"
+        android:elevation="6dp"
+        android:fontFamily="@font/roboto_medium"
+        android:padding="8dp"
+        android:text="Time - In"
+        android:textColor="@color/maroon"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:cornerRadius="8dp" />
+
+    <!-- Time out button -->
+    <Button
+        android:id="@+id/btntime_out"
+        android:layout_width="250dp"
+        android:layout_height="50dp"
+        android:layout_below="@id/btntime_in"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="@color/maroon"
+        android:elevation="6dp"
+        android:fontFamily="@font/roboto_medium"
+        android:padding="8dp"
+        android:text="Time - Out"
+        android:textColor="@color/yellow_gold"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:cornerRadius="8dp" />
+
+    <!-- Excuse letter text button -->
+    <TextView
+        android:id="@+id/excuse_letter_text_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btntime_out"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:fontFamily="@font/roboto_bold"
+        android:letterSpacing="0.05"
+        android:padding="8dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="Send a Excuse Letter"
+        android:textColor="@color/maroon"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Bottom Navigation Icons Container -->
+    <LinearLayout
+        android:id="@+id/bottom_nav_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:weightSum="3">
+
+        <!-- Home Icon -->
+        <ImageView
+            android:id="@+id/bottom_nav_home"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:contentDescription="Home"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_home" />
+
+        <!-- Calendar Icon -->
+        <ImageView
+            android:id="@+id/bottom_nav_calendar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:contentDescription="Calendar"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_calendar" />
+
+        <!-- Profile Icon -->
+        <ImageView
+            android:id="@+id/bottom_nav_profile"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:contentDescription="Profile"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_profile" />
+    </LinearLayout>
+
+</RelativeLayout>
