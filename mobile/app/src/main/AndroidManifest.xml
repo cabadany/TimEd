@@ -20,6 +20,7 @@
         <activity
             android:name=".LoginActivity"
             android:exported="true"
+            android:label="@string/login_page"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -36,6 +37,17 @@
             android:name=".MainActivity"
             android:exported="false"
             android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="" />
+        </activity>
+
+        <!-- Home Page Activity -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:label="@string/home_page"
             android:windowSoftInputMode="adjustResize">
             <meta-data
                 android:name="android.app.lib_name"
