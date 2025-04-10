@@ -1,5 +1,6 @@
 package com.example.timed_mobile
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageView
@@ -17,15 +18,15 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(com.example.timed_mobile.R.layout.home_page)
+        setContentView(R.layout.home_page)
 
         // Initialize views
-        homeIcon = findViewById(com.example.timed_mobile.R.id.bottom_nav_home)
-        calendarIcon = findViewById(com.example.timed_mobile.R.id.bottom_nav_calendar)
-        profileIcon = findViewById(com.example.timed_mobile.R.id.bottom_nav_profile)
-        timeInButton = findViewById(com.example.timed_mobile.R.id.btntime_in)
-        timeOutButton = findViewById(com.example.timed_mobile.R.id.btntime_out)
-        excuseLetterText = findViewById(com.example.timed_mobile.R.id.excuse_letter_text_button)
+        homeIcon = findViewById(R.id.bottom_nav_home)
+        calendarIcon = findViewById(R.id.bottom_nav_calendar)
+        profileIcon = findViewById(R.id.bottom_nav_profile)
+        timeInButton = findViewById(R.id.btntime_in)
+        timeOutButton = findViewById(R.id.btntime_out)
+        excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
         // Set click listeners for navigation icons
         homeIcon.setOnClickListener {
@@ -53,8 +54,9 @@ class HomeActivity : AppCompatActivity() {
 
         // Implement click listeners for time buttons
         timeInButton.setOnClickListener {
-            Toast.makeText(this, "Time-In recorded", Toast.LENGTH_SHORT).show()
-            // Implement time-in functionality here
+            // Navigate to time-in page
+            val intent = Intent(this, TimeInActivity::class.java)
+            startActivity(intent)
         }
 
         timeOutButton.setOnClickListener {

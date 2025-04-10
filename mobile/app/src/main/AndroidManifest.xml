@@ -54,6 +54,17 @@
                 android:value="" />
         </activity>
 
+        <!-- Time In Page Activity -->
+        <activity
+            android:name=".TimeInActivity"
+            android:exported="false"
+            android:label="@string/time_in_page"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="" />
+        </activity>
+
     </application>
 
 </manifest>

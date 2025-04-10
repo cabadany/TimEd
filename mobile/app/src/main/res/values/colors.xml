@@ -9,4 +9,9 @@
     <color name="white">#FFFFFFFF</color>
     <color name="maroon">#7F0404</color>
     <color name="yellow_gold">#FFC107</color>
+    <color name="dark_gray">#333333</color>
+    <color name="medium_gray">#777777</color>
+
+
+
 </resources>
