@@ -2,4 +2,5 @@
     <string name="app_name">TimEd-Mobile</string>
     <string name="home_page">Home Page</string>
     <string name="login_page">Login Page</string>
+    <string name="time_in_page">Time-In Page</string>
 </resources>

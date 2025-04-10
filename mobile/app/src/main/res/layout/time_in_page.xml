@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- White background -->
+    <View
+        android:id="@+id/background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF" />
+
+    <!-- Top wave -->
+    <View
+        android:id="@+id/top_wave"
+        android:layout_width="match_parent"
+        android:layout_height="425dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/wave_top_design" />
+
+    <!-- Back Button -->
+    <ImageView
+        android:id="@+id/icon_back_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="Back button"
+        app:srcCompat="@drawable/ic_back_button" />
+    <!-- Title Name -->
+    <TextView
+        android:id="@+id/titleName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginStart="47dp"
+        android:layout_marginTop="65dp"
+        android:fontFamily="@font/league_spartan_bold"
+        android:letterSpacing="0.05"
+        android:padding="16dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="WILDTIMed"
+        android:textColor="#8B0000"
+        android:textSize="45sp"
+        android:textStyle="bold" />
+
+    <!-- Camera Box -->
+    <ImageView
+        android:id="@+id/camera_box"
+        android:layout_width="350dp"
+        android:layout_height="300dp"
+        android:layout_below="@id/titleName"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="35dp"
+        android:contentDescription="Camera Box"
+        app:srcCompat="@drawable/camera_box" />
+
+    <!--Shutter Camera Icon -->
+    <ImageView
+        android:id="@+id/icon_shutter_camera"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_below="@id/camera_box"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="21dp"
+        android:contentDescription="Camera Box"
+        app:srcCompat="@drawable/ic_shutter_camera"/>
+
+    <!-- Selfie Reminder -->
+    <TextView
+        android:id="@+id/selfie_reminder"
+        android:layout_width="364dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/icon_shutter_camera"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="77dp"
+        android:fontFamily="@font/roboto_bold"
+        android:gravity="center"
+        android:letterSpacing="0.05"
+        android:padding="4dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="Please take a selfie with the faculty office in the background for validation."
+        android:textColor="@color/black"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btntime_in"
+        android:layout_width="300dp"
+        android:layout_height="50dp"
+        android:layout_below="@id/selfie_reminder"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="65dp"
+        android:backgroundTint="@color/yellow_gold"
+        android:elevation="6dp"
+        android:fontFamily="@font/roboto_medium"
+        android:padding="8dp"
+        android:text="Time - In"
+        android:textColor="@color/maroon"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:cornerRadius="8dp" />
+
+</RelativeLayout>
