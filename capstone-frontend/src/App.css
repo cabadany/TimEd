@@ -1,0 +1,10 @@
+/* App.css */
+/* Keep minimal styling here */
+/* Most styles removed to prevent conflicts */
+
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
