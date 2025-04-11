@@ -65,6 +65,17 @@
                 android:value="" />
         </activity>
 
+        <!-- Profile Page Activity -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="@string/time_in_page"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="" />
+        </activity>
+
     </application>
 
 </manifest>
