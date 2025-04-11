@@ -147,6 +147,12 @@ class HomeActivity : AppCompatActivity() {
             showTimeOutConfirmationDialog()
         }
 
+        // In HomeActivity.kt, update the profile icon click listener:
+        profileIcon.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
+            startActivity(intent)
+        }
+
     }
 
     // In the onCreate method of HomeActivity.kt, update the timeOutButton click listener:
