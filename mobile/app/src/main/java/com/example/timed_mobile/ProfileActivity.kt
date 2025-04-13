@@ -103,9 +103,9 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         calendarIcon.setOnClickListener {
-            // Navigate to calendar screen
-            // Intent intent = Intent(this, CalendarActivity::class.java)
-            // startActivity(intent)
+            val intent = Intent(this, ScheduleActivity::class.java)
+            startActivity(intent)
+            finish()
         }
 
         editButton.setOnClickListener {
