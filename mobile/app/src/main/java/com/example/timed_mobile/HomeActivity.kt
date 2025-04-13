@@ -110,10 +110,9 @@ class HomeActivity : AppCompatActivity() {
         }
 
         calendarIcon.setOnClickListener {
-            // Navigate to calendar screen
-            Toast.makeText(this@HomeActivity, "Navigating to Calendar", Toast.LENGTH_SHORT).show()
-            // Intent intent = Intent(this, CalendarActivity::class.java)
-            // startActivity(intent)
+            // Navigate to schedule screen
+            val intent = Intent(this, ScheduleActivity::class.java)
+            startActivity(intent)
         }
 
         profileIcon.setOnClickListener {
@@ -122,6 +121,7 @@ class HomeActivity : AppCompatActivity() {
             // Intent intent = Intent(this, ProfileActivity::class.java)
             // startActivity(intent)
         }
+
 
         // Implement click listeners for time buttons
         timeInButton.setOnClickListener {
