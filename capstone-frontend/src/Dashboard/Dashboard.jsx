@@ -42,7 +42,8 @@ import {
   Close,
   CalendarToday,
   AccessTime,
-  Group
+  Group,
+  Logout
 } from '@mui/icons-material';
 import './dashboard.css';
 
@@ -61,6 +62,10 @@ export default function Dashboard() {
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const filterMenuOpen = Boolean(filterAnchorEl);
   const [activeFilter, setActiveFilter] = useState('');
+  
+  // Avatar dropdown menu state
+  const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
+  const avatarMenuOpen = Boolean(avatarAnchorEl);
 
   // Updated events array with status field
   const events = [
@@ -106,6 +111,22 @@ export default function Dashboard() {
     setActiveFilter(filterType);
     handleFilterClose();
     // Additional logic to actually apply the filter would go here
+  };
+  
+  // Avatar menu handlers
+  const handleAvatarClick = (event) => {
+    setAvatarAnchorEl(event.currentTarget);
+  };
+  
+  const handleAvatarClose = () => {
+    setAvatarAnchorEl(null);
+  };
+  
+  const handleLogout = () => {
+    // Add logout logic here
+    console.log('Logging out');
+    // Navigate to login page or perform logout action
+    handleAvatarClose();
   };
 
   // Function to get status color
@@ -313,23 +334,45 @@ export default function Dashboard() {
               </MenuItem>
             </Menu>
             <IconButton>
-              <Settings sx={{ color: '#64748B', fontSize: 20 }} />
-            </IconButton>
-            <IconButton>
               <Badge badgeContent="" color="error" variant="dot">
                 <Notifications sx={{ color: '#64748B', fontSize: 20 }} />
               </Badge>
             </IconButton>
             <Avatar 
+              onClick={handleAvatarClick}
               sx={{ 
                 width: 36, 
                 height: 36,
                 bgcolor: '#CBD5E1',
-                color: 'white'
+                color: 'white',
+                cursor: 'pointer'
               }}
             >
               P
             </Avatar>
+            <Menu
+              anchorEl={avatarAnchorEl}
+              open={avatarMenuOpen}
+              onClose={handleAvatarClose}
+              PaperProps={{
+                elevation: 3,
+                sx: { 
+                  width: 180,
+                  mt: 1,
+                  '& .MuiMenuItem-root': {
+                    fontSize: 14,
+                    py: 1
+                  }
+                }
+              }}
+            >
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <Logout fontSize="small" sx={{ color: '#64748B' }} />
+                </ListItemIcon>
+                <ListItemText>Logout</ListItemText>
+              </MenuItem>
+            </Menu>
           </Box>
         </Box>
 
