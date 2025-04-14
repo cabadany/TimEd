@@ -4,4 +4,5 @@
     <string name="login_page">Login Page</string>
     <string name="time_in_page">Time-In Page</string>
     <string name="schedule_page">Schedule Page</string>
+    <string name="change_password_page">Change Password Page</string>
 </resources>
