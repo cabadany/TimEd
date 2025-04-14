@@ -67,4 +67,5 @@ dependencies {
     implementation ("com.google.android.material:material:1.6.0")
     //Second Insert Dependencies
     implementation ("de.hdodenhof:circleimageview:3.1.0")
+
 }
