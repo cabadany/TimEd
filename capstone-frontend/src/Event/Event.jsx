@@ -60,6 +60,10 @@ export default function EventPage() {
     navigate('/dashboard');
   };
 
+  const handleNavigateToSettings = () => {
+    navigate('/settings');
+  };
+
   // Filter menu handlers
   const handleFilterClick = (event) => {
     setFilterAnchorEl(event.currentTarget);
@@ -153,10 +157,11 @@ export default function EventPage() {
           </Button>
           <Button 
             startIcon={<Settings />} 
+            onClick={handleNavigateToSettings}
             sx={{ 
               justifyContent: 'flex-start', 
-              color: '#64748B',
-              fontWeight: 500,
+              color: location.pathname === '/settings' ? '#0288d1' : '#64748B',
+              fontWeight: location.pathname === '/settings' ? 600 : 500,
               py: 1.5,
               px: 2,
               textAlign: 'left'
