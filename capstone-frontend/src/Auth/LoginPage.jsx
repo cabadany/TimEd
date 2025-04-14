@@ -11,6 +11,7 @@ function LoginPage() {
     message: '',
     type: ''
   });
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const showNotification = (message, type = 'error') => {
     setNotification({
@@ -34,13 +35,18 @@ function LoginPage() {
     if (!idNumber || !password) {
       showNotification('Please enter both ID Number and Password');
     } else {
-      // Proceed with login
-      navigate('/dashboard');
+      // Begin animation
+      setIsAnimating(true);
+      
+      // Navigate after animation completes
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800); // Match this with CSS animation duration
     }
   };
 
   return (
-    <div className="login-page">
+    <div className={`login-page ${isAnimating ? 'fade-out' : ''}`}>
       {notification.visible && (
         <div className={`notification ${notification.type}`}>
           <div className="notification-icon">
@@ -110,8 +116,12 @@ function LoginPage() {
           
           <div className="forgot-password">Forgot Password?</div>
           
-          <button className="login-btn" onClick={handleLogin}>
-            Login Now
+          <button 
+            className={`login-btn ${isAnimating ? 'btn-clicked' : ''}`} 
+            onClick={handleLogin}
+            disabled={isAnimating}
+          >
+            {isAnimating ? 'Logging in...' : 'Login Now'}
           </button>
         </div>
       </div>

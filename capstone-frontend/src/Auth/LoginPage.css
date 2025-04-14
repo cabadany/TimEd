@@ -12,6 +12,13 @@ body, html, #root {
   height: 100vh;
   display: flex;
   position: relative;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+/* Animation for page transition */
+.login-page.fade-out {
+  opacity: 0;
+  transform: scale(1.05);
 }
 
 .login-left {
@@ -109,11 +116,47 @@ body, html, #root {
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .login-btn:hover {
   background-color: #2C2EA9;
+}
+
+/* Button animation */
+.login-btn.btn-clicked {
+  background-color: #2C2EA9;
+  transform: scale(0.98);
+}
+
+.login-btn.btn-clicked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300%;
+  height: 300%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
 }
 
 .illustration {
