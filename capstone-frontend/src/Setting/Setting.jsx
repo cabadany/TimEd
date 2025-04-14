@@ -171,7 +171,7 @@ export default function SettingPage() {
     <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }} className={darkMode ? 'dark-mode' : ''}>
       {/* Sidebar */}
       <Box sx={{ 
-        width: 260, 
+        width: 240, 
         bgcolor: 'background.paper', 
         borderRight: '1px solid',
         borderColor: 'divider',

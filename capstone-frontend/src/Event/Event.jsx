@@ -124,7 +124,7 @@ export default function EventPage() {
     <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
       {/* Sidebar */}
       <Box sx={{ 
-        width: 260, 
+        width: 240, 
         bgcolor: 'white', 
         borderRight: '1px solid #EAECF0',
         display: 'flex',
