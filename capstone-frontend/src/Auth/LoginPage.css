@@ -11,6 +11,7 @@ body, html, #root {
 .login-page {
   height: 100vh;
   display: flex;
+  position: relative;
 }
 
 .login-left {
@@ -35,9 +36,9 @@ body, html, #root {
 }
 
 .logo {
-  width: 200px;
+  width: 250px;
   margin-bottom: 2rem;
-  margin-left: 5rem;
+  margin-left: 3.8rem;
 }
 
 .login-title {
@@ -118,4 +119,65 @@ body, html, #root {
 .illustration {
   max-width: 80%;
   height: auto;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out forwards;
+  max-width: 350px;
+  min-width: 300px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.notification.error {
+  background-color: #d9534f;
+  color: white;
+}
+
+.notification-icon {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-content {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 0;
+}
+
+.notification-close:hover {
+  opacity: 0.8;
 }

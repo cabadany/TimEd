@@ -143,7 +143,7 @@ export default function SettingPage() {
   };
   
   const handleLogout = () => {
-    // Add logout logic here
+    navigate('/');
     handleAvatarClose();
   };
   

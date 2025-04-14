@@ -116,7 +116,7 @@ export default function EventPage() {
   const handleLogout = () => {
     // Add logout logic here
     console.log('Logging out');
-    // Navigate to login page or perform logout action
+    navigate('/');
     handleAvatarClose();
   };
 

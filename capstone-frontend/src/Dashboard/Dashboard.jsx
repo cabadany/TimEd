@@ -125,7 +125,7 @@ export default function Dashboard() {
   const handleLogout = () => {
     // Add logout logic here
     console.log('Logging out');
-    // Navigate to login page or perform logout action
+    navigate('/');
     handleAvatarClose();
   };
 
