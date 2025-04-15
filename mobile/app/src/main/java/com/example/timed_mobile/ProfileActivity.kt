@@ -89,6 +89,7 @@ class ProfileActivity : AppCompatActivity() {
         editButton = findViewById(R.id.btn_edit_profile)
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
+        editButton = findViewById(R.id.btn_edit_profile)
         logoutText = findViewById(R.id.logout_text)
 
         // Set click listeners
@@ -129,6 +130,12 @@ class ProfileActivity : AppCompatActivity() {
         // Add to ProfileActivity.kt in the onCreate method:
         changePasswordButton.setOnClickListener {
             val intent = Intent(this, ChangePasswordActivity::class.java)
+            startActivity(intent)
+        }
+
+
+        editButton.setOnClickListener {
+            val intent = Intent(this, EditProfileActivity::class.java)
             startActivity(intent)
         }
     }
