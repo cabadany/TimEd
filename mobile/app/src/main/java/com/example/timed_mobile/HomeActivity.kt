@@ -21,6 +21,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var profileIcon: ImageView
     private lateinit var timeInButton: Button
     private lateinit var timeOutButton: Button
+    private lateinit var editButton: Button
     private lateinit var excuseLetterText: TextView
 
     // Add these methods to HomeActivity class:
@@ -99,6 +100,7 @@ class HomeActivity : AppCompatActivity() {
         timeOutButton = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
+
         // Set click listeners for navigation icons
         homeIcon.setOnClickListener {
             // Already on home screen, just show a toast
@@ -152,7 +154,6 @@ class HomeActivity : AppCompatActivity() {
             val intent = Intent(this, ProfileActivity::class.java)
             startActivity(intent)
         }
-
     }
 
     // In the onCreate method of HomeActivity.kt, update the timeOutButton click listener:
