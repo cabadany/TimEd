@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
+import axios from 'axios';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -30,20 +31,60 @@ function LoginPage() {
     setNotification(prev => ({...prev, visible: false}));
   };
 
-  const handleLogin = () => {
-    // Validate login credentials
+  const handleLogin = async () => {
     if (!idNumber || !password) {
       showNotification('Please enter both ID Number and Password');
-    } else {
-      // Begin animation
-      setIsAnimating(true);
-      
-      // Navigate after animation completes
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 800); // Match this with CSS animation duration
+      return;
+    }
+  
+    try {
+      const response = await axios.post('http://localhost:8080/api/auth/login', {
+        schoolId: idNumber,
+        password: password
+      });
+  
+      const data = response.data;
+  
+      if (data.success) {
+        const userRole = data.user?.role;
+  
+        // Save the auth details to localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId);
+        localStorage.setItem('role', data.role);
+  
+        // Debugging: log what's being stored
+        console.log('Stored token:', localStorage.getItem('token'));
+        console.log('Stored userId:', localStorage.getItem('userId'));
+        console.log('Stored role:', localStorage.getItem('role'));
+  
+        if (data.role === 'ADMIN') {
+          console.log('Admin login success:', data);
+  
+          setIsAnimating(true);
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 800);
+        } else {
+          showNotification('Access denied. Only admins can log in.');
+          // Optional: clear any stored auth for non-admins
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          localStorage.removeItem('role');
+        }
+  
+      } else {
+        showNotification(data.message || 'Invalid login credentials');
+      }
+  
+    } catch (error) {
+      console.error('Login failed:', error);
+      showNotification(
+        error.response?.data?.message || 'Something went wrong. Probably sabotage.'
+      );
     }
   };
+  
 
   return (
     <div className={`login-page ${isAnimating ? 'fade-out' : ''}`}>

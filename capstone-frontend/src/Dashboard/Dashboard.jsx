@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -57,6 +58,9 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Filter menu state
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -67,14 +71,96 @@ export default function Dashboard() {
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
   const avatarMenuOpen = Boolean(avatarAnchorEl);
 
-  // Updated events array with status field
-  const events = [
-    { id: '#12548796', name: 'CCS Awarding', duration: '120 mins', date: '28 Jan, 12:30 AM', status: 'Starting' },
-    { id: '#12548796', name: 'Intramurals', duration: '360 mins', date: '25 Jan, 10:40 PM', status: 'Starting' },
-    { id: '#12548796', name: 'LIKHA', duration: '30 mins', date: '20 Jan, 10:40 PM', status: 'Ongoing' },
-    { id: '#12548796', name: 'Acquaintance', duration: '22 mins', date: '15 Jan, 03:29 PM', status: 'Ended' },
-    { id: '#12548796', name: 'Party', duration: '10 mins', date: '14 Jan, 10:40 PM', status: 'Ended' },
-  ];
+  // Fetch events from the backend API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:8080/api/events/getAll');
+  
+        const formattedEvents = response.data.map(event => {
+          // Handle Firebase timestamp - improved parser that checks various timestamp formats
+          let formattedDate = 'Invalid Date';
+          
+          if (event.date) {
+            // Handle different potential timestamp formats
+            if (typeof event.date === 'string') {
+              // If date is already a string, try to parse it directly
+              const dateObj = new Date(event.date);
+              if (!isNaN(dateObj.getTime())) {
+                formattedDate = dateObj.toLocaleString('en-PH', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                  timeZone: 'Asia/Manila'
+                });
+              }
+            } else if (typeof event.date === 'object') {
+              // Check for Firestore timestamp object format
+              if (event.date.seconds && event.date.nanoseconds) {
+                // Classic Firestore timestamp
+                const dateObj = new Date(event.date.seconds * 1000 + event.date.nanoseconds / 1000000);
+                formattedDate = dateObj.toLocaleString('en-PH', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                  timeZone: 'Asia/Manila'
+                });
+              } else if (event.date.toDate && typeof event.date.toDate === 'function') {
+                // Firestore timestamp with toDate method
+                const dateObj = event.date.toDate();
+                formattedDate = dateObj.toLocaleString('en-PH', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                  timeZone: 'Asia/Manila'
+                });
+              } else if (event.date._seconds && event.date._nanoseconds) {
+                // Serialized Firestore timestamp
+                const dateObj = new Date(event.date._seconds * 1000 + event.date._nanoseconds / 1000000);
+                formattedDate = dateObj.toLocaleString('en-PH', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                  timeZone: 'Asia/Manila'
+                });
+              }
+            }
+          }
+  
+          return {
+            id: event.eventId || `#${Math.floor(Math.random() * 90000000) + 10000000}`,
+            name: event.eventName || 'Unnamed Event',
+            duration: event.duration || '0 mins',
+            date: formattedDate,
+            status: event.status || 'Unknown',
+            createdBy: event.createdBy || 'Unknown'
+          };
+        });
+  
+        setEvents(formattedEvents);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch events:', error);
+        setError('Failed to load events. Please try again later.');
+        setLoading(false);
+      }
+    };
+  
+    fetchEvents();
+  }, []);
 
   const handleViewEvent = (event) => {
     setSelectedEvent(event);
@@ -123,23 +209,29 @@ export default function Dashboard() {
   };
   
   const handleLogout = () => {
-    // Add logout logic here
-    console.log('Logging out');
-    navigate('/');
+    // Remove authentication token and user role from localStorage or sessionStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    
+    console.log('Logging out...');
+    
+    // Redirect to login page after logout
+    navigate('/login');
+    
     handleAvatarClose();
   };
 
   // Function to get status color
-  const getStatusColor = (status) => {
+  const getStatusColor = (status = 'Unknown') => {
     switch(status) {
       case 'Starting':
-        return '#10B981'; // green
+        return '#10B981';
       case 'Ongoing':
-        return '#0288d1'; // blue
+        return '#0288d1';
       case 'Ended':
-        return '#EF4444'; // red
+        return '#EF4444';
       default:
-        return '#64748B'; // default gray
+        return '#64748B';
     }
   };
 
@@ -162,6 +254,13 @@ export default function Dashboard() {
   };
 
   const filteredEvents = getFilteredEvents();
+
+  // Pagination logic
+  const eventsPerPage = 5;
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  const indexOfLastEvent = currentPage * eventsPerPage;
+  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
+  const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
@@ -496,36 +595,50 @@ export default function Dashboard() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredEvents.map((event, index) => (
-                  <TableRow key={index} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
-                    <TableCell sx={{ color: '#1E293B' }}>{event.name}</TableCell>
-                    <TableCell sx={{ color: '#64748B' }}>{event.id}</TableCell>
-                    <TableCell sx={{ color: '#64748B' }}>{event.duration}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={event.status}
-                        size="small"
-                        sx={{
-                          backgroundColor: `${getStatusColor(event.status)}10`, // 10% opacity
-                          color: getStatusColor(event.status),
-                          fontWeight: 500,
-                          fontSize: '0.75rem',
-                          height: 24,
-                          borderRadius: '4px'
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ color: '#64748B' }}>{event.date}</TableCell>
-                    <TableCell>
-                      <IconButton 
-                        onClick={() => handleViewEvent(event)}
-                        sx={{ color: '#0288d1' }}
-                      >
-                        <Visibility />
-                      </IconButton>
-                    </TableCell>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">Loading events...</TableCell>
                   </TableRow>
-                ))}
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ color: '#EF4444' }}>{error}</TableCell>
+                  </TableRow>
+                ) : currentEvents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">No events found</TableCell>
+                  </TableRow>
+                ) : (
+                  currentEvents.map((event, index) => (
+                    <TableRow key={index} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
+                      <TableCell sx={{ color: '#1E293B' }}>{event.name}</TableCell>
+                      <TableCell sx={{ color: '#64748B' }}>{event.id}</TableCell>
+                      <TableCell sx={{ color: '#64748B' }}>{event.duration}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={event.status}
+                          size="small"
+                          sx={{
+                            backgroundColor: `${getStatusColor(event.status)}10`, // 10% opacity
+                            color: getStatusColor(event.status),
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            height: 24,
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: '#64748B' }}>{event.date}</TableCell>
+                      <TableCell>
+                        <IconButton 
+                          onClick={() => handleViewEvent(event)}
+                          sx={{ color: '#0288d1' }}
+                        >
+                          <Visibility />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -535,74 +648,37 @@ export default function Dashboard() {
             <Button 
               startIcon={<ChevronLeft />}
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
               sx={{
-                color: '#64748B',
+                color: currentPage === 1 ? '#CBD5E1' : '#64748B',
                 textTransform: 'none'
               }}
             >
               PREVIOUS
             </Button>
-            <Button 
-              variant={currentPage === 1 ? "contained" : "text"} 
-              sx={{ 
-                minWidth: '36px', 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '4px',
-                backgroundColor: currentPage === 1 ? '#0288d1' : 'transparent',
-                color: currentPage === 1 ? 'white' : '#64748B'
-              }}
-              onClick={() => setCurrentPage(1)}
-            >
-              1
-            </Button>
-            <Button 
-              variant={currentPage === 2 ? "contained" : "text"} 
-              sx={{ 
-                minWidth: '36px', 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '4px',
-                backgroundColor: currentPage === 2 ? '#0288d1' : 'transparent',
-                color: currentPage === 2 ? 'white' : '#64748B'
-              }}
-              onClick={() => setCurrentPage(2)}
-            >
-              2
-            </Button>
-            <Button 
-              variant={currentPage === 3 ? "contained" : "text"} 
-              sx={{ 
-                minWidth: '36px', 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '4px',
-                backgroundColor: currentPage === 3 ? '#0288d1' : 'transparent',
-                color: currentPage === 3 ? 'white' : '#64748B'
-              }}
-              onClick={() => setCurrentPage(3)}
-            >
-              3
-            </Button>
-            <Button 
-              variant={currentPage === 4 ? "contained" : "text"} 
-              sx={{ 
-                minWidth: '36px', 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '4px',
-                backgroundColor: currentPage === 4 ? '#0288d1' : 'transparent',
-                color: currentPage === 4 ? 'white' : '#64748B'
-              }}
-              onClick={() => setCurrentPage(4)}
-            >
-              4
-            </Button>
+            {[...Array(Math.min(totalPages, 4))].map((_, index) => (
+              <Button 
+                key={index}
+                variant={currentPage === index + 1 ? "contained" : "text"} 
+                sx={{ 
+                  minWidth: '36px', 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '4px',
+                  backgroundColor: currentPage === index + 1 ? '#0288d1' : 'transparent',
+                  color: currentPage === index + 1 ? 'white' : '#64748B'
+                }}
+                onClick={() => setCurrentPage(index + 1)}
+              >
+                {index + 1}
+              </Button>
+            ))}
             <Button 
               endIcon={<ChevronRight />}
-              onClick={() => setCurrentPage(prev => prev + 1)}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || totalPages === 0}
               sx={{
-                color: '#64748B',
+                color: currentPage === totalPages || totalPages === 0 ? '#CBD5E1' : '#64748B',
                 textTransform: 'none'
               }}
             >
@@ -670,7 +746,7 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="caption" color="#64748B">Organizer</Typography>
-                <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>Student Council</Typography>
+                <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>{selectedEvent?.createdBy || 'Unknown'}</Typography>
               </Grid>
             </Grid>
             

@@ -114,10 +114,19 @@ export default function EventPage() {
   };
 
   const handleLogout = () => {
-    // Add logout logic here
-    console.log('Logging out');
-    navigate('/');
-    handleAvatarClose();
+    // Remove authentication token and user role from localStorage or sessionStorage
+    localStorage.removeItem('token');  // Or sessionStorage.removeItem('token');
+    localStorage.removeItem('role');   // Or sessionStorage.removeItem('role');
+    
+    // Optionally, you can also clear other session-related data if necessary
+  
+    console.log('Logging out...');
+    
+    // Redirect to login page after logout
+    navigate('/login');
+    
+    // If you have any avatar menu or other UI elements to close, you can call it here
+    handleAvatarClose();  // Assuming `handleAvatarClose` is a function that closes the avatar dropdown or menu
   };
 
   return (
