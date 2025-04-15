@@ -69,7 +69,7 @@
         <activity
             android:name=".ProfileActivity"
             android:exported="false"
-            android:label="@string/time_in_page"
+            android:label="@string/profile_page"
             android:windowSoftInputMode="adjustResize">
             <meta-data
                 android:name="android.app.lib_name"
@@ -92,6 +92,17 @@
             android:name=".ChangePasswordActivity"
             android:exported="false"
             android:label="@string/change_password_page"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="" />
+        </activity>
+
+        <!-- Edit Profile Page Activity -->
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="false"
+            android:label="@string/edit_profile_page"
             android:windowSoftInputMode="adjustResize">
             <meta-data
                 android:name="android.app.lib_name"
