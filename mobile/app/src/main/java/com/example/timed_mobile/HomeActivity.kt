@@ -127,7 +127,6 @@ class HomeActivity : AppCompatActivity() {
 
         // Implement click listeners for time buttons
         timeInButton.setOnClickListener {
-            // Navigate to time-in page
             val intent = Intent(this, TimeInActivity::class.java)
             startActivity(intent)
         }

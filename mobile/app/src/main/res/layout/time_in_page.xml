@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -8,112 +8,144 @@
     <!-- White background -->
     <View
         android:id="@+id/background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#FFFFFF" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#FFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Top wave -->
     <View
         android:id="@+id/top_wave"
-        android:layout_width="match_parent"
-        android:layout_height="425dp"
-        android:layout_alignParentTop="true"
-        android:background="@drawable/wave_top_design" />
+        android:layout_width="0dp"
+        android:layout_height="350dp"
+        android:background="@drawable/wave_top_design"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.32"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Back Button -->
     <ImageView
         android:id="@+id/icon_back_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:padding="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:clickable="true"
-        android:focusable="true"
         android:contentDescription="Back button"
+        android:focusable="true"
+        android:padding="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_back_button" />
+
     <!-- Title Name -->
     <TextView
         android:id="@+id/titleName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginStart="47dp"
-        android:layout_marginTop="65dp"
         android:fontFamily="@font/league_spartan_bold"
         android:letterSpacing="0.05"
-        android:padding="16dp"
+        android:padding="12dp"
         android:shadowColor="#33000000"
         android:shadowDx="1"
         android:shadowDy="1"
         android:shadowRadius="2"
         android:text="WILDTIMed"
         android:textColor="#8B0000"
-        android:textSize="45sp"
-        android:textStyle="bold" />
+        android:textSize="42sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/icon_back_button" />
 
-    <!-- Camera Box -->
-    <ImageView
-        android:id="@+id/camera_box"
-        android:layout_width="350dp"
-        android:layout_height="300dp"
-        android:layout_below="@id/titleName"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="35dp"
-        android:contentDescription="Camera Box"
-        app:srcCompat="@drawable/camera_box" />
+    <!-- Camera Box Frame -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/camera_container"
+        android:layout_width="256dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="24dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintDimensionRatio="H,5:4"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.35"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/titleName">
 
-    <!--Shutter Camera Icon -->
+        <!-- Camera preview placeholder -->
+        <ImageView
+            android:id="@+id/camera_preview_placeholder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#DDDDDD"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+
+        <!-- Camera preview will be added programmatically -->
+    </androidx.cardview.widget.CardView>
+
+    <!-- Shutter Camera Icon -->
     <ImageView
         android:id="@+id/icon_shutter_camera"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_below="@id/camera_box"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="21dp"
-        android:contentDescription="Camera Box"
-        app:srcCompat="@drawable/ic_shutter_camera"/>
+        android:layout_marginTop="16dp"
+        android:contentDescription="Camera Icon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/camera_container"
+        app:srcCompat="@drawable/ic_shutter_camera" />
 
     <!-- Selfie Reminder -->
     <TextView
         android:id="@+id/selfie_reminder"
-        android:layout_width="364dp"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_below="@id/icon_shutter_camera"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="77dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="32dp"
         android:fontFamily="@font/roboto_bold"
         android:gravity="center"
         android:letterSpacing="0.05"
-        android:padding="4dp"
+        android:padding="8dp"
         android:shadowColor="#33000000"
         android:shadowDx="1"
         android:shadowDy="1"
         android:shadowRadius="2"
         android:text="Please take a selfie with the faculty office in the background for validation."
         android:textColor="@color/black"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/icon_shutter_camera" />
 
+    <!-- Time-In Button -->
     <Button
         android:id="@+id/btntime_in"
-        android:layout_width="300dp"
-        android:layout_height="50dp"
-        android:layout_below="@id/selfie_reminder"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="65dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:backgroundTint="@color/yellow_gold"
         android:elevation="6dp"
         android:fontFamily="@font/roboto_medium"
-        android:padding="8dp"
+        android:minHeight="50dp"
+        android:padding="12dp"
         android:text="Time - In"
         android:textColor="@color/maroon"
-        android:textSize="14sp"
+        android:textSize="16sp"
         android:textStyle="bold"
-        app:cornerRadius="8dp" />
+        app:cornerRadius="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/selfie_reminder"
+        app:layout_constraintVertical_bias="0.3"
+        app:layout_constraintWidth_percent="0.8" />
 
-</RelativeLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
