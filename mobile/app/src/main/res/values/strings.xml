@@ -7,4 +7,8 @@
     <string name="profile_page">Profile Page</string>
     <string name="edit_profile_page">Edit Profile Page</string>
     <string name="change_password_page">Change Password Page</string>
+    //Cameras
+    <string name="time_in_capture">Time In Capture</string>
+    <string name="time_out_capture">Time Out Capture</string>
+    <string name="qr_event_capture">QR Event Capture</string>
 </resources>
