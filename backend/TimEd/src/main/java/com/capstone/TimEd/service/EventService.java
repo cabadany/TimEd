@@ -19,17 +19,21 @@ public class EventService {
     public String saveEvent(Event event) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
+        DocumentReference docRef;
+
         if (event.getEventId() == null || event.getEventId().isEmpty()) {
-            event.setEventId(UUID.randomUUID().toString());
+            // Let Firebase auto-generate the document ID
+            docRef = db.collection(COLLECTION_NAME).document();
+            String generatedId = docRef.getId().substring(0, 8); // Shorten to 8 characters
+            event.setEventId(generatedId);
+            docRef = db.collection(COLLECTION_NAME).document(generatedId); // Use shortened ID
+        } else {
+            docRef = db.collection(COLLECTION_NAME).document(event.getEventId());
         }
 
-        ApiFuture<WriteResult> future = db.collection(COLLECTION_NAME)
-                .document(event.getEventId())
-                .set(event);
-
+        ApiFuture<WriteResult> future = docRef.set(event);
         return future.get().getUpdateTime().toString();
     }
-
     // 👀 Read by ID
     public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
