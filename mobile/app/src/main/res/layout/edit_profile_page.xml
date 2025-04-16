@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- White background -->
+    <View
+        android:id="@+id/background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF" />
+
+    <!-- Top wave (kept as requested) -->
+    <View
+        android:id="@+id/top_wave"
+        android:layout_width="match_parent"
+        android:layout_height="425dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/wave_top_design" />
+
+    <!-- Back Button -->
+    <ImageView
+        android:id="@+id/icon_back_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="Back button"
+        app:srcCompat="@drawable/ic_back_button" />
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/edit_profile_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="47dp"
+        android:layout_marginTop="65dp"
+        android:fontFamily="@font/league_spartan_bold"
+        android:letterSpacing="0.05"
+        android:padding="16dp"
+        android:shadowColor="#33000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="Edit Profile"
+        android:textColor="#8B0000"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <!-- Profile Image with Edit Icon -->
+    <FrameLayout
+        android:id="@+id/profile_image_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/edit_profile_title"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="24dp">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/profile_image"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/profile_placeholder"
+            app:civ_border_color="@color/white"
+            app:civ_border_width="2dp" />
+
+        <ImageView
+            android:id="@+id/edit_profile_pic_button"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/edit_profile_circle_yellow"
+            android:padding="6dp"
+            android:src="@drawable/ic_edit"
+            android:clickable="true"
+            android:focusable="true"/>
+    </FrameLayout>
+
+    <!-- Teacher ID - Non-editable -->
+    <TextView
+        android:id="@+id/teacher_id_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/profile_image_container"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/roboto_medium"
+        android:text="ID: 1746"
+        android:textColor="@color/black"
+        android:textSize="16sp" />
+
+    <!-- Form Fields in ScrollView -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/teacher_id_label"
+        android:layout_above="@id/btn_update_profile"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
+
+            <!-- Name Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/name_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:boxStrokeColor="@color/yellow_gold"
+                app:hintTextColor="@color/yellow_gold">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/name_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="Full Name"
+                    android:inputType="textPersonName"
+                    android:text="Kristan Ian D. Cabaña"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:textColor="@color/black"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Email Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/email_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:boxStrokeColor="@color/yellow_gold"
+                app:hintTextColor="@color/yellow_gold">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/email_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="Email Address"
+                    android:inputType="textEmailAddress"
+                    android:text="kristanian.cabana@cit.edu"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:textColor="@color/black"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Phone Number Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/phone_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:boxStrokeColor="@color/yellow_gold"
+                app:hintTextColor="@color/yellow_gold">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/phone_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="Phone Number"
+                    android:inputType="phone"
+                    android:text="0912 345 6789"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:textColor="@color/black"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Department Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/department_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:boxStrokeColor="@color/yellow_gold"
+                app:hintTextColor="@color/yellow_gold">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/department_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="Department"
+                    android:inputType="text"
+                    android:text="College of Computer Science"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:textColor="@color/black"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Update Profile Button -->
+    <Button
+        android:id="@+id/btn_update_profile"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="@color/yellow_gold"
+        android:elevation="4dp"
+        android:fontFamily="@font/roboto_bold"
+        android:text="Update Profile"
+        android:textColor="#8B0000"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="8dp" />
+</RelativeLayout>
