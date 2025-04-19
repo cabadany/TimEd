@@ -68,7 +68,9 @@ export default function EventPage() {
   const handleNavigateToSettings = () => {
     navigate('/settings');
   };
-
+  const handleNavigateToAccounts = () => {
+    navigate('/accounts');
+  };
   // Filter menu handlers
   const handleFilterClick = (event) => {
     setFilterAnchorEl(event.currentTarget);
@@ -113,20 +115,18 @@ export default function EventPage() {
     setAvatarAnchorEl(null);
   };
 
+
   const handleLogout = () => {
     // Remove authentication token and user role from localStorage or sessionStorage
-    localStorage.removeItem('token');  // Or sessionStorage.removeItem('token');
-    localStorage.removeItem('role');   // Or sessionStorage.removeItem('role');
-    
-    // Optionally, you can also clear other session-related data if necessary
-  
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
     console.log('Logging out...');
     
     // Redirect to login page after logout
     navigate('/login');
     
-    // If you have any avatar menu or other UI elements to close, you can call it here
-    handleAvatarClose();  // Assuming `handleAvatarClose` is a function that closes the avatar dropdown or menu
+    handleAvatarClose();
   };
 
   return (
@@ -174,6 +174,7 @@ export default function EventPage() {
           </Button>
           <Button 
             startIcon={<People />} 
+            onClick={handleNavigateToAccounts}
             sx={{ 
               justifyContent: 'flex-start', 
               color: '#64748B',
