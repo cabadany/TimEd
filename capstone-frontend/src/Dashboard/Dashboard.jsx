@@ -6,6 +6,7 @@ import {
   Typography,
   Button,
   IconButton,
+    CircularProgress,
   InputBase,
   Paper,
   Table,
@@ -179,7 +180,9 @@ export default function Dashboard() {
   const handleNavigateToDashboard = () => {
     navigate('/dashboard');
   };
-
+  const handleNavigateToAccounts = () => {
+    navigate('/accounts');
+  };
   const handleNavigateToSettings = () => {
     navigate('/settings');
   };
@@ -208,11 +211,12 @@ export default function Dashboard() {
     setAvatarAnchorEl(null);
   };
   
+
   const handleLogout = () => {
     // Remove authentication token and user role from localStorage or sessionStorage
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    
+    localStorage.removeItem('userId');
     console.log('Logging out...');
     
     // Redirect to login page after logout
@@ -307,6 +311,7 @@ export default function Dashboard() {
           </Button>
           <Button 
             startIcon={<People />} 
+            onClick={handleNavigateToAccounts}
             sx={{ 
               justifyContent: 'flex-start', 
               color: '#64748B',
@@ -596,9 +601,9 @@ export default function Dashboard() {
               </TableHead>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">Loading events...</TableCell>
-                  </TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <CircularProgress size={24} sx={{ color: '#0288d1' }} />
+                  </TableCell>
                 ) : error ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ color: '#EF4444' }}>{error}</TableCell>

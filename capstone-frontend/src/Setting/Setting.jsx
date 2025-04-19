@@ -132,7 +132,9 @@ export default function SettingPage() {
   const handleNavigateToSettings = () => {
     navigate('/settings');
   };
-  
+  const handleNavigateToAccounts = () => {
+    navigate('/accounts');
+  };
   // Avatar menu handlers
   const handleAvatarClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -142,8 +144,17 @@ export default function SettingPage() {
     setAnchorEl(null);
   };
   
+  
   const handleLogout = () => {
-    navigate('/');
+    // Remove authentication token and user role from localStorage or sessionStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
+    console.log('Logging out...');
+    
+    // Redirect to login page after logout
+    navigate('/login');
+    
     handleAvatarClose();
   };
   
@@ -213,6 +224,7 @@ export default function SettingPage() {
           </Button>
           <Button 
             startIcon={<People />} 
+            onClick={handleNavigateToAccounts}
             sx={{ 
               justifyContent: 'flex-start', 
               color: 'text.secondary',

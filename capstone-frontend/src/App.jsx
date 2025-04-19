@@ -5,7 +5,7 @@ import LoginPage from './Auth/LoginPage';
 import Setting from './Setting/Setting';
 import './App.css';
 import ProtectedRoute from './ProtectedRoute';  // Import the ProtectedRoute
-
+import Accounts from './Account/Account';
 function App() {
   return (
     <Router>
@@ -20,6 +20,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/accounts" 
+          element={
+            <ProtectedRoute>
+              <Accounts />
             </ProtectedRoute>
           }
         />
