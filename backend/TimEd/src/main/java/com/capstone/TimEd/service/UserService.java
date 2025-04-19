@@ -1,5 +1,7 @@
 package com.capstone.TimEd.service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.stereotype.Service;
@@ -22,7 +24,20 @@ public class UserService {
         ApiFuture<WriteResult> result = db.collection(COLLECTION_NAME).document(user.getUserId()).set(user);
         result.get(); // Waits for write to complete
     }
+    public List<User> getAllUsers() throws InterruptedException, ExecutionException {
+        Firestore db = FirestoreClient.getFirestore();
 
+        ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME).get();
+        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+
+        List<User> userList = new ArrayList<>();
+        for (QueryDocumentSnapshot doc : documents) {
+            User user = doc.toObject(User.class);
+            userList.add(user);
+        }
+
+        return userList;
+    }
     // Get user by their schoolId
     public User getUserBySchoolId(String schoolId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
@@ -42,7 +57,36 @@ public class UserService {
 
         return null;  // Return null if no user is found
     }
+    public void updateUser(String userId, User updatedUser) throws InterruptedException, ExecutionException {
+        Firestore db = FirestoreClient.getFirestore();
 
+        // Ensure the document exists before updating
+        DocumentReference docRef = db.collection(COLLECTION_NAME).document(userId);
+        ApiFuture<DocumentSnapshot> future = docRef.get();
+        DocumentSnapshot snapshot = future.get();
+
+        if (snapshot.exists()) {
+            // Set new data (will overwrite existing fields)
+            ApiFuture<WriteResult> writeResult = docRef.set(updatedUser);
+            writeResult.get(); // Wait for write
+        } else {
+            throw new RuntimeException("User with ID " + userId + " not found.");
+        }
+    }
+    public void deleteUser(String userId) throws InterruptedException, ExecutionException {
+        Firestore db = FirestoreClient.getFirestore();
+
+        DocumentReference docRef = db.collection(COLLECTION_NAME).document(userId);
+        ApiFuture<DocumentSnapshot> future = docRef.get();
+        DocumentSnapshot snapshot = future.get();
+
+        if (snapshot.exists()) {
+            ApiFuture<WriteResult> writeResult = docRef.delete();
+            writeResult.get(); // Wait for delete
+        } else {
+            throw new RuntimeException("User with ID " + userId + " not found.");
+        }
+    }
     // Get user by their Firestore userId (custom UID)
     public User getUserByUserId(String userId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
