@@ -7,6 +7,8 @@ public class User {
     private String userId;
     private String firstName;
     private String lastName;
+    private String department;
+    private String email;
     private String schoolId;
     private String password;
     private String role;
@@ -24,7 +26,17 @@ public class User {
     public void setUserId(String userId) {
         this.userId = userId;
     }
-
+    
+    @PropertyName("department")
+    public String getDepartment() {
+    	return department;
+    }
+    
+    @PropertyName("department")
+    public void setDepartment(String department) {
+    	this.department=department;
+    }
+    
     @PropertyName("firstName")
     public String getFirstName() {
         return firstName;
@@ -54,7 +66,16 @@ public class User {
     public void setSchoolId(String email) {
         this.schoolId = email;
     }
-
+    
+    @PropertyName("email")
+    public String getEmail() {
+    	return email;
+    }
+    
+    @PropertyName("email")
+    public void setEmail(String email1) {
+    	this.email=email1;
+    }
     @PropertyName("password")
     public String getPassword() {
         return password;

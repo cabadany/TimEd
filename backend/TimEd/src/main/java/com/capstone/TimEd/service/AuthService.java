@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+
 import com.capstone.TimEd.dto.AuthResponse;
 import com.capstone.TimEd.dto.LoginRequest;
 import com.capstone.TimEd.dto.RegisterRequest;
@@ -21,50 +22,62 @@ public class AuthService {
 
     @Autowired
     private FirebaseAuth firebaseAuth;
-    
+
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
     public AuthResponse register(RegisterRequest request) {
         try {
-            // Using schoolId as a custom identifier, create user in Firestore
-            String customUid = request.getSchoolId();  // Using schoolId as UID
+            // === Validate Required Fields ===
+            if (isNullOrBlank(request.getSchoolId()) || isNullOrBlank(request.getPassword()) ||
+                isNullOrBlank(request.getFirstName()) || isNullOrBlank(request.getLastName())) {
+                return new AuthResponse("Missing required fields");
+            }
 
-            // Create user in Firebase Auth with a custom UID
+            // === Check for Existing User ===
+            User existing = userService.getUserBySchoolId(request.getSchoolId());
+            if (existing != null) {
+                return new AuthResponse("User already exists with School ID: " + request.getSchoolId());
+            }
+
+            String customUid = request.getSchoolId();
+
+            // === Firebase Auth User Creation ===
             UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                    .setUid(customUid) // your custom school ID
-                    .setEmail(request.getSchoolId() + "@dummy.email")
-                    .setPassword(request.getPassword())
-                    .setDisplayName(request.getFirstName() + " " + request.getLastName())
-                    .setEmailVerified(false);
+                .setUid(customUid)
+                .setEmail(customUid + "@dummy.email")
+                .setPassword(request.getPassword())
+                .setDisplayName(request.getFirstName() + " " + request.getLastName())
+                .setEmailVerified(false);
 
             UserRecord userRecord = firebaseAuth.createUser(createRequest);
-            
-            // Create custom claims for role
+
+            // === Set Custom Claims ===
             Map<String, Object> claims = new HashMap<>();
-            claims.put("role", request.getRole() != null ? request.getRole() : "USER");
+            String role = request.getRole() != null && !request.getRole().isBlank() ? request.getRole() : "USER";
+            claims.put("role", role);
             firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
-            
-            // Create a custom token for the user
+
             String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
-            
-            // Store additional user data in Firestore
+
+            // === Save User in Firestore ===
             User user = new User();
             user.setUserId(userRecord.getUid());
             user.setSchoolId(request.getSchoolId());
-            user.setFirstName(request.getFirstName());  // Ensure first name is set
-            user.setLastName(request.getLastName());    // Ensure last name is set
-            user.setRole(request.getRole() != null ? request.getRole() : "USER");  // Ensure role is set
-            user.setPassword(passwordEncoder.encode(request.getPassword())); // Ensure password is set
+            user.setEmail(request.getEmail() != null && !request.getEmail().isBlank() ? request.getEmail() : customUid + "@dummy.email");
+            user.setDepartment(request.getDepartment() != null ? request.getDepartment() : "");
+            user.setFirstName(request.getFirstName());
+            user.setLastName(request.getLastName());
+            user.setRole(role);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
 
             userService.createUser(user);
-            
-            // Return the response
-            return new AuthResponse(token, userRecord.getUid(), userRecord.getUid(), user.getRole());
-            
+
+            return new AuthResponse(token, userRecord.getUid(), request.getSchoolId(), role);
+
         } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
             return new AuthResponse("Registration failed: " + e.getMessage());
         }
@@ -72,29 +85,24 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         try {
-            // Get user by schoolId (custom UID)
-            User user = userService.getUserBySchoolId(request.getSchoolId()); // Corrected method name
+            User user = userService.getUserBySchoolId(request.getSchoolId());
             if (user == null) {
                 return new AuthResponse("User not found with schoolId: " + request.getSchoolId());
             }
-            
-            // Verify password using BCrypt
+
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 return new AuthResponse("Invalid password");
             }
-            
-            // Try to get the user from Firebase Auth by custom UID
+
             UserRecord userRecord = firebaseAuth.getUser(request.getSchoolId());
-            
-            // Create custom claims based on user role
+
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", user.getRole());
-            
-            // Create a custom token
+
             String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
-            
+
             return new AuthResponse(token, user.getUserId(), user.getSchoolId(), user.getRole());
-            
+
         } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
             return new AuthResponse("Login failed: " + e.getMessage());
         }
@@ -107,5 +115,9 @@ public class AuthService {
         } catch (FirebaseAuthException e) {
             return false;
         }
+    }
+
+    private boolean isNullOrBlank(String str) {
+        return str == null || str.trim().isEmpty();
     }
 }
