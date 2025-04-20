@@ -138,10 +138,9 @@ class HomeActivity : AppCompatActivity() {
 
         // Implement click listener for excuse letter
         excuseLetterText.setOnClickListener {
-            Toast.makeText(this, "Creating excuse letter", Toast.LENGTH_SHORT).show()
             // Navigate to excuse letter creation screen
-            // Intent intent = Intent(this, ExcuseLetterActivity::class.java)
-            // startActivity(intent)
+            val intent = Intent(this, ExcuseLetterActivity::class.java)
+            startActivity(intent)
         }
 
         timeOutButton.setOnClickListener {

@@ -29,6 +29,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -124,7 +126,6 @@ class TimeInActivity : AppCompatActivity() {
         }
     }
 
-    // In the startCamera() method, update the camera selector part:
     private fun startCamera() {
         try {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -142,7 +143,7 @@ class TimeInActivity : AppCompatActivity() {
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build()
 
-                    // EXPLICITLY SET REAR CAMERA - This is the important change
+                    // EXPLICITLY SET FRONT CAMERA
                     val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
                     try {
@@ -162,7 +163,7 @@ class TimeInActivity : AppCompatActivity() {
                             findViewById<ImageView>(R.id.camera_preview_placeholder).visibility = View.GONE
                         }
 
-                        Log.d(TAG, "Rear camera successfully started")
+                        Log.d(TAG, "Front camera successfully started")
 
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
@@ -219,6 +220,8 @@ class TimeInActivity : AppCompatActivity() {
                     // Show success dialog after a short delay
                     Handler(Looper.getMainLooper()).postDelayed({
                         showSuccessDialog()
+                        // Added from first version: Log to Firebase
+                        logTimeInToFirebase()
                     }, 500)
                 }
 
@@ -280,7 +283,6 @@ class TimeInActivity : AppCompatActivity() {
         dialog.setCancelable(false)
         dialog.setContentView(R.layout.success_popup_time_in)
 
-
         // Set dialog width to match screen width with margins
         dialog.window?.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -304,6 +306,23 @@ class TimeInActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    // Added from first version: Firebase logging functionality
+    private fun logTimeInToFirebase() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs")
+
+        val log = mapOf(
+            "userId" to userId,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        dbRef.push().setValue(log).addOnSuccessListener {
+            Log.d(TAG, "Time-in successfully logged in Firebase")
+        }.addOnFailureListener {
+            Log.e(TAG, "Failed to log time-in: ${it.message}")
+        }
     }
 
     override fun onDestroy() {

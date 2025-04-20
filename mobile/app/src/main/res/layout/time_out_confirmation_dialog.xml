@@ -38,9 +38,9 @@
             android:layout_width="100dp"
             android:layout_height="48dp"
             android:layout_marginEnd="16dp"
-            android:backgroundTint="#777777"
+            android:backgroundTint="#F0F3F5"
             android:text="No"
-            android:textColor="@color/white"/>
+            android:textColor="@color/black"/>
 
         <Button
             android:id="@+id/btn_yes"
@@ -48,6 +48,6 @@
             android:layout_height="48dp"
             android:backgroundTint="@color/maroon"
             android:text="Yes"
-            android:textColor="@color/white"/>
+            android:textColor="@color/yellow_gold"/>
     </LinearLayout>
 </LinearLayout>

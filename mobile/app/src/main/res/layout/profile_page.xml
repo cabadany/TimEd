@@ -1,249 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
-
-    <RelativeLayout
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
 
-        <!-- White background -->
-        <View
+    <!-- White background -->
+    <View
             android:id="@+id/background"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#FFFFFF" />
 
-        <!-- Top Wave -->
-        <View
+    <!-- Top Wave -->
+    <View
             android:id="@+id/top_wave"
             android:layout_width="match_parent"
-            android:layout_height="425dp"
+            android:layout_height="300dp"
             android:layout_alignParentTop="true"
             android:background="@drawable/wave_top_design" />
 
-        <!-- Back Button -->
-        <ImageView
-            android:id="@+id/icon_back_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="24dp"
-            android:padding="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="Back button"
-            app:srcCompat="@drawable/ic_back_button" />
-
-        <!-- Title -->
-        <TextView
-            android:id="@+id/profile_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
-            android:layout_marginStart="47dp"
-            android:layout_marginTop="65dp"
-            android:fontFamily="@font/league_spartan_bold"
-            android:letterSpacing="0.05"
-
-            android:padding="16dp"
-            android:shadowColor="#33000000"
-            android:shadowDx="1"
-            android:shadowDy="1"
-            android:shadowRadius="2"
-            android:text="Profile"
-            android:textColor="#8B0000"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <!-- Profile Image -->
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/profile_image"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:layout_below="@id/profile_title"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp"
-            android:src="@drawable/profile_placeholder"
-            app:civ_border_color="@color/white"
-            app:civ_border_width="2dp" />
-
-        <!-- Profile Information Container -->
-        <LinearLayout
-            android:id="@+id/profile_info_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/profile_image"
-            android:layout_above="@id/bottom_nav_container"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"
-            android:orientation="vertical"
-            android:paddingHorizontal="24dp"
-            android:paddingVertical="8dp">
-
-            <!-- Full Name -->
-            <TextView
-                android:id="@+id/profile_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/roboto_bold"
-                android:gravity="center"
-                android:letterSpacing="0.05"
-                android:text="Kristan Ian D. Cabaña"
-                android:textColor="@color/black"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <!-- ID Number -->
-            <TextView
-                android:id="@+id/profile_id_number"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/roboto_medium"
-                android:gravity="center"
-                android:text="1746"
-                android:textColor="@color/black"
-                android:textSize="16sp"
-                android:layout_marginTop="4dp" />
-
-            <!-- Edit Button -->
-            <Button
-                android:id="@+id/btn_edit_profile"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_gravity="center"
-                android:layout_marginTop="12dp"
-                android:backgroundTint="@color/yellow_gold"
-                android:elevation="4dp"
-                android:fontFamily="@font/roboto_medium"
-                android:paddingHorizontal="16dp"
-                android:text="EDIT"
-                android:textColor="@color/black"
-                android:textSize="12sp"
-                app:cornerRadius="18dp" />
-
-            <!-- Details Section -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
-                android:layout_weight="1">
-
-                <!-- Email Section -->
-                <TableLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:stretchColumns="1">
-                    <TableRow>
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Institutional Email: "
-                            android:textColor="@color/black"
-                            android:textStyle="bold"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/roboto_bold" />
-
-                        <TextView
-                            android:id="@+id/profile_email"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:text="kristanian.cabana@cit.edu"
-                            android:textColor="@color/black"
-                            android:textSize="14sp"
-                            android:layout_weight="1"
-                            android:fontFamily="@font/roboto_medium" />
-                    </TableRow>
-                </TableLayout>
-
-                <!-- Department Section -->
-                <TableLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:stretchColumns="1">
-                    <TableRow>
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Department: "
-                            android:textColor="@color/black"
-                            android:textStyle="bold"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/roboto_bold" />
-
-                        <TextView
-                            android:id="@+id/profile_department"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:text="College of Computer Science"
-                            android:textColor="@color/black"
-                            android:textSize="14sp"
-                            android:layout_weight="1"
-                            android:fontFamily="@font/roboto_medium" />
-                    </TableRow>
-                </TableLayout>
-            </LinearLayout>
-
-            <!-- Action Buttons -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp">
-
-                <Button
-                    android:id="@+id/btn_change_password"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="12dp"
-                    android:backgroundTint="@color/maroon"
-                    android:elevation="4dp"
-                    android:fontFamily="@font/roboto_medium"
-                    android:text="Change Password"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:cornerRadius="8dp" />
-
-                <Button
-                    android:id="@+id/btn_attendance_sheet"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:backgroundTint="@color/yellow_gold"
-                    android:elevation="4dp"
-                    android:fontFamily="@font/roboto_medium"
-                    android:text="Attendance Sheet"
-                    android:textColor="@color/maroon"
-                    android:textSize="14sp"
-                    app:cornerRadius="8dp" />
-
-                <TextView
-                    android:id="@+id/logout_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_marginTop="20dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:fontFamily="@font/roboto_bold"
-                    android:padding="8dp"
-                    android:text="Log Out"
-                    android:textColor="@color/maroon"
-                    android:textSize="16sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Bottom Navigation Icons Container -->
-        <LinearLayout
+    <!-- Bottom Navigation Icons Container - KEPT AT BOTTOM -->
+    <LinearLayout
             android:id="@+id/bottom_nav_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -254,8 +32,8 @@
             android:paddingTop="8dp"
             android:weightSum="3">
 
-            <!-- Home Icon -->
-            <ImageView
+        <!-- Home Icon -->
+        <ImageView
                 android:id="@+id/bottom_nav_home"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -266,8 +44,8 @@
                 android:padding="12dp"
                 app:srcCompat="@drawable/ic_home" />
 
-            <!-- Calendar Icon -->
-            <ImageView
+        <!-- Calendar Icon -->
+        <ImageView
                 android:id="@+id/bottom_nav_calendar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -278,9 +56,8 @@
                 android:padding="12dp"
                 app:srcCompat="@drawable/ic_calendar" />
 
-            <!-- Profile Icon (Active) -->
-            <!-- Profile Icon -->
-            <ImageView
+        <!-- Profile Icon (Active) -->
+        <ImageView
                 android:id="@+id/bottom_nav_profile"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -291,7 +68,233 @@
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:padding="12dp"
                 app:srcCompat="@drawable/ic_profile" />
-        </LinearLayout>
+    </LinearLayout>
 
-    </RelativeLayout>
-</ScrollView>
+    <!-- ScrollView for all content except navigation -->
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@id/bottom_nav_container"
+            android:fillViewport="true"
+            android:scrollbars="none">
+
+        <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+            <!-- Back Button -->
+            <ImageView
+                    android:id="@+id/icon_back_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="24dp"
+                    android:clickable="true"
+                    android:contentDescription="Back button"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    app:srcCompat="@drawable/ic_back_button" />
+
+            <!-- Title -->
+            <TextView
+                    android:id="@+id/profile_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="67dp"
+                    android:fontFamily="@font/league_spartan_bold"
+                    android:letterSpacing="0.05"
+                    android:padding="8dp"
+                    android:shadowColor="#33000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:text="Profile"
+                    android:textColor="#8B0000"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+            <!-- Profile Image -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                    android:id="@+id/profile_image"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_below="@id/profile_title"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="24dp"
+                    android:src="@drawable/profile_placeholder"
+                    app:civ_border_color="@color/white"
+                    app:civ_border_width="2dp" />
+
+            <!-- Full Name -->
+            <TextView
+                    android:id="@+id/profile_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/profile_image"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:gravity="center"
+                    android:letterSpacing="0.05"
+                    android:text="Kristan Ian D. Cabaña"
+                    android:textColor="@color/black"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+            <!-- ID Number -->
+            <TextView
+                    android:id="@+id/profile_id_number"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/profile_name"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="center"
+                    android:text="1746"
+                    android:textColor="@color/black"
+                    android:textSize="16sp" />
+
+            <!-- Edit Button -->
+            <Button
+                    android:id="@+id/btn_edit_profile"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_below="@id/profile_id_number"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/yellow_gold"
+                    android:elevation="4dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:paddingHorizontal="16dp"
+                    android:text="EDIT"
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    app:cornerRadius="18dp" />
+
+            <!-- Profile information container -->
+            <LinearLayout
+                    android:id="@+id/profile_info_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/btn_edit_profile"
+                    android:layout_marginTop="24dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp">
+
+                <!-- Email info -->
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                    <TextView
+                            android:id="@+id/email_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/roboto_bold"
+                            android:text="Institutional Email: "
+                            android:textColor="@color/black"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                    <TextView
+                            android:id="@+id/profile_email"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/roboto_medium"
+                            android:text="kristanian.cabana@cit.edu"
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Department info -->
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                    <TextView
+                            android:id="@+id/department_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/roboto_bold"
+                            android:text="Department: "
+                            android:textColor="@color/black"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                    <TextView
+                            android:id="@+id/profile_department"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/roboto_medium"
+                            android:text="College of Computer Science"
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Change Password Button -->
+            <Button
+                    android:id="@+id/btn_change_password"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_below="@id/profile_info_container"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:backgroundTint="@color/maroon"
+                    android:elevation="4dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Change Password"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:cornerRadius="8dp" />
+
+            <!-- Attendance Sheet Button -->
+            <Button
+                    android:id="@+id/btn_attendance_sheet"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_below="@id/btn_change_password"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="24dp"
+                    android:backgroundTint="@color/yellow_gold"
+                    android:elevation="4dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Attendance Sheet"
+                    android:textColor="@color/maroon"
+                    android:textSize="14sp"
+                    app:cornerRadius="8dp" />
+
+            <!-- Log Out Text -->
+            <TextView
+                    android:id="@+id/logout_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/btn_attendance_sheet"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="24dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/roboto_bold"
+                    android:padding="8dp"
+                    android:text="Log Out"
+                    android:textColor="@color/maroon"
+                    android:textSize="16sp" />
+
+        </RelativeLayout>
+    </ScrollView>
+</RelativeLayout>
