@@ -3,21 +3,46 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:background="@drawable/popup_background"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:background="@drawable/popup_background"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
 
+    <!-- Success Icon -->
+    <ImageView
+            android:id="@+id/success_icon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="16dp"
+            app:srcCompat="@drawable/ic_success"
+            android:contentDescription="Success" />
+
+    <!-- Title -->
     <TextView
-            android:layout_width="match_parent"
+            android:id="@+id/popup_title"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/roboto_bold"
             android:gravity="center"
-            android:text="Successfully Downloaded"
+            android:text="Success"
             android:textColor="@color/black"
             android:textSize="20sp"
             android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+    <!-- Message -->
+    <TextView
+            android:id="@+id/popup_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/roboto_medium"
+            android:gravity="center"
+            android:text="Your excuse letter has been submitted successfully!"
+            android:textColor="@color/black"
+            android:textSize="16sp"
             android:layout_marginBottom="24dp" />
 
+    <!-- Close Button -->
     <Button
             android:id="@+id/btn_ok"
             android:layout_width="120dp"
@@ -30,4 +55,5 @@
             android:textSize="14sp"
             app:cornerRadius="8dp"
             android:elevation="4dp" />
+
 </LinearLayout>

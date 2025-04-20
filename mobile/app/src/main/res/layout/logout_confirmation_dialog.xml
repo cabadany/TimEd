@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/popup_background"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/league_spartan_bold"
+            android:gravity="center"
+            android:text="Log Out"
+            android:textColor="@color/maroon"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/roboto_medium"
+            android:gravity="center"
+            android:text="Are you sure you want to log out?"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:weightSum="2">
+
+        <Button
+                android:id="@+id/btn_cancel"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:backgroundTint="@color/yellow_gold"
+                android:text="CANCEL"
+                android:textColor="@color/maroon"
+                android:fontFamily="@font/roboto_medium"
+                android:textSize="14sp"
+                app:cornerRadius="8dp"
+                android:elevation="4dp" />
+
+        <Button
+                android:id="@+id/btn_logout"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="@color/maroon"
+                android:text="LOG OUT"
+                android:textColor="@color/white"
+                android:fontFamily="@font/roboto_medium"
+                android:textSize="14sp"
+                app:cornerRadius="8dp"
+                android:elevation="4dp" />
+    </LinearLayout>
+</LinearLayout>

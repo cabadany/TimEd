@@ -78,6 +78,38 @@ class ProfileActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun showLogoutConfirmationDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(true)
+
+        // Set up the dialog view
+        dialog.setContentView(R.layout.logout_confirmation_dialog)
+
+        // Set transparent background and dim amount for modal effect
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.5f)
+
+        // Set up button click listeners
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+        val logoutButton = dialog.findViewById<Button>(R.id.btn_logout)
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        logoutButton.setOnClickListener {
+            dialog.dismiss()
+
+            // Perform logout - navigate to login screen
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        }
+
+        dialog.show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
@@ -122,10 +154,7 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         logoutText.setOnClickListener {
-            // Logout functionality
-            val intent = Intent(this, LoginActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
+            showLogoutConfirmationDialog()
         }
         // Add to ProfileActivity.kt in the onCreate method:
         changePasswordButton.setOnClickListener {
