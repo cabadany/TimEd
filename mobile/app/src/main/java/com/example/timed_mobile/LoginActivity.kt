@@ -20,8 +20,8 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         loginButton = findViewById(R.id.btnLogin)
-        emailInput = findViewById(R.id.login_email)
-        passwordInput = findViewById(R.id.login_password)
+        emailInput = findViewById(R.id.input_idnumber)
+        passwordInput = findViewById(R.id.input_Password)
 
         loginButton.setOnClickListener {
             val email = emailInput.text.toString().trim()
