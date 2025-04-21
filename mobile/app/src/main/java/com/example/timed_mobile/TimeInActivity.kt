@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
+import android.util.Size
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -85,21 +86,28 @@ class TimeInActivity : AppCompatActivity() {
         // Create PreviewView programmatically to avoid the DisplayManagerGlobal error
         val container = findViewById<ViewGroup>(R.id.camera_container)
 
-        // Create new PreviewView with COMPATIBLE implementation mode
-        previewView = PreviewView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            // Use COMPATIBLE mode to avoid the DisplayManagerGlobal error
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        try {
+            // Create new PreviewView with COMPATIBLE implementation mode
+            previewView = PreviewView(this).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                // Use COMPATIBLE mode for Android 8 support
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER // Better scaling for different screen sizes
 
-            // Initially invisible until camera is ready
-            visibility = View.INVISIBLE
+                // Initially invisible until camera is ready
+                visibility = View.INVISIBLE
+            }
+
+            // Add to container
+            container.addView(previewView)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating preview view", e)
+            Toast.makeText(this, "Could not initialize camera preview", Toast.LENGTH_SHORT).show()
         }
-
-        // Add to container
-        container.addView(previewView)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -135,50 +143,74 @@ class TimeInActivity : AppCompatActivity() {
                     // Get camera provider
                     val cameraProvider = cameraProviderFuture.get()
 
-                    // Build preview
-                    val preview = Preview.Builder().build()
-
-                    // Set up image capture
-                    imageCapture = ImageCapture.Builder()
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    // Build preview with reduced resolution requirements
+                    val preview = Preview.Builder()
+                        // Lower resolution to increase compatibility
+                        .setTargetResolution(Size(640, 480))
                         .build()
 
-                    // EXPLICITLY SET FRONT CAMERA
-                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                    // Set up image capture with reduced requirements
+                    imageCapture = ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        // Lower resolution to increase compatibility
+                        .setTargetResolution(Size(1280, 720))
+                        .build()
+
+                    // EXPLICITLY USE FRONT CAMERA but with fallback mechanism
+                    val cameraSelector = findAvailableCameraSelector(cameraProvider)
 
                     try {
                         // Unbind use cases before rebinding
                         cameraProvider.unbindAll()
 
                         // Bind use cases to camera
-                        val camera = cameraProvider.bindToLifecycle(
+                        cameraProvider.bindToLifecycle(
                             this, cameraSelector, preview, imageCapture)
 
                         // Only set surface provider AFTER binding use cases
                         previewView?.let {
                             preview.setSurfaceProvider(it.surfaceProvider)
-
-                            // Make preview visible and hide placeholder
                             it.visibility = View.VISIBLE
                             findViewById<ImageView>(R.id.camera_preview_placeholder).visibility = View.GONE
                         }
 
-                        Log.d(TAG, "Front camera successfully started")
+                        Log.d(TAG, "Camera started successfully")
 
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
-                        Toast.makeText(this, "Camera setup failed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Camera initialization failed. Please try again.", Toast.LENGTH_SHORT).show()
+                        // Keep placeholder visible to indicate camera failure
                     }
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Camera provider error", e)
-                    Toast.makeText(this, "Camera system unavailable", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Camera system error", Toast.LENGTH_SHORT).show()
                 }
             }, ContextCompat.getMainExecutor(this))
 
         } catch (e: Exception) {
             Log.e(TAG, "Camera start error", e)
             Toast.makeText(this, "Failed to start camera", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Add this method to find an available camera - prioritize front camera
+    private fun findAvailableCameraSelector(cameraProvider: ProcessCameraProvider): CameraSelector {
+        try {
+            // Try front camera first (our preference)
+            if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
+                Log.d(TAG, "Using front camera")
+                return CameraSelector.DEFAULT_FRONT_CAMERA
+            }
+
+            // Last resort, try a generic selector
+            Log.d(TAG, "No standard cameras found, using generic selector")
+            return CameraSelector.Builder().build()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking camera availability", e)
+            // Default to front camera and hope for the best
+            return CameraSelector.DEFAULT_FRONT_CAMERA
         }
     }
 
@@ -195,51 +227,64 @@ class TimeInActivity : AppCompatActivity() {
         timeInButton.isEnabled = false
         timeInButton.text = "Processing..."
 
-        // Create output file
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "TimEd_${System.currentTimeMillis()}")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-        }
-
-        // Create output options
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(
-            contentResolver,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        ).build()
-
-        // Take photo
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    capturedImageUri = output.savedUri
-                    showFlashEffect()
-
-                    // Show success dialog after a short delay
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        showSuccessDialog()
-                        // Added from first version: Log to Firebase
-                        logTimeInToFirebase()
-                    }, 500)
-                }
-
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-
-                    // Re-enable the button
-                    timeInButton.isEnabled = true
-                    timeInButton.text = "Time - In"
-
-                    Toast.makeText(
-                        baseContext,
-                        "Failed to take photo",
-                        Toast.LENGTH_SHORT
-                    ).show()
+        try {
+            // Create output file with backwards compatibility
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "TimEd_${System.currentTimeMillis()}")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                // Add RELATIVE_PATH only on Android Q and above
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/TimEd")
                 }
             }
-        )
+
+            // Create output options
+            val outputOptions = ImageCapture.OutputFileOptions.Builder(
+                contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            ).build()
+
+            // Take photo
+            imageCapture.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        capturedImageUri = output.savedUri
+                        showFlashEffect()
+
+                        // Show success dialog after a short delay
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            showSuccessDialog()
+                            // Added from first version: Log to Firebase
+                            logTimeInToFirebase()
+                        }, 500)
+                    }
+
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+
+                        // Re-enable the button
+                        runOnUiThread {
+                            timeInButton.isEnabled = true
+                            timeInButton.text = "Time - In"
+
+                            Toast.makeText(
+                                baseContext,
+                                "Failed to take photo: ${exc.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error taking photo", e)
+            timeInButton.isEnabled = true
+            timeInButton.text = "Time - In"
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showFlashEffect() {
