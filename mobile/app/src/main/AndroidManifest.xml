@@ -24,6 +24,19 @@
         android:theme="@style/Theme.Material3.Light.NoActionBar"
         tools:targetApi="26">
 
+        <!-- Splash Screen Page -->
+        <activity
+                android:name=".SplashActivity"
+                android:exported="true"
+                android:theme="@style/Theme.TimEdMobile.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Remove LAUNCHER intent-filter from other activities if present -->
+
         <!-- Login Activity -->
         <activity
             android:name=".LoginActivity"
