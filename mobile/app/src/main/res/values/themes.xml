@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <style name="Theme.TimEdMobile" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Splash Screen -->
+    <style name="Theme.TimEdMobile.NoActionBar" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/maroon</item>
+        <item name="colorPrimaryDark">@color/maroon</item>
+        <item name="colorAccent">@color/yellow_gold</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
 </resources>
