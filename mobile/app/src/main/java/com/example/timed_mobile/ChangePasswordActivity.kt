@@ -15,19 +15,26 @@ class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var updatePasswordButton: Button
     private lateinit var newPasswordLayout: TextInputLayout
     private lateinit var reenterPasswordLayout: TextInputLayout
+    private lateinit var backButton: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.change_password_page)
+
 
         newPasswordInput = findViewById(R.id.new_password_input)
         reenterPasswordInput = findViewById(R.id.reenter_password_input)
         updatePasswordButton = findViewById(R.id.btn_update_password)
         newPasswordLayout = findViewById(R.id.new_password_layout)
         reenterPasswordLayout = findViewById(R.id.reenter_password_layout)
+        backButton = findViewById(R.id.icon_back_button)
 
         updatePasswordButton.setOnClickListener {
             updatePassword()
+        }
+
+        backButton.setOnClickListener {
+            finish()
         }
     }
 
@@ -76,4 +83,6 @@ class ChangePasswordActivity : AppCompatActivity() {
 
         dialog.show()
     }
+
+
 }
