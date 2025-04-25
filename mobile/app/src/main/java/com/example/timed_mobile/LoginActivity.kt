@@ -1,8 +1,10 @@
 package com.example.timed_mobile
 
 import android.content.Intent
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
@@ -17,6 +19,20 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
+
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
+
+        // Start bottom wave animation
+        val bottomWave = findViewById<ImageView>(R.id.bottom_wave_animation)
+        val bottomDrawable = bottomWave.drawable
+        if (bottomDrawable is AnimatedVectorDrawable) {
+            bottomDrawable.start()
+        }
 
         auth = FirebaseAuth.getInstance()
         loginButton = findViewById(R.id.btnLogin)

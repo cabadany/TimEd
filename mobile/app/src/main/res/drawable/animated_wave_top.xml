@@ -1,0 +1,11 @@
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:drawable="@drawable/wave_top_design">
+
+    <target
+            android:name="top_wave_group1"
+            android:animation="@animator/wave_animation_1" />
+
+    <target
+            android:name="top_wave_group2"
+            android:animation="@animator/wave_animation_2" />
+</animated-vector>
