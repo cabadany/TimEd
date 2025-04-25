@@ -12,19 +12,23 @@
             android:background="#FFFFFF" />
 
     <!-- Top wave - kept exactly as is -->
-    <View
-            android:layout_width="match_parent"
+    <!-- In your login_page.xml or other layouts -->
+    <ImageView
+            android:id="@+id/top_wave_animation"
+            android:layout_width="450dp"
             android:layout_height="350dp"
             android:layout_gravity="top"
-            android:background="@drawable/wave_top_design" />
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
 
-    <!-- Bottom wave with fixed position -->
-    <View
+    <ImageView
+            android:id="@+id/bottom_wave_animation"
             android:layout_width="match_parent"
             android:layout_height="100dp"
             android:layout_gravity="bottom"
-            android:background="@drawable/wave_bottom_design" />
-
+            android:scaleType="fitXY"
+            android:translationY="1dp"
+            android:src="@drawable/animated_wave_bottom" />
     <!-- ScrollView to ensure content fits on smaller screens -->
     <ScrollView
             android:layout_width="match_parent"

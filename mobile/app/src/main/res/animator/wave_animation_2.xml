@@ -1,0 +1,24 @@
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+        android:ordering="together"
+        android:startOffset="600">
+
+    <objectAnimator
+            android:propertyName="translateY"
+            android:duration="6500"
+            android:valueFrom="-4"
+            android:valueTo="3"
+            android:valueType="floatType"
+            android:repeatCount="infinite"
+            android:repeatMode="reverse"
+            android:interpolator="@android:interpolator/accelerate_decelerate" />
+
+    <objectAnimator
+            android:propertyName="scaleY"
+            android:duration="6800"
+            android:valueFrom=".80"
+            android:valueTo="1.03"
+            android:valueType="floatType"
+            android:repeatCount="infinite"
+            android:repeatMode="reverse"
+            android:interpolator="@android:interpolator/accelerate_decelerate" />
+</set>

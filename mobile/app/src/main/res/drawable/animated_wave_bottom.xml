@@ -1,0 +1,7 @@
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:drawable="@drawable/wave_bottom_design">
+
+    <target
+            android:name="bottom_wave_group"
+            android:animation="@animator/wave_animation_3" />
+</animated-vector>
