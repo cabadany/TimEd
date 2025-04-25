@@ -1,0 +1,123 @@
+package com.capstone.TimEd.service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+
+import com.capstone.TimEd.dto.AuthResponse;
+import com.capstone.TimEd.dto.LoginRequest;
+import com.capstone.TimEd.dto.RegisterRequest;
+import com.capstone.TimEd.model.User;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
+
+@Service
+public class AuthService {
+
+    @Autowired
+    private FirebaseAuth firebaseAuth;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
+
+    public AuthResponse register(RegisterRequest request) {
+        try {
+            // === Validate Required Fields ===
+            if (isNullOrBlank(request.getSchoolId()) || isNullOrBlank(request.getPassword()) ||
+                isNullOrBlank(request.getFirstName()) || isNullOrBlank(request.getLastName())) {
+                return new AuthResponse("Missing required fields");
+            }
+
+            // === Check for Existing User ===
+            User existing = userService.getUserBySchoolId(request.getSchoolId());
+            if (existing != null) {
+                return new AuthResponse("User already exists with School ID: " + request.getSchoolId());
+            }
+
+            String customUid = request.getSchoolId();
+
+            // === Firebase Auth User Creation ===
+            UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                .setUid(customUid)
+                .setEmail(customUid + "@dummy.email")
+                .setPassword(request.getPassword())
+                .setDisplayName(request.getFirstName() + " " + request.getLastName())
+                .setEmailVerified(false);
+
+            UserRecord userRecord = firebaseAuth.createUser(createRequest);
+
+            // === Set Custom Claims ===
+            Map<String, Object> claims = new HashMap<>();
+            String role = request.getRole() != null && !request.getRole().isBlank() ? request.getRole() : "USER";
+            claims.put("role", role);
+            firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
+
+            String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
+
+            // === Save User in Firestore ===
+            User user = new User();
+            user.setUserId(userRecord.getUid());
+            user.setSchoolId(request.getSchoolId());
+            user.setEmail(request.getEmail() != null && !request.getEmail().isBlank() ? request.getEmail() : customUid + "@dummy.email");
+            user.setDepartment(request.getDepartment() != null ? request.getDepartment() : "");
+            user.setFirstName(request.getFirstName());
+            user.setLastName(request.getLastName());
+            user.setRole(role);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+            userService.createUser(user);
+
+            return new AuthResponse(token, userRecord.getUid(), request.getSchoolId(), role);
+
+        } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
+            return new AuthResponse("Registration failed: " + e.getMessage());
+        }
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        try {
+            User user = userService.getUserBySchoolId(request.getSchoolId());
+            if (user == null) {
+                return new AuthResponse("User not found with schoolId: " + request.getSchoolId());
+            }
+
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                return new AuthResponse("Invalid password");
+            }
+
+            UserRecord userRecord = firebaseAuth.getUser(request.getSchoolId());
+
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("role", user.getRole());
+
+            String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
+
+            return new AuthResponse(token, user.getUserId(), user.getSchoolId(), user.getRole());
+
+        } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
+            return new AuthResponse("Login failed: " + e.getMessage());
+        }
+    }
+
+    public boolean verifyToken(String idToken) {
+        try {
+            firebaseAuth.verifyIdToken(idToken);
+            return true;
+        } catch (FirebaseAuthException e) {
+            return false;
+        }
+    }
+
+    private boolean isNullOrBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+}

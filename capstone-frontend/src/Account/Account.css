@@ -1,0 +1,479 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+  background-color: #121212;
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiPaper-root {
+  background-color: #1e1e1e !important;
+}
+
+.dark-mode .sidebar {
+  background-color: #1e1e1e !important;
+  border-color: #333333 !important;
+}
+
+.dark-mode .MuiDivider-root {
+  border-color: #333333 !important;
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root {
+  background-color: #1e1e1e;
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-notchedOutline {
+  border-color: #333333;
+}
+
+.dark-mode .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #555555;
+}
+
+.dark-mode .MuiTypography-root {
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiTypography-colorTextSecondary {
+  color: #aaaaaa !important;
+}
+
+.dark-mode .MuiButton-root {
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiButton-outlined {
+  border-color: #333333;
+}
+
+.dark-mode .MuiTab-root {
+  color: #aaaaaa;
+}
+
+.dark-mode .MuiTab-root.Mui-selected {
+  color: #90caf9;
+}
+
+.dark-mode .MuiTabs-indicator {
+  background-color: #90caf9;
+}
+
+.dark-mode .MuiSwitch-track {
+  background-color: #555555 !important;
+}
+
+.dark-mode .MuiInputBase-input {
+  color: #f5f5f5 !important;
+}
+
+.dark-mode .MuiIconButton-root {
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiMenu-paper {
+  background-color: #1e1e1e;
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiMenuItem-root:hover {
+  background-color: #333333;
+}
+
+.dark-mode .MuiListItemIcon-root {
+  color: #f5f5f5 !important;
+}
+
+/* Override App.css settings to ensure full width/height */
+#root {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark mode scrollbar */
+.dark-mode ::-webkit-scrollbar-track {
+  background: #333333;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #555555;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #777777;
+}
+
+/* Tab panels */
+[role="tabpanel"] {
+  padding: 24px;
+}
+
+/* Date input styling */
+input[type="date"] {
+  border: none;
+  border-bottom: 1px solid #0288d1;
+  padding: 4px 8px;
+  font-size: 14px;
+  outline: none;
+  background-color: transparent;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5);
+}
+
+.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* Profile image container */
+.profile-image-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0;
+}
+
+.profile-image-container img,
+.profile-image-container .MuiAvatar-root {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-image-edit {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: #0288d1;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.profile-image-edit:hover {
+  background-color: #0277bd;
+}
+
+/* Profile layout */
+.profile-edit-container {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.profile-image-section {
+  flex-shrink: 0;
+}
+
+.profile-form-section {
+  flex-grow: 1;
+}
+
+/* Form styling */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #475569;
+  font-size: 14px;
+}
+
+.dark-mode .form-label {
+  color: #aaaaaa;
+}
+
+.form-input {
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: #0288d1;
+}
+
+/* Card styles */
+.settings-card {
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.dark-mode .settings-card {
+  background-color: #1e1e1e;
+  border-color: #333333;
+}
+
+.settings-card-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.dark-mode .settings-card-header {
+  border-color: #333333;
+}
+
+.settings-card-body {
+  padding: 24px;
+}
+
+/* Button styles */
+.btn {
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #304FFF;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #2840CC;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid #E2E8F0;
+  color: #475569;
+}
+
+.btn-secondary:hover {
+  background-color: #F8FAFC;
+}
+
+.dark-mode .btn-secondary {
+  border-color: #333333;
+  color: #f5f5f5;
+}
+
+.dark-mode .btn-secondary:hover {
+  background-color: #333333;
+}
+
+/* Sidebar active indicator */
+.sidebar-item-active {
+  position: relative;
+}
+
+.sidebar-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #304FFF;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Search input styling */
+.search-input {
+  background-color: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.dark-mode .search-input {
+  background-color: #333333;
+  border-color: #555555;
+}
+
+/* Avatar menu */
+.avatar-menu {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  min-width: 180px;
+}
+
+.dark-mode .avatar-menu {
+  background-color: #1e1e1e;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Tab navigation */
+.tab-container {
+  border-bottom: 1px solid #E2E8F0;
+  margin-bottom: 24px;
+}
+
+.dark-mode .tab-container {
+  border-color: #333333;
+}
+
+.tab-list {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tab-item {
+  padding: 12px 24px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  color: #64748B;
+  transition: all 0.2s;
+}
+
+.tab-item:hover {
+  color: #304FFF;
+}
+
+.tab-item-active {
+  color: #304FFF;
+  border-bottom-color: #304FFF;
+}
+
+.dark-mode .tab-item {
+  color: #aaaaaa;
+}
+
+.dark-mode .tab-item:hover {
+  color: #90caf9;
+}
+
+.dark-mode .tab-item-active {
+  color: #90caf9;
+  border-bottom-color: #90caf9;
+}
+
+/* Dark mode specific override for background and text */
+.dark-mode {
+  background-color: #121212;
+}
+
+.dark-mode .MuiInputBase-root {
+  color: #f5f5f5;
+}
+
+.dark-mode .MuiOutlinedInput-notchedOutline {
+  border-color: #333333;
+}
+
+.dark-mode .MuiPaper-root {
+  background-color: #1e1e1e;
+}
+
+.dark-mode .MuiButton-contained {
+  background-color: #304FFF;
+}
+
+/* Filter dropdown */
+.filter-dropdown {
+  min-width: 150px;
+}
+
+.filter-dropdown-item {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.filter-dropdown-item:hover {
+  background-color: #F8FAFC;
+}
+
+.dark-mode .filter-dropdown-item:hover {
+  background-color: #333333;
+}
+
+/* Make the editable fields look like the design */
+.MuiOutlinedInput-root {
+  border-radius: 4px !important;
+}
+
+.MuiOutlinedInput-input {
+  padding: 12px 14px !important;
+  font-size: 14px !important;
+}
+
+/* Save button styling to match design */
+.save-button {
+  background-color: #304FFF !important;
+  padding: 10px 32px !important;
+  border-radius: 4px !important;
+  text-transform: none !important;
+  font-weight: 500 !important;
+}
+
+.save-button:hover {
+  background-color: #2840CC !important;
+}
+
+/* File input for profile image */
+.hidden-file-input {
+  display: none;
+}
