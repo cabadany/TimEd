@@ -1,6 +1,7 @@
 package com.example.timed_mobile
 
 import android.app.Dialog
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.view.Window
 import android.widget.*
@@ -19,6 +20,13 @@ class EditProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.edit_profile_page)
+
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
 
         nameInput = findViewById(R.id.name_input)
         emailInput = findViewById(R.id.email_input)

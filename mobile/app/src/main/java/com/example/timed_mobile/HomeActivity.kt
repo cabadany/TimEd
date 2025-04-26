@@ -9,10 +9,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import android.app.Dialog
 import android.graphics.Color
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Window
+
 
 
 class HomeActivity : AppCompatActivity() {
@@ -100,6 +102,12 @@ class HomeActivity : AppCompatActivity() {
         timeOutButton = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
 
         // Set click listeners for navigation icons
         homeIcon.setOnClickListener {

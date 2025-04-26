@@ -17,15 +17,13 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Top wave -->
-    <View
-        android:id="@+id/top_wave"
-        android:layout_width="0dp"
-        android:layout_height="350dp"
-        android:background="@drawable/wave_top_design"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.32"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <ImageView
+            android:id="@+id/top_wave_animation"
+            android:layout_width="450dp"
+            android:layout_height="390dp"
+            android:layout_gravity="top"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
 
     <!-- Back Button -->
     <ImageView

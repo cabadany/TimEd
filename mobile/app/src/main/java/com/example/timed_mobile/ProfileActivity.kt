@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.app.Dialog
 import android.graphics.Color
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Handler
 import android.os.Looper
@@ -123,6 +124,15 @@ class ProfileActivity : AppCompatActivity() {
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
         editButton = findViewById(R.id.btn_edit_profile)
         logoutText = findViewById(R.id.logout_text)
+
+
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
+
 
         // Set click listeners
         backButton.setOnClickListener {
