@@ -1,6 +1,7 @@
 package com.example.timed_mobile
 
 import android.content.Intent
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.TextView
@@ -35,6 +36,14 @@ class ScheduleActivity : AppCompatActivity() {
         calendarIcon = findViewById(R.id.bottom_nav_calendar)
         profileIcon = findViewById(R.id.bottom_nav_profile)
         dateLabel = findViewById(R.id.date_label)
+
+
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
 
         // Set current date
         updateDateLabel()

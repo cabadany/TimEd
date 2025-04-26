@@ -11,8 +11,7 @@
             android:layout_height="match_parent"
             android:background="#FFFFFF" />
 
-    <!-- Top wave - kept exactly as is -->
-    <!-- In your login_page.xml or other layouts -->
+    <!-- Top wave -->
     <ImageView
             android:id="@+id/top_wave_animation"
             android:layout_width="450dp"
@@ -21,6 +20,7 @@
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
+    <!-- Bottom wave -->
     <ImageView
             android:id="@+id/bottom_wave_animation"
             android:layout_width="match_parent"

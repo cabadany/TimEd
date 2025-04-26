@@ -4,7 +4,7 @@
     <objectAnimator
             android:propertyName="translateY"
             android:duration="4500"
-            android:valueFrom="0"
+            android:valueFrom="2"
             android:valueTo="-4"
             android:valueType="floatType"
             android:repeatCount="infinite"
@@ -14,7 +14,7 @@
     <objectAnimator
             android:propertyName="scaleX"
             android:duration="4000"
-            android:valueFrom=".85"
+            android:valueFrom=".95"
             android:valueTo="1.01"
             android:valueType="floatType"
             android:repeatCount="infinite"

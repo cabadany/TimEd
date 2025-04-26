@@ -1,6 +1,7 @@
 package com.example.timed_mobile
 
 import android.app.Dialog
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.view.Window
 import android.widget.*
@@ -21,6 +22,12 @@ class ChangePasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.change_password_page)
 
+        // Start top wave animation
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
 
         newPasswordInput = findViewById(R.id.new_password_input)
         reenterPasswordInput = findViewById(R.id.reenter_password_input)

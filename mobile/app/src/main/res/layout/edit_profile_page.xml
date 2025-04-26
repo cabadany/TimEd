@@ -12,13 +12,14 @@
         android:layout_height="match_parent"
         android:background="#FFFFFF" />
 
-    <!-- Top wave (kept as requested) -->
-    <View
-        android:id="@+id/top_wave"
-        android:layout_width="match_parent"
-        android:layout_height="425dp"
-        android:layout_alignParentTop="true"
-        android:background="@drawable/wave_top_design" />
+    <!-- Top wave -->
+    <ImageView
+            android:id="@+id/top_wave_animation"
+            android:layout_width="450dp"
+            android:layout_height="390dp"
+            android:layout_gravity="top"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
 
     <!-- Back Button -->
     <ImageView
