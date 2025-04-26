@@ -22,10 +22,7 @@ public class EventController {
         return eventService.saveEvent(event);
     }
 
-    @GetMapping("/get/{id}")
-    public Event getEvent(@PathVariable String id) throws ExecutionException, InterruptedException {
-        return eventService.getEventById(id);
-    }
+   
 
     @GetMapping("/getAll")
     public List<Event> getAllEvents() throws ExecutionException, InterruptedException {

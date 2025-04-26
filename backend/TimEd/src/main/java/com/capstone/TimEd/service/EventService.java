@@ -4,7 +4,11 @@ import com.capstone.TimEd.model.Event;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.UserRecord;
 import com.google.firebase.cloud.FirestoreClient;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ExecutionException;
@@ -14,7 +18,7 @@ import java.util.*;
 public class EventService {
 
     private static final String COLLECTION_NAME = "events";
-
+    
     // 🔨 Create or Update
     public String saveEvent(Event event) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
@@ -22,30 +26,16 @@ public class EventService {
         DocumentReference docRef;
 
         if (event.getEventId() == null || event.getEventId().isEmpty()) {
-            // Let Firebase auto-generate the document ID
-            docRef = db.collection(COLLECTION_NAME).document();
-            String generatedId = docRef.getId().substring(0, 8); // Shorten to 8 characters
-            event.setEventId(generatedId);
-            docRef = db.collection(COLLECTION_NAME).document(generatedId); // Use shortened ID
+            // Let Firebase auto-generate the document ID (default UUID)
+            docRef = db.collection(COLLECTION_NAME).document(); // Firebase will generate UID
+            event.setEventId(docRef.getId()); // Save the generated UID back to event object
         } else {
+            // Use provided ID if it exists
             docRef = db.collection(COLLECTION_NAME).document(event.getEventId());
         }
 
         ApiFuture<WriteResult> future = docRef.set(event);
         return future.get().getUpdateTime().toString();
-    }
-    // 👀 Read by ID
-    public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        DocumentReference docRef = db.collection(COLLECTION_NAME).document(eventId);
-        ApiFuture<DocumentSnapshot> future = docRef.get();
-        DocumentSnapshot document = future.get();
-
-        if (document.exists()) {
-            return document.toObject(Event.class);
-        } else {
-            return null;
-        }
     }
 
     // 📄 Read All
