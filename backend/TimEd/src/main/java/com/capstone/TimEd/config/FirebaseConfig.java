@@ -24,6 +24,8 @@ public class FirebaseConfig {
             
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setProjectId("timed-system")  // Ensure your project ID is set
+                    .setDatabaseUrl("https://timed-system-default-rtdb.firebaseio.com/")  // Add your Realtime Database URL here
                     .build();
             
             return FirebaseApp.initializeApp(options);
@@ -41,4 +43,4 @@ public class FirebaseConfig {
     public Firestore firestore() throws IOException {
         return FirestoreClient.getFirestore(firebaseApp());
     }
-} 
+}

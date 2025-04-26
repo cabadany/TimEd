@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-
 import com.capstone.TimEd.dto.AuthResponse;
 import com.capstone.TimEd.dto.LoginRequest;
 import com.capstone.TimEd.dto.RegisterRequest;
@@ -43,17 +42,18 @@ public class AuthService {
                 return new AuthResponse("User already exists with School ID: " + request.getSchoolId());
             }
 
-            String customUid = request.getSchoolId();
+            String email = (request.getEmail() != null && !request.getEmail().isBlank())
+                    ? request.getEmail()
+                    : request.getSchoolId() + "@dummy.email";
 
-            // === Firebase Auth User Creation ===
+            // === Firebase Auth User Creation WITHOUT custom UID ===
             UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                .setUid(customUid)
-                .setEmail(customUid + "@dummy.email")
-                .setPassword(request.getPassword())
-                .setDisplayName(request.getFirstName() + " " + request.getLastName())
-                .setEmailVerified(false);
+                    .setEmail(email)
+                    .setPassword(request.getPassword())
+                    .setDisplayName(request.getFirstName() + " " + request.getLastName())
+                    .setEmailVerified(false);
 
-            UserRecord userRecord = firebaseAuth.createUser(createRequest);
+            UserRecord userRecord = firebaseAuth.createUser(createRequest); // Firebase generates UID
 
             // === Set Custom Claims ===
             Map<String, Object> claims = new HashMap<>();
@@ -65,9 +65,9 @@ public class AuthService {
 
             // === Save User in Firestore ===
             User user = new User();
-            user.setUserId(userRecord.getUid());
+            user.setUserId(userRecord.getUid()); // Use Firebase-generated UID
             user.setSchoolId(request.getSchoolId());
-            user.setEmail(request.getEmail() != null && !request.getEmail().isBlank() ? request.getEmail() : customUid + "@dummy.email");
+            user.setEmail(email);
             user.setDepartment(request.getDepartment() != null ? request.getDepartment() : "");
             user.setFirstName(request.getFirstName());
             user.setLastName(request.getLastName());
@@ -94,7 +94,7 @@ public class AuthService {
                 return new AuthResponse("Invalid password");
             }
 
-            UserRecord userRecord = firebaseAuth.getUser(request.getSchoolId());
+            UserRecord userRecord = firebaseAuth.getUser(user.getUserId()); // use actual UID now
 
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", user.getRole());
