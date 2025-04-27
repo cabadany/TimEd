@@ -1,26 +1,30 @@
 package com.capstone.TimEd.model;
 
-import java.util.Date;  // Import Date class
+import java.util.Date;
 
 public class Event {
-    private String eventId;
+
+    private String eventId;  // Firebase UID
     private String eventName;
-    private String status;
-    private Date date;  // Change the date to Date type
+    private Date date;
     private String duration;
+    private String status;
+    private String departmentId; // Reference to Department
+    private Department department;  // This will hold the full department object (to be set manually)
 
-    public Event() {
-    }
+    // Constructors
+    public Event() {}
 
-    // Constructor
-    public Event(String eventId, String eventName, String status, Date date, String duration) {
+    public Event(String eventId, String eventName, Date date, String duration, String status, String departmentId) {
         this.eventId = eventId;
         this.eventName = eventName;
-        this.status = status;
         this.date = date;
         this.duration = duration;
+        this.status = status;
+        this.departmentId = departmentId;
     }
 
+    // Getters and Setters
     public String getEventId() {
         return eventId;
     }
@@ -37,14 +41,6 @@ public class Event {
         this.eventName = eventName;
     }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
     public Date getDate() {
         return date;
     }
@@ -59,5 +55,29 @@ public class Event {
 
     public void setDuration(String duration) {
         this.duration = duration;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(Department department) {
+        this.department = department;
     }
 }

@@ -95,6 +95,7 @@ public class AttendanceService {
                 String timeIn = doc.getString("timeIn");
                 String timeOut = doc.getString("timeOut");
 
+                // Fetch user details
                 DocumentReference userRef = firestore.collection("users").document(userId);
                 ApiFuture<DocumentSnapshot> userQuery = userRef.get();
                 DocumentSnapshot userDoc = userQuery.get();
@@ -104,10 +105,28 @@ public class AttendanceService {
                     userDetails.put("userId", userId);
                     userDetails.put("timeIn", timeIn);
                     userDetails.put("timeOut", timeOut != null ? timeOut : "N/A");
-                    userDetails.put("email", userDoc.getString("email"));
-                    userDetails.put("firstName", userDoc.getString("firstName"));
-                    userDetails.put("lastName", userDoc.getString("lastName"));
-                    userDetails.put("department", userDoc.getString("department"));
+
+                    // Safely retrieve string fields, add fallback values if they are null
+                    userDetails.put("email", Optional.ofNullable(userDoc.getString("email")).orElse("N/A"));
+                    userDetails.put("firstName", Optional.ofNullable(userDoc.getString("firstName")).orElse("N/A"));
+                    userDetails.put("lastName", Optional.ofNullable(userDoc.getString("lastName")).orElse("N/A"));
+
+                    // Handle the department field to only display the department name
+                    Object departmentObj = userDoc.get("department");
+
+                    if (departmentObj instanceof Map) {
+                        // If department is a Map, get the 'name' field
+                        Map<String, Object> department = (Map<String, Object>) departmentObj;
+                        String departmentName = (String) department.get("name");
+                        userDetails.put("department", departmentName != null ? departmentName : "N/A");
+                    } else if (departmentObj instanceof String) {
+                        // If department is a String, just use it as the department name
+                        String departmentName = (String) departmentObj;
+                        userDetails.put("department", departmentName != null ? departmentName : "N/A");
+                    } else {
+                        // If department is neither a Map nor a String, default to "N/A"
+                        userDetails.put("department", "N/A");
+                    }
 
                     attendees.add(userDetails);
                 }
