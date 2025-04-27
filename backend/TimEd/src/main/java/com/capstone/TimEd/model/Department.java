@@ -11,7 +11,9 @@ public class Department {
     private List<String> offeredPrograms;
 
     public Department() {}
-
+    public Department(String departmentName) {
+        this.name = departmentName;
+    }
     public Department(String departmentId, String name, String abbreviation, int numberOfFaculty, List<String> offeredPrograms) {
         this.departmentId = departmentId;
         this.name = name;
