@@ -2,16 +2,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Features -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <!-- Rest of your manifest -->
-
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ✅ WiFi and Location Permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -24,30 +31,24 @@
         android:theme="@style/Theme.Material3.Light.NoActionBar"
         tools:targetApi="26">
 
-        <!-- Splash Screen Page -->
+        <!-- Splash Screen (REAL LAUNCHER) -->
         <activity
-                android:name=".SplashActivity"
-                android:exported="true"
-                android:theme="@style/Theme.TimEdMobile.NoActionBar">
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TimEdMobile.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Remove LAUNCHER intent-filter from other activities if present -->
-
-        <!-- Login Activity -->
+        <!-- Login Activity (NO Launcher intent-filter here) -->
         <activity
             android:name=".LoginActivity"
             android:exported="true"
             android:label="@string/login_page"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <meta-data
                 android:name="android.app.lib_name"
                 android:value="" />
@@ -132,16 +133,14 @@
 
         <!-- Excuse Letter Page Activity -->
         <activity
-                android:name=".ExcuseLetterActivity"
-                android:exported="false"
-                android:label="@string/excuse_letter_page"
-                android:windowSoftInputMode="adjustResize">
+            android:name=".ExcuseLetterActivity"
+            android:exported="false"
+            android:label="@string/excuse_letter_page"
+            android:windowSoftInputMode="adjustResize">
             <meta-data
-                    android:name="android.app.lib_name"
-                    android:value="" />
+                android:name="android.app.lib_name"
+                android:value="" />
         </activity>
-
-
 
     </application>
 
