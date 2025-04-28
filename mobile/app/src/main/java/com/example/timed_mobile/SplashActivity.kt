@@ -28,7 +28,7 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var wifiManager: WifiManager
 
-    private val targetWifiName = "GlobeAtHome_b4338_2.4" // <-- Your target WiFi Name here
+    private val targetWifiName = "NAVACOM AP" // <-- Your target WiFi Name here
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
 
     override fun onCreate(savedInstanceState: Bundle?) {

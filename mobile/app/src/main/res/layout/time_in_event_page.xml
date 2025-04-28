@@ -1,30 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root RelativeLayout - provides better flexibility for different screen sizes compared to ConstraintLayout -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".TimeInEventActivity">
+        android:layout_height="match_parent">
 
-    <!-- White background that fills the entire screen -->
+    <!-- White background -->
     <View
             android:id="@+id/background"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#FFFFFF" />
 
-    <!-- Top wave animation - positioned at the top of the screen with specific height -->
-    <!-- Using match_parent width ensures it stretches across different screen sizes -->
+    <!-- Top wave -->
     <ImageView
             android:id="@+id/top_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="390dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:adjustViewBounds="true"
+            android:maxHeight="300dp"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
-    <!-- Back Button - positioned at top-left corner with margins -->
+    <!-- Back Button -->
     <ImageView
             android:id="@+id/icon_back_button"
             android:layout_width="wrap_content"
@@ -39,120 +40,119 @@
             android:padding="8dp"
             app:srcCompat="@drawable/ic_back_button" />
 
-    <!-- Title Name - centered horizontally and positioned below back button -->
+    <!-- Title Name -->
     <TextView
             android:id="@+id/titleName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/icon_back_button"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="48dp"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
-            android:padding="12dp"
+            android:padding="8dp"
             android:shadowColor="#33000000"
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="WILDTIMed"
             android:textColor="#8B0000"
-            android:textSize="42sp"
+            android:textSize="38sp"
             android:textStyle="bold" />
 
-    <!-- Camera Box Frame - fixed size container for the camera preview -->
-    <!-- Centered horizontally and positioned below the title -->
+    <!-- Camera Box Frame -->
     <androidx.cardview.widget.CardView
             android:id="@+id/camera_container"
-            android:layout_width="256dp"
-            android:layout_height="256dp"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
             android:layout_below="@id/titleName"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="32dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp">
 
-        <!-- Camera preview placeholder - will be replaced with camera view -->
-        <!-- Fills the entire CardView container -->
+        <!-- Camera preview placeholder -->
         <ImageView
                 android:id="@+id/camera_preview_placeholder"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="#DDDDDD"
-                android:scaleType="centerCrop" />
+                android:scaleType="centerCrop"
+                tools:ignore="ContentDescription" />
 
     </androidx.cardview.widget.CardView>
 
-    <!-- Shutter Camera Icon - centered below the camera container -->
-    <!-- Acts as the QR scanner or camera button -->
+    <!-- Shutter Camera Icon -->
     <ImageView
-            android:id="@+id/icon_qr_scanner"
+            android:id="@+id/icon_shutter_camera"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_below="@id/camera_container"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="16dp"
-            android:clickable="true"
-            android:contentDescription="QR Scanner Button"
-            android:focusable="true"
-            app:srcCompat="@drawable/ic_qr_scanner" />
+            android:layout_marginTop="12dp"
+            android:contentDescription="Camera Icon"
+            app:srcCompat="@drawable/ic_shutter_camera" />
 
-    <!-- QR Scanner reminder - normally visible, tells user to click for scan -->
-    <!-- Positioned below the shutter button with start/end margins for smaller screens -->
+    <!-- QR Scanner Click Reminder - must match selfieReminder in your code -->
     <TextView
             android:id="@+id/qr_scanner_click_reminder"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/icon_qr_scanner"
+            android:layout_below="@id/icon_shutter_camera"
             android:layout_marginStart="32dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:layout_marginEnd="32dp"
             android:fontFamily="@font/roboto_bold"
             android:gravity="center"
             android:letterSpacing="0.05"
-            android:text="Click here for QR Scan Event"
+            android:padding="4dp"
+            android:text="Aim your camera at a QR code and press SCAN"
             android:textColor="@color/black"
             android:textSize="16sp"
             android:textStyle="bold" />
 
-    <!-- Selfie reminder - hidden initially, shown after QR scan -->
-    <!--&lt;!&ndash; Positioned below the QR scanner reminder with adequate spacing &ndash;&gt;
-    <TextView
-            android:id="@+id/selfie_reminder"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/qr_scanner_click_reminder"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_medium"
-            android:gravity="center"
-            android:text="Please take a selfie with the faculty office in the background for validation."
-            android:textColor="@color/black"
-            android:textSize="14sp"
-            android:visibility="invisible" />-->
-
-    <!-- Time-In Button - spans across most of the screen with proper margins -->
-    <!-- Positioned at the bottom of the content area -->
+    <!-- Scan QR Code Button - must match scanButton in your code -->
     <Button
-            android:id="@+id/btntime_in"
+            android:id="@+id/scan_qr_code"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/qr_scanner_click_reminder"
+            android:layout_centerHorizontal="true"
             android:layout_marginStart="40dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="12dp"
             android:layout_marginEnd="40dp"
-            android:layout_marginBottom="32dp"
             android:backgroundTint="@color/yellow_gold"
             android:elevation="6dp"
             android:fontFamily="@font/roboto_medium"
-            android:minHeight="50dp"
-            android:padding="12dp"
-            android:text="Time - In"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:text="Start Scanning"
             android:textColor="@color/maroon"
             android:textSize="16sp"
             android:textStyle="bold"
             app:cornerRadius="8dp" />
 
-    <!-- Note: Bottom navigation elements can be added here if needed -->
+    <!-- Manual Type Code Button -->
+    <Button
+            android:id="@+id/manual_code_time_in"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/scan_qr_code"
+            android:layout_centerHorizontal="true"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="40dp"
+            android:layout_marginBottom="20dp"
+            android:backgroundTint="@color/yellow_gold"
+            android:elevation="6dp"
+            android:fontFamily="@font/roboto_medium"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:text="Manual Type Code"
+            android:textColor="@color/maroon"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="8dp" />
 
 </RelativeLayout>
