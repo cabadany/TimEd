@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,12 +17,10 @@ import com.capstone.TimEd.dto.AuthResponse;
 import com.capstone.TimEd.dto.LoginRequest;
 import com.capstone.TimEd.dto.RegisterRequest;
 import com.capstone.TimEd.model.User;
+import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.service.AuthService;
 import com.capstone.TimEd.service.UserService;
-import com.google.api.core.ApiFuture;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.WriteResult;
-import com.google.firebase.cloud.FirestoreClient;
+
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -42,18 +39,31 @@ public class UserController {
         }
     }
 
+    // POST - register a new user
+   
     // PUT - update user
-    @PutMapping("/UpdateUser/{userId}")
+    @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
+            // If department is included in the update, ensure it's processed correctly
+            Department department = user.getDepartment() != null ? user.getDepartment() : null;
+
+            // Ensure the department is properly set
+            if (department != null) {
+                user.setDepartment(department);  // Ensure the department is set in the user object
+            }
+
+            // Now, update the user in the service with the department included
             userService.updateUser(userId, user);
+
             return ResponseEntity.ok("User updated successfully.");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error updating user: " + e.getMessage());
         }
     }
 
-    @DeleteMapping("/DeleteUser/{userId}")
+    // DELETE - delete user
+    @DeleteMapping("/deleteUser/{userId}")
     public ResponseEntity<?> deleteUser(@PathVariable String userId) {
         try {
             userService.deleteUser(userId);

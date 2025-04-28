@@ -1,13 +1,14 @@
 package com.capstone.TimEd.model;
 
-
 import com.google.cloud.firestore.annotation.PropertyName;
 
 public class User {
-    private String userId;
+
+    private String userId;          // Firebase UID
     private String firstName;
     private String lastName;
-    private String department;
+    private String departmentId;    // Reference to Department (String ID)
+    private Department department;  // This will hold the full Department object
     private String email;
     private String schoolId;
     private String password;
@@ -16,7 +17,19 @@ public class User {
     // Default constructor
     public User() {}
 
-    // Explicit PropertyName annotations to ensure correct field mapping
+    // Constructor to initialize the User with fields
+    public User(String userId, String firstName, String lastName, String departmentId, String email, String schoolId, String password, String role) {
+        this.userId = userId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.departmentId = departmentId;
+        this.email = email;
+        this.schoolId = schoolId;
+        this.password = password;
+        this.role = role;
+    }
+
+    // Getters and Setters
     @PropertyName("userId")
     public String getUserId() {
         return userId;
@@ -26,17 +39,7 @@ public class User {
     public void setUserId(String userId) {
         this.userId = userId;
     }
-    
-    @PropertyName("department")
-    public String getDepartment() {
-    	return department;
-    }
-    
-    @PropertyName("department")
-    public void setDepartment(String department) {
-    	this.department=department;
-    }
-    
+
     @PropertyName("firstName")
     public String getFirstName() {
         return firstName;
@@ -57,25 +60,45 @@ public class User {
         this.lastName = lastName;
     }
 
+    
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    @PropertyName("department")
+    public Department getDepartment() {
+        return department;
+    }
+
+    @PropertyName("department")
+    public void setDepartment(Department department) {
+        this.department = department;  // Set the full department object
+    }
+
+    @PropertyName("email")
+    public String getEmail() {
+        return email;
+    }
+
+    @PropertyName("email")
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     @PropertyName("schoolId")
     public String getSchoolId() {
         return schoolId;
     }
 
     @PropertyName("schoolId")
-    public void setSchoolId(String email) {
-        this.schoolId = email;
+    public void setSchoolId(String schoolId) {
+        this.schoolId = schoolId;
     }
-    
-    @PropertyName("email")
-    public String getEmail() {
-    	return email;
-    }
-    
-    @PropertyName("email")
-    public void setEmail(String email1) {
-    	this.email=email1;
-    }
+
     @PropertyName("password")
     public String getPassword() {
         return password;
@@ -96,16 +119,16 @@ public class User {
         this.role = role;
     }
 
-
     @Override
     public String toString() {
         return "User{" +
                 "userId='" + userId + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
-                ", email='" + schoolId + '\'' +
+                ", departmentId='" + departmentId + '\'' +
+                ", department=" + department +  // This will display the full department object
+                ", email='" + email + '\'' +
                 ", role='" + role + '\'' +
                 '}';
     }
 }
-
