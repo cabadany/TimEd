@@ -76,6 +76,12 @@ dependencies {
     // Circle ImageView
     implementation ("de.hdodenhof:circleimageview:3.1.0")
 
+    // ML Kit for barcode scanning
+    implementation ("com.google.mlkit:barcode-scanning:17.1.0")
+    // Material design for Snackbar
+    implementation ("com.google.android.material:material:1.8.0")
+
+
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

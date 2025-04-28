@@ -3,6 +3,7 @@ package com.example.timed_mobile
 import android.Manifest
 import android.app.Dialog
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
@@ -63,6 +64,7 @@ class TimeInActivity : AppCompatActivity() {
         }
 
 
+
         // Initialize the camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -72,6 +74,18 @@ class TimeInActivity : AppCompatActivity() {
         // Set up back button
         findViewById<ImageView>(R.id.icon_back_button).setOnClickListener {
             finish()
+        }
+
+        // Set up QR scanner icon click listener
+        findViewById<ImageView>(R.id.icon_qr_scanner).setOnClickListener {
+            try {
+                // Navigate to TimeInEventActivity for QR scanning
+                val intent = Intent(this@TimeInActivity, TimeInEventActivity::class.java)
+                startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting TimeInEventActivity", e)
+                Toast.makeText(this, "Cannot open QR scanner: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // Set up time-in button
