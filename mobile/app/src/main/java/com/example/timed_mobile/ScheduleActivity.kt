@@ -1,10 +1,15 @@
 package com.example.timed_mobile
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import java.text.SimpleDateFormat
@@ -49,24 +54,66 @@ class ScheduleActivity : AppCompatActivity() {
         updateDateLabel()
 
         // Set up click listeners for navigation
-        backButton.setOnClickListener {
-            finish()
+        backButton.setOnClickListener { view ->
+            // Start animation if the drawable is an AnimatedVectorDrawable
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            // Add a small delay before finishing to allow animation to be seen
+            view.postDelayed({
+                finish()
+            }, 50) // Match animation duration
         }
 
-        homeIcon.setOnClickListener {
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
-            finish()
+        setupAnimatedClickListener(homeIcon) {
+            startActivity(Intent(this, HomeActivity::class.java))
+            // Consider adding overridePendingTransition here if needed
         }
 
 
-        profileIcon.setOnClickListener {
-            val intent = Intent(this, ProfileActivity::class.java)
-            startActivity(intent)
+        setupAnimatedClickListener(profileIcon) {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            // Consider adding overridePendingTransition here if needed
         }
 
+        setupAnimatedClickListener(calendarIcon) {
+            Toast.makeText(this, "You are already on the Calendar screen", Toast.LENGTH_SHORT).show()
+        }
         // Set up class cards
         setupClassCards()
+    }
+
+    // Helper function for click animation
+    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
+        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
+        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
+        scaleDownX.duration = 150
+        scaleDownY.duration = 150
+        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
+        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
+        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
+        scaleUpX.duration = 150
+        scaleUpY.duration = 150
+        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
+        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleDown = AnimatorSet()
+        scaleDown.play(scaleDownX).with(scaleDownY)
+
+        val scaleUp = AnimatorSet()
+        scaleUp.play(scaleUpX).with(scaleUpY)
+
+        view.setOnClickListener {
+            scaleDown.start()
+            // Execute the actual click action after the scale down animation
+            view.postDelayed({
+                scaleUp.start() // Start scaling back up
+                onClickAction() // Perform the navigation/action
+            }, 150) // Delay should match scaleDown duration
+        }
     }
 
     private fun updateDateLabel() {

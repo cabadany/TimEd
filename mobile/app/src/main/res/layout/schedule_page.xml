@@ -290,7 +290,6 @@
             android:clickable="true"
             android:contentDescription="Home"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless"
             android:padding="12dp"
             app:srcCompat="@drawable/ic_home" />
 
@@ -303,7 +302,6 @@
             android:clickable="true"
             android:contentDescription="Schedule"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless"
             android:padding="12dp"
             app:srcCompat="@drawable/ic_calendar" />
 
@@ -316,7 +314,6 @@
             android:clickable="true"
             android:contentDescription="Profile"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless"
             android:padding="12dp"
             app:srcCompat="@drawable/ic_profile" />
     </LinearLayout>

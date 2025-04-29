@@ -1,5 +1,7 @@
 package com.example.timed_mobile
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -17,11 +19,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 import android.graphics.Color
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var backButton: ImageView
     private lateinit var homeIcon: ImageView
+    private lateinit var profileIcon: ImageView
     private lateinit var calendarIcon: ImageView
     private lateinit var editButton: Button
     private lateinit var changePasswordButton: Button
@@ -38,6 +43,7 @@ class ProfileActivity : AppCompatActivity() {
         backButton = findViewById(R.id.icon_back_button)
         homeIcon = findViewById(R.id.bottom_nav_home)
         calendarIcon = findViewById(R.id.bottom_nav_calendar)
+        profileIcon = findViewById(R.id.bottom_nav_profile)
         editButton = findViewById(R.id.btn_edit_profile)
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
@@ -52,16 +58,32 @@ class ProfileActivity : AppCompatActivity() {
             topDrawable.start()
         }
 
-        // Navigation buttons
-        backButton.setOnClickListener { finish() }
-        homeIcon.setOnClickListener {
+        backButton.setOnClickListener { view ->
+            // Start animation if the drawable is an AnimatedVectorDrawable
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            // Add a small delay before finishing to allow animation to be seen
+            view.postDelayed({
+                finish()
+            }, 50) // Match animation duration
+        }
+
+        // Set up click listeners with animation bottom navigation
+        setupAnimatedClickListener(homeIcon) {
             startActivity(Intent(this, HomeActivity::class.java))
-            finish()
         }
-        calendarIcon.setOnClickListener {
+
+        setupAnimatedClickListener(calendarIcon) {
             startActivity(Intent(this, ScheduleActivity::class.java))
-            finish()
         }
+
+        setupAnimatedClickListener(profileIcon) {
+            Toast.makeText(this, "You are already on the Profile screen", Toast.LENGTH_SHORT).show()
+        }
+
+
         editButton.setOnClickListener {
             startActivity(Intent(this, EditProfileActivity::class.java))
         }
@@ -79,6 +101,38 @@ class ProfileActivity : AppCompatActivity() {
         loadUserProfile()
     }
 
+    // Helper function for click animation
+    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
+        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
+        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
+        scaleDownX.duration = 150
+        scaleDownY.duration = 150
+        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
+        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
+        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
+        scaleUpX.duration = 150
+        scaleUpY.duration = 150
+        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
+        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleDown = AnimatorSet()
+        scaleDown.play(scaleDownX).with(scaleDownY)
+
+        val scaleUp = AnimatorSet()
+        scaleUp.play(scaleUpX).with(scaleUpY)
+
+        view.setOnClickListener {
+            scaleDown.start()
+            // Execute the actual click action after the scale down animation
+            view.postDelayed({
+                scaleUp.start() // Start scaling back up
+                onClickAction() // Perform the navigation/action
+            }, 150) // Delay should match scaleDown duration
+        }
+    }
+
     private fun loadUserProfile() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
@@ -87,7 +141,8 @@ class ProfileActivity : AppCompatActivity() {
             database.get().addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
                     val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
-                    val department = snapshot.child("department").getValue(String::class.java) ?: "N/A"
+                    val department =
+                        snapshot.child("department").getValue(String::class.java) ?: "N/A"
 
                     teacherName.text = name
                     teacherId.text = department // Showing department instead of student id

@@ -30,6 +30,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
     private lateinit var uploadedFilename: TextView
     private lateinit var detailsInput: EditText
     private lateinit var submitButton: Button
+    private lateinit var backButton: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,10 +50,19 @@ class ExcuseLetterActivity : AppCompatActivity() {
         uploadedFilename = findViewById(R.id.text_uploaded_filename)
         detailsInput = findViewById(R.id.edit_text_details)
         submitButton = findViewById(R.id.btn_submit_excuse)
+        backButton = findViewById(R.id.icon_back_button)
 
         // Set up back button
-        findViewById<ImageView>(R.id.icon_back_button).setOnClickListener {
-            finish()
+        backButton.setOnClickListener { view ->
+            // Start animation if the drawable is an AnimatedVectorDrawable
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            // Add a small delay before finishing to allow animation to be seen
+            view.postDelayed({
+                finish()
+            }, 50) // Match animation duration
         }
 
         // Set up date picker

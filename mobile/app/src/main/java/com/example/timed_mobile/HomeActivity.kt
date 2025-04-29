@@ -1,7 +1,10 @@
 package com.example.timed_mobile
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -13,6 +16,7 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Window
+import android.view.animation.AccelerateDecelerateInterpolator
 import com.example.timed_mobile.model.TimeOutRecord
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
@@ -50,19 +54,22 @@ class HomeActivity : AppCompatActivity() {
             topDrawable.start()
         }
 
-        // Set click listeners
-        homeIcon.setOnClickListener {
+        // Set click listeners with animation
+        setupAnimatedClickListener(homeIcon) {
             Toast.makeText(this, "You are already on the Home screen", Toast.LENGTH_SHORT).show()
         }
 
-        calendarIcon.setOnClickListener {
+        setupAnimatedClickListener(calendarIcon) {
             startActivity(Intent(this, ScheduleActivity::class.java))
+            // Consider adding overridePendingTransition here if needed
         }
 
-        profileIcon.setOnClickListener {
+        setupAnimatedClickListener(profileIcon) {
             startActivity(Intent(this, ProfileActivity::class.java))
+            // Consider adding overridePendingTransition here if needed
         }
 
+        // Original listeners for other buttons
         timeInButton.setOnClickListener {
             startActivity(Intent(this, TimeInActivity::class.java))
         }
@@ -73,6 +80,38 @@ class HomeActivity : AppCompatActivity() {
 
         excuseLetterText.setOnClickListener {
             startActivity(Intent(this, ExcuseLetterActivity::class.java))
+        }
+    }
+
+    // Helper function for click animation
+    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
+        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
+        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
+        scaleDownX.duration = 150
+        scaleDownY.duration = 150
+        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
+        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
+        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
+        scaleUpX.duration = 150
+        scaleUpY.duration = 150
+        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
+        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
+
+        val scaleDown = AnimatorSet()
+        scaleDown.play(scaleDownX).with(scaleDownY)
+
+        val scaleUp = AnimatorSet()
+        scaleUp.play(scaleUpX).with(scaleUpY)
+
+        view.setOnClickListener {
+            scaleDown.start()
+            // Execute the actual click action after the scale down animation
+            view.postDelayed({
+                scaleUp.start() // Start scaling back up
+                onClickAction() // Perform the navigation/action
+            }, 150) // Delay should match scaleDown duration
         }
     }
 
