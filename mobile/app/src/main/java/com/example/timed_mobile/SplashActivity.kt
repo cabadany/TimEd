@@ -28,7 +28,7 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var wifiManager: WifiManager
 
-    private val targetWifiName = "NAVACOM AP" // <-- Your target WiFi Name here
+    private val targetWifiName = "CITU_WILSTUDENT" // <-- Your target WiFi Name here
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +72,8 @@ class SplashActivity : AppCompatActivity() {
         }, 800)
     }
 
-    private fun scanWifiAndProceed() {
+    /*With Strongest WIFI Scanning functions*/
+    /*private fun scanWifiAndProceed() {
         if (!wifiManager.isWifiEnabled) {
             Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
             finish()
@@ -111,7 +112,51 @@ class SplashActivity : AppCompatActivity() {
             }
 
         }, 2000) // 2 seconds delay to allow scan results
+    }*/
+
+
+
+/*Without Strongest WIFI Scanning functions*/
+    private fun scanWifiAndProceed() {
+        if (!wifiManager.isWifiEnabled) {
+            Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        val success = wifiManager.startScan()
+        if (!success) {
+            Toast.makeText(this, "WiFi scan failed. Try again.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        // Delay a bit to wait for scan to complete
+        Handler(Looper.getMainLooper()).postDelayed({
+            val scanResults: List<ScanResult> = wifiManager.scanResults
+
+            if (scanResults.isEmpty()) {
+                showWifiErrorDialog("No WiFi networks found. Please move closer to a router.")
+                return@postDelayed
+            }
+
+            // Check if the target WiFi is in range, regardless of signal strength
+            val targetWifiFound = scanResults.any {
+                it.SSID.replace("\"", "") == targetWifiName
+            }
+
+            if (targetWifiFound) {
+                // Target WiFi is in range, proceed
+                navigateToNextScreen()
+            } else {
+                // Target WiFi not found
+                showWifiErrorDialog("\"$targetWifiName\" network not found. You must be near \"$targetWifiName\" to use this app.")
+            }
+        }, 2000) // 2 seconds delay to allow scan results
     }
+
+
+
 
     private fun navigateToNextScreen() {
         val currentUser = FirebaseAuth.getInstance().currentUser
