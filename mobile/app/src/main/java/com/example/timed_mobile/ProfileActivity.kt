@@ -146,7 +146,15 @@ class ProfileActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener { dialog.dismiss() }
         logoutButton.setOnClickListener {
+            // Sign out user from Firebase
+            FirebaseAuth.getInstance().signOut()
+
+            // Show logout success message
+            Toast.makeText(this, "Successfully logged out", Toast.LENGTH_SHORT).show()
+
             dialog.dismiss()
+
+            // Navigate to login screen and clear back stack
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
