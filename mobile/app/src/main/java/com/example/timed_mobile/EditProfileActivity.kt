@@ -16,6 +16,7 @@ class EditProfileActivity : AppCompatActivity() {
     private lateinit var phoneInput: TextInputEditText
     private lateinit var departmentInput: TextInputEditText
     private lateinit var updateProfileButton: Button
+    private lateinit var backButton: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +34,19 @@ class EditProfileActivity : AppCompatActivity() {
         phoneInput = findViewById(R.id.phone_input)
         departmentInput = findViewById(R.id.department_input)
         updateProfileButton = findViewById(R.id.btn_update_profile)
+        backButton = findViewById(R.id.icon_back_button)
+
+        backButton.setOnClickListener { view ->
+            // Start animation if the drawable is an AnimatedVectorDrawable
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            // Add a small delay before finishing to allow animation to be seen
+            view.postDelayed({
+                finish()
+            }, 50) // Match animation duration
+        }
 
         updateProfileButton.setOnClickListener {
             updateProfile()

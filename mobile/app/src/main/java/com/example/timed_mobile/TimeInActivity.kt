@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
+import android.media.Image
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -42,6 +43,7 @@ class TimeInActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
     private var capturedImageUri: Uri? = null
+    private lateinit var backButton: ImageView
 
     companion object {
         private const val TAG = "TimeInActivity"
@@ -67,13 +69,22 @@ class TimeInActivity : AppCompatActivity() {
 
         // Initialize the camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
+        backButton = findViewById(R.id.icon_back_button)
 
         // Set up camera container
         setupCamera()
 
         // Set up back button
-        findViewById<ImageView>(R.id.icon_back_button).setOnClickListener {
-            finish()
+        backButton.setOnClickListener { view ->
+            // Start animation if the drawable is an AnimatedVectorDrawable
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            // Add a small delay before finishing to allow animation to be seen
+            view.postDelayed({
+                finish()
+            }, 50) // Match animation duration
         }
 
         // Set up QR scanner icon click listener
@@ -372,6 +383,8 @@ class TimeInActivity : AppCompatActivity() {
             dialog.dismiss()
             finish()
         }
+
+
 
         dialog.show()
     }
