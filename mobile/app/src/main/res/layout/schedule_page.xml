@@ -21,21 +21,6 @@
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
-    <!-- Back Button (kept as requested) -->
-    <ImageView
-        android:id="@+id/icon_back_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:padding="8dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:contentDescription="Back button"
-        app:srcCompat="@drawable/ic_back_button" />
-
     <!-- Title Name - Changed to "Schedule" -->
     <TextView
             android:id="@+id/titleName"
@@ -43,7 +28,7 @@
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="65dp"
+            android:layout_marginTop="48dp"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
             android:padding="16dp"
@@ -53,7 +38,7 @@
             android:shadowRadius="2"
             android:text="Schedule"
             android:textColor="#8B0000"
-            android:textSize="45sp"
+            android:textSize="48sp"
             android:textStyle="bold" />
 
 
