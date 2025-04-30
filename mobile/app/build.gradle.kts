@@ -76,8 +76,9 @@ dependencies {
     // Circle ImageView
     implementation ("de.hdodenhof:circleimageview:3.1.0")
 
-    // ML Kit for barcode scanning
+    // ML Kit for barcode scanning and face detection
     implementation ("com.google.mlkit:barcode-scanning:17.1.0")
+    implementation ("com.google.mlkit:face-detection:16.1.6")
     // Material design for Snackbar
     implementation ("com.google.android.material:material:1.8.0")
 

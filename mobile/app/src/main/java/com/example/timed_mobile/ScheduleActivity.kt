@@ -18,7 +18,7 @@ import java.util.Locale
 
 class ScheduleActivity : AppCompatActivity() {
 
-    private lateinit var backButton: ImageView
+
     private lateinit var homeIcon: ImageView
     private lateinit var calendarIcon: ImageView
     private lateinit var profileIcon: ImageView
@@ -36,7 +36,6 @@ class ScheduleActivity : AppCompatActivity() {
         setContentView(R.layout.schedule_page)
 
         // Initialize views
-        backButton = findViewById(R.id.icon_back_button)
         homeIcon = findViewById(R.id.bottom_nav_home)
         calendarIcon = findViewById(R.id.bottom_nav_calendar)
         profileIcon = findViewById(R.id.bottom_nav_profile)
@@ -54,17 +53,6 @@ class ScheduleActivity : AppCompatActivity() {
         updateDateLabel()
 
         // Set up click listeners for navigation
-        backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
-            val drawable = (view as ImageView).drawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
-            }
-            // Add a small delay before finishing to allow animation to be seen
-            view.postDelayed({
-                finish()
-            }, 50) // Match animation duration
-        }
 
         setupAnimatedClickListener(homeIcon) {
             startActivity(Intent(this, HomeActivity::class.java))
