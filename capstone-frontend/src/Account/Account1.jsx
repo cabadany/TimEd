@@ -129,7 +129,7 @@
     const getDepartmentAbbreviation = (departmentId) => {
         if (!departmentId) return 'N/A';
         const department = departments.find(dept => dept.departmentId === departmentId);
-        return department ? department.abbreviation : 'N/A';
+        return department ? department.abbreviation : 'Unknown';
     };
 
     // Filter menu handlers
@@ -628,7 +628,7 @@
                             <TableCell sx={{ py: 2 }}>{professor.email}</TableCell>
                             <TableCell sx={{ py: 2 }}>
                             {getDepartmentName(professor.department.departmentId)} 
-                            {professor.departmentId && (
+                            {professor.department.departmentId && (
                                 <Typography variant="caption" color="text.secondary" display="block">
                                 ({getDepartmentAbbreviation(professor.department.departmentId)})
                                 </Typography>
