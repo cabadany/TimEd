@@ -111,27 +111,41 @@ public class EventService {
             return "Failed to delete event: " + e.getMessage();
         }
     }// Method to update an event's details
-    public String updateEvent(String eventId, Event updatedEvent) {
+
+    // Method to update an event's details and return the updated event
+    public Event updateEvent(String eventId, Event updatedEvent) throws ExecutionException, InterruptedException {
         try {
-            // Update the event document with new values from updatedEvent object
+            // Get the department object from departmentId
+            DocumentReference departmentRef = firestore.collection("departments").document(updatedEvent.getDepartmentId());
+            ApiFuture<DocumentSnapshot> departmentFuture = departmentRef.get();
+            DocumentSnapshot departmentSnapshot = departmentFuture.get();
+
+            if (!departmentSnapshot.exists()) {
+                throw new RuntimeException("Department not found");
+            }
+
+            // Create a department object from the snapshot data
+            Department department = departmentSnapshot.toObject(Department.class);
+
+            // Update event with new values
             Map<String, Object> updateMap = new HashMap<>();
-            
-            // Here you can add any fields that can be updated
             updateMap.put("eventName", updatedEvent.getEventName());
             updateMap.put("status", updatedEvent.getStatus());
             updateMap.put("date", updatedEvent.getDate());
             updateMap.put("duration", updatedEvent.getDuration());
             updateMap.put("departmentId", updatedEvent.getDepartmentId());
-            
-            // Apply updates in Firestore
+
+            // Apply the update in Firestore
             firestore.collection("events")
                     .document(eventId)
                     .update(updateMap);
 
-            return "Event updated successfully";
+            // Return updated event with department information
+            updatedEvent.setDepartment(department);  // Set the full department object to the event
+            return updatedEvent;
 
         } catch (Exception e) {
-            return "Failed to update event: " + e.getMessage();
+            throw new RuntimeException("Failed to update event: " + e.getMessage());
         }
     }
 

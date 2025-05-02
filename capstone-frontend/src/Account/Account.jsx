@@ -8,39 +8,9 @@ import {
   InputBase,
   Paper,
   TextField,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Badge,
-  Modal,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Snackbar,
-  Alert,
-  CircularProgress
+  Menu,MenuItem,ListItemIcon,ListItemText,Avatar,Badge,Modal,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,Snackbar,Alert,CircularProgress
 } from '@mui/material';
-import {
-  Search,
-  Settings,
-  Notifications,
-  FilterList,
-  Home,
-  Event,
-  People,
-  CalendarToday,
-  Group,
-  Add,
-  Close,
-  Logout,
-  Edit,
-  Delete,
-  VisibilityOutlined
+import { Search,AccountTree,Settings,Notifications,FilterList,Home,Event,People,CalendarToday,Group,Add,Close,Logout,Edit,Delete,VisibilityOutlined
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -375,6 +345,21 @@ export default function AccountPage() {
           >
             ACCOUNTS
           </Button>
+                    
+<Button
+  startIcon={<AccountTree />}
+
+  sx={{
+    justifyContent: 'flex-start',
+    color: location.pathname === '/department' ? '#0288d1' : '#64748B',
+    fontWeight: location.pathname === '/department' ? 600 : 500,
+    py: 1.5,
+    px: 2,
+    textAlign: 'left'
+  }}
+>
+  DEPARTMENT
+</Button>
           <Button 
             startIcon={<Settings />} 
             onClick={handleNavigateToSettings}

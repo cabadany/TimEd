@@ -5,7 +5,9 @@ import LoginPage from './Auth/LoginPage';
 import Setting from './Setting/Setting';
 import './App.css';
 import ProtectedRoute from './ProtectedRoute';  // Import the ProtectedRoute
-import Accounts from './Account/Account';
+import Accounts from './Account/Account1';
+import Department from './departments/Department';
+import Attendance from './attendance/Attendance';
 function App() {
   return (
     <Router>
@@ -15,6 +17,17 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         
         {/* Protected routes (Only Admin can access) */}
+        <Route 
+          path="/department" 
+          element={
+            <ProtectedRoute>
+              <Department />
+            </ProtectedRoute>
+          }
+        />
+       <Route path="/attendance/:eventId" element={<Attendance />} />
+
+
         <Route 
           path="/dashboard" 
           element={
