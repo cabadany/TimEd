@@ -23,7 +23,7 @@ public class AuthController {
 
     @GetMapping("/getSample")
     public String getSample() {
-        return "Sample";
+        return "Samplsse";
     }
 
     @PostMapping("/register")

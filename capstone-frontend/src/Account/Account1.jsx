@@ -50,7 +50,8 @@
         email: "",
         departmentId: "",
         schoolId: "",
-        role: "USER"
+        role: "USER",
+        password:"",
     });
     
     // View professor modal state
@@ -231,16 +232,17 @@
     
     const handleEditClick = (professor) => {
         setEditingProfessor({
-        userId: professor.userId,
-        firstName: professor.firstName,
-        lastName: professor.lastName,
-        email: professor.email,
-        departmentId: professor.departmentId || "",
-        schoolId: professor.schoolId,
-        role: professor.role || "USER"
+          userId: professor.userId,
+          firstName: professor.firstName,
+          lastName: professor.lastName,
+          email: professor.email,
+          departmentId: professor.department?.departmentId || "",  // Get departmentId from the department object
+          schoolId: professor.schoolId,
+          role: professor.role || "USER",
+          password: professor.password || "",
         });
         setShowEditModal(true);
-    };
+      };
     
     const handleViewClick = (professor) => {
         setViewingProfessor(professor);
@@ -249,20 +251,31 @@
     
     const handleUpdateProfessor = async () => {
         try {
-        await axios.put(`${API_BASE_URL}/user/updateUser/${editingProfessor.userId}`, editingProfessor, {
-            headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // Create a payload that matches the expected structure
+          // Remove password from the payload if it's empty or null
+          const { password, ...professorWithoutPassword } = editingProfessor;
+          
+          const updatePayload = {
+            ...professorWithoutPassword,
+            department: {
+              departmentId: professorWithoutPassword.departmentId
             }
-        });
-        showSnackbar('Faculty updated successfully', 'success');
-        setShowEditModal(false);
-        fetchProfessors(); // Refresh the list
+          };
+          
+          await axios.put(`${API_BASE_URL}/user/updateUser/${editingProfessor.userId}`, updatePayload, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          showSnackbar('Faculty updated successfully', 'success');
+          setShowEditModal(false);
+          fetchProfessors(); // Refresh the list
         } catch (err) {
-        console.error('Error updating professor:', err);
-        showSnackbar(`Failed to update professor: ${err.response?.data?.message || err.message}`, 'error');
+          console.error('Error updating professor:', err);
+          showSnackbar(`Failed to update professor: ${err.response?.data?.message || err.message}`, 'error');
         }
-    };
+      };
     
     // Navigation handlers
     const handleNavigateToEvent = () => {

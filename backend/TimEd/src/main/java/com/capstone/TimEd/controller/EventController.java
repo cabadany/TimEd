@@ -62,38 +62,16 @@ public class EventController {
     public String deleteEvent(@PathVariable String id) throws ExecutionException, InterruptedException {
         return eventService.deleteEvent(id);
     }
-    
- // Method to update an event's details and return the updated event
-    public Event updateEvent(String eventId, Event updatedEvent) throws ExecutionException, InterruptedException {
+    @PutMapping("/update/{eventId}")
+    public ResponseEntity<?> updateEvent(
+            @PathVariable String eventId,
+            @RequestBody Event updatedEvent
+    ) {
         try {
-            // Update the event document with new values from updatedEvent object
-            Map<String, Object> updateMap = new HashMap<>();
-            
-            // Here you can add any fields that can be updated
-            updateMap.put("eventName", updatedEvent.getEventName());
-            updateMap.put("status", updatedEvent.getStatus());
-            updateMap.put("date", updatedEvent.getDate());
-            updateMap.put("duration", updatedEvent.getDuration());
-            updateMap.put("departmentId", updatedEvent.getDepartmentId());
-            
-            // Apply updates in Firestore
-            firestore.collection("events")
-                    .document(eventId)
-                    .update(updateMap);
-            
-            // Return the updated event from Firestore
-            DocumentReference eventRef = firestore.collection("events").document(eventId);
-            ApiFuture<DocumentSnapshot> future = eventRef.get();
-            DocumentSnapshot document = future.get();
-            
-            if (document.exists()) {
-                return document.toObject(Event.class);  // Return updated event
-            } else {
-                throw new RuntimeException("Event not found");
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update event: " + e.getMessage());
+            Event event = eventService.updateEvent(eventId, updatedEvent);
+            return ResponseEntity.ok(event);  // Returning the updated event with department info
+        } catch (RuntimeException | ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(500).body("Failed to update event: " + e.getMessage());
         }
     }
 

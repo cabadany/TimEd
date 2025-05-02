@@ -41,21 +41,11 @@ public class UserController {
 
     // POST - register a new user
    
-    // PUT - update user
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
-            // If department is included in the update, ensure it's processed correctly
-            Department department = user.getDepartment() != null ? user.getDepartment() : null;
-
-            // Ensure the department is properly set
-            if (department != null) {
-                user.setDepartment(department);  // Ensure the department is set in the user object
-            }
-
-            // Now, update the user in the service with the department included
+            // Just forward entire User object to service — it includes department if present
             userService.updateUser(userId, user);
-
             return ResponseEntity.ok("User updated successfully.");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error updating user: " + e.getMessage());
