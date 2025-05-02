@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.springframework.stereotype.Service;
 
+import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.User;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
@@ -60,18 +61,29 @@ public class UserService {
     public void updateUser(String userId, User updatedUser) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
 
-        // Ensure the document exists before updating
-        DocumentReference docRef = db.collection(COLLECTION_NAME).document(userId);
-        ApiFuture<DocumentSnapshot> future = docRef.get();
-        DocumentSnapshot snapshot = future.get();
+        // Reference to user document
+        DocumentReference userDocRef = db.collection(COLLECTION_NAME).document(userId);
 
-        if (snapshot.exists()) {
-            // Set new data (will overwrite existing fields)
-            ApiFuture<WriteResult> writeResult = docRef.set(updatedUser);
-            writeResult.get(); // Wait for write
-        } else {
+        // Check if user exists
+        DocumentSnapshot snapshot = userDocRef.get().get();
+
+        if (!snapshot.exists()) {
             throw new RuntimeException("User with ID " + userId + " not found.");
         }
+
+        // Optional: Validate department object or set null
+        Department department = updatedUser.getDepartment();
+        if (department != null && department.getDepartmentId() != null) {
+            // Department object provided — include it in Firestore save
+            updatedUser.setDepartment(department);
+            updatedUser.setDepartmentId(department.getDepartmentId()); // optional consistency
+        } else {
+            updatedUser.setDepartment(null);
+            updatedUser.setDepartmentId(null);
+        }
+
+        // Push full updated user including embedded department map
+        userDocRef.set(updatedUser).get();
     }
     public void deleteUser(String userId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();

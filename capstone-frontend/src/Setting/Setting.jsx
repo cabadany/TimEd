@@ -23,6 +23,7 @@ import {
 import {
   Search,
   Notifications,
+  AccountTree,
   FilterList,
   Home,
   Event,
@@ -135,6 +136,9 @@ export default function SettingPage() {
   const handleNavigateToAccounts = () => {
     navigate('/accounts');
   };
+  const handleNavigateToDepartment = () => {
+    navigate('/department');
+  }
   // Avatar menu handlers
   const handleAvatarClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -236,6 +240,20 @@ export default function SettingPage() {
           >
             ACCOUNTS
           </Button>
+          <Button
+            startIcon={<AccountTree />}
+            onClick={handleNavigateToDepartment}
+            sx={{
+              justifyContent: 'flex-start',
+              color: location.pathname === '/department' ? '#0288d1' : '#64748B',
+              fontWeight: location.pathname === '/department' ? 600 : 500,
+              py: 1.5,
+              px: 2,
+              textAlign: 'left'
+            }}
+          >
+            DEPARTMENTS
+          </Button>
           <Button 
             startIcon={<Settings />} 
             onClick={handleNavigateToSettings}
@@ -326,7 +344,7 @@ export default function SettingPage() {
                 cursor: 'pointer'
               }}
             >
-              C
+              P
             </Avatar>
             <Menu
               anchorEl={anchorEl}
