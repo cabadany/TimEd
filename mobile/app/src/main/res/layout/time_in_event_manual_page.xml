@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    <!-- White background -->
+    <View
+            android:id="@+id/background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#FFFFFF" />
+
+    <!-- Top wave - improved scaling -->
+    <ImageView
+            android:id="@+id/top_wave_animation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:adjustViewBounds="true"
+            android:maxHeight="350dp"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
+
+    <!-- Bottom wave - better positioned -->
+    <ImageView
+            android:id="@+id/bottom_wave_animation"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_alignParentBottom="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_bottom" />
+
+    <!-- Back Button - improved touch target -->
+    <ImageView
+            android:id="@+id/icon_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:contentDescription="Back button"
+            android:focusable="true"
+            android:padding="8dp"
+            app:srcCompat="@drawable/ic_back_button" />
+
+    <!-- Title Name - refined size -->
+    <TextView
+            android:id="@+id/titleName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="48dp"
+            android:fontFamily="@font/league_spartan_bold"
+            android:letterSpacing="0.05"
+            android:padding="8dp"
+            android:shadowColor="#33000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            android:text="WILDTIMed"
+            android:textColor="#8B0000"
+            android:textSize="42sp"
+            android:textStyle="bold" />
+
+    <!-- Subtitle - improved spacing -->
+    <TextView
+            android:id="@+id/manual_code_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/titleName"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="32dp"
+            android:fontFamily="@font/roboto_bold"
+            android:gravity="center"
+            android:letterSpacing="0.03"
+            android:text="Manually type the code"
+            android:textColor="@color/black"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+    <!-- Instructions - improved clarity -->
+    <TextView
+            android:id="@+id/manual_code_instructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/manual_code_subtitle"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="32dp"
+            android:fontFamily="@font/roboto_medium"
+            android:gravity="center"
+            android:letterSpacing="0.02"
+            android:text="QR Code from the Event"
+            android:textColor="#555555"
+            android:textSize="16sp" />
+
+    <!-- Code Input Field - improved visual prominence -->
+    <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/code_input_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/manual_code_instructions"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="36dp"
+            android:layout_marginEnd="32dp"
+            app:boxCornerRadiusBottomEnd="8dp"
+            app:boxCornerRadiusBottomStart="8dp"
+            app:boxCornerRadiusTopEnd="8dp"
+            app:boxCornerRadiusTopStart="8dp"
+            app:boxStrokeColor="@color/yellow_gold"
+            app:boxStrokeWidth="1.5dp"
+            app:hintTextColor="@color/yellow_gold">
+
+        <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/code_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/roboto_medium"
+                android:hint="Event Code"
+                android:inputType="textCapCharacters"
+                android:maxLength="8"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:textColor="@color/black"
+                android:textSize="18sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Verify Code Button - improved prominence -->
+    <Button
+            android:id="@+id/btn_verify_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/code_input_layout"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="36dp"
+            android:layout_marginEnd="40dp"
+            android:backgroundTint="@color/yellow_gold"
+            android:elevation="6dp"
+            android:fontFamily="@font/roboto_medium"
+            android:minHeight="54dp"
+            android:padding="12dp"
+            android:text="Verify Code"
+            android:textColor="@color/maroon"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:cornerRadius="8dp" />
+
+    <!-- Return to QR Scan Button - improved spacing -->
+    <Button
+            android:id="@+id/btn_return_to_scan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/btn_verify_code"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="40dp"
+            android:layout_marginBottom="40dp"
+            android:backgroundTint="@color/maroon"
+            android:elevation="3dp"
+            android:fontFamily="@font/roboto_medium"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:text="Return to Scanner"
+            android:textColor="@color/yellow_gold"
+            android:textSize="16sp"
+            app:cornerRadius="8dp" />
+</RelativeLayout>

@@ -163,6 +163,19 @@
                     android:value="" />
         </activity>
 
+        <!-- Time In Manual Code QR Event Page Activity -->
+        <activity
+                android:name=".TimeInEventManualActivity"
+                android:exported="false"
+                android:label="@string/time_in_manual_event_page"
+                android:windowSoftInputMode="adjustResize"
+                android:hardwareAccelerated="true"
+                android:screenOrientation="portrait">
+            <meta-data
+                    android:name="android.app.lib_name"
+                    android:value="" />
+        </activity>
+
     </application>
 
 </manifest>
