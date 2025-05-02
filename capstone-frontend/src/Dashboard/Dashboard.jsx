@@ -34,6 +34,7 @@ import {
   Search,
   Settings,
   Notifications,
+  AccountTree,
   FilterList,
   Visibility,
   Home,
@@ -62,7 +63,7 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const [departments, setDepartments] = useState([]);
   // Filter menu state
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const filterMenuOpen = Boolean(filterAnchorEl);
@@ -71,7 +72,17 @@ export default function Dashboard() {
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
   const avatarMenuOpen = Boolean(avatarAnchorEl);
-
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+  const fetchDepartments = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/departments');
+      setDepartments(response.data);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
   // Fetch events from the backend API
   useEffect(() => {
     const fetchEvents = async () => {
@@ -147,7 +158,8 @@ export default function Dashboard() {
             duration: event.duration || '0 mins',
             date: formattedDate,
             status: event.status || 'Unknown',
-            createdBy: event.createdBy || 'Unknown'
+            createdBy: event.createdBy || 'Unknown',
+            departmentId: event.departmentId || null // Added departmentId here
           };
         });
   
@@ -161,11 +173,11 @@ export default function Dashboard() {
     };
   
     fetchEvents();
+    fetchDepartments();
   }, []);
 
   const handleViewEvent = (event) => {
-    setSelectedEvent(event);
-    setShowModal(true);
+    navigate(`/attendance/${event.id}`);
   };
 
   const handleTabChange = (event, newValue) => {
@@ -186,7 +198,9 @@ export default function Dashboard() {
   const handleNavigateToSettings = () => {
     navigate('/settings');
   };
-
+  const handleNavigateToDepartment = () => {
+    navigate('/department');
+  }
   // Filter menu handlers
   const handleFilterClick = (event) => {
     setFilterAnchorEl(event.currentTarget);
@@ -256,6 +270,10 @@ export default function Dashboard() {
     }
     return events;
   };
+  const getDepartmentName = (id) => {
+    const dept = departments.find(d => d.departmentId === id);
+    return dept ? dept.name : 'Unknown Department';
+  };
 
   const filteredEvents = getFilteredEvents();
 
@@ -323,6 +341,20 @@ export default function Dashboard() {
           >
             ACCOUNTS
           </Button>
+          <Button
+              startIcon={<AccountTree />}
+              onClick={handleNavigateToDepartment}
+              sx={{
+                justifyContent: 'flex-start',
+                color: location.pathname === '/department' ? '#0288d1' : '#64748B',
+                fontWeight: location.pathname === '/department' ? 600 : 500,
+                py: 1.5,
+                px: 2,
+                textAlign: 'left'
+              }}
+            >
+              DEPARTMENTS
+            </Button>
           <Button 
             startIcon={<Settings />} 
             onClick={handleNavigateToSettings}
@@ -592,6 +624,7 @@ export default function Dashboard() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Event Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Event ID</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Duration</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Status</TableCell>
@@ -616,6 +649,7 @@ export default function Dashboard() {
                   currentEvents.map((event, index) => (
                     <TableRow key={index} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
                       <TableCell sx={{ color: '#1E293B' }}>{event.name}</TableCell>
+                      <TableCell sx={{ color: '#1E293B' }}>{getDepartmentName(event.departmentId)}</TableCell>
                       <TableCell sx={{ color: '#64748B' }}>{event.id}</TableCell>
                       <TableCell sx={{ color: '#64748B' }}>{event.duration}</TableCell>
                       <TableCell>
@@ -720,6 +754,7 @@ export default function Dashboard() {
           </Box>
           <Box sx={{ p: 3 }}>
             <Grid container spacing={3} sx={{ mb: 3 }}>
+              
               <Grid item xs={6}>
                 <Typography variant="caption" color="#64748B">Event ID</Typography>
                 <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>{selectedEvent?.id}</Typography>
