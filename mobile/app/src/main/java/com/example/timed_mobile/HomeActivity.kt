@@ -1,183 +1,108 @@
 package com.example.timed_mobile
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
-import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import android.app.Dialog
-import android.graphics.drawable.AnimatedVectorDrawable
-import android.graphics.drawable.ColorDrawable
-import android.os.Handler
-import android.os.Looper
-import android.view.Window
-import android.view.animation.AccelerateDecelerateInterpolator
-import com.example.timed_mobile.model.TimeOutRecord
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.timed_mobile.adapter.EventAdapter
+import com.example.timed_mobile.model.EventModel
+import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HomeActivity : AppCompatActivity() {
-    private lateinit var homeIcon: ImageView
-    private lateinit var calendarIcon: ImageView
-    private lateinit var profileIcon: ImageView
-    private lateinit var timeInButton: Button
-    private lateinit var timeOutButton: Button
-    private lateinit var excuseLetterText: TextView
 
-    private lateinit var database: DatabaseReference
+    private lateinit var recyclerEvents: RecyclerView
+    private lateinit var firestore: FirebaseFirestore
+
+    private lateinit var btnAll: Button
+    private lateinit var btnUpcoming: Button
+    private lateinit var btnOngoing: Button
+    private lateinit var btnEnded: Button
+
+    private val allEvents = mutableListOf<EventModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
 
-        // Initialize views
-        homeIcon = findViewById(R.id.bottom_nav_home)
-        calendarIcon = findViewById(R.id.bottom_nav_calendar)
-        profileIcon = findViewById(R.id.bottom_nav_profile)
-        timeInButton = findViewById(R.id.btntime_in)
-        timeOutButton = findViewById(R.id.btntime_out)
-        excuseLetterText = findViewById(R.id.excuse_letter_text_button)
+        // Greeting
+        val name = intent.getStringExtra("name") ?: "User"
+        val idNumber = intent.getStringExtra("idNumber") ?: "N/A"
+        val department = intent.getStringExtra("department") ?: "N/A"
 
-        // Initialize database reference
-        database = FirebaseDatabase.getInstance().reference
+        findViewById<TextView>(R.id.greeting_name).text = "Hi, $name 👋"
+        findViewById<TextView>(R.id.home_greeting).text = "ID: $idNumber • $department"
 
-        // Start top wave animation
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
+        // RecyclerView
+        recyclerEvents = findViewById(R.id.recycler_events)
+        recyclerEvents.layoutManager = LinearLayoutManager(this)
 
-        // Set click listeners with animation
-        setupAnimatedClickListener(homeIcon) {
-            Toast.makeText(this, "You are already on the Home screen", Toast.LENGTH_SHORT).show()
-        }
+        firestore = FirebaseFirestore.getInstance()
 
-        setupAnimatedClickListener(calendarIcon) {
-            startActivity(Intent(this, ScheduleActivity::class.java))
-            // Consider adding overridePendingTransition here if needed
-        }
+        // Filters
+        btnAll = findViewById(R.id.btn_filter_all)
+        btnUpcoming = findViewById(R.id.btn_filter_upcoming)
+        btnOngoing = findViewById(R.id.btn_filter_ongoing)
+        btnEnded = findViewById(R.id.btn_filter_ended)
 
-        setupAnimatedClickListener(profileIcon) {
-            startActivity(Intent(this, ProfileActivity::class.java))
-            // Consider adding overridePendingTransition here if needed
-        }
-
-        // Original listeners for other buttons
-        timeInButton.setOnClickListener {
-            startActivity(Intent(this, TimeInActivity::class.java))
-        }
-
-        timeOutButton.setOnClickListener {
-            showTimeOutConfirmationDialog()
-        }
-
-        excuseLetterText.setOnClickListener {
-            startActivity(Intent(this, ExcuseLetterActivity::class.java))
-        }
+        setupFilterButtons()
+        loadAndStoreEvents()
     }
 
-    // Helper function for click animation
-    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
-        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
-        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
-        scaleDownX.duration = 150
-        scaleDownY.duration = 150
-        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
-        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
-        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
-        scaleUpX.duration = 150
-        scaleUpY.duration = 150
-        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
-        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleDown = AnimatorSet()
-        scaleDown.play(scaleDownX).with(scaleDownY)
-
-        val scaleUp = AnimatorSet()
-        scaleUp.play(scaleUpX).with(scaleUpY)
-
-        view.setOnClickListener {
-            scaleDown.start()
-            // Execute the actual click action after the scale down animation
-            view.postDelayed({
-                scaleUp.start() // Start scaling back up
-                onClickAction() // Perform the navigation/action
-            }, 150) // Delay should match scaleDown duration
-        }
+    private fun setupFilterButtons() {
+        btnAll.setOnClickListener { showEventsByStatus(null) }
+        btnUpcoming.setOnClickListener { showEventsByStatus("upcoming") }
+        btnOngoing.setOnClickListener { showEventsByStatus("ongoing") }
+        btnEnded.setOnClickListener { showEventsByStatus("ended") }
     }
 
-    private fun showTimeOutConfirmationDialog() {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setCancelable(true)
-        dialog.setContentView(R.layout.time_out_confirmation_dialog)
-        dialog.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-        dialog.window?.setDimAmount(0.5f)
+    private fun loadAndStoreEvents() {
+        firestore.collection("events").get()
+            .addOnSuccessListener { result ->
+                val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                allEvents.clear()
 
-        val yesButton = dialog.findViewById<Button>(R.id.btn_yes)
-        val noButton = dialog.findViewById<Button>(R.id.btn_no)
+                for (doc in result) {
+                    val title = doc.getString("eventName") ?: continue
+                    val status = doc.getString("status") ?: "unknown"
+                    val date = doc.getTimestamp("date")?.toDate() ?: continue
+                    val formattedDate = formatter.format(date)
 
-        yesButton.setOnClickListener {
-            dialog.dismiss()
-            timeOutButton.isEnabled = false
+                    allEvents.add(EventModel(title, status, formattedDate))
+                }
 
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
-            if (userId != null) {
-                val timeOutRecord = TimeOutRecord(
-                    timestamp = System.currentTimeMillis(),
-                    status = "Timed Out"
-                )
-                database.child("TimeOuts").child(userId).push().setValue(timeOutRecord)
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "Time-out recorded successfully!", Toast.LENGTH_SHORT).show()
-                    }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(this, "Failed to record time-out: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-            } else {
-                Toast.makeText(this, "No logged-in user.", Toast.LENGTH_SHORT).show()
+                showEventsByStatus(null) // Show all by default
             }
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                showTimeOutSuccessPopup()
-                timeOutButton.isEnabled = true
-            }, 3000)
-        }
-
-        noButton.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
-    private fun showTimeOutSuccessPopup() {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setCancelable(false)
-        dialog.setContentView(R.layout.success_popup_time_out)
-        dialog.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-        dialog.window?.setDimAmount(0.5f)
+    private fun showEventsByStatus(statusFilter: String?) {
+        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
 
-        val titleText = dialog.findViewById<TextView>(R.id.popup_title)
-        val messageText = dialog.findViewById<TextView>(R.id.popup_message)
-        titleText.text = "Successfully Timed - Out"
-        messageText.text = "Thank you. It has been recorded."
-
-        val closeButton = dialog.findViewById<Button>(R.id.popup_close_button)
-        closeButton.setOnClickListener {
-            dialog.dismiss()
+        val filtered = if (statusFilter == null) {
+            allEvents
+        } else {
+            allEvents.filter { it.status.equals(statusFilter, ignoreCase = true) }
         }
 
-        dialog.show()
+        val sorted = filtered.sortedWith(compareBy(
+            { statusOrder(it.status) },
+            { formatter.parse(it.dateFormatted) }
+        ))
+
+        recyclerEvents.adapter = EventAdapter(sorted)
+    }
+
+    private fun statusOrder(status: String): Int {
+        return when (status.lowercase(Locale.ROOT)) {
+            "upcoming" -> 0
+            "ongoing" -> 1
+            "ended" -> 2
+            else -> 3
+        }
     }
 }

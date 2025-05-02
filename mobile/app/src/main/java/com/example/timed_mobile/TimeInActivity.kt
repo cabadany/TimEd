@@ -1,7 +1,7 @@
 package com.example.timed_mobile
 
 import android.Manifest
-import android.annotation.SuppressLint // Added
+import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.ContentValues
 import android.content.Intent
@@ -9,9 +9,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
-import android.graphics.Rect // Added
-import android.graphics.RectF // Added
-import androidx.camera.core.CameraSelector.LENS_FACING_FRONT // Added for mirroring check
+import android.graphics.Rect
+import android.graphics.RectF
+import androidx.camera.core.CameraSelector.LENS_FACING_FRONT
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -28,26 +28,20 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis // Added
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy // Added
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import com.google.mlkit.vision.common.InputImage // Added
-import com.google.mlkit.vision.face.FaceDetection // Added
-import com.google.mlkit.vision.face.FaceDetector // Added
-import com.google.mlkit.vision.face.FaceDetectorOptions // Added
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
+import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.math.max // Added
-import kotlin.math.min // Added
+import kotlin.math.max
 
 class TimeInActivity : AppCompatActivity() {
     private var previewView: PreviewView? = null

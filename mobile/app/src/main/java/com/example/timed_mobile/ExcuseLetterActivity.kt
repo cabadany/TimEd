@@ -10,13 +10,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
 import android.view.Window
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.Spinner
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -36,14 +30,12 @@ class ExcuseLetterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.excuse_letter_page)
 
-        // Start top wave animation
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
             topDrawable.start()
         }
 
-        // Initialize views
         datePicker = findViewById(R.id.btn_date_picker)
         reasonSpinner = findViewById(R.id.spinner_reason)
         uploadButton = findViewById(R.id.btn_upload)
@@ -52,37 +44,29 @@ class ExcuseLetterActivity : AppCompatActivity() {
         submitButton = findViewById(R.id.btn_submit_excuse)
         backButton = findViewById(R.id.icon_back_button)
 
-        // Set up back button
         backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
-            // Add a small delay before finishing to allow animation to be seen
             view.postDelayed({
                 finish()
-            }, 50) // Match animation duration
+            }, 50)
         }
 
-        // Set up date picker
         datePicker.setOnClickListener {
             showDatePickerDialog()
         }
 
-        // Set up reason spinner
         val reasons = arrayOf("Illness/Medical", "Family Emergency", "Transportation Issue", "Others")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, reasons)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         reasonSpinner.adapter = adapter
 
-        // Set up upload button
         uploadButton.setOnClickListener {
-            // Add file picker code
             selectFile()
         }
 
-        // Set up submit button
         submitButton.setOnClickListener {
             submitExcuseLetter()
         }
@@ -97,7 +81,6 @@ class ExcuseLetterActivity : AppCompatActivity() {
         val datePickerDialog = DatePickerDialog(
             this,
             { _, selectedYear, selectedMonth, selectedDay ->
-                // Format the date
                 val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
                 datePicker.text = selectedDate
             },
@@ -111,7 +94,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
 
     private fun selectFile() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*"  // All file types
+        intent.type = "*/*"
         startActivityForResult(intent, 1)
     }
 
@@ -120,14 +103,12 @@ class ExcuseLetterActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == RESULT_OK) {
             data?.data?.let { uri ->
-                // Get file name
                 val cursor = contentResolver.query(uri, null, null, null, null)
                 val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 cursor?.moveToFirst()
                 val fileName = nameIndex?.let { cursor.getString(it) } ?: "File selected"
                 cursor?.close()
 
-                // Display file name
                 uploadedFilename.text = fileName
                 uploadedFilename.visibility = View.VISIBLE
             }
@@ -135,7 +116,6 @@ class ExcuseLetterActivity : AppCompatActivity() {
     }
 
     private fun submitExcuseLetter() {
-        // Validate form
         val date = datePicker.text.toString()
         if (date == "Select date") {
             Toast.makeText(this, "Please select a date", Toast.LENGTH_SHORT).show()
@@ -150,14 +130,12 @@ class ExcuseLetterActivity : AppCompatActivity() {
             return
         }
 
-        // Get current user ID
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
             Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Create data to store in Firebase
         val excuseData = mapOf(
             "userId" to userId,
             "date" to date,
@@ -167,11 +145,9 @@ class ExcuseLetterActivity : AppCompatActivity() {
             "timestamp" to System.currentTimeMillis()
         )
 
-        // Save to Firebase
         val dbRef = FirebaseDatabase.getInstance().getReference("excuseLetters")
         dbRef.push().setValue(excuseData)
             .addOnSuccessListener {
-                // Show success message and return to home page
                 showSuccessDialog()
             }
             .addOnFailureListener {
@@ -185,20 +161,15 @@ class ExcuseLetterActivity : AppCompatActivity() {
         dialog.setContentView(R.layout.successs_popup_excuse_letter)
         dialog.setCancelable(false)
 
-        // Set transparent background
-        if (dialog.window != null) {
-            dialog.window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        // Set success message
         val message = dialog.findViewById<TextView>(R.id.popup_message)
         message.text = "Your excuse letter has been submitted successfully!"
 
-        // Set up OK button
         val okButton = dialog.findViewById<Button>(R.id.btn_ok)
         okButton.setOnClickListener {
             dialog.dismiss()
-            finish()  // Return to previous screen
+            finish()
         }
 
         dialog.show()

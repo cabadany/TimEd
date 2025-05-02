@@ -4,12 +4,13 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -28,7 +29,6 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var wifiManager: WifiManager
 
-    private val targetWifiName = "NAVACOM AP" // <-- Your target WiFi Name here
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,51 +72,6 @@ class SplashActivity : AppCompatActivity() {
         }, 800)
     }
 
-    /*With Strongest WIFI Scanning functions*/
-    /*private fun scanWifiAndProceed() {
-        if (!wifiManager.isWifiEnabled) {
-            Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        val success = wifiManager.startScan()
-        if (!success) {
-            Toast.makeText(this, "WiFi scan failed. Try again.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        // Delay a bit to wait for scan to complete
-        Handler(Looper.getMainLooper()).postDelayed({
-            val scanResults: List<ScanResult> = wifiManager.scanResults
-
-            if (scanResults.isEmpty()) {
-                showWifiErrorDialog("No WiFi networks found. Please move closer to a router.")
-                return@postDelayed
-            }
-
-            // Sort networks by signal strength (RSSI), strongest first
-            val strongestWifi = scanResults.maxByOrNull { it.level }
-
-            strongestWifi?.let { wifi ->
-                val ssid = wifi.SSID.replace("\"", "")
-
-                if (ssid == targetWifiName) {
-                    navigateToNextScreen()
-                } else {
-                    showWifiErrorDialog("Strongest WiFi detected is \"$ssid\". You must be near \"$targetWifiName\" to use the app.")
-                }
-            } ?: run {
-                showWifiErrorDialog("Unable to detect WiFi strength. Please try again.")
-            }
-
-        }, 2000) // 2 seconds delay to allow scan results
-    }*/
-
-
-
-/*Without Strongest WIFI Scanning functions*/
     private fun scanWifiAndProceed() {
         if (!wifiManager.isWifiEnabled) {
             Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
@@ -124,6 +79,11 @@ class SplashActivity : AppCompatActivity() {
             return
         }
 
+        if (!isLocationEnabled()) {
+            showEnableLocationDialog()
+            return
+        }
+
         val success = wifiManager.startScan()
         if (!success) {
             Toast.makeText(this, "WiFi scan failed. Try again.", Toast.LENGTH_LONG).show()
@@ -131,7 +91,6 @@ class SplashActivity : AppCompatActivity() {
             return
         }
 
-        // Delay a bit to wait for scan to complete
         Handler(Looper.getMainLooper()).postDelayed({
             val scanResults: List<ScanResult> = wifiManager.scanResults
 
@@ -140,27 +99,17 @@ class SplashActivity : AppCompatActivity() {
                 return@postDelayed
             }
 
-            // Check if the target WiFi is in range, regardless of signal strength
-            val targetWifiFound = scanResults.any {
-                it.SSID.replace("\"", "") == targetWifiName
-            }
+            val closestWifi = scanResults.minByOrNull { it.level }
+            val ssid = closestWifi?.SSID ?: "Unknown"
 
-            if (targetWifiFound) {
-                // Target WiFi is in range, proceed
-                navigateToNextScreen()
-            } else {
-                // Target WiFi not found
-                showWifiErrorDialog("\"$targetWifiName\" network not found. You must be near \"$targetWifiName\" to use this app.")
-            }
-        }, 2000) // 2 seconds delay to allow scan results
+            Toast.makeText(this, "Connected near: $ssid", Toast.LENGTH_LONG).show()
+            navigateToNextScreen()
+
+        }, 2000)
     }
-
-
-
 
     private fun navigateToNextScreen() {
         val currentUser = FirebaseAuth.getInstance().currentUser
-
         val intent = if (currentUser != null) {
             Intent(this, HomeActivity::class.java)
         } else {
@@ -173,7 +122,16 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isLocationEnabled(): Boolean {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
     private fun requestLocationPermission() {
@@ -184,7 +142,11 @@ class SplashActivity : AppCompatActivity() {
         )
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -200,9 +162,19 @@ class SplashActivity : AppCompatActivity() {
         builder.setTitle("WiFi Connection Error")
         builder.setMessage(message)
         builder.setCancelable(false)
-        builder.setPositiveButton("Close App") { _, _ ->
-            finish()
-        }
+        builder.setPositiveButton("Close App") { _, _ -> finish() }
         builder.show()
+    }
+
+    private fun showEnableLocationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Location Services")
+            .setMessage("Location services must be enabled to scan Wi-Fi networks nearby.")
+            .setCancelable(false)
+            .setPositiveButton("Go to Settings") { _, _ ->
+                startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }
+            .setNegativeButton("Exit App") { _, _ -> finish() }
+            .show()
     }
 }

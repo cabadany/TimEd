@@ -17,14 +17,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-
 import android.graphics.Color
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 
 class ProfileActivity : AppCompatActivity() {
-
-
     private lateinit var homeIcon: ImageView
     private lateinit var profileIcon: ImageView
     private lateinit var calendarIcon: ImageView
@@ -32,14 +29,12 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button
     private lateinit var logoutText: TextView
-
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
-
 
         homeIcon = findViewById(R.id.bottom_nav_home)
         calendarIcon = findViewById(R.id.bottom_nav_calendar)
@@ -51,15 +46,12 @@ class ProfileActivity : AppCompatActivity() {
         teacherName = findViewById(R.id.profile_name)
         teacherId = findViewById(R.id.profile_id_number)
 
-        // Start top wave animation
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
             topDrawable.start()
         }
 
-
-        // Set up click listeners with animation bottom navigation
         setupAnimatedClickListener(homeIcon) {
             startActivity(Intent(this, HomeActivity::class.java))
         }
@@ -72,25 +64,25 @@ class ProfileActivity : AppCompatActivity() {
             Toast.makeText(this, "You are already on the Profile screen", Toast.LENGTH_SHORT).show()
         }
 
-
         editButton.setOnClickListener {
             startActivity(Intent(this, EditProfileActivity::class.java))
         }
+
         changePasswordButton.setOnClickListener {
             startActivity(Intent(this, ChangePasswordActivity::class.java))
         }
+
         attendanceSheetButton.setOnClickListener {
             showAttendanceDownloadDialog()
         }
+
         logoutText.setOnClickListener {
             showLogoutConfirmationDialog()
         }
 
-        // Load user profile from Firebase
         loadUserProfile()
     }
 
-    // Helper function for click animation
     private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
         val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
         val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
@@ -114,35 +106,29 @@ class ProfileActivity : AppCompatActivity() {
 
         view.setOnClickListener {
             scaleDown.start()
-            // Execute the actual click action after the scale down animation
             view.postDelayed({
-                scaleUp.start() // Start scaling back up
-                onClickAction() // Perform the navigation/action
-            }, 150) // Delay should match scaleDown duration
+                scaleUp.start()
+                onClickAction()
+            }, 150)
         }
     }
 
     private fun loadUserProfile() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            val database = FirebaseDatabase.getInstance().getReference("users").child(userId)
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val database = FirebaseDatabase.getInstance().getReference("users").child(userId)
 
-            database.get().addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
-                    val department =
-                        snapshot.child("department").getValue(String::class.java) ?: "N/A"
-
-                    teacherName.text = name
-                    teacherId.text = department // Showing department instead of student id
-                }
-            }.addOnFailureListener {
-                Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
+        database.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
+                val department = snapshot.child("department").getValue(String::class.java) ?: "N/A"
+                teacherName.text = name
+                teacherId.text = department
             }
+        }.addOnFailureListener {
+            Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Existing methods for Attendance Download and Logout Confirmation Dialogs
     private fun showAttendanceDownloadDialog() {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -190,15 +176,9 @@ class ProfileActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener { dialog.dismiss() }
         logoutButton.setOnClickListener {
-            // Sign out user from Firebase
             FirebaseAuth.getInstance().signOut()
-
-            // Show logout success message
             Toast.makeText(this, "Successfully logged out", Toast.LENGTH_SHORT).show()
-
             dialog.dismiss()
-
-            // Navigate to login screen and clear back stack
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
