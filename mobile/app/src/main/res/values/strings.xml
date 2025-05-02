@@ -4,6 +4,7 @@
     <string name="login_page">Login Page</string>
     <string name="time_in_page">Time-In Page</string>
     <string name="time_in_event_page">Time-In QR Event Page</string>
+    <string name="time_in_manual_event_page">Time-In Manual Code QR Event Page</string>
     <string name="schedule_page">Schedule Page</string>
     <string name="profile_page">Profile Page</string>
     <string name="edit_profile_page">Edit Profile Page</string>
