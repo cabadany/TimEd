@@ -58,32 +58,31 @@ public class UserService {
 
         return null;  // Return null if no user is found
     }
+    
     public void updateUser(String userId, User updatedUser) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
-
-        // Reference to user document
         DocumentReference userDocRef = db.collection(COLLECTION_NAME).document(userId);
 
-        // Check if user exists
         DocumentSnapshot snapshot = userDocRef.get().get();
-
         if (!snapshot.exists()) {
             throw new RuntimeException("User with ID " + userId + " not found.");
         }
 
-        // Optional: Validate department object or set null
+        if (updatedUser.getPassword() == null) {
+            String existingPassword = snapshot.getString("password");
+            updatedUser.setPassword(existingPassword);
+        }
+
         Department department = updatedUser.getDepartment();
         if (department != null && department.getDepartmentId() != null) {
-            // Department object provided — include it in Firestore save
             updatedUser.setDepartment(department);
-            updatedUser.setDepartmentId(department.getDepartmentId()); // optional consistency
+            updatedUser.setDepartmentId(department.getDepartmentId());
         } else {
             updatedUser.setDepartment(null);
             updatedUser.setDepartmentId(null);
         }
 
-        // Push full updated user including embedded department map
-        userDocRef.set(updatedUser).get();
+        userDocRef.set(updatedUser, SetOptions.merge()).get(); // Merge instead of overwrite
     }
     public void deleteUser(String userId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();

@@ -39,8 +39,7 @@ public class UserController {
         }
     }
 
-    // POST - register a new user
-   
+
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
