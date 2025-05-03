@@ -61,9 +61,9 @@ public class EventService {
         // Check if events are found
         if (events != null && !events.isEmpty()) {
             // Create a SimpleDateFormat to format the date as a String
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd"); // Adjust date format as needed
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"); // Include time in the format
             for (Event event : events) {
-                String formattedDate = dateFormat.format(event.getDate()); // Convert Date to String (yyyy-MM-dd)
+                String formattedDate = dateFormat.format(event.getDate()); // Convert Date to String (yyyy-MM-dd'T'HH:mm:ss)
                 
                 Eventdto eventDto = new Eventdto(
                         event.getEventId(),        // Event ID
@@ -227,7 +227,7 @@ public class EventService {
                 event.setDepartment(department);
 
                 // Format the date
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
                 String formattedDate = dateFormat.format(event.getDate());
 
                 // Create an EventDTO

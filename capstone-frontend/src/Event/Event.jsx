@@ -235,25 +235,18 @@ useEffect(() => {
       showSnackbar('Please fill in all required fields', 'error');
       return;
     }
-  
-    // Parse the date string
-    const parsedDate = parseDateString(date);
-    if (!parsedDate) {
-      showSnackbar('Invalid date format', 'error');
-      return;
-    }
-  
-    // Format as ISO string with timezone offset
-    const formattedDate = parsedDate.toISOString();
-  
+    
+    // Ensure the date is correctly formatted with timezone information
+    const formattedDate = new Date(date).toISOString();
+    
     const eventData = {
       eventName,
       departmentId,
-      date: formattedDate, // Send ISO format with timezone information
+      date: formattedDate, // Use ISO format to preserve exact time
       duration,
       status: 'Upcoming'
     };
-  
+    
     setLoading(true);
     try {
       const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
@@ -507,25 +500,26 @@ useEffect(() => {
   // Format date for display
   const formatDate = (dateString) => {
     try {
-      // Create date directly without timezone conversion
+      // Check if the dateString includes time information (from ISO format)
+      const hasTimeInfo = dateString.includes('T');
+      
+      // Create date from the string - preserving the exact time
       const date = new Date(dateString);
       
-      // Custom formatting to avoid timezone issues
-      const year = date.getFullYear();
-      const month = date.toLocaleString('en-US', { month: 'long' });
-      const day = date.getDate();
+      // Use local timezone to ensure we respect the input time
+      const options = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
       
-      // Format hours and minutes with padding
-      let hours = date.getHours();
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      
-      // Convert to 12-hour format
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      
-      return `${month} ${day}, ${year} ${hours}:${minutes} ${ampm}`;
+      // Format date with the proper locale options
+      return date.toLocaleString('en-US', options);
     } catch (e) {
+      console.error("Date parsing error:", e);
       return dateString;
     }
   };
