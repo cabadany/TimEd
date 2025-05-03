@@ -1,7 +1,10 @@
 package com.example.timed_mobile
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -13,6 +16,8 @@ import java.util.*
 
 class HomeActivity : AppCompatActivity() {
 
+    private lateinit var greetingName: TextView
+    private lateinit var greetingDetails: TextView
     private lateinit var recyclerEvents: RecyclerView
     private lateinit var firestore: FirebaseFirestore
 
@@ -20,34 +25,47 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnUpcoming: Button
     private lateinit var btnOngoing: Button
     private lateinit var btnEnded: Button
+    private lateinit var btnTimeIn: Button
+    private lateinit var btnTimeOut: Button
 
     private val allEvents = mutableListOf<EventModel>()
+
+    // ✅ Step 1: Declare launcher for result from TimeInActivity
+    private val timeInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
+            if (isTimedIn) {
+                Toast.makeText(this, "✅ Time-In recorded successfully!", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
 
-        // Greeting
-        val name = intent.getStringExtra("name") ?: "User"
-        val idNumber = intent.getStringExtra("idNumber") ?: "N/A"
-        val department = intent.getStringExtra("department") ?: "N/A"
-
-        findViewById<TextView>(R.id.greeting_name).text = "Hi, $name 👋"
-        findViewById<TextView>(R.id.home_greeting).text = "ID: $idNumber • $department"
-
-        // RecyclerView
+        greetingName = findViewById(R.id.greeting_name)
+        greetingDetails = findViewById(R.id.home_greeting)
         recyclerEvents = findViewById(R.id.recycler_events)
-        recyclerEvents.layoutManager = LinearLayoutManager(this)
-
-        firestore = FirebaseFirestore.getInstance()
-
-        // Filters
         btnAll = findViewById(R.id.btn_filter_all)
         btnUpcoming = findViewById(R.id.btn_filter_upcoming)
         btnOngoing = findViewById(R.id.btn_filter_ongoing)
         btnEnded = findViewById(R.id.btn_filter_ended)
+        btnTimeIn = findViewById(R.id.btntime_in)
+        btnTimeOut = findViewById(R.id.btntime_out)
+
+        recyclerEvents.layoutManager = LinearLayoutManager(this)
+        firestore = FirebaseFirestore.getInstance()
+
+        val name = intent.getStringExtra("name") ?: "User"
+        val idNumber = intent.getStringExtra("idNumber") ?: "N/A"
+        val department = intent.getStringExtra("department") ?: "N/A"
+
+        greetingName.text = "Hi, $name 👋"
+        greetingDetails.text = "ID: $idNumber • $department"
 
         setupFilterButtons()
+        setupActionButtons()
         loadAndStoreEvents()
     }
 
@@ -56,6 +74,24 @@ class HomeActivity : AppCompatActivity() {
         btnUpcoming.setOnClickListener { showEventsByStatus("upcoming") }
         btnOngoing.setOnClickListener { showEventsByStatus("ongoing") }
         btnEnded.setOnClickListener { showEventsByStatus("ended") }
+    }
+
+    private fun setupActionButtons() {
+        btnTimeIn.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Time - In Confirmation")
+                .setMessage("Are you ready to time in for today?")
+                .setPositiveButton("Yes") { _, _ ->
+                    val intent = Intent(this, TimeInActivity::class.java)
+                    timeInLauncher.launch(intent)  // ✅ Use launcher
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+        btnTimeOut.setOnClickListener {
+            startActivity(Intent(this, TimeOutActivity::class.java))
+        }
     }
 
     private fun loadAndStoreEvents() {
@@ -73,7 +109,7 @@ class HomeActivity : AppCompatActivity() {
                     allEvents.add(EventModel(title, status, formattedDate))
                 }
 
-                showEventsByStatus(null) // Show all by default
+                showEventsByStatus(null)
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
