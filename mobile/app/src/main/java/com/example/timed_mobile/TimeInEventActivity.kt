@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Build
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -29,7 +28,6 @@ import androidx.camera.view.PreviewView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.timed_mobile.TimeInActivity
 import com.google.android.material.snackbar.Snackbar
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
@@ -47,11 +45,9 @@ class TimeInEventActivity : AppCompatActivity() {
     private lateinit var cameraPlaceholder: ImageView
     private lateinit var backButton: ImageView
     private lateinit var scanButton: Button
-    private lateinit var manualCodeButton: Button
     private lateinit var shutterButton: ImageView
     private lateinit var selfieReminder: TextView
     private lateinit var scannerOverlay: View
-
 
     private var imageCapture: ImageCapture? = null
     private var isScanningEnabled = false
@@ -80,10 +76,7 @@ class TimeInEventActivity : AppCompatActivity() {
 
         // Create scanner overlay for visual feedback
         scannerOverlay = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             setBackgroundResource(R.drawable.scanner_overlay)
             alpha = 0f
         }
@@ -164,24 +157,6 @@ class TimeInEventActivity : AppCompatActivity() {
             } else if (!isQrScanned) {
                 // Do nothing when scanning - the button is just for taking selfies
                 Toast.makeText(this, "Waiting for QR code...", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // Manual Type Code button click handler
-        findViewById<Button>(R.id.manual_code_time_in).setOnClickListener {
-            try {
-                // Optional: Stop scanning if active
-                if (isScanningEnabled) {
-                    stopQrScanner()
-                    isScanningEnabled = false
-                }
-
-                // Navigate to manual code entry page
-                val intent = Intent(this, TimeInEventManualActivity::class.java)
-                startActivity(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to open manual code entry: ${e.message}", e)
-                Toast.makeText(this, "Cannot open manual code entry", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -332,8 +307,7 @@ class TimeInEventActivity : AppCompatActivity() {
 
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
-                Toast.makeText(this, "Failed to start camera: ${exc.message}", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(this, "Failed to start camera: ${exc.message}", Toast.LENGTH_SHORT).show()
             }
 
         }, ContextCompat.getMainExecutor(this))
@@ -453,12 +427,7 @@ class TimeInEventActivity : AppCompatActivity() {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 // Android 8.0+ (API 26+) - Use VibrationEffect
-                vibrator.vibrate(
-                    VibrationEffect.createOneShot(
-                        200,
-                        VibrationEffect.DEFAULT_AMPLITUDE
-                    )
-                )
+                vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
                 // This won't be used since min SDK is 27, but keeping for completeness
                 @Suppress("DEPRECATION")
@@ -485,8 +454,7 @@ class TimeInEventActivity : AppCompatActivity() {
                     showSuccessDialog(eventName, eventId)
 
                     // Change UI to selfie mode
-                    selfieReminder.text =
-                        "Event: $eventName\nPlease take a selfie for verification."
+                    selfieReminder.text = "Event: $eventName\nPlease take a selfie for verification."
                     scanButton.text = "Scan a Different Code"
 
                     // Stop QR scanning and prepare for selfie
@@ -579,10 +547,7 @@ class TimeInEventActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            applicationContext,
-            it
-        ) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(applicationContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onRequestPermissionsResult(
@@ -597,11 +562,9 @@ class TimeInEventActivity : AppCompatActivity() {
                 startCameraPreviewOnly()
                 scanButton.text = "Start Scanning"
             } else {
-                Toast.makeText(
-                    this,
+                Toast.makeText(this,
                     "Camera permission is required for QR scanning.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    Toast.LENGTH_SHORT).show()
                 finish()
             }
         }

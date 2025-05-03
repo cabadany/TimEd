@@ -71,7 +71,6 @@ class TimeOutActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ Firebase Storage Upload Example (Photo Upload)
     private fun uploadImageToFirebase(uri: Uri) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val filename = UUID.randomUUID().toString()

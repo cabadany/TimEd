@@ -22,7 +22,6 @@ class ChangePasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.change_password_page)
 
-        // Start top wave animation
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
@@ -41,15 +40,13 @@ class ChangePasswordActivity : AppCompatActivity() {
         }
 
         backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
-            // Add a small delay before finishing to allow animation to be seen
             view.postDelayed({
                 finish()
-            }, 50) // Match animation duration
+            }, 50)
         }
     }
 
@@ -98,6 +95,4 @@ class ChangePasswordActivity : AppCompatActivity() {
 
         dialog.show()
     }
-
-
 }

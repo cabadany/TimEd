@@ -1,61 +1,93 @@
 package com.example.timed_mobile
 
 import android.content.Intent
-import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
-import android.widget.ImageView
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.textfield.TextInputEditText
-import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
+
+    private lateinit var inputIdNumber: EditText
+    private lateinit var inputPassword: EditText
     private lateinit var loginButton: Button
-    private lateinit var emailInput: TextInputEditText
-    private lateinit var passwordInput: TextInputEditText
-    private lateinit var auth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
 
-        // Start top wave animation
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
-
-        // Start bottom wave animation
-        val bottomWave = findViewById<ImageView>(R.id.bottom_wave_animation)
-        val bottomDrawable = bottomWave.drawable
-        if (bottomDrawable is AnimatedVectorDrawable) {
-            bottomDrawable.start()
-        }
-
-        auth = FirebaseAuth.getInstance()
+        inputIdNumber = findViewById(R.id.input_idnumber)
+        inputPassword = findViewById(R.id.input_Password)
         loginButton = findViewById(R.id.btnLogin)
-        emailInput = findViewById(R.id.input_idnumber)
-        passwordInput = findViewById(R.id.input_Password)
+        firestore = FirebaseFirestore.getInstance()
 
         loginButton.setOnClickListener {
-            val email = emailInput.text.toString().trim()
-            val password = passwordInput.text.toString().trim()
+            val idNumber = inputIdNumber.text.toString().trim()
+            val password = inputPassword.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
+            if (idNumber.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter ID number and password", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    startActivity(Intent(this, HomeActivity::class.java))
-                    finish()
+            loginWithSchoolId(idNumber, password)
+        }
+    }
+
+    private fun loginWithSchoolId(idNumber: String, password: String) {
+        firestore.collection("users")
+            .whereEqualTo("schoolId", idNumber)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (!querySnapshot.isEmpty) {
+                    val document = querySnapshot.documents.firstOrNull()
+                    if (document != null) {
+                        val dbPassword = document.getString("password") ?: ""
+                        val role = document.getString("role") ?: "USER"
+
+                        if (role.uppercase() != "USER") {
+                            Toast.makeText(this, "Only USER accounts can log in on mobile.", Toast.LENGTH_SHORT).show()
+                            return@addOnSuccessListener
+                        }
+
+                        if (dbPassword == password) {
+                            val firstName = document.getString("firstName") ?: ""
+                            val lastName = document.getString("lastName") ?: ""
+                            val name = "$firstName $lastName"
+
+                            val department: String = when (val dep = document.get("department")) {
+                                is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
+                                is String -> dep
+                                else -> "N/A"
+                            }
+
+                            Toast.makeText(this, "Welcome $name!", Toast.LENGTH_SHORT).show()
+
+                            val intent = Intent(this, HomeActivity::class.java).apply {
+                                putExtra("name", name)
+                                putExtra("idNumber", idNumber)
+                                putExtra("department", department)
+                            }
+
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Incorrect password", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this, "Unexpected error: user record is missing.", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "User not found.", Toast.LENGTH_SHORT).show()
                 }
             }
-        }
+            .addOnFailureListener {
+                Log.e("LOGIN", "Firestore error", it)
+                Toast.makeText(this, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }
