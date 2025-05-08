@@ -6,15 +6,17 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.Log
 import android.view.View
 import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import java.util.Calendar
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import java.util.*
 
 class ExcuseLetterActivity : AppCompatActivity() {
 
@@ -26,15 +28,25 @@ class ExcuseLetterActivity : AppCompatActivity() {
     private lateinit var submitButton: Button
     private lateinit var backButton: ImageView
 
+    private var selectedFileUri: Uri? = null
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+    private var idNumber: String? = null
+    private var department: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.excuse_letter_page)
 
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
+        idNumber = intent.getStringExtra("idNumber")
+        department = intent.getStringExtra("department")
+
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
         datePicker = findViewById(R.id.btn_date_picker)
         reasonSpinner = findViewById(R.id.spinner_reason)
@@ -44,114 +56,125 @@ class ExcuseLetterActivity : AppCompatActivity() {
         submitButton = findViewById(R.id.btn_submit_excuse)
         backButton = findViewById(R.id.icon_back_button)
 
-        backButton.setOnClickListener { view ->
-            val drawable = (view as ImageView).drawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
+        backButton.setOnClickListener {
+            (it as? ImageView)?.drawable?.let { drawable ->
+                if (drawable is AnimatedVectorDrawable) drawable.start()
             }
-            view.postDelayed({
-                finish()
-            }, 50)
+            it.postDelayed({ finish() }, 50)
         }
 
-        datePicker.setOnClickListener {
-            showDatePickerDialog()
-        }
+        datePicker.setOnClickListener { showDatePickerDialog() }
 
         val reasons = arrayOf("Illness/Medical", "Family Emergency", "Transportation Issue", "Others")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, reasons)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        reasonSpinner.adapter = adapter
-
-        uploadButton.setOnClickListener {
-            selectFile()
+        reasonSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, reasons).also {
+            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
 
-        submitButton.setOnClickListener {
-            submitExcuseLetter()
-        }
+        uploadButton.setOnClickListener { selectFile() }
+        submitButton.setOnClickListener { submitExcuseLetter() }
     }
 
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
-
-        val datePickerDialog = DatePickerDialog(
-            this,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
-                datePicker.text = selectedDate
-            },
-            year,
-            month,
-            day
-        )
-
-        datePickerDialog.show()
+        DatePickerDialog(this, { _, y, m, d ->
+            datePicker.text = "$d/${m + 1}/$y"
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun selectFile() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*"
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
         startActivityForResult(intent, 1)
     }
 
-    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == RESULT_OK) {
-            data?.data?.let { uri ->
+            selectedFileUri = data?.data
+            selectedFileUri?.let { uri ->
                 val cursor = contentResolver.query(uri, null, null, null, null)
-                val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                cursor?.moveToFirst()
-                val fileName = nameIndex?.let { cursor.getString(it) } ?: "File selected"
-                cursor?.close()
-
-                uploadedFilename.text = fileName
-                uploadedFilename.visibility = View.VISIBLE
+                cursor?.use {
+                    val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    it.moveToFirst()
+                    uploadedFilename.text = it.getString(nameIndex)
+                    uploadedFilename.visibility = View.VISIBLE
+                }
             }
         }
     }
 
     private fun submitExcuseLetter() {
         val date = datePicker.text.toString()
-        if (date == "Select date") {
-            Toast.makeText(this, "Please select a date", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val reason = reasonSpinner.selectedItem.toString()
         val details = detailsInput.text.toString().trim()
 
-        if (details.isBlank()) {
-            Toast.makeText(this, "Please provide details", Toast.LENGTH_SHORT).show()
+        if (date == "Select date" || details.isBlank()) {
+            Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId == null) {
-            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+        if (userId.isNullOrBlank()) {
+            Toast.makeText(this, "Missing User ID", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val excuseData = mapOf(
+        if (department.isNullOrBlank()) {
+            Toast.makeText(this, "Missing Department ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (selectedFileUri != null) {
+            uploadFileToFirebase(date, reason, details)
+        } else {
+            saveExcuseToFirestore(date, reason, details, null)
+        }
+    }
+
+    private fun uploadFileToFirebase(date: String, reason: String, details: String) {
+        val filename = UUID.randomUUID().toString()
+        val storageRef = FirebaseStorage.getInstance().reference.child("excuse_documents/$filename")
+
+        selectedFileUri?.let { uri ->
+            storageRef.putFile(uri)
+                .continueWithTask { task ->
+                    if (!task.isSuccessful) throw task.exception ?: Exception("Upload failed")
+                    storageRef.downloadUrl
+                }
+                .addOnSuccessListener { downloadUri ->
+                    saveExcuseToFirestore(date, reason, details, downloadUri.toString())
+                }
+                .addOnFailureListener {
+                    Log.e("ExcuseLetter", "Upload failed", it)
+                    Toast.makeText(this, "File upload failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
+    private fun saveExcuseToFirestore(date: String, reason: String, details: String, fileUrl: String?) {
+        val excuse = hashMapOf(
             "userId" to userId,
+            "email" to userEmail,
+            "firstName" to userFirstName,
+            "idNumber" to idNumber,
+            "department" to department,
             "date" to date,
             "reason" to reason,
             "details" to details,
-            "hasAttachment" to (uploadedFilename.visibility == View.VISIBLE),
-            "timestamp" to System.currentTimeMillis()
+            "attachmentUrl" to (fileUrl ?: ""),
+            "status" to "Pending",
+            "submittedAt" to System.currentTimeMillis()
         )
 
-        val dbRef = FirebaseDatabase.getInstance().getReference("excuseLetters")
-        dbRef.push().setValue(excuseData)
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userId!!)
+            .collection("excuseLetters")
+            .add(excuse)
             .addOnSuccessListener {
                 showSuccessDialog()
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Submission failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                Log.e("ExcuseLetter", "Submit failed", it)
+                Toast.makeText(this, "Failed to submit: ${it.message}", Toast.LENGTH_LONG).show()
             }
     }
 
@@ -160,14 +183,10 @@ class ExcuseLetterActivity : AppCompatActivity() {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.successs_popup_excuse_letter)
         dialog.setCancelable(false)
-
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        val message = dialog.findViewById<TextView>(R.id.popup_message)
-        message.text = "Your excuse letter has been submitted successfully!"
-
-        val okButton = dialog.findViewById<Button>(R.id.btn_ok)
-        okButton.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.popup_message).text = "Your excuse letter has been submitted successfully!"
+        dialog.findViewById<Button>(R.id.btn_ok).setOnClickListener {
             dialog.dismiss()
             finish()
         }

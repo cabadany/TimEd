@@ -4,8 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.drawable.AnimatedVectorDrawable
+import android.net.Uri
 import android.os.Build
-import android.content.Context
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -14,12 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
-import androidx.annotation.RequiresPermission
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -28,18 +23,23 @@ import androidx.camera.view.PreviewView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.material.snackbar.Snackbar
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import androidx.core.net.toUri
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class TimeInEventActivity : AppCompatActivity() {
+
     private lateinit var cameraExecutor: ExecutorService
-    private lateinit var barcodeScanner: BarcodeScanner
+    private lateinit var barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner
     private lateinit var cameraContainer: CardView
     private lateinit var cameraPreviewView: PreviewView
     private lateinit var cameraPlaceholder: ImageView
@@ -54,6 +54,10 @@ class TimeInEventActivity : AppCompatActivity() {
     private var isQrScanned = false
     private var isFrontCamera = false
 
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+
     companion object {
         private const val TAG = "TimeInEventActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
@@ -64,24 +68,31 @@ class TimeInEventActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_page)
 
-        // Start top wave animation
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
+
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG)
+                .show()
+            finish()
+            return
         }
 
-        // Initialize UI components
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
+
         initializeViews()
 
-        // Create scanner overlay for visual feedback
         scannerOverlay = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
             setBackgroundResource(R.drawable.scanner_overlay)
             alpha = 0f
         }
 
-        // Create a preview view for the camera
         cameraPreviewView = PreviewView(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -91,31 +102,21 @@ class TimeInEventActivity : AppCompatActivity() {
             scaleType = PreviewView.ScaleType.FILL_CENTER
         }
 
-        // Set up QR scanner options (focus on QR codes)
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
             .build()
         barcodeScanner = BarcodeScanning.getClient(options)
 
-        // Set initial visibility for reminders
         selfieReminder.text = "Position QR code within the frame to scan"
-
-        // Set click listeners
         setupClickListeners()
-
-        // Initialize camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Check camera permissions
         if (allPermissionsGranted()) {
             setupCameraPreview()
-            // Start camera preview only (no QR scanning yet)
             startCameraPreviewOnly()
             scanButton.text = "Start Scanning"
         } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
     }
 
@@ -129,35 +130,20 @@ class TimeInEventActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-
-        backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
-            val drawable = (view as ImageView).drawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
+        backButton.setOnClickListener {
+            (it as ImageView).drawable?.let { drawable ->
+                if (drawable is AnimatedVectorDrawable) drawable.start()
             }
-            // Add a small delay before finishing to allow animation to be seen
-            view.postDelayed({
-                finish()
-            }, 50) // Match animation duration
+            it.postDelayed({ finish() }, 50)
         }
 
         scanButton.setOnClickListener {
-            if (isQrScanned) {
-                // Reset the scan state and UI
-                resetForNewScan()
-            } else {
-                toggleScanState()
-            }
+            if (isQrScanned) resetForNewScan() else toggleScanState()
         }
 
         shutterButton.setOnClickListener {
-            if (isQrScanned && isFrontCamera) {
-                takeSelfie()
-            } else if (!isQrScanned) {
-                // Do nothing when scanning - the button is just for taking selfies
-                Toast.makeText(this, "Waiting for QR code...", Toast.LENGTH_SHORT).show()
-            }
+            if (isQrScanned && isFrontCamera) takeSelfie()
+            else Toast.makeText(this, "Waiting for QR code...", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -179,145 +165,74 @@ class TimeInEventActivity : AppCompatActivity() {
         isFrontCamera = false
         scanButton.text = "Start Scanning"
         selfieReminder.text = "Position QR code within the frame to scan"
-
-        // Restart camera preview only (no scanning)
         setupCameraPreview()
         startCameraPreviewOnly()
     }
 
     private fun setupCameraPreview() {
-        try {
-            // Create FrameLayout to hold both camera preview and overlay
-            val frameLayout = FrameLayout(this).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-            }
-
-            // Replace placeholder with camera preview
-            cameraContainer.removeAllViews()
-
-            // Add camera preview to frame layout
-            frameLayout.addView(cameraPreviewView)
-
-            // Add scanner overlay to frame layout
-            frameLayout.addView(scannerOverlay)
-
-            // Add frame layout to camera container
-            cameraContainer.addView(frameLayout)
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting up camera preview", e)
-            Toast.makeText(this, "Failed to set up camera: ${e.message}", Toast.LENGTH_SHORT).show()
+        val frameLayout = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
         }
+        cameraContainer.removeAllViews()
+        frameLayout.addView(cameraPreviewView)
+        frameLayout.addView(scannerOverlay)
+        cameraContainer.addView(frameLayout)
     }
 
     private fun startCameraPreviewOnly() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
-            try {
-                val cameraProvider = cameraProviderFuture.get()
-
-                // Configure camera
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build()
-
-                // Set up preview only
-                val preview = Preview.Builder()
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
-                    }
-
-                // Set up image capture for later use
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .build()
-
-                // Unbind all use cases and rebind only preview
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    cameraSelector,
-                    preview,
-                    imageCapture
-                )
-
-            } catch (exc: Exception) {
-                Log.e(TAG, "Error starting camera preview", exc)
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
             }
+            imageCapture = ImageCapture.Builder().build()
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageCapture
+            )
         }, ContextCompat.getMainExecutor(this))
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
     private fun startQrScanner() {
-        // Show scanning animation
         showScanningAnimation()
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
         cameraProviderFuture.addListener({
-            try {
-                val cameraProvider = cameraProviderFuture.get()
-
-                // Configure camera with extended range if available
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build()
-
-                // Set up preview with proper resolution
-                val preview = Preview.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
-                    }
-
-                // Improved image analysis configuration
-                val imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(cameraExecutor) { imageProxy ->
-                            processImageForQrCode(imageProxy)
-                        }
-                    }
-
-                // Set up image capture for selfies
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .build()
-
-                // Unbind and bind use cases
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    cameraSelector,
-                    preview,
-                    imageCapture,
-                    imageAnalyzer
-                )
-
-                // Show scanning message
-                selfieReminder.text = "Scanning for QR codes..."
-
-            } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-                Toast.makeText(this, "Failed to start camera: ${exc.message}", Toast.LENGTH_SHORT).show()
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
             }
-
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(cameraExecutor) { processImageForQrCode(it) }
+                }
+            imageCapture = ImageCapture.Builder().build()
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageCapture,
+                imageAnalyzer
+            )
+            selfieReminder.text = "Scanning for QR codes..."
         }, ContextCompat.getMainExecutor(this))
     }
 
     private fun showScanningAnimation() {
-        val animation = AlphaAnimation(0.3f, 0.7f)
-        animation.duration = 1000
-        animation.repeatMode = Animation.REVERSE
-        animation.repeatCount = Animation.INFINITE
+        val animation = AlphaAnimation(0.3f, 0.7f).apply {
+            duration = 1000
+            repeatMode = Animation.REVERSE
+            repeatCount = Animation.INFINITE
+        }
         scannerOverlay.animation = animation
         scannerOverlay.alpha = 0.3f
         animation.start()
@@ -328,245 +243,197 @@ class TimeInEventActivity : AppCompatActivity() {
         scannerOverlay.alpha = 0f
     }
 
-    // Stop scanning but keep camera preview
     private fun stopScanningOnly() {
         stopScanningAnimation()
         selfieReminder.text = "Scanning paused. Press button to resume."
-
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-        cameraProviderFuture.addListener({
-            try {
-                val cameraProvider = cameraProviderFuture.get()
-
-                // Configure camera
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build()
-
-                // Set up preview only
-                val preview = Preview.Builder()
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
-                    }
-
-                // Set up image capture for later use
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .build()
-
-                // Unbind all use cases and rebind only preview
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    cameraSelector,
-                    preview,
-                    imageCapture
-                )
-
-            } catch (exc: Exception) {
-                Log.e(TAG, "Error stopping scanner", exc)
-            }
-        }, ContextCompat.getMainExecutor(this))
+        startCameraPreviewOnly()
     }
 
-    // Stop QR scanner completely (unbinds all camera)
     private fun stopQrScanner() {
         stopScanningAnimation()
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-        val cameraProvider = cameraProviderFuture.get()
-        cameraProvider.unbindAll()
+        ProcessCameraProvider.getInstance(this).get().unbindAll()
     }
 
     private fun processImageForQrCode(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage != null && isScanningEnabled && !isQrScanned) {
-            val image = InputImage.fromMediaImage(
-                mediaImage,
-                imageProxy.imageInfo.rotationDegrees
-            )
-
-            // Process the image for QR codes
+            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
             barcodeScanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    for (barcode in barcodes) {
-                        when (barcode.valueType) {
-                            Barcode.TYPE_URL, Barcode.TYPE_TEXT -> {
-                                val qrContent = barcode.rawValue ?: ""
-                                if (qrContent.isNotEmpty()) {
-                                    // Process the QR code content
-                                    runOnUiThread {
-                                        handleQrCodeScanned(qrContent)
-                                    }
-                                }
-                            }
-                        }
+                    barcodes.firstOrNull { it.rawValue?.startsWith("TIMED:EVENT:") == true }?.rawValue?.let {
+                        runOnUiThread { handleQrCodeScanned(it) }
                     }
                 }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Barcode scanning failed", e)
-                }
-                .addOnCompleteListener {
-                    imageProxy.close()
-                }
+                .addOnFailureListener { Log.e(TAG, "Barcode scanning failed", it) }
+                .addOnCompleteListener { imageProxy.close() }
         } else {
             imageProxy.close()
         }
     }
 
-    @RequiresPermission(Manifest.permission.VIBRATE)
     private fun handleQrCodeScanned(qrContent: String) {
-        if (isQrScanned) return  // Prevent processing same QR code multiple times
-
-        // Stop scanning animation
+        if (isQrScanned) return
         stopScanningAnimation()
-
-        // Vibrate to give feedback
-        try {
-            val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Android 8.0+ (API 26+) - Use VibrationEffect
-                vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                // This won't be used since min SDK is 27, but keeping for completeness
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(200)
-            }
-        } catch (e: Exception) {
-            // Handle vibration error silently
-            Log.e(TAG, "Failed to vibrate: ${e.message}")
-        }
+        vibrate()
 
         isQrScanned = true
         isScanningEnabled = false
 
-        // Try to parse event information from QR
-        try {
-            if (qrContent.startsWith("TIMED:EVENT:")) {
-                // Extract event data from QR code
-                val eventData = qrContent.replace("TIMED:EVENT:", "").split(":")
-                if (eventData.size >= 2) {
-                    val eventId = eventData[0]
-                    val eventName = eventData[1]
-
-                    // Show success dialog
-                    showSuccessDialog(eventName, eventId)
-
-                    // Change UI to selfie mode
-                    selfieReminder.text = "Event: $eventName\nPlease take a selfie for verification."
-                    scanButton.text = "Scan a Different Code"
-
-                    // Stop QR scanning and prepare for selfie
-                    stopQrScanner()
-                    switchToSelfieMode()
-                } else {
-                    showErrorDialog("Invalid QR format")
-                    resetForNewScan()
-                }
-            } else {
-                // Show error for invalid format
-                showErrorDialog("Not a valid TimEd event QR code:\n$qrContent")
-                resetForNewScan()
-            }
-        } catch (e: Exception) {
-            showErrorDialog("Error: ${e.message}")
+        val eventData = qrContent.removePrefix("TIMED:EVENT:").split(":")
+        if (eventData.size >= 2) {
+            val eventId = eventData[0]
+            val eventName = eventData[1]
+            selfieReminder.text = "Event: $eventName\nPlease take a selfie for verification."
+            scanButton.text = "Scan a Different Code"
+            stopQrScanner()
+            switchToSelfieMode()
+        } else {
+            showErrorDialog("Invalid QR code format.")
             resetForNewScan()
         }
     }
 
     private fun switchToSelfieMode() {
-        // Switch camera to front-facing
         isFrontCamera = true
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
-                }
-
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                .build()
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    CameraSelector.DEFAULT_FRONT_CAMERA,
-                    preview,
-                    imageCapture
-                )
-            } catch (exc: Exception) {
-                Log.e(TAG, "Selfie mode setup failed", exc)
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
             }
+            imageCapture = ImageCapture.Builder().build()
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_FRONT_CAMERA,
+                preview,
+                imageCapture
+            )
         }, ContextCompat.getMainExecutor(this))
     }
 
     private fun takeSelfie() {
-        // This is a placeholder - in a real implementation you would save the photo
-        Toast.makeText(this, "Selfie captured for verification!", Toast.LENGTH_LONG).show()
+        val imageCapture = imageCapture ?: return
 
-        // Here you would typically:
-        // 1. Actually capture the image using imageCapture
-        // 2. Save it to storage
-        // 3. Upload it along with the event check-in data
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val photoFile = File.createTempFile("selfie_$timestamp", ".jpg", cacheDir)
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-        // For now, we'll just simulate completion
-        AlertDialog.Builder(this)
-            .setTitle("Time-In Successful!")
-            .setMessage("Your attendance has been recorded.")
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-                finish()  // Return to previous screen
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) {
+                    Toast.makeText(
+                        this@TimeInEventActivity,
+                        "Selfie capture failed: ${exc.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    uploadSelfieToFirebase(photoFile, timestamp)
+                }
             }
-            .setCancelable(false)
-            .show()
+        )
     }
 
-    private fun showSuccessDialog(eventName: String, eventId: String) {
-        Toast.makeText(
-            this,
-            "QR Code scanned successfully!\nEvent: $eventName",
-            Toast.LENGTH_SHORT
-        ).show()
+    private fun uploadSelfieToFirebase(photoFile: File, timestamp: String) {
+        val storageRef = FirebaseStorage.getInstance().reference
+        val selfiePath = "selfies/$userId/$timestamp.jpg"
+        val selfieRef = storageRef.child(selfiePath)
+
+        val uri = photoFile.toUri()
+        selfieRef.putFile(uri)
+            .addOnSuccessListener {
+                selfieRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    logTimeInToFirestore(downloadUrl.toString(), timestamp)
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Upload failed: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun logTimeInToFirestore(selfieUrl: String, timestamp: String) {
+        val eventText = selfieReminder.text.toString()
+        val eventName = eventText.substringAfter("Event: ").substringBefore("\n")
+        val eventId = "EVENT-${timestamp.take(8)}"
+
+        val record = hashMapOf(
+            "userId" to userId,
+            "firstName" to userFirstName,
+            "email" to userEmail,
+            "eventId" to eventId,
+            "eventName" to eventName,
+            "timestamp" to timestamp,
+            "selfieUrl" to selfieUrl
+        )
+
+        FirebaseFirestore.getInstance().collection("attendance")
+            .add(record)
+            .addOnSuccessListener {
+                AlertDialog.Builder(this)
+                    .setTitle("Time-In Recorded")
+                    .setMessage("Attendance saved successfully!")
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to save attendance: ${it.message}", Toast.LENGTH_LONG)
+                    .show()
+            }
+    }
+
+    private fun vibrate() {
+        try {
+            val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(
+                    VibrationEffect.createOneShot(
+                        200,
+                        VibrationEffect.DEFAULT_AMPLITUDE
+                    )
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(200)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Vibration error", e)
+        }
     }
 
     private fun showErrorDialog(message: String) {
         AlertDialog.Builder(this)
-            .setTitle("Scan Error")
+            .setTitle("Error")
             .setMessage(message)
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
             .show()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(applicationContext, it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            applicationContext,
+            it
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<String>,
+        permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
-                setupCameraPreview()
-                startCameraPreviewOnly()
-                scanButton.text = "Start Scanning"
-            } else {
-                Toast.makeText(this,
-                    "Camera permission is required for QR scanning.",
-                    Toast.LENGTH_SHORT).show()
-                finish()
-            }
+        if (requestCode == REQUEST_CODE_PERMISSIONS && allPermissionsGranted()) {
+            setupCameraPreview()
+            startCameraPreviewOnly()
+        } else {
+            Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 

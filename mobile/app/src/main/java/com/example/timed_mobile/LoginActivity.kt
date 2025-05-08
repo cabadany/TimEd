@@ -58,8 +58,8 @@ class LoginActivity : AppCompatActivity() {
                             val firstName = document.getString("firstName") ?: ""
                             val lastName = document.getString("lastName") ?: ""
                             val name = "$firstName $lastName"
-
-                            val department: String = when (val dep = document.get("department")) {
+                            val email = document.getString("email") ?: ""
+                            val department = when (val dep = document.get("department")) {
                                 is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
                                 is String -> dep
                                 else -> "N/A"
@@ -67,8 +67,11 @@ class LoginActivity : AppCompatActivity() {
 
                             Toast.makeText(this, "Welcome $name!", Toast.LENGTH_SHORT).show()
 
+                            // ✅ Redirect to HomeActivity with full user info
                             val intent = Intent(this, HomeActivity::class.java).apply {
-                                putExtra("name", name)
+                                putExtra("userId", document.id)
+                                putExtra("email", email)
+                                putExtra("firstName", firstName)
                                 putExtra("idNumber", idNumber)
                                 putExtra("department", department)
                             }

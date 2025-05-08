@@ -6,15 +6,23 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.timed_mobile.adapter.EventAdapter
 import com.example.timed_mobile.model.EventModel
+import com.google.android.material.navigation.NavigationView
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 
 class HomeActivity : AppCompatActivity() {
+
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navigationView: NavigationView
+    private lateinit var toolbar: Toolbar
 
     private lateinit var greetingName: TextView
     private lateinit var greetingDetails: TextView
@@ -27,10 +35,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnEnded: Button
     private lateinit var btnTimeIn: Button
     private lateinit var btnTimeOut: Button
+    private lateinit var excuseLetterText: TextView
 
     private val allEvents = mutableListOf<EventModel>()
 
-    // ✅ Step 1: Declare launcher for result from TimeInActivity
     private val timeInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
@@ -40,9 +48,20 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+    private var idNumber: String? = null
+    private var department: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
+
+        drawerLayout = findViewById(R.id.drawer_layout)
+        navigationView = findViewById(R.id.navigation_view)
+        toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         greetingName = findViewById(R.id.greeting_name)
         greetingDetails = findViewById(R.id.home_greeting)
@@ -53,19 +72,37 @@ class HomeActivity : AppCompatActivity() {
         btnEnded = findViewById(R.id.btn_filter_ended)
         btnTimeIn = findViewById(R.id.btntime_in)
         btnTimeOut = findViewById(R.id.btntime_out)
+        excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
         recyclerEvents.layoutManager = LinearLayoutManager(this)
         firestore = FirebaseFirestore.getInstance()
 
-        val name = intent.getStringExtra("name") ?: "User"
-        val idNumber = intent.getStringExtra("idNumber") ?: "N/A"
-        val department = intent.getStringExtra("department") ?: "N/A"
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
+        idNumber = intent.getStringExtra("idNumber") ?: "N/A"
+        department = intent.getStringExtra("department") ?: "N/A"
 
-        greetingName.text = "Hi, $name 👋"
+        greetingName.text = "Hi, $userFirstName 👋"
         greetingDetails.text = "ID: $idNumber • $department"
+
+        navigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_profile -> startActivity(Intent(this, ProfileActivity::class.java))
+                R.id.nav_schedule -> startActivity(Intent(this, ScheduleActivity::class.java))
+                R.id.nav_logout -> {
+                    Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, LoginActivity::class.java))
+                    finish()
+                }
+            }
+            drawerLayout.closeDrawer(GravityCompat.START)
+            true
+        }
 
         setupFilterButtons()
         setupActionButtons()
+        setupExcuseLetterRedirect()
         loadAndStoreEvents()
     }
 
@@ -82,8 +119,12 @@ class HomeActivity : AppCompatActivity() {
                 .setTitle("Time - In Confirmation")
                 .setMessage("Are you ready to time in for today?")
                 .setPositiveButton("Yes") { _, _ ->
-                    val intent = Intent(this, TimeInActivity::class.java)
-                    timeInLauncher.launch(intent)  // ✅ Use launcher
+                    val intent = Intent(this, TimeInEventActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                    }
+                    timeInLauncher.launch(intent)
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -91,6 +132,19 @@ class HomeActivity : AppCompatActivity() {
 
         btnTimeOut.setOnClickListener {
             startActivity(Intent(this, TimeOutActivity::class.java))
+        }
+    }
+
+    private fun setupExcuseLetterRedirect() {
+        excuseLetterText.setOnClickListener {
+            val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+                putExtra("idNumber", idNumber)
+                putExtra("department", department)
+            }
+            startActivity(intent)
         }
     }
 
