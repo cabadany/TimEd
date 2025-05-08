@@ -45,6 +45,7 @@ class TimeInActivity : AppCompatActivity() {
     private lateinit var faceBoxOverlay: FaceBoxOverlay
     private lateinit var faceDetector: FaceDetector
     private lateinit var timeInButton: Button
+    private lateinit var backButton: ImageView
     private var isFaceDetected = false
     private var currentLensFacing: Int =
         CameraSelector.LENS_FACING_BACK // Default to back, will be updated
@@ -75,14 +76,19 @@ class TimeInActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
         faceBoxOverlay = findViewById(R.id.face_box_overlay)
         timeInButton = findViewById(R.id.btntime_in)
+        backButton = findViewById(R.id.icon_back_button)
 
-        // Set up back button
-        findViewById<ImageView>(R.id.icon_back_button).setOnClickListener {
-            val drawable = it.background // Assuming background is an AnimatedVectorDrawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) {
+            topDrawable.start()
+        }
+
+        backButton.setOnClickListener {
+            (it as? ImageView)?.drawable?.let { drawable ->
+                if (drawable is AnimatedVectorDrawable) drawable.start()
             }
-            it.postDelayed({ finish() }, 50) // Delay for animation
+            it.postDelayed({ finish() }, 50)
         }
 
         findViewById<ImageView>(R.id.icon_qr_scanner).setOnClickListener {
