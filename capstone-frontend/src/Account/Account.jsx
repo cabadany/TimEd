@@ -485,7 +485,7 @@ DEPARTMENTS
                 color: activeFilter ? '#0288d1' : '#64748B',
                 textTransform: 'none',
                 fontWeight: 500,
-                mr: 1.5,
+                mr: 0.6,
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 py: 0.5,

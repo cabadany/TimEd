@@ -469,7 +469,7 @@ export default function Dashboard() {
                 fontSize: '0.875rem',
                 py: 0.5,
                 px: 2,
-                mr: 1.5,
+                mr: 0.6,
                 border: '1px solid',
                 borderColor: activeFilter ? '#3B82F6' : '#E2E8F0',
                 '&:hover': {

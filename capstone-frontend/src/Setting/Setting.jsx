@@ -325,7 +325,7 @@ export default function SettingPage() {
                 color: 'text.secondary',
                 fontSize: 14,
                 fontWeight: 500,
-                mr: 1.5,
+                mr: 0.6,
                 borderRadius: '8px',
                 border: '1px solid',
                 borderColor: activeFilter ? '#0288d1' : '#E2E8F0',

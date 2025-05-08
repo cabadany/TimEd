@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import axios from 'axios';
@@ -13,6 +13,41 @@ function LoginPage() {
     type: ''
   });
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [formShake, setFormShake] = useState(false);
+  
+  // Refs for input fields
+  const idNumberRef = useRef(null);
+  const passwordRef = useRef(null);
+  const loginBtnRef = useRef(null);
+  const forgotPasswordRef = useRef(null);
+
+  // Auto focus on ID field on initial load
+  useEffect(() => {
+    setTimeout(() => {
+      if (idNumberRef.current) {
+        idNumberRef.current.focus();
+      }
+    }, 500); // Delay to allow animations to complete
+  }, []);
+
+  // Check if browser prefers dark mode
+  useEffect(() => {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDarkMode(darkModeMediaQuery.matches);
+    
+    const handleDarkModeChange = (e) => {
+      setIsDarkMode(e.matches);
+    };
+    
+    darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
+    
+    return () => {
+      darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+    };
+  }, []);
 
   const showNotification = (message, type = 'error') => {
     setNotification({
@@ -20,6 +55,19 @@ function LoginPage() {
       message,
       type
     });
+    
+    // Shake the form if there's an error
+    if (type === 'error') {
+      setFormShake(true);
+      setTimeout(() => setFormShake(false), 500);
+      
+      // Focus back on the appropriate field when there's an error
+      if (!idNumber) {
+        setTimeout(() => idNumberRef.current?.focus(), 600);
+      } else if (!password) {
+        setTimeout(() => passwordRef.current?.focus(), 600);
+      }
+    }
     
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
@@ -31,11 +79,63 @@ function LoginPage() {
     setNotification(prev => ({...prev, visible: false}));
   };
 
-  const handleLogin = async () => {
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+    // Keep focus on password field after toggling
+    passwordRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
+  // For tabbing from ID to password field
+  const handleIdKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      passwordRef.current?.focus();
+    }
+  };
+
+  // For tabbing from password to forgot password link
+  const handlePasswordKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      forgotPasswordRef.current?.focus();
+    } else if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      idNumberRef.current?.focus();
+    }
+  };
+
+  // For tabbing from forgot password to login button
+  const handleForgotPasswordKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      // Handle forgot password action
+      console.log('Forgot password clicked');
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      loginBtnRef.current?.focus();
+    } else if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      passwordRef.current?.focus();
+    }
+  };
+
+  // Memoize the handleLogin function to avoid dependency issues
+  const handleLogin = useCallback(async () => {
     if (!idNumber || !password) {
       showNotification('Please enter both ID Number and Password');
       return;
     }
+    
+    setIsLoading(true);
   
     try {
       const response = await axios.post('http://localhost:8080/api/auth/login', {
@@ -66,6 +166,7 @@ function LoginPage() {
             navigate('/dashboard');
           }, 800);
         } else {
+          setIsLoading(false);
           showNotification('Access denied. Only admins can log in.');
           // Optional: clear any stored auth for non-admins
           localStorage.removeItem('token');
@@ -74,20 +175,38 @@ function LoginPage() {
         }
   
       } else {
+        setIsLoading(false);
         showNotification(data.message || 'Invalid login credentials');
       }
   
     } catch (error) {
       console.error('Login failed:', error);
+      setIsLoading(false);
       showNotification(
         error.response?.data?.message || 'Something went wrong. Probably sabotage.'
       );
     }
-  };
-  
+  }, [idNumber, password, navigate, showNotification]);
+
+  // Add useEffect to handle the 'keydown' event for the entire component
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        handleLogin();
+      }
+    };
+
+    // Add event listener to window
+    window.addEventListener('keydown', handleGlobalKeyDown);
+
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [handleLogin]); // Now we only depend on the memoized callback
 
   return (
-    <div className={`login-page ${isAnimating ? 'fade-out' : ''}`}>
+    <div className={`login-page ${isAnimating ? 'fade-out' : ''} ${isDarkMode ? 'dark-mode' : ''}`}>
       {notification.visible && (
         <div className={`notification ${notification.type}`}>
           <div className="notification-icon">
@@ -112,22 +231,31 @@ function LoginPage() {
       )}
       
       <div className="login-left">
-        <img src="/timed 1.png" alt="TimEd Logo" className="logo" />
+        <img src="/timed 1.png" alt="TimEd Logo" className="logo animate-fade-in" />
         
-        <div className="login-form">
+        <div className={`login-form animate-slide-up ${formShake ? 'shake' : ''} ${isLoading ? 'form-loading' : ''}`}>
           <h2 className="login-title">Login</h2>
           
-          <div className="form-group">
-            <label className="form-label">ID Number</label>
+          <div className="form-group animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <label className="form-label" htmlFor="idNumber">ID Number</label>
             <div className="input-container">
               <input
+                id="idNumber"
+                ref={idNumberRef}
                 type="text"
                 className="form-input"
                 placeholder="##-####-###"
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
+                onKeyDown={handleIdKeyDown}
+                disabled={isLoading || isAnimating}
               />
-              <button className="input-icon-btn">
+              <button 
+                className="input-icon-btn" 
+                disabled={isLoading || isAnimating}
+                aria-label="ID Icon"
+                type="button"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                   <circle cx="12" cy="10" r="3"></circle>
@@ -137,33 +265,68 @@ function LoginPage() {
             </div>
           </div>
           
-          <div className="form-group">
-            <label className="form-label">Password</label>
+          <div className="form-group animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <label className="form-label" htmlFor="password">Password</label>
             <div className="input-container">
               <input
-                type="password"
+                id="password"
+                ref={passwordRef}
+                type={showPassword ? "text" : "password"}
                 className="form-input"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handlePasswordKeyDown}
+                disabled={isLoading || isAnimating}
               />
-              <button className="input-icon-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
+              <button 
+                className="input-icon-btn password-toggle"
+                onClick={togglePasswordVisibility}
+                type="button"
+                disabled={isLoading || isAnimating}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                )}
               </button>
             </div>
           </div>
           
-          <div className="forgot-password">Forgot Password?</div>
+          <div 
+            className="forgot-password animate-slide-up" 
+            style={{ animationDelay: '0.3s' }}
+            tabIndex="0"
+            role="button"
+            ref={forgotPasswordRef}
+            onClick={() => console.log('Forgot password clicked')}
+            onKeyDown={handleForgotPasswordKeyDown}
+            aria-label="Forgot Password"
+          >
+            Forgot Password?
+          </div>
           
           <button 
-            className={`login-btn ${isAnimating ? 'btn-clicked' : ''}`} 
+            ref={loginBtnRef}
+            className={`login-btn ${isAnimating ? 'btn-clicked' : ''} ${isLoading ? 'loading' : ''}`}
             onClick={handleLogin}
-            disabled={isAnimating}
+            disabled={isAnimating || isLoading}
           >
-            {isAnimating ? 'Logging in...' : 'Login Now'}
+            {isLoading ? (
+              <div className="spinner">
+                <div className="bounce1"></div>
+                <div className="bounce2"></div>
+                <div className="bounce3"></div>
+              </div>
+            ) : isAnimating ? 'Logging in...' : 'Login Now'}
           </button>
         </div>
       </div>
@@ -172,7 +335,7 @@ function LoginPage() {
         <img 
           src="/login-illustration.png" 
           alt="Login Illustration" 
-          className="illustration"
+          className="illustration animate-fade-in"
         />
       </div>
     </div>
