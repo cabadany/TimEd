@@ -83,6 +83,8 @@ dependencies {
     // Material design for Snackbar
     implementation ("com.google.android.material:material:1.8.0")
 
+    implementation ("com.google.mlkit:barcode-scanning:17.2.0")
+
 
     // Testing dependencies
     testImplementation(libs.junit)
