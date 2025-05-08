@@ -2,6 +2,7 @@ package com.example.timed_mobile
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.net.Uri
@@ -24,6 +25,7 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.example.timed_mobile.TimeInActivity
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -125,26 +127,28 @@ class TimeInEventActivity : AppCompatActivity() {
         cameraPlaceholder = findViewById(R.id.camera_preview_placeholder)
         backButton = findViewById(R.id.icon_back_button)
         scanButton = findViewById(R.id.scan_qr_code)
-        shutterButton = findViewById(R.id.icon_shutter_camera)
         selfieReminder = findViewById(R.id.qr_scanner_click_reminder)
     }
 
     private fun setupClickListeners() {
         backButton.setOnClickListener {
+
             (it as ImageView).drawable?.let { drawable ->
                 if (drawable is AnimatedVectorDrawable) drawable.start()
             }
+            Intent(this@TimeInEventActivity, TimeInActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+            }
             it.postDelayed({ finish() }, 50)
+
         }
 
         scanButton.setOnClickListener {
             if (isQrScanned) resetForNewScan() else toggleScanState()
         }
 
-        shutterButton.setOnClickListener {
-            if (isQrScanned && isFrontCamera) takeSelfie()
-            else Toast.makeText(this, "Waiting for QR code...", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun toggleScanState() {

@@ -1,11 +1,18 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:padding="16dp"
-    android:layout_width="match_parent" android:layout_height="160dp"
-    android:background="@color/maroon">
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:background="@color/maroon">
 
     <ImageView
-        android:src="@drawable/ic_user_avatar"
-        android:layout_width="64dp"
-        android:layout_height="64dp" />
-    <TextView android:text="Welcome!" android:textColor="@android:color/white"/>
+            android:src="@drawable/ic_user_avatar"
+            android:layout_width="64dp"
+            android:layout_height="64dp" />
+
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="Welcome!"
+            android:textColor="@android:color/white" />
 </LinearLayout>

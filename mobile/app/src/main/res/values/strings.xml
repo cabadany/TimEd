@@ -17,4 +17,7 @@
     <string name="time_out_page">Time Out</string>
 
     <string name="selected_date_format">Selected Date: %1$d/%2$d/%3$d</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
 </resources>
