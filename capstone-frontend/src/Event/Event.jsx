@@ -525,652 +525,414 @@ useEffect(() => {
     }
   };
   return (
-    <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
-      {/* Sidebar */}
-      <Box sx={{ 
-        width: 240, 
-        bgcolor: 'white', 
-        borderRight: '1px solid #EAECF0',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
-      }}>
-        <Box sx={{ p: 3, borderBottom: '1px solid #EAECF0', display: 'flex', justifyContent: 'center' }}>
-            <img src="/timed 1.png" alt="TimeED Logo" style={{ height: 80 }} />
-        </Box>
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Button 
-            startIcon={<Home />} 
-            onClick={handleNavigateToDashboard}
-            sx={{ 
-              justifyContent: 'flex-start', 
-              color: location.pathname === '/' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            DASHBOARD
-          </Button>
-          <Button 
-            startIcon={<Event />} 
-            onClick={handleNavigateToEvent}
-            sx={{ 
-              justifyContent: 'flex-start', 
-              color: location.pathname === '/event' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/event' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            EVENT
-          </Button>
-          <Button 
-            startIcon={<People />} 
-            onClick={handleNavigateToAccounts}
-            sx={{ 
-              justifyContent: 'flex-start', 
-              color: '#64748B',
-              fontWeight: 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            ACCOUNTS
-          </Button>
-          <Button
-            startIcon={<AccountTree />}
-            onClick={handleNavigateToDepartment}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/department' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/department' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            DEPARTMENTS
-          </Button>
-          <Button 
-            startIcon={<Settings />} 
-            onClick={handleNavigateToSettings}
-            sx={{ 
-              justifyContent: 'flex-start', 
-              color: location.pathname === '/settings' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/settings' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            SETTING
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Main Content */}
-      <Box sx={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100vh',
-        overflow: 'hidden'
-      }}>
-        {/* Top Bar */}
-        <Box sx={{ 
-          py: 1.5, 
-          px: 3,
-          bgcolor: 'white', 
-          borderBottom: '1px solid #EAECF0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Typography variant="h5" fontWeight="600" color="#1E293B">
-            Events
+    <Box className="event-container">
+      {/* Event Content */}
+      <Box className="event-main">
+        {/* Ongoing Events Section */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Ongoing Events
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Paper
-              elevation={0}
-              sx={{ 
-                p: '2px 4px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                width: 300, 
-                bgcolor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '4px'
-              }}
-            >
-              <IconButton sx={{ p: '10px' }} aria-label="search">
-                <Search sx={{ color: '#64748B' }} />
-              </IconButton>
-              <InputBase
-                sx={{ ml: 1, flex: 1, fontSize: 14 }}
-                placeholder="Search for something"
-              />
-            </Paper>
-            <Button 
-              variant="outlined" 
-              startIcon={<FilterList />}
-              size="small"
-              onClick={handleFilterClick}
-              sx={{
-                borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
-                color: activeFilter ? '#0288d1' : '#64748B',
-                textTransform: 'none',
-                fontWeight: 500,
-                mr: 0.6,
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                py: 0.5,
-                px: 2
-              }}
-            >
-              {activeFilter || 'FILTER'}
-            </Button>
-            <Menu
-              anchorEl={filterAnchorEl}
-              open={filterMenuOpen}
-              onClose={handleFilterClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { 
-                  width: 180,
-                  mt: 1,
-                  '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
-                  }
-                }
-              }}
-            >
-              <MenuItem onClick={() => handleFilterSelect('Date')}>
-                <ListItemIcon>
-                  <CalendarToday fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Date</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('Organizer')}>
-                <ListItemIcon>
-                  <Group fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Organizer</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('Time')}>
-                <ListItemIcon>
-                  <AccessTime fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Time</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('Event')}>
-                <ListItemIcon>
-                  <Event fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Event</ListItemText>
-              </MenuItem>
-            </Menu>
-            <NotificationSystem />
-            <Avatar 
-              onClick={handleAvatarClick}
-              sx={{ 
-                width: 36, 
-                height: 36,
-                bgcolor: '#CBD5E1',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              P
-            </Avatar>
-            <Menu
-              anchorEl={avatarAnchorEl}
-              open={avatarMenuOpen}
-              onClose={handleAvatarClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { 
-                  width: 180,
-                  mt: 1,
-                  '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
-                  }
-                }
-              }}
-            >
-              <MenuItem onClick={handleLogout}>
-                <ListItemIcon>
-                  <Logout fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Logout</ListItemText>
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Box>
-
-        {/* Event Content - Wrapped in a scrollable container */}
-        <Box sx={{ 
-          flex: 1, 
-          overflow: 'auto', /* This makes the content scrollable */
-          bgcolor: '#FFFFFF'
-        }}>
-          <Box sx={{ 
-            p: 3, 
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3
-          }}>
-            {/* Ongoing Event Dashboard */}
-            <Typography variant="h6" fontWeight="600" color="#1E293B">
-              Ongoing Events Dashboard
-            </Typography>
-            
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 3, 
-                borderRadius: '8px', 
-                border: '1px solid #E2E8F0'
-              }}
-            >
-              {ongoingEvents.length === 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
-                  <CalendarToday sx={{ fontSize: 40, color: '#94A3B8', mb: 1 }} />
-                  <Typography variant="body1" color="#1E293B" fontWeight={500}>
-                    No ongoing events
-                  </Typography>
-                  <Typography variant="body2" color="#64748B">
-                    All scheduled events will appear here when they're in progress
-                  </Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={3}>
-                  {ongoingEvents.map(event => (
-                    <Grid item xs={12} md={6} lg={4} key={event.eventId}>
-                      <Card 
-                        elevation={0} 
-                        sx={{ 
-                          border: '1px solid #E2E8F0', 
-                          borderRadius: '8px',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column'
-                        }}
-                      >
-                        <CardContent sx={{ flex: 1 }}>
-                          <Box sx={{ 
-                            mb: 2, 
-                            display: 'flex', 
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start'
-                          }}>
-                            <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-                              {event.eventName}
-                            </Typography>
-                            <Chip 
-                              label="Ongoing" 
-                              size="small"
-                              sx={{ 
-                                bgcolor: '#E0F2FE',
-                                color: '#0369A1',
-                                fontWeight: 500,
-                                fontSize: '0.75rem'
-                              }} 
-                            />
-                          </Box>
-                          
-                          <Typography variant="body2" color="#64748B" gutterBottom>
-                            <strong>Department:</strong> {getDepartmentName(event.departmentId)}
-                          </Typography>
-                          
-                          <Typography variant="body2" color="#64748B" gutterBottom>
-                            <strong>Started:</strong> {formatDate(event.date)}
-                          </Typography>
-                          
-                          <Typography variant="body2" color="#64748B">
-                            <strong>Duration:</strong> {event.duration}
-                          </Typography>
-                        </CardContent>
-                        
-                        <Divider />
-                        
-                        <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
-                          <Button
-                            size="small"
-                            startIcon={<Edit />}
-                            onClick={() => openEditDialog(event)}
-                            sx={{ color: '#0288d1' }}
-                          >
-                            Update Status
-                          </Button>
-                          
-                          <Button
-                            size="small"
-                            color="error"
-                            startIcon={<Cancel />}
-                            onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
-                          >
-                            Cancel Event
-                          </Button>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-
-            <Typography variant="h6" fontWeight="600" color="#1E293B">
-              Add New Event
-            </Typography>
-
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 4, 
-                borderRadius: '8px', 
-                border: '1px solid #E2E8F0'
-              }}
-            >
-              <Typography variant="body2" color="#64748B" sx={{ mb: 4 }}>
-                With just one click, users can initiate the setup of meetings, parties, webinars, or 
-                social gatherings. This button typically opens a form where essential details—such 
-                as the event name, date, time, location, and description—can be entered.
-              </Typography>
-
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
-                <Box>
-                  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                    Event Name *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    value={eventName}
-                    onChange={(e) => setEventName(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '4px',
-                        fontSize: '14px',
-                        '& fieldset': {
-                          borderColor: '#E2E8F0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#0288d1',
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                    Department *
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      fullWidth
-                      variant="outlined"
-                      value={getDepartmentName(departmentId)}
-                      disabled
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '4px',
-                          fontSize: '14px',
-                          '& fieldset': {
-                            borderColor: '#E2E8F0',
-                          },
-                        },
-                      }}
-                    />
-                    <Button
-                      variant="outlined"
-                      onClick={openDepartmentModal}
-                      sx={{
-                        borderColor: '#0288d1',
-                        color: '#0288d1',
-                        '&:hover': {
-                          borderColor: '#0277bd',
-                          bgcolor: 'rgba(2, 136, 209, 0.04)',
-                        },
-                        minWidth: '120px'
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3, 
+              borderRadius: '8px', 
+              border: '1px solid #E2E8F0' 
+            }}
+          >
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : ongoingEvents.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body1" color="#64748B">
+                  No ongoing events at the moment
+                </Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {ongoingEvents.map(event => (
+                  <Grid item xs={12} md={6} lg={4} key={event.eventId}>
+                    <Card 
+                      elevation={0} 
+                      sx={{ 
+                        border: '1px solid #E2E8F0', 
+                        borderRadius: '8px',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
                       }}
                     >
-                      Select
-                    </Button>
-                  </Box>
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                    Date & Time *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    type="datetime-local"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    // No min attribute to prevent any browser-based default time setting
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '4px',
-                        fontSize: '14px',
-                        '& fieldset': {
-                          borderColor: '#E2E8F0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#0288d1',
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                    Duration * (format: 0:00:00)
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    placeholder="0:00:00"
-                    value={duration}
-                    onChange={(e) => {
-                      // Validate and format as 0:00:00
-                      const input = e.target.value;
-                      const timePattern = /^(\d+):([0-5]?\d):([0-5]?\d)$/;
+                      <CardContent sx={{ flex: 1 }}>
+                        <Box sx={{ 
+                          mb: 2, 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start'
+                        }}>
+                          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                            {event.eventName}
+                          </Typography>
+                          <Chip 
+                            label="Ongoing" 
+                            size="small"
+                            sx={{ 
+                              bgcolor: '#E0F2FE',
+                              color: '#0369A1',
+                              fontWeight: 500,
+                              fontSize: '0.75rem'
+                            }} 
+                          />
+                        </Box>
+                        
+                        <Typography variant="body2" color="#64748B" gutterBottom>
+                          <strong>Department:</strong> {getDepartmentName(event.departmentId)}
+                        </Typography>
+                        
+                        <Typography variant="body2" color="#64748B" gutterBottom>
+                          <strong>Started:</strong> {formatDate(event.date)}
+                        </Typography>
+                        
+                        <Typography variant="body2" color="#64748B">
+                          <strong>Duration:</strong> {event.duration}
+                        </Typography>
+                      </CardContent>
                       
-                      // Either accept valid format or keep previous value
-                      if (input === '' || timePattern.test(input)) {
-                        setDuration(input);
-                      }
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '4px',
-                        fontSize: '14px',
-                        '& fieldset': {
-                          borderColor: '#E2E8F0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#0288d1',
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
+                      <Divider />
+                      
+                      <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+                        <Button
+                          size="small"
+                          startIcon={<Edit />}
+                          onClick={() => openEditDialog(event)}
+                          sx={{ color: '#0288d1' }}
+                        >
+                          Update Status
+                        </Button>
+                        
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<Cancel />}
+                          onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
+                        >
+                          Cancel Event
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        </Box>
 
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-                <Button
-                  variant="outlined"
-                  onClick={resetForm}
-                  sx={{
-                    borderColor: '#CBD5E1',
-                    color: '#64748B',
-                    fontWeight: 500,
-                    '&:hover': {
-                      borderColor: '#94A3B8',
-                      bgcolor: 'rgba(148, 163, 184, 0.04)',
-                    },
-                    px: 3
-                  }}
-                >
-                  Reset
-                </Button>
+        <Typography variant="h6" fontWeight="600" color="#1E293B">
+          Add New Event
+        </Typography>
 
-                <Button
-                  variant="contained"
-                  onClick={handleAddEvent}
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : <Add />}
-                  sx={{
-                    bgcolor: '#0288d1',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: '#0277bd',
-                    },
-                    px: 3
-                  }}
-                >
-                  Add Event
-                </Button>
-              </Box>
-            </Paper>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 4, 
+            borderRadius: '8px', 
+            border: '1px solid #E2E8F0'
+          }}
+        >
+          <Typography variant="body2" color="#64748B" sx={{ mb: 4 }}>
+            With just one click, users can initiate the setup of meetings, parties, webinars, or 
+            social gatherings. This button typically opens a form where essential details—such 
+            as the event name, date, time, location, and description—can be entered.
+          </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" fontWeight="600" color="#1E293B">
-                All Events
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Event Name *
               </Typography>
-              <Button
+              <TextField
+                fullWidth
                 variant="outlined"
-                startIcon={<Upload />}
-                onClick={handleUploadClick}
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
                 sx={{
-                  borderColor: '#CBD5E1',
-                  color: '#64748B',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  '&:hover': {
-                    borderColor: '#94A3B8',
-                    bgcolor: 'rgba(148, 163, 184, 0.04)',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#0288d1',
+                    },
                   },
                 }}
-              >
-                Import CSV
-              </Button>
+              />
             </Box>
 
-            <Paper
-              elevation={0}
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Department *
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  value={getDepartmentName(departmentId)}
+                  disabled
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  onClick={openDepartmentModal}
+                  sx={{
+                    borderColor: '#0288d1',
+                    color: '#0288d1',
+                    '&:hover': {
+                      borderColor: '#0277bd',
+                      bgcolor: 'rgba(2, 136, 209, 0.04)',
+                    },
+                    minWidth: '120px'
+                  }}
+                >
+                  Select
+                </Button>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Date & Time *
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                type="datetime-local"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                // No min attribute to prevent any browser-based default time setting
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#0288d1',
+                    },
+                  },
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Duration * (format: 0:00:00)
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="0:00:00"
+                value={duration}
+                onChange={(e) => {
+                  // Validate and format as 0:00:00
+                  const input = e.target.value;
+                  const timePattern = /^(\d+):([0-5]?\d):([0-5]?\d)$/;
+                  
+                  // Either accept valid format or keep previous value
+                  if (input === '' || timePattern.test(input)) {
+                    setDuration(input);
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#0288d1',
+                    },
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+            <Button
+              variant="outlined"
+              onClick={resetForm}
               sx={{
-                borderRadius: '8px',
-                border: '1px solid #E2E8F0',
-                overflow: 'hidden'
+                borderColor: '#CBD5E1',
+                color: '#64748B',
+                fontWeight: 500,
+                '&:hover': {
+                  borderColor: '#94A3B8',
+                  bgcolor: 'rgba(148, 163, 184, 0.04)',
+                },
+                px: 3
               }}
             >
-              <TableContainer>
-                <Table sx={{ minWidth: 650 }}>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Event Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Department</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Duration</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                          <CircularProgress size={30} />
-                        </TableCell>
-                      </TableRow>
-                    ) : events.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                          <Typography variant="body1" color="#64748B">
-                            No events found
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      events.map((event) => (
-                        <TableRow 
-                          key={event.eventId}
-                          sx={{ 
-                            '&:hover': { bgcolor: '#F8FAFC' },
-                            borderBottom: '1px solid #E2E8F0'
-                          }}
-                        >
-                          <TableCell sx={{ py: 2 }}>{event.eventName}</TableCell>
-                          <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
-                          <TableCell>{formatDate(event.date)}</TableCell>
-                          <TableCell>{event.duration}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={event.status}
-                              size="small"
-                              sx={{
-                                bgcolor: 
-                                  event.status === 'Ongoing' ? '#E0F2FE' :
-                                  event.status === 'Upcoming' ? '#DCFCE7' :
-                                  event.status === 'Ended' ? '#F1F5F9' :
-                                  event.status === 'Cancelled' ? '#FEE2E2' : '#F1F5F9',
-                                color: 
-                                  event.status === 'Ongoing' ? '#0369A1' :
-                                  event.status === 'Upcoming' ? '#166534' :
-                                  event.status === 'Ended' ? '#475569' :
-                                  event.status === 'Cancelled' ? '#B91C1C' : '#475569',
-                                fontWeight: 500,
-                                fontSize: '0.75rem'
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <IconButton 
-                                size="small" 
-                                onClick={() => openEditDialog(event)}
-                                sx={{ color: '#64748B' }}
-                              >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                              <IconButton 
-                                size="small" 
-                                onClick={() => openDeleteDialog(event)} 
-                                sx={{ color: '#64748B' }}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+              Reset
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={handleAddEvent}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : <Add />}
+              sx={{
+                bgcolor: '#0288d1',
+                fontWeight: 500,
+                '&:hover': {
+                  bgcolor: '#0277bd',
+                },
+                px: 3
+              }}
+            >
+              Add Event
+            </Button>
           </Box>
+        </Paper>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="600" color="#1E293B">
+            All Events
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<Upload />}
+            onClick={handleUploadClick}
+            sx={{
+              borderColor: '#CBD5E1',
+              color: '#64748B',
+              fontWeight: 500,
+              textTransform: 'none',
+              '&:hover': {
+                borderColor: '#94A3B8',
+                bgcolor: 'rgba(148, 163, 184, 0.04)',
+              },
+            }}
+          >
+            Import CSV
+          </Button>
         </Box>
+
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: '8px',
+            border: '1px solid #E2E8F0',
+            overflow: 'hidden'
+          }}
+        >
+          <TableContainer>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Event Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Duration</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      <CircularProgress size={30} />
+                    </TableCell>
+                  </TableRow>
+                ) : events.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      <Typography variant="body1" color="#64748B">
+                        No events found
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  events.map((event) => (
+                    <TableRow 
+                      key={event.eventId}
+                      sx={{ 
+                        '&:hover': { bgcolor: '#F8FAFC' },
+                        borderBottom: '1px solid #E2E8F0'
+                      }}
+                    >
+                      <TableCell sx={{ py: 2 }}>{event.eventName}</TableCell>
+                      <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
+                      <TableCell>{formatDate(event.date)}</TableCell>
+                      <TableCell>{event.duration}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={event.status}
+                          size="small"
+                          sx={{
+                            bgcolor: 
+                              event.status === 'Ongoing' ? '#E0F2FE' :
+                              event.status === 'Upcoming' ? '#DCFCE7' :
+                              event.status === 'Ended' ? '#F1F5F9' :
+                              event.status === 'Cancelled' ? '#FEE2E2' : '#F1F5F9',
+                            color: 
+                              event.status === 'Ongoing' ? '#0369A1' :
+                              event.status === 'Upcoming' ? '#166534' :
+                              event.status === 'Ended' ? '#475569' :
+                              event.status === 'Cancelled' ? '#B91C1C' : '#475569',
+                            fontWeight: 500,
+                            fontSize: '0.75rem'
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openEditDialog(event)}
+                            sx={{ color: '#64748B' }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openDeleteDialog(event)} 
+                            sx={{ color: '#64748B' }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
       </Box>
 
       {/* Department Selection Modal */}

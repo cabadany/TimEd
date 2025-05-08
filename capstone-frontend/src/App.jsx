@@ -9,12 +9,13 @@ import Accounts from './Account/Account';
 import Department from './departments/Department';
 import Attendance from './attendance/Attendance';
 import { Box } from '@mui/material';
-import NotificationSystem from './components/NotificationSystem';
+import { UserProvider } from './contexts/UserContext';
+import MainLayout from './layouts/MainLayout';
 
-// Layout component without fixed notification positioning
-const AppLayout = ({ children }) => {
+// Simple layout without sidebar or header, for login page
+const SimpleLayout = ({ children }) => {
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ position: 'relative', height: '100vh', width: '100vw' }}>
       {children}
     </Box>
   );
@@ -22,76 +23,77 @@ const AppLayout = ({ children }) => {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        
-        {/* Protected routes (Only Admin can access) */}
-        <Route 
-          path="/department" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Department />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/attendance/:eventId" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Attendance />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Dashboard />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/accounts" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Accounts />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/event" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Event />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/settings" 
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Setting />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Router>
+    <UserProvider>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<SimpleLayout><LoginPage /></SimpleLayout>} />
+          <Route path="/login" element={<SimpleLayout><LoginPage /></SimpleLayout>} />
+          
+          {/* Protected routes with MainLayout */}
+          <Route 
+            path="/department" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Departments">
+                  <Department />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/attendance/:eventId" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Attendance">
+                  <Attendance />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Dashboard">
+                  <Dashboard />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/accounts" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Accounts">
+                  <Accounts />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/event" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Events">
+                  <Event />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Settings">
+                  <Setting />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </UserProvider>
   );
 }
 

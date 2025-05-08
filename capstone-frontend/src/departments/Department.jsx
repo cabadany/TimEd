@@ -111,9 +111,9 @@ export default function DepartmentManagement() {
     });
   };
 
-  // Handle adding a new program to the list
+  // Handle adding a program to the form data
   const handleAddProgram = () => {
-    if (newProgram.trim() !== '') {
+    if (newProgram.trim() !== '' && !formData.offeredPrograms.includes(newProgram.trim())) {
       setFormData({
         ...formData,
         offeredPrograms: [...formData.offeredPrograms, newProgram.trim()]
@@ -122,51 +122,58 @@ export default function DepartmentManagement() {
     }
   };
 
-  // Handle removing a program from the list
-  const handleRemoveProgram = (indexToRemove) => {
+  // Handle removing a program from the form data
+  const handleRemoveProgram = (program) => {
     setFormData({
       ...formData,
-      offeredPrograms: formData.offeredPrograms.filter((_, index) => index !== indexToRemove)
+      offeredPrograms: formData.offeredPrograms.filter(p => p !== program)
     });
   };
 
-  // Handle form submission
-  const handleSubmit = async () => {
+  // Handle form submission for adding a new department
+  const handleSubmitAddDepartment = async () => {
     try {
-      if (modalMode === 'add') {
-        await axios.post('http://localhost:8080/api/departments', formData);
-      } else if (modalMode === 'edit') {
-        await axios.put(`http://localhost:8080/api/departments/${selectedDepartment.departmentId}`, formData);
+      // Validate form data
+      if (!formData.name || !formData.abbreviation) {
+        console.error('Name and abbreviation are required');
+        return;
       }
       
-      // Refresh the departments list
-      const response = await axios.get('http://localhost:8080/api/departments');
-      setDepartments(response.data);
+      const response = await axios.post('http://localhost:8080/api/departments', formData);
       
-      // Close the modal
+      // Add the new department to the state
+      setDepartments([...departments, response.data]);
+      
+      // Close the modal and reset form
       handleCloseModal();
+      
+      console.log('Department added successfully:', response.data);
     } catch (error) {
-      console.error('Failed to save department:', error);
-      setError('Failed to save department. Please try again.');
+      console.error('Error adding department:', error);
     }
   };
 
-  // Handle department deletion
-  const handleDeleteDepartment = async (departmentId) => {
+  // Handle form submission for editing a department
+  const handleSubmitEditDepartment = async () => {
     try {
-      await axios.delete(`http://localhost:8080/api/departments/${departmentId}`);
-      
-      // Refresh the departments list
-      const response = await axios.get('http://localhost:8080/api/departments');
-      setDepartments(response.data);
-      
-      // Close the modal if open
-      if (showModal) {
-        handleCloseModal();
+      if (!selectedDepartment || !formData.name || !formData.abbreviation) {
+        console.error('Selected department and form fields are required');
+        return;
       }
+      
+      const response = await axios.put(`http://localhost:8080/api/departments/${selectedDepartment.departmentId}`, formData);
+      
+      // Update the department in the state
+      setDepartments(departments.map(dept => 
+        dept.departmentId === selectedDepartment.departmentId ? response.data : dept
+      ));
+      
+      // Close the modal and reset form
+      handleCloseModal();
+      
+      console.log('Department updated successfully:', response.data);
     } catch (error) {
-      console.error('Failed to delete department:', error);
-      setError('Failed to delete department. Please try again.');
+      console.error('Error updating department:', error);
     }
   };
 
@@ -215,44 +222,6 @@ export default function DepartmentManagement() {
     });
   };
 
-  // Navigation handlers
-  const handleNavigateToDashboard = () => {
-    navigate('/dashboard');
-  };
-
-  const handleNavigateToEvent = () => {
-    navigate('/event');
-  };
-
-  const handleNavigateToAccounts = () => {
-    navigate('/accounts');
-  };
-
-  const handleNavigateToDepartment = () => {
-    navigate('/department');
-  };
-
-  const handleNavigateToSettings = () => {
-    navigate('/settings');
-  };
-
-  // Avatar menu handlers
-  const handleAvatarClick = (event) => {
-    setAvatarAnchorEl(event.currentTarget);
-  };
-
-  const handleAvatarClose = () => {
-    setAvatarAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('userId');
-    navigate('/login');
-    handleAvatarClose();
-  };
-
   // Filter menu handlers
   const handleFilterClick = (event) => {
     setFilterAnchorEl(event.currentTarget);
@@ -265,144 +234,57 @@ export default function DepartmentManagement() {
   const handleFilterSelect = (filterType) => {
     setActiveFilter(filterType);
     handleFilterClose();
-    // Logic to apply the filter would go here
   };
-
-  // Handle search input change
+  
+  // Search handler
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+  
+  // Get filtered departments based on search query
+  const getFilteredDepartments = () => {
+    if (!searchQuery) return departments;
+    
+    return departments.filter(dept => 
+      dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dept.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+  
+  // Pagination
+  const itemsPerPage = 10;
+  const filteredDepartments = getFilteredDepartments();
+  const pageCount = Math.ceil(filteredDepartments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentDepartments = filteredDepartments.slice(startIndex, startIndex + itemsPerPage);
+  
+  // Pagination handlers
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+  
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, pageCount));
   };
 
-  // Filter departments based on search query
-  const filteredDepartments = departments.filter(dept => 
-    dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dept.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Pagination logic
-  const departmentsPerPage = 5;
-  const totalPages = Math.ceil(filteredDepartments.length / departmentsPerPage);
-  const indexOfLastDept = currentPage * departmentsPerPage;
-  const indexOfFirstDept = indexOfLastDept - departmentsPerPage;
-  const currentDepartments = filteredDepartments.slice(indexOfFirstDept, indexOfLastDept);
-
   return (
-    <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
-      {/* Sidebar */}
-      <Box sx={{
-        width: 240,
-        bgcolor: 'white',
-        borderRight: '1px solid #EAECF0',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
-      }}>
-        <Box sx={{ p: 3, borderBottom: '1px solid #EAECF0', display: 'flex', justifyContent: 'center' }}>
-          <img src="/timed 1.png" alt="TimeED Logo" style={{ height: 80 }} />
-        </Box>
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Button
-            startIcon={<Home />}
-            onClick={handleNavigateToDashboard}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/dashboard' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/dashboard' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            DASHBOARD
-          </Button>
-          <Button
-            startIcon={<Event />}
-            onClick={handleNavigateToEvent}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/event' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/event' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            EVENT
-          </Button>
-          <Button
-            startIcon={<People />}
-            onClick={handleNavigateToAccounts}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/accounts' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/accounts' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            ACCOUNTS
-          </Button>
-          <Button
-            startIcon={<AccountTree />}
-            onClick={handleNavigateToDepartment}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/department' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/department' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            DEPARTMENTS
-          </Button>
-          <Button
-            startIcon={<Settings />}
-            onClick={handleNavigateToSettings}
-            sx={{
-              justifyContent: 'flex-start',
-              color: location.pathname === '/settings' ? '#0288d1' : '#64748B',
-              fontWeight: location.pathname === '/settings' ? 600 : 500,
-              py: 1.5,
-              px: 2,
-              textAlign: 'left'
-            }}
-          >
-            SETTING
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Main Content */}
-      <Box sx={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        overflow: 'hidden'
-      }}>
-        {/* Top Bar */}
-        <Box sx={{
-          py: 1.5,
-          px: 3,
-          bgcolor: 'white',
-          borderBottom: '1px solid #EAECF0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Typography variant="h5" fontWeight="600" color="#1E293B">
+    <Box className="department-container">
+      {/* Department Content */}
+      <Box className="department-main">
+        {/* Filter and Search Bar */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6" fontWeight="600" color="#1E293B">
             Departments
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Paper
               elevation={0}
-              sx={{
-                p: '2px 4px',
-                display: 'flex',
-                alignItems: 'center',
-                width: 300,
+              sx={{ 
+                p: '2px 4px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                width: 300, 
                 bgcolor: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 borderRadius: '4px'
@@ -418,8 +300,8 @@ export default function DepartmentManagement() {
                 onChange={handleSearchChange}
               />
             </Paper>
-            <Button
-              variant="outlined"
+            <Button 
+              variant="outlined" 
               startIcon={<FilterList />}
               size="small"
               onClick={handleFilterClick}
@@ -429,13 +311,13 @@ export default function DepartmentManagement() {
                 textTransform: 'none',
                 fontWeight: 500,
                 mr: 0.6,
-                borderRadius: '8px',
+                borderRadius: '4px',
                 fontSize: '0.875rem',
                 py: 0.5,
                 px: 2
               }}
             >
-              {activeFilter || 'FILTER'}
+              {activeFilter || 'Filter'}
             </Button>
             <Menu
               anchorEl={filterAnchorEl}
@@ -443,7 +325,7 @@ export default function DepartmentManagement() {
               onClose={handleFilterClose}
               PaperProps={{
                 elevation: 3,
-                sx: {
+                sx: { 
                   width: 180,
                   mt: 1,
                   '& .MuiMenuItem-root': {
@@ -465,85 +347,34 @@ export default function DepartmentManagement() {
                 </ListItemIcon>
                 <ListItemText>Abbreviation</ListItemText>
               </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('Faculty Count')}>
+              <MenuItem onClick={() => handleFilterSelect('Number of Faculty')}>
                 <ListItemIcon>
                   <People fontSize="small" sx={{ color: '#64748B' }} />
                 </ListItemIcon>
                 <ListItemText>Faculty Count</ListItemText>
               </MenuItem>
             </Menu>
-            <NotificationSystem />
-            <Avatar
-              onClick={handleAvatarClick}
-              sx={{
-                width: 36,
-                height: 36,
-                bgcolor: '#CBD5E1',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              P
-            </Avatar>
-            <Menu
-              anchorEl={avatarAnchorEl}
-              open={avatarMenuOpen}
-              onClose={handleAvatarClose}
-              PaperProps={{
-                elevation: 3,
-                sx: {
-                  width: 180,
-                  mt: 1,
-                  '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
-                  }
-                }
-              }}
-            >
-              <MenuItem onClick={handleLogout}>
-                <ListItemIcon>
-                  <Logout fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Logout</ListItemText>
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Box>
-
-        {/* Department Content */}
-        <Box sx={{
-          p: 3,
-          flex: 1,
-          overflow: 'auto',
-          bgcolor: '#FFFFFF'
-        }}>
-          {/* Actions Bar */}
-          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="contained"
               startIcon={<Add />}
               onClick={handleAddDepartment}
               sx={{
-                backgroundColor: '#0288d1',
+                bgcolor: '#0288d1',
                 '&:hover': {
-                  backgroundColor: '#0277bd'
+                  bgcolor: '#0277bd'
                 },
                 textTransform: 'none',
+                borderRadius: '4px',
                 fontWeight: 500
               }}
             >
               Add Department
             </Button>
           </Box>
-
-          {/* Department Count */}
-          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Typography variant="body1" fontWeight="medium" sx={{ color: '#475569' }}>
-              Total Departments: <Box component="span" sx={{ color: '#0288d1', fontWeight: 'bold' }}>{filteredDepartments.length}</Box>
-            </Typography>
-          </Box>
-
+        </Box>
+        
+        {/* Departments Table */}
+        <Box sx={{ mb: 3 }}>
           {/* Departments Table */}
           <TableContainer
             component={Paper}
@@ -583,55 +414,55 @@ export default function DepartmentManagement() {
                   </TableRow>
                 ) : (
                   currentDepartments.map((department, index) => (
-                    <TableRow key={index} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
-                      <TableCell sx={{ color: '#1E293B' }}>{department.name}</TableCell>
-                      <TableCell sx={{ color: '#64748B' }}>{department.abbreviation}</TableCell>
-                      <TableCell sx={{ color: '#64748B' }}>{department.numberOfFaculty}</TableCell>
-                      <TableCell sx={{ color: '#64748B' }}>
-                        {department.offeredPrograms.length > 0 ? (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {department.offeredPrograms.map((program, idx) => (
+                    <TableRow key={department.departmentId} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
+                      <TableCell sx={{ fontWeight: 500 }}>{department.name}</TableCell>
+                      <TableCell>{department.abbreviation}</TableCell>
+                      <TableCell>{department.numberOfFaculty}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {department.offeredPrograms && department.offeredPrograms.length > 0 ? (
+                            department.offeredPrograms.map((program, i) => (
                               <Chip 
-                                key={idx} 
+                                key={i} 
                                 label={program} 
                                 size="small" 
                                 sx={{ 
-                                  bgcolor: '#E2E8F0', 
-                                  color: '#475569',
-                                  fontSize: '0.75rem',
-                                  height: 24
+                                  fontSize: '0.75rem', 
+                                  bgcolor: '#E0F2FE',
+                                  color: '#0369A1'
                                 }} 
                               />
-                            ))}
-                          </Box>
-                        ) : (
-                          "No programs offered"
-                        )}
+                            ))
+                          ) : (
+                            <Typography variant="body2" color="#64748B">
+                              No programs
+                            </Typography>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                          <Tooltip title="View">
-                            <IconButton
+                          <Tooltip title="View Details">
+                            <IconButton 
+                              size="small" 
                               onClick={() => handleViewDepartment(department)}
-                              size="small"
-                              sx={{ color: '#0288d1' }}
+                              sx={{ color: '#64748B' }}
                             >
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Edit">
-                            <IconButton
+                          <Tooltip title="Edit Department">
+                            <IconButton 
+                              size="small" 
                               onClick={() => handleEditDepartment(department)}
-                              size="small"
-                              sx={{ color: '#64748B' }}
+                              sx={{ color: '#0288d1' }}
                             >
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              onClick={() => handleDeleteDepartment(department.departmentId)}
-                              size="small"
+                          <Tooltip title="Delete Department">
+                            <IconButton 
+                              size="small" 
                               sx={{ color: '#EF4444' }}
                             >
                               <Delete fontSize="small" />
@@ -645,52 +476,36 @@ export default function DepartmentManagement() {
               </TableBody>
             </Table>
           </TableContainer>
-
-          {/* Pagination */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+          
+          {/* Pagination Controls */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="#64748B" sx={{ mr: 2 }}>
+              Page {currentPage} of {pageCount || 1}
+            </Typography>
             <Button
+              variant="outlined"
+              size="small"
               startIcon={<ChevronLeft />}
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              sx={{
-                color: currentPage === 1 ? '#CBD5E1' : '#64748B',
-                textTransform: 'none'
-              }}
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1 || pageCount === 0}
+              sx={{ minWidth: 100, textTransform: 'none', mr: 1 }}
             >
-              PREVIOUS
+              Previous
             </Button>
-            {[...Array(Math.min(totalPages, 4))].map((_, index) => (
-              <Button
-                key={index}
-                variant={currentPage === index + 1 ? "contained" : "text"}
-                sx={{
-                  minWidth: '36px',
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '4px',
-                  backgroundColor: currentPage === index + 1 ? '#0288d1' : 'transparent',
-                  color: currentPage === index + 1 ? 'white' : '#64748B'
-                }}
-                onClick={() => setCurrentPage(index + 1)}
-              >
-                {index + 1}
-              </Button>
-            ))}
             <Button
+              variant="outlined"
+              size="small"
               endIcon={<ChevronRight />}
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages || totalPages === 0}
-              sx={{
-                color: currentPage === totalPages || totalPages === 0 ? '#CBD5E1' : '#64748B',
-                textTransform: 'none'
-              }}
+              onClick={handleNextPage}
+              disabled={currentPage === pageCount || pageCount === 0}
+              sx={{ minWidth: 100, textTransform: 'none' }}
             >
-              NEXT
+              Next
             </Button>
           </Box>
         </Box>
       </Box>
-
+      
       {/* Department Modal (View/Add/Edit) */}
       <Modal
         open={showModal}
@@ -742,23 +557,24 @@ export default function DepartmentManagement() {
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="caption" color="#64748B">Programs Offered</Typography>
-                  <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selectedDepartment?.offeredPrograms.length > 0 ? (
-                      selectedDepartment.offeredPrograms.map((program, idx) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                    {selectedDepartment?.offeredPrograms && selectedDepartment.offeredPrograms.length > 0 ? (
+                      selectedDepartment.offeredPrograms.map((program, i) => (
                         <Chip 
-                          key={idx} 
+                          key={i} 
                           label={program} 
                           size="small" 
                           sx={{ 
-                            bgcolor: '#E2E8F0', 
-                            color: '#475569',
-                            fontSize: '0.75rem',
-                            height: 24
+                            fontSize: '0.75rem', 
+                            bgcolor: '#E0F2FE',
+                            color: '#0369A1'
                           }} 
                         />
                       ))
                     ) : (
-                      <Typography variant="body2" sx={{ color: '#64748B' }}>No programs offered</Typography>
+                      <Typography variant="body2" color="#64748B">
+                        No programs offered
+                      </Typography>
                     )}
                   </Box>
                 </Grid>
@@ -802,50 +618,53 @@ export default function DepartmentManagement() {
                   />
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#475569' }}>
+                  <Typography variant="caption" color="#64748B" sx={{ mb: 1, display: 'block' }}>
                     Programs Offered
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                    {formData.offeredPrograms.map((program, idx) => (
-                      <Chip 
-                        key={idx} 
-                        label={program} 
-                        onDelete={() => handleRemoveProgram(idx)}
-                        size="small" 
-                        sx={{ 
-                          bgcolor: '#E2E8F0', 
-                          color: '#475569',
-                          fontSize: '0.75rem',
-                          height: 24
-                        }} 
-                      />
-                    ))}
-                    {formData.offeredPrograms.length === 0 && (
-                      <Typography variant="body2" sx={{ color: '#64748B', fontStyle: 'italic' }}>
-                        No programs added yet
-                      </Typography>
-                    )}
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', mb: 1 }}>
                     <TextField
                       value={newProgram}
                       onChange={(e) => setNewProgram(e.target.value)}
                       placeholder="Add a program"
                       size="small"
-                      sx={{ flex: 1 }}
+                      fullWidth
                     />
                     <Button
+                      variant="contained"
                       onClick={handleAddProgram}
-                      variant="outlined"
-                      size="small"
+                      disabled={newProgram.trim() === ''}
                       sx={{
-                        color: '#0288d1',
-                        borderColor: '#0288d1',
+                        ml: 1,
+                        bgcolor: '#0288d1',
+                        '&:hover': {
+                          bgcolor: '#0277bd'
+                        },
                         textTransform: 'none'
                       }}
                     >
                       Add
                     </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                    {formData.offeredPrograms.length > 0 ? (
+                      formData.offeredPrograms.map((program, i) => (
+                        <Chip 
+                          key={i} 
+                          label={program} 
+                          onDelete={() => handleRemoveProgram(program)}
+                          size="small" 
+                          sx={{ 
+                            fontSize: '0.75rem', 
+                            bgcolor: '#E0F2FE',
+                            color: '#0369A1'
+                          }} 
+                        />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="#64748B">
+                        No programs added
+                      </Typography>
+                    )}
                   </Box>
                 </Grid>
               </Grid>
@@ -887,21 +706,20 @@ export default function DepartmentManagement() {
               // Add/Edit Mode Actions
               <>
                 <Button
-                 variant="outlined"
-                 onClick={handleCloseModal}
-                 sx={{
-                   color: '#64748B',
-                   borderColor: '#CBD5E1',
-                   textTransform: 'none',
-                   fontWeight: 500
-                 }}
-               >
-
-Cancel
+                  variant="outlined"
+                  onClick={handleCloseModal}
+                  sx={{
+                    color: '#64748B',
+                    borderColor: '#CBD5E1',
+                    textTransform: 'none',
+                    fontWeight: 500
+                  }}
+                >
+                  Cancel
                 </Button>
                 <Button
                   variant="contained"
-                  onClick={handleSubmit}
+                  onClick={modalMode === 'add' ? handleSubmitAddDepartment : handleSubmitEditDepartment}
                   sx={{
                     backgroundColor: '#0288d1',
                     '&:hover': {
@@ -911,115 +729,10 @@ Cancel
                     fontWeight: 500
                   }}
                 >
-                  {modalMode === 'add' ? 'Create Department' : 'Save Changes'}
+                  {modalMode === 'add' ? 'Add Department' : 'Save Changes'}
                 </Button>
               </>
             )}
-          </Box>
-        </Box>
-      </Modal>
-
-      {/* Error Snackbar */}
-      <Modal
-        open={Boolean(error)}
-        onClose={() => setError(null)}
-        aria-labelledby="error-modal"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '10%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 400,
-          bgcolor: '#FEECEB',
-          borderRadius: 1,
-          boxShadow: 3,
-          p: 3,
-          border: '1px solid #EF4444'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <Box sx={{ p: 1, borderRadius: '50%', bgcolor: '#FEE2E2' }}>
-              <Close sx={{ color: '#EF4444', fontSize: 22 }} />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#B91C1C', mb: 1 }}>
-                Error
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#7F1D1D', mb: 2 }}>
-                {error}
-              </Typography>
-              <Button
-                size="small"
-                onClick={() => setError(null)}
-                sx={{
-                  bgcolor: 'white',
-                  color: '#EF4444',
-                  border: '1px solid #FECACA',
-                  '&:hover': {
-                    bgcolor: '#FEF2F2',
-                    border: '1px solid #FECACA',
-                  },
-                  textTransform: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Dismiss
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      </Modal>
-
-      {/* Success Notification */}
-      <Modal
-        open={false} // This can be controlled by a state variable in your actual implementation
-        onClose={() => {}} // Add appropriate handler
-        aria-labelledby="success-modal"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '10%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 400,
-          bgcolor: '#ECFDF5',
-          borderRadius: 1,
-          boxShadow: 3,
-          p: 3,
-          border: '1px solid #10B981'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <Box sx={{ p: 1, borderRadius: '50%', bgcolor: '#D1FAE5' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#047857', mb: 1 }}>
-                Success
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#065F46', mb: 2 }}>
-                Operation completed successfully!
-              </Typography>
-              <Button
-                size="small"
-                onClick={() => {}} // Add appropriate handler
-                sx={{
-                  bgcolor: 'white',
-                  color: '#10B981',
-                  border: '1px solid #A7F3D0',
-                  '&:hover': {
-                    bgcolor: '#F0FDFA',
-                    border: '1px solid #A7F3D0',
-                  },
-                  textTransform: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Dismiss
-              </Button>
-            </Box>
           </Box>
         </Box>
       </Modal>

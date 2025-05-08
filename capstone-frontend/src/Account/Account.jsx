@@ -91,7 +91,6 @@ const fetchProfessors = async () => {
         }
     });
     setProfessors(response.data);
-    console.log(response.data);
     setError(null);
     } catch (err) {
     console.error('Error fetching professors:', err);
@@ -237,7 +236,7 @@ const handleEditClick = (professor) => {
       firstName: professor.firstName,
       lastName: professor.lastName,
       email: professor.email,
-      departmentId: professor.department?.departmentId || "",  // Get departmentId from the department object
+      departmentId: professor.department && professor.department.departmentId ? professor.department.departmentId : "",
       schoolId: professor.schoolId,
       role: professor.role || "USER",
       password: professor.password || "",
@@ -316,8 +315,9 @@ const handleDeleteProfessor = async (professorId) => {
 // Filter professors based on search term and active filter
 const filteredProfessors = professors.filter((professor) => {
     const fullName = `${professor.firstName || ''} ${professor.lastName || ''}`.toLowerCase();
-    const departmentName = getDepartmentName(professor.departmentId).toLowerCase();
-    const departmentAbbr = getDepartmentAbbreviation(professor.departmentId).toLowerCase();
+    const departmentId = professor.department?.departmentId;
+    const departmentName = departmentId ? getDepartmentName(departmentId).toLowerCase() : '';
+    const departmentAbbr = departmentId ? getDepartmentAbbreviation(departmentId).toLowerCase() : '';
     
     const matchesSearch = 
     fullName.includes(searchTerm.toLowerCase()) ||
@@ -331,7 +331,7 @@ const filteredProfessors = professors.filter((professor) => {
     // Apply additional filtering based on activeFilter if needed
     switch(activeFilter) {
     case 'Department':
-        return matchesSearch && professor.departmentId;
+        return matchesSearch && professor.department?.departmentId;
     case 'ID':
         return matchesSearch && professor.schoolId;
     case 'Name':
@@ -342,354 +342,230 @@ const filteredProfessors = professors.filter((professor) => {
 });
 
 return (
-    <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <Box sx={{ 
-        width: 240, 
-        bgcolor: 'white', 
-        borderRight: '1px solid #EAECF0',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
-    }}>
-        <Box sx={{ p: 3, borderBottom: '1px solid #EAECF0', display: 'flex', justifyContent: 'center' }}>
-            <img src="/timed 1.png" alt="TimeED Logo" style={{ height: 80 }} />
-        </Box>
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Button 
-            startIcon={<Home />} 
-            onClick={handleNavigateToDashboard}
-            sx={{ 
-            justifyContent: 'flex-start', 
-            color: location.pathname === '/' ? '#0288d1' : '#64748B',
-            fontWeight: location.pathname === '/' ? 600 : 500,
-            py: 1.5,
-            px: 2,
-            textAlign: 'left'
-            }}
-        >
-            DASHBOARD
-        </Button>
-        <Button 
-            startIcon={<Event />} 
-            onClick={handleNavigateToEvent}
-            sx={{ 
-            justifyContent: 'flex-start', 
-            color: location.pathname === '/event' ? '#0288d1' : '#64748B',
-            fontWeight: location.pathname === '/event' ? 600 : 500,
-            py: 1.5,
-            px: 2,
-            textAlign: 'left'
-            }}
-        >
-            EVENT
-        </Button>
-        <Button 
-            startIcon={<People />} 
-            onClick={handleNavigateToAccounts}
-            sx={{ 
-            justifyContent: 'flex-start', 
-            color: location.pathname === '/accounts' ? '#0288d1' : '#64748B',
-            fontWeight: location.pathname === '/accounts' ? 600 : 500,
-            py: 1.5,
-            px: 2,
-            textAlign: 'left'
-            }}
-        >
-            ACCOUNTS
-        </Button>
-                    
-<Button
-startIcon={<AccountTree />}
-onClick={handleNavigateToDepartment}
-sx={{
-
-    justifyContent: 'flex-start',
-    color: location.pathname === '/department' ? '#0288d1' : '#64748B',
-    fontWeight: location.pathname === '/department' ? 600 : 500,
-    py: 1.5,
-    px: 2,
-    textAlign: 'left'
-}}
->
-DEPARTMENTS
-</Button>
-        <Button 
-            startIcon={<Settings />} 
-            onClick={handleNavigateToSettings}
-            sx={{ 
-            justifyContent: 'flex-start', 
-            color: location.pathname === '/settings' ? '#0288d1' : '#64748B',
-            fontWeight: location.pathname === '/settings' ? 600 : 500,
-            py: 1.5,
-            px: 2,
-            textAlign: 'left'
-            }}
-        >
-            SETTING
-        </Button>
-        </Box>
-    </Box>
-
-    {/* Main Content */}
-    <Box sx={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100vh',
-        overflow: 'hidden'
-    }}>
-        {/* Top Bar */}
-        <Box sx={{ 
-        py: 1.5, 
-        px: 3,
-        bgcolor: 'white', 
-        borderBottom: '1px solid #EAECF0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-        }}>
-        <Typography variant="h5" fontWeight="600" color="#1E293B">
-            Account Management
+    <Box>
+      <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3 
+      }}>
+        <Typography variant="h6" fontWeight="600" color="#1E293B">
+          Faculty Accounts
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Paper
+          <Paper
             elevation={0}
             sx={{ 
-                p: '2px 4px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                width: 300, 
-                bgcolor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '4px'
+              p: '2px 4px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              width: 300, 
+              bgcolor: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '4px'
             }}
-            >
+          >
             <IconButton sx={{ p: '10px' }} aria-label="search">
-                <Search sx={{ color: '#64748B' }} />
+              <Search sx={{ color: '#64748B' }} />
             </IconButton>
             <InputBase
-                sx={{ ml: 1, flex: 1, fontSize: 14 }}
-                placeholder="Search Faculty..."
-                value={searchTerm}
-                onChange={handleSearch}
+              sx={{ ml: 1, flex: 1, fontSize: 14 }}
+              placeholder="Search Faculty..."
+              value={searchTerm}
+              onChange={handleSearch}
             />
-            </Paper>
-            <Button 
+          </Paper>
+          <Button 
             variant="outlined" 
             startIcon={<FilterList />}
             size="small"
             onClick={handleFilterClick}
             sx={{
-                borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
-                color: activeFilter ? '#0288d1' : '#64748B',
-                textTransform: 'none',
-                fontWeight: 500,
-                mr: 0.6,
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                py: 0.5,
-                px: 2
+              borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
+              color: activeFilter ? '#0288d1' : '#64748B',
+              textTransform: 'none',
+              fontWeight: 500,
+              mr: 0.6,
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              py: 0.5,
+              px: 2
             }}
-            >
+          >
             {activeFilter || 'FILTER'}
-            </Button>
-            <Menu
+          </Button>
+          <Menu
             anchorEl={filterAnchorEl}
             open={filterMenuOpen}
             onClose={handleFilterClose}
             PaperProps={{
-                elevation: 3,
-                sx: { 
+              elevation: 3,
+              sx: { 
                 width: 180,
                 mt: 1,
                 '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
+                  fontSize: 14,
+                  py: 1
                 }
-                }
+              }
             }}
-            >
+          >
             <MenuItem onClick={() => handleFilterSelect('Department')}>
-                <ListItemIcon>
+              <ListItemIcon>
                 <Group fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Department</ListItemText>
+              </ListItemIcon>
+              <ListItemText>Department</ListItemText>
             </MenuItem>
             <MenuItem onClick={() => handleFilterSelect('ID')}>
-                <ListItemIcon>
+              <ListItemIcon>
                 <CalendarToday fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>ID</ListItemText>
+              </ListItemIcon>
+              <ListItemText>ID</ListItemText>
             </MenuItem>
             <MenuItem onClick={() => handleFilterSelect('Name')}>
-                <ListItemIcon>
+              <ListItemIcon>
                 <People fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Name</ListItemText>
+              </ListItemIcon>
+              <ListItemText>Name</ListItemText>
             </MenuItem>
-            </Menu>
-            <NotificationSystem />
-            <Avatar 
-            onClick={handleAvatarClick}
-            sx={{ 
-                width: 36, 
-                height: 36,
-                bgcolor: '#CBD5E1',
-                color: 'white',
-                cursor: 'pointer'
-            }}
-            >
-            P
-            </Avatar>
-            <Menu
-            anchorEl={avatarAnchorEl}
-            open={avatarMenuOpen}
-            onClose={handleAvatarClose}
-            PaperProps={{
-                elevation: 3,
-                sx: { 
-                width: 180,
-                mt: 1,
-                '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
-                }
-                }
-            }}
-            >
-            <MenuItem onClick={handleLogout}>
-                <ListItemIcon>
-                <Logout fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Logout</ListItemText>
-            </MenuItem>
-            </Menu>
-        </Box>
-        </Box>
-
-        {/* Account Content */}
-        <Box sx={{ 
-        p: 3, 
-        flex: 1, 
-        overflow: 'auto', 
-        bgcolor: '#FFFFFF' 
-        }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6" fontWeight="600" color="#1E293B">
-            Faculty Accounts
-            </Typography>
-            <Button
+          </Menu>
+          <Button
             variant="contained"
             startIcon={<Add />}
             onClick={handleAddClick}
             sx={{
-                bgcolor: '#0288d1',
-                '&:hover': {
+              bgcolor: '#0288d1',
+              '&:hover': {
                 bgcolor: '#0277bd',
-                },
-                textTransform: 'none',
-                borderRadius: '4px',
-                fontWeight: 500
+              },
+              textTransform: 'none',
+              borderRadius: '4px',
+              fontWeight: 500
             }}
-            >
+          >
             Add Faculty
-            </Button>
+          </Button>
         </Box>
+      </Box>
 
-        <Paper 
-            elevation={0} 
-            sx={{ 
-            borderRadius: '8px', 
-            border: '1px solid #E2E8F0',
-            overflow: 'hidden'
-            }}
-        >
-            <TableContainer>
-            <Table sx={{ minWidth: 650 }}>
-                <TableHead sx={{ bgcolor: '#F8FAFC' }}>
+      {/* Faculty Table */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          mb: 3,
+          border: '1px solid #E2E8F0',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}
+      >
+        <TableContainer sx={{ maxHeight: 'calc(100vh - 240px)' }}>
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>School ID</TableCell>
+                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
+                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 150 }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading ? (
                 <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#64748B', py: 2 }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#64748B', py: 2 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#64748B', py: 2 }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#64748B', py: 2 }}>Department</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#64748B', py: 2 }}>Actions</TableCell>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <CircularProgress size={30} />
+                  </TableCell>
                 </TableRow>
-                </TableHead>
-                <TableBody>
-                {isLoading ? (
-                    <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                        <CircularProgress size={24} sx={{ color: '#0288d1' }} />
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : filteredProfessors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    No faculty members found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredProfessors.map((professor) => (
+                  <TableRow 
+                    key={professor.userId}
+                    sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
+                  >
+                    <TableCell>{professor.schoolId}</TableCell>
+                    <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
+                    <TableCell>{professor.email}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        try {
+                          if (professor.role === 'ADMIN') {
+                            return (
+                              <>
+                                ADMIN
+                                <Typography variant="caption" color="#64748B" display="block">
+                                  AD
+                                </Typography>
+                              </>
+                            );
+                          } else if (professor.department && professor.department.departmentId) {
+                            return (
+                              <>
+                                {getDepartmentName(professor.department.departmentId)}
+                                <Typography variant="caption" color="#64748B" display="block">
+                                  {getDepartmentAbbreviation(professor.department.departmentId)}
+                                </Typography>
+                              </>
+                            );
+                          } else {
+                            return 'Not assigned';
+                          }
+                        } catch (error) {
+                          console.error("Error rendering department for", professor.firstName, professor.lastName, error);
+                          return 'Not assigned';
+                        }
+                      })()}
                     </TableCell>
-                    </TableRow>
-                ) : error ? (
-                    <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#EF4444' }}>
-                        {error}
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleViewClick(professor)}
+                          sx={{ color: '#64748B' }}
+                        >
+                          <VisibilityOutlined fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleEditClick(professor)}
+                          sx={{ color: '#0288d1' }}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleDeleteProfessor(professor.userId)}
+                          sx={{ color: '#EF4444' }}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </TableCell>
-                    </TableRow>
-                ) : filteredProfessors.length === 0 ? (
-                    <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#64748B' }}>
-                        No Faculty found
-                    </TableCell>
-                    </TableRow>
-                ) : (
-                    filteredProfessors.map((professor) => (
-                    <TableRow key={professor.schoolId} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
-                        <TableCell sx={{ py: 2 }}>{professor.schoolId}</TableCell>
-                        <TableCell sx={{ py: 2 }}>{`${professor.firstName} ${professor.lastName}`}</TableCell>
-                        <TableCell sx={{ py: 2 }}>{professor.email}</TableCell>
-                        <TableCell sx={{ py: 2 }}>
-                        {getDepartmentName(professor.department.departmentId)} 
-                        {professor.department.departmentId && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                            ({getDepartmentAbbreviation(professor.department.departmentId)})
-                            </Typography>
-                        )}
-                        </TableCell>
-                        <TableCell sx={{ py: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <IconButton 
-                            size="small" 
-                            sx={{ color: '#0288d1' }}
-                            onClick={() => handleViewClick(professor)}
-                            >
-                            <VisibilityOutlined fontSize="small" />
-                            </IconButton>
-                            <IconButton 
-                            size="small" 
-                            sx={{ color: '#10B981' }}
-                            onClick={() => handleEditClick(professor)}
-                            >
-                            <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton 
-                            size="small" 
-                            sx={{ color: '#EF4444' }}
-                            onClick={() => handleDeleteProfessor(professor.userId)}
-                            >
-                            <Delete fontSize="small" />
-                            </IconButton>
-                        </Box>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                )}
-                </TableBody>
-            </Table>
-            </TableContainer>
-        </Paper>
-        </Box>
-    </Box>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
 
-    {/* Add Professor Modal */}
-    <Modal
+      {/* Add Professor Modal */}
+      <Modal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
         aria-labelledby="add-professor-modal-title"
-    >
+      >
         <Box sx={{
         position: 'absolute',
         top: '50%',
@@ -888,14 +764,14 @@ DEPARTMENTS
             </Button>
         </Box>
         </Box>
-    </Modal>
-
-    {/* Edit Professor Modal */}
-    <Modal
+      </Modal>
+      
+      {/* Edit Professor Modal */}
+      <Modal
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         aria-labelledby="edit-professor-modal-title"
-    >
+      >
         <Box sx={{
         position: 'absolute',
         top: '50%',
@@ -1096,14 +972,14 @@ DEPARTMENTS
             </Button>
         </Box>
         </Box>
-    </Modal>
+      </Modal>
 
-    {/* View Professor Modal */}
-    <Modal
+      {/* View Professor Modal */}
+      <Modal
         open={showViewModal}
         onClose={() => setShowViewModal(false)}
         aria-labelledby="view-professor-modal-title"
-    >
+      >
         <Box sx={{
         position: 'absolute',
         top: '50%',
@@ -1156,11 +1032,24 @@ DEPARTMENTS
                     Department
                 </Typography>
                 <Typography variant="body1" color="#1E293B">
-                    {getDepartmentName(viewingProfessor.department.departmentId)}
-                    {viewingProfessor.departmentId && (
-                    <Typography variant="caption" color="text.secondary" display="inline" sx={{ ml: 1 }}>
-                        ({getDepartmentAbbreviation(viewingProfessor.department.departmentId)})
-                    </Typography>
+                    {viewingProfessor.role === "ADMIN" ? (
+                        <>
+                            ADMIN
+                            <Typography variant="caption" color="text.secondary" display="inline" sx={{ ml: 1 }}>
+                                (AD)
+                            </Typography>
+                        </>
+                    ) : viewingProfessor.department ? (
+                        <>
+                            {getDepartmentName(viewingProfessor.department.departmentId)}
+                            {viewingProfessor.department.departmentId && (
+                                <Typography variant="caption" color="text.secondary" display="inline" sx={{ ml: 1 }}>
+                                    ({getDepartmentAbbreviation(viewingProfessor.department.departmentId)})
+                                </Typography>
+                            )}
+                        </>
+                    ) : (
+                        'Not assigned'
                     )}
                 </Typography>
                 </Box>
@@ -1220,23 +1109,23 @@ DEPARTMENTS
             </Button>
         </Box>
         </Box>
-    </Modal>
+      </Modal>
 
-    {/* Snackbar notifications */}
-    <Snackbar
+      {/* Snackbar notifications */}
+      <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-    >
+      >
         <Alert 
-        onClose={handleCloseSnackbar} 
-        severity={snackbar.severity} 
-        sx={{ width: '100%' }}
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
         >
-        {snackbar.message}
+          {snackbar.message}
         </Alert>
-    </Snackbar>
+      </Snackbar>
     </Box>
 );
 }
