@@ -52,8 +52,10 @@ import {
   Edit,
   Delete,
   Logout,
-  School
+  School,
+  MoreVert
 } from '@mui/icons-material';
+import NotificationSystem from '../components/NotificationSystem';
 import './Department.css';
 
 export default function DepartmentManagement() {
@@ -425,7 +427,12 @@ export default function DepartmentManagement() {
                 borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
                 color: activeFilter ? '#0288d1' : '#64748B',
                 textTransform: 'none',
-                fontWeight: 500
+                fontWeight: 500,
+                mr: 1.5,
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                py: 0.5,
+                px: 2
               }}
             >
               {activeFilter || 'FILTER'}
@@ -465,11 +472,7 @@ export default function DepartmentManagement() {
                 <ListItemText>Faculty Count</ListItemText>
               </MenuItem>
             </Menu>
-            <IconButton>
-              <Badge badgeContent="" color="error" variant="dot">
-                <Notifications sx={{ color: '#64748B', fontSize: 20 }} />
-              </Badge>
-            </IconButton>
+            <NotificationSystem />
             <Avatar
               onClick={handleAvatarClick}
               sx={{

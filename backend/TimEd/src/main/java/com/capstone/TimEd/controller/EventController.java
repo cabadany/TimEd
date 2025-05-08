@@ -58,6 +58,19 @@ public class EventController {
             return new ArrayList<>(); // Return an empty list in case of an error
         }
     }
+    
+    @GetMapping("/getByDateRange")
+    public List<Eventdto> getEventsByDateRange(
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate) {
+        try {
+            return eventService.getEventsByDateRange(startDate, endDate);
+        } catch (Exception e) {
+            System.err.println("Error fetching events by date range: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
     @DeleteMapping("/deleteEvent/{id}")
     public String deleteEvent(@PathVariable String id) throws ExecutionException, InterruptedException {
         return eventService.deleteEvent(id);

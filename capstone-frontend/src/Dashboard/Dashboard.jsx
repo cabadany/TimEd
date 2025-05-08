@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -28,7 +28,11 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Chip
+  Chip,
+  Divider,
+  List,
+  ListItem,
+  Tooltip
 } from '@mui/material';
 import {
   Search,
@@ -49,6 +53,7 @@ import {
   Logout
 } from '@mui/icons-material';
 import './dashboard.css';
+import NotificationSystem from '../components/NotificationSystem';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -72,8 +77,10 @@ export default function Dashboard() {
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
   const avatarMenuOpen = Boolean(avatarAnchorEl);
+
   useEffect(() => {
     fetchDepartments();
+    fetchEvents();
   }, []);
   const fetchDepartments = async () => {
     try {
@@ -83,98 +90,135 @@ export default function Dashboard() {
       console.error('Error fetching departments:', error);
     }
   };
-  // Fetch events from the backend API
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('http://localhost:8080/api/events/getAll');
   
-        const formattedEvents = response.data.map(event => {
-          // Handle Firebase timestamp - improved parser that checks various timestamp formats
-          let formattedDate = 'Invalid Date';
-          
-          if (event.date) {
-            // Handle different potential timestamp formats
-            if (typeof event.date === 'string') {
-              // If date is already a string, try to parse it directly
-              const dateObj = new Date(event.date);
-              if (!isNaN(dateObj.getTime())) {
-                formattedDate = dateObj.toLocaleString('en-PH', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                  timeZone: 'Asia/Manila'
-                });
-              }
-            } else if (typeof event.date === 'object') {
-              // Check for Firestore timestamp object format
-              if (event.date.seconds && event.date.nanoseconds) {
-                // Classic Firestore timestamp
-                const dateObj = new Date(event.date.seconds * 1000 + event.date.nanoseconds / 1000000);
-                formattedDate = dateObj.toLocaleString('en-PH', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                  timeZone: 'Asia/Manila'
-                });
-              } else if (event.date.toDate && typeof event.date.toDate === 'function') {
-                // Firestore timestamp with toDate method
-                const dateObj = event.date.toDate();
-                formattedDate = dateObj.toLocaleString('en-PH', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                  timeZone: 'Asia/Manila'
-                });
-              } else if (event.date._seconds && event.date._nanoseconds) {
-                // Serialized Firestore timestamp
-                const dateObj = new Date(event.date._seconds * 1000 + event.date._nanoseconds / 1000000);
-                formattedDate = dateObj.toLocaleString('en-PH', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                  timeZone: 'Asia/Manila'
-                });
-              }
+  // Fetch events from the backend API with date range filtering
+  const fetchEvents = async (startDate = '', endDate = '') => {
+    try {
+      setLoading(true);
+      
+      // Construct URL with query parameters for date range filtering
+      let url = 'http://localhost:8080/api/events/getAll';
+      
+      if (startDate || endDate) {
+        url = 'http://localhost:8080/api/events/getByDateRange';
+        if (startDate) url += `?startDate=${startDate}`;
+        if (endDate) url += `${startDate ? '&' : '?'}endDate=${endDate}`;
+      }
+      
+      const response = await axios.get(url);
+
+      const formattedEvents = response.data.map(event => {
+        // Handle Firebase timestamp - improved parser that checks various timestamp formats
+        let formattedDate = 'Invalid Date';
+        
+        if (event.date) {
+          // Handle different potential timestamp formats
+          if (typeof event.date === 'string') {
+            // If date is already a string, try to parse it directly
+            const dateObj = new Date(event.date);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toLocaleString('en-PH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+              });
+            }
+          } else if (typeof event.date === 'object') {
+            // Check for Firestore timestamp object format
+            if (event.date.seconds && event.date.nanoseconds) {
+              // Classic Firestore timestamp
+              const dateObj = new Date(event.date.seconds * 1000 + event.date.nanoseconds / 1000000);
+              formattedDate = dateObj.toLocaleString('en-PH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+              });
+            } else if (event.date.toDate && typeof event.date.toDate === 'function') {
+              // Firestore timestamp with toDate method
+              const dateObj = event.date.toDate();
+              formattedDate = dateObj.toLocaleString('en-PH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+              });
+            } else if (event.date._seconds && event.date._nanoseconds) {
+              // Serialized Firestore timestamp
+              const dateObj = new Date(event.date._seconds * 1000 + event.date._nanoseconds / 1000000);
+              formattedDate = dateObj.toLocaleString('en-PH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+              });
             }
           }
-  
-          return {
-            id: event.eventId || `#${Math.floor(Math.random() * 90000000) + 10000000}`,
-            name: event.eventName || 'Unnamed Event',
-            duration: event.duration || '0 mins',
-            date: formattedDate,
-            status: event.status || 'Unknown',
-            createdBy: event.createdBy || 'Unknown',
-            departmentId: event.departmentId || null // Added departmentId here
-          };
-        });
-  
-        setEvents(formattedEvents);
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch events:', error);
-        setError('Failed to load events. Please try again later.');
-        setLoading(false);
+        }
+
+        return {
+          id: event.eventId || `#${Math.floor(Math.random() * 90000000) + 10000000}`,
+          name: event.eventName || 'Unnamed Event',
+          duration: event.duration || '0 mins',
+          date: formattedDate,
+          status: event.status || 'Unknown',
+          createdBy: event.createdBy || 'Unknown',
+          departmentId: event.departmentId || null // Added departmentId here
+        };
+      });
+
+      setEvents(formattedEvents);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      setError('Failed to load events. Please try again later.');
+      setLoading(false);
+    }
+  };
+
+  // Handle date filter changes
+  const handleDateFilterChange = async () => {
+    try {
+      // Validate date range
+      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        setError('Start date cannot be after end date');
+        return;
       }
-    };
+      
+      setError(null);
+      await fetchEvents(startDate, endDate);
+    } catch (error) {
+      console.error('Error applying date filter:', error);
+      setError('Failed to filter events. Please try again.');
+    }
+  };
   
+  // Clear date filters
+  const handleClearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
     fetchEvents();
-    fetchDepartments();
-  }, []);
+  };
+
+  // Update events when date filters change
+  useEffect(() => {
+    if (startDate || endDate) {
+      handleDateFilterChange();
+    }
+  }, [startDate, endDate]);
 
   const handleViewEvent = (event) => {
     navigate(`/attendance/${event.id}`);
@@ -397,33 +441,40 @@ export default function Dashboard() {
             <Paper
               elevation={0}
               sx={{ 
-                p: '2px 4px', 
                 display: 'flex', 
                 alignItems: 'center', 
-                width: 300, 
-                bgcolor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '4px'
+                px: 2, 
+                py: 0.5, 
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0'
               }}
             >
-              <IconButton sx={{ p: '10px' }} aria-label="search">
-                <Search sx={{ color: '#64748B' }} />
-              </IconButton>
               <InputBase
-                sx={{ ml: 1, flex: 1, fontSize: 14 }}
                 placeholder="Search for something"
+                sx={{ ml: 1, flex: 1, fontSize: 14 }}
               />
+              <IconButton size="small">
+                <Search sx={{ color: '#64748B', fontSize: 20 }} />
+              </IconButton>
             </Paper>
             <Button 
-              variant="outlined" 
-              startIcon={<FilterList />}
-              size="small"
+              startIcon={<FilterList />} 
               onClick={handleFilterClick}
-              sx={{
-                borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
-                color: activeFilter ? '#0288d1' : '#64748B',
+              sx={{ 
+                bgcolor: activeFilter ? '#EFF6FF' : 'transparent', 
+                color: activeFilter ? '#3B82F6' : '#64748B',
+                borderRadius: '8px',
                 textTransform: 'none',
-                fontWeight: 500
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                py: 0.5,
+                px: 2,
+                mr: 1.5,
+                border: '1px solid',
+                borderColor: activeFilter ? '#3B82F6' : '#E2E8F0',
+                '&:hover': {
+                  bgcolor: activeFilter ? '#DBEAFE' : '#F8FAFC' 
+                }
               }}
             >
               {activeFilter || 'FILTER'}
@@ -469,11 +520,7 @@ export default function Dashboard() {
                 <ListItemText>Event</ListItemText>
               </MenuItem>
             </Menu>
-            <IconButton>
-              <Badge badgeContent="" color="error" variant="dot">
-                <Notifications sx={{ color: '#64748B', fontSize: 20 }} />
-              </Badge>
-            </IconButton>
+            <NotificationSystem />
             <Avatar 
               onClick={handleAvatarClick}
               sx={{ 
@@ -520,7 +567,7 @@ export default function Dashboard() {
           bgcolor: '#FFFFFF' 
         }}>
           {/* Date Range */}
-          <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Typography variant="body1" sx={{ color: '#475569' }}>
               Date from
             </Typography>
@@ -571,7 +618,25 @@ export default function Dashboard() {
                 sx: { paddingBottom: 0 }
               }}
             />
+            <Button 
+              variant="text" 
+              onClick={handleClearDateFilter}
+              sx={{ 
+                color: '#64748B',
+                fontSize: '0.875rem',
+                ml: 1
+              }}
+            >
+              Clear
+            </Button>
           </Box>
+          {error && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="error">
+                {error}
+              </Typography>
+            </Box>
+          )}
 
           {/* Events Count */}
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -634,16 +699,18 @@ export default function Dashboard() {
               </TableHead>
               <TableBody>
                 {loading ? (
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    <CircularProgress size={24} sx={{ color: '#0288d1' }} />
-                  </TableCell>
-                ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ color: '#EF4444' }}>{error}</TableCell>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                      <CircularProgress size={24} sx={{ color: '#0288d1' }} />
+                    </TableCell>
+                  </TableRow>
+                ) : error && !error.includes('Start date') ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ color: '#EF4444' }}>{error}</TableCell>
                   </TableRow>
                 ) : currentEvents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">No events found</TableCell>
+                    <TableCell colSpan={7} align="center">No events found</TableCell>
                   </TableRow>
                 ) : (
                   currentEvents.map((event, index) => (

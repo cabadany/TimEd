@@ -77,6 +77,102 @@ public class AttendanceService {
             return "Failed to mark time-out: " + e.getMessage();
         }
     }
+    
+    public String manualTimeIn(String eventId, String userId) {
+        try {
+            String now = Instant.now().toString();
+            
+            // Check if attendee record exists
+            DocumentReference attendeeRef = firestore.collection("events")
+                    .document(eventId)
+                    .collection("attendees")
+                    .document(userId);
+            
+            ApiFuture<DocumentSnapshot> future = attendeeRef.get();
+            DocumentSnapshot document = future.get();
+            
+            Map<String, Object> attendanceData = new HashMap<>();
+            attendanceData.put("attended", true);
+            attendanceData.put("timeIn", now);
+            attendanceData.put("manualEntry", true);
+            
+            if (document.exists()) {
+                // Update existing record
+                attendeeRef.update(attendanceData);
+            } else {
+                // Create new record
+                attendeeRef.set(attendanceData);
+            }
+            
+            // Update user-side record
+            DocumentReference userEventRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("attendedEvents")
+                    .document(eventId);
+            
+            Map<String, Object> userSide = new HashMap<>();
+            userSide.put("eventId", eventId);
+            userSide.put("timeIn", now);
+            userSide.put("manualEntry", true);
+            
+            ApiFuture<DocumentSnapshot> userFuture = userEventRef.get();
+            DocumentSnapshot userDocument = userFuture.get();
+            
+            if (userDocument.exists()) {
+                userEventRef.update(userSide);
+            } else {
+                userEventRef.set(userSide);
+            }
+            
+            return "Manual time-in recorded for user " + userId + " at event " + eventId;
+            
+        } catch (Exception e) {
+            return "Failed to mark manual time-in: " + e.getMessage();
+        }
+    }
+    
+    public String manualTimeOut(String eventId, String userId) {
+        try {
+            String now = Instant.now().toString();
+            
+            // Check if attendee record exists
+            DocumentReference attendeeRef = firestore.collection("events")
+                    .document(eventId)
+                    .collection("attendees")
+                    .document(userId);
+            
+            ApiFuture<DocumentSnapshot> future = attendeeRef.get();
+            DocumentSnapshot document = future.get();
+            
+            if (!document.exists()) {
+                return "Cannot time-out: No attendance record found for user " + userId;
+            }
+            
+            Map<String, Object> updateMap = new HashMap<>();
+            updateMap.put("timeOut", now);
+            updateMap.put("manualEntry", true);
+            
+            attendeeRef.update(updateMap);
+            
+            // Update user-side record
+            DocumentReference userEventRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("attendedEvents")
+                    .document(eventId);
+            
+            ApiFuture<DocumentSnapshot> userFuture = userEventRef.get();
+            DocumentSnapshot userDocument = userFuture.get();
+            
+            if (userDocument.exists()) {
+                userEventRef.update(updateMap);
+            }
+            
+            return "Manual time-out recorded for user " + userId + " at event " + eventId;
+            
+        } catch (Exception e) {
+            return "Failed to mark manual time-out: " + e.getMessage();
+        }
+    }
 
     public List<Map<String, String>> getAttendees(String eventId) {
         List<Map<String, String>> attendees = new ArrayList<>();
@@ -94,6 +190,7 @@ public class AttendanceService {
                 String userId = doc.getId();
                 String timeIn = doc.getString("timeIn");
                 String timeOut = doc.getString("timeOut");
+                Boolean manualEntry = doc.getBoolean("manualEntry");
 
                 // Fetch user details
                 DocumentReference userRef = firestore.collection("users").document(userId);
@@ -105,27 +202,51 @@ public class AttendanceService {
                     userDetails.put("userId", userId);
                     userDetails.put("timeIn", timeIn);
                     userDetails.put("timeOut", timeOut != null ? timeOut : "N/A");
+                    userDetails.put("manualEntry", manualEntry != null && manualEntry ? "true" : "false");
 
                     // Safely retrieve string fields, add fallback values if they are null
                     userDetails.put("email", Optional.ofNullable(userDoc.getString("email")).orElse("N/A"));
                     userDetails.put("firstName", Optional.ofNullable(userDoc.getString("firstName")).orElse("N/A"));
                     userDetails.put("lastName", Optional.ofNullable(userDoc.getString("lastName")).orElse("N/A"));
 
-                    // Handle the department field to only display the department name
-                    Object departmentObj = userDoc.get("department");
-
-                    if (departmentObj instanceof Map) {
-                        // If department is a Map, get the 'name' field
-                        Map<String, Object> department = (Map<String, Object>) departmentObj;
-                        String departmentName = (String) department.get("name");
-                        userDetails.put("department", departmentName != null ? departmentName : "N/A");
-                    } else if (departmentObj instanceof String) {
-                        // If department is a String, just use it as the department name
-                        String departmentName = (String) departmentObj;
-                        userDetails.put("department", departmentName != null ? departmentName : "N/A");
+                    // Enhanced department handling
+                    String departmentId = userDoc.getString("departmentId");
+                    if (departmentId != null && !departmentId.isEmpty()) {
+                        // Fetch department details
+                        DocumentReference deptRef = firestore.collection("departments").document(departmentId);
+                        ApiFuture<DocumentSnapshot> deptQuery = deptRef.get();
+                        DocumentSnapshot deptDoc = deptQuery.get();
+                        
+                        if (deptDoc.exists()) {
+                            String deptName = deptDoc.getString("name");
+                            userDetails.put("department", deptName != null ? deptName : "N/A");
+                        } else {
+                            // Handle department as object directly in user document
+                            Object departmentObj = userDoc.get("department");
+                            if (departmentObj instanceof Map) {
+                                Map<String, Object> department = (Map<String, Object>) departmentObj;
+                                String departmentName = (String) department.get("name");
+                                userDetails.put("department", departmentName != null ? departmentName : "N/A");
+                            } else if (departmentObj instanceof String) {
+                                String departmentName = (String) departmentObj;
+                                userDetails.put("department", !departmentName.isEmpty() ? departmentName : "N/A");
+                            } else {
+                                userDetails.put("department", "N/A");
+                            }
+                        }
                     } else {
-                        // If department is neither a Map nor a String, default to "N/A"
-                        userDetails.put("department", "N/A");
+                        // Handle department as object directly in user document
+                        Object departmentObj = userDoc.get("department");
+                        if (departmentObj instanceof Map) {
+                            Map<String, Object> department = (Map<String, Object>) departmentObj;
+                            String departmentName = (String) department.get("name");
+                            userDetails.put("department", departmentName != null ? departmentName : "N/A");
+                        } else if (departmentObj instanceof String) {
+                            String departmentName = (String) departmentObj;
+                            userDetails.put("department", !departmentName.isEmpty() ? departmentName : "N/A");
+                        } else {
+                            userDetails.put("department", "N/A");
+                        }
                     }
 
                     attendees.add(userDetails);

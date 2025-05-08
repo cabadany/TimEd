@@ -5,9 +5,21 @@ import LoginPage from './Auth/LoginPage';
 import Setting from './Setting/Setting';
 import './App.css';
 import ProtectedRoute from './ProtectedRoute';  // Import the ProtectedRoute
-import Accounts from './Account/Account1';
+import Accounts from './Account/Account';
 import Department from './departments/Department';
 import Attendance from './attendance/Attendance';
+import { Box } from '@mui/material';
+import NotificationSystem from './components/NotificationSystem';
+
+// Layout component without fixed notification positioning
+const AppLayout = ({ children }) => {
+  return (
+    <Box sx={{ position: 'relative' }}>
+      {children}
+    </Box>
+  );
+};
+
 function App() {
   return (
     <Router>
@@ -21,18 +33,30 @@ function App() {
           path="/department" 
           element={
             <ProtectedRoute>
-              <Department />
+              <AppLayout>
+                <Department />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
-       <Route path="/attendance/:eventId" element={<Attendance />} />
-
+        <Route 
+          path="/attendance/:eventId" 
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Attendance />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
 
         <Route 
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
@@ -40,7 +64,9 @@ function App() {
           path="/accounts" 
           element={
             <ProtectedRoute>
-              <Accounts />
+              <AppLayout>
+                <Accounts />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
@@ -48,7 +74,9 @@ function App() {
           path="/event" 
           element={
             <ProtectedRoute>
-              <Event />
+              <AppLayout>
+                <Event />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
@@ -56,7 +84,9 @@ function App() {
           path="/settings" 
           element={
             <ProtectedRoute>
-              <Setting />
+              <AppLayout>
+                <Setting />
+              </AppLayout>
             </ProtectedRoute>
           }
         />

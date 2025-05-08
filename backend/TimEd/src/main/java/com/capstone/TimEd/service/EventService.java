@@ -9,6 +9,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -249,6 +250,88 @@ public class EventService {
         }
 
         return eventDtos;  // Return the list of EventDTOs
+    }
+
+    public List<Eventdto> getEventsByDateRange(String startDateStr, String endDateStr) throws ExecutionException, InterruptedException {
+        List<Eventdto> eventDtos = new ArrayList<>();
+        
+        try {
+            // Parse input dates
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            Date startDate = null;
+            Date endDate = null;
+            
+            if (startDateStr != null && !startDateStr.isEmpty()) {
+                startDate = dateFormat.parse(startDateStr);
+            }
+            
+            if (endDateStr != null && !endDateStr.isEmpty()) {
+                endDate = dateFormat.parse(endDateStr);
+                // Set time to end of day for the end date
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(endDate);
+                calendar.set(Calendar.HOUR_OF_DAY, 23);
+                calendar.set(Calendar.MINUTE, 59);
+                calendar.set(Calendar.SECOND, 59);
+                calendar.set(Calendar.MILLISECOND, 999);
+                endDate = calendar.getTime();
+            }
+            
+            // Fetch all events if no date filters are provided
+            if (startDate == null && endDate == null) {
+                return getAllEvents();
+            }
+            
+            // Create query based on date range
+            Query query = eventsCollection;
+            
+            if (startDate != null) {
+                query = query.whereGreaterThanOrEqualTo("date", startDate);
+            }
+            
+            if (endDate != null) {
+                query = query.whereLessThanOrEqualTo("date", endDate);
+            }
+            
+            // Execute query
+            ApiFuture<QuerySnapshot> querySnapshot = query.get();
+            List<QueryDocumentSnapshot> documents = querySnapshot.get().getDocuments();
+            
+            // Process results
+            for (QueryDocumentSnapshot doc : documents) {
+                Event event = doc.toObject(Event.class);
+                
+                // Get department for the event
+                Department department = getDepartmentById(event.getDepartmentId());
+                event.setDepartment(department);
+                
+                // Format date for DTO
+                SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                String formattedDate = outputFormat.format(event.getDate());
+                
+                // Create DTO
+                Eventdto eventDto = new Eventdto(
+                    event.getEventId(),
+                    event.getEventName(),
+                    event.getStatus(),
+                    formattedDate,
+                    event.getDuration(),
+                    event.getDepartmentId(),
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"
+                );
+                
+                eventDtos.add(eventDto);
+            }
+            
+        } catch (ParseException e) {
+            System.err.println("Error parsing dates: " + e.getMessage());
+            // Return all events if date parsing fails
+            return getAllEvents();
+        } catch (InterruptedException | ExecutionException e) {
+            System.err.println("Error fetching events by date range: " + e.getMessage());
+        }
+        
+        return eventDtos;
     }
 
 }

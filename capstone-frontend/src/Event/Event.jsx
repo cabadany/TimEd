@@ -68,6 +68,7 @@ import {
   MoreVert
 } from '@mui/icons-material';
 import './Event.css';
+import NotificationSystem from '../components/NotificationSystem';
 
 export default function EventPage() {
   const navigate = useNavigate();
@@ -662,7 +663,12 @@ useEffect(() => {
                 borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
                 color: activeFilter ? '#0288d1' : '#64748B',
                 textTransform: 'none',
-                fontWeight: 500
+                fontWeight: 500,
+                mr: 1.5,
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                py: 0.5,
+                px: 2
               }}
             >
               {activeFilter || 'FILTER'}
@@ -708,11 +714,7 @@ useEffect(() => {
                 <ListItemText>Event</ListItemText>
               </MenuItem>
             </Menu>
-            <IconButton>
-              <Badge badgeContent="" color="error" variant="dot">
-                <Notifications sx={{ color: '#64748B', fontSize: 20 }} />
-              </Badge>
-            </IconButton>
+            <NotificationSystem />
             <Avatar 
               onClick={handleAvatarClick}
               sx={{ 

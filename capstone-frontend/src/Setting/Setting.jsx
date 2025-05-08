@@ -34,6 +34,7 @@ import {
   ChevronRight
 } from '@mui/icons-material';
 import './Setting.css';
+import NotificationSystem from '../components/NotificationSystem';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -316,24 +317,25 @@ export default function SettingPage() {
               />
             </Paper>
             <Button 
-              variant="outlined" 
-              startIcon={<FilterList />}
-              size="small"
+              variant="text"
               onClick={handleFilterClick}
-              sx={{
-                borderColor: activeFilter ? 'primary.main' : 'divider',
-                color: activeFilter ? 'primary.main' : 'text.secondary',
-                textTransform: 'none',
-                fontWeight: 500
+              endIcon={<FilterList />}
+              sx={{ 
+                textTransform: 'none', 
+                color: 'text.secondary',
+                fontSize: 14,
+                fontWeight: 500,
+                mr: 1.5,
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
+                py: 0.5,
+                px: 2
               }}
             >
               {activeFilter || 'FILTER'}
             </Button>
-            <IconButton>
-              <Badge badgeContent="" color="error" variant="dot">
-                <Notifications sx={{ color: 'text.secondary', fontSize: 20 }} />
-              </Badge>
-            </IconButton>
+            <NotificationSystem />
             <Avatar 
               onClick={handleAvatarClick}
               sx={{ 

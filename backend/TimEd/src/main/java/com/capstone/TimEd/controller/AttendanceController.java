@@ -38,6 +38,28 @@ public class AttendanceController {
         String result = attendanceService.markTimeOut(eventId, userId);
         return ResponseEntity.ok(result);
     }
+    
+    @PostMapping("/{eventId}/{userId}/manual/{actionType}")
+    public ResponseEntity<String> manualAttendanceAction(
+            @PathVariable String eventId,
+            @PathVariable String userId,
+            @PathVariable String actionType) {
+        try {
+            String result;
+            if ("timein".equalsIgnoreCase(actionType)) {
+                result = attendanceService.manualTimeIn(eventId, userId);
+            } else if ("timeout".equalsIgnoreCase(actionType)) {
+                result = attendanceService.manualTimeOut(eventId, userId);
+            } else {
+                return ResponseEntity.badRequest().body("Invalid action type. Use 'timein' or 'timeout'");
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(500)
+                    .body("Error processing manual attendance action: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/{eventId}/attendees")
     public ResponseEntity<List<Map<String, String>>> getAttendees(@PathVariable String eventId) {
