@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- State when button is pressed -->
+    <item android:state_pressed="true">
+        <set>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleX"
+                    android:valueTo="0.95"
+                    android:valueType="floatType"/>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleY"
+                    android:valueTo="0.95"
+                    android:valueType="floatType"/>
+            <!-- Optional: Slightly increase elevation on press for more depth -->
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="translationZ"
+                    android:valueTo="4dp" />
+        </set>
+    </item>
+    <!-- State when button is selected but not pressed -->
+    <item android:state_selected="true" android:state_pressed="false">
+        <set>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleX"
+                    android:valueTo="1.0"
+                    android:valueType="floatType"/>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleY"
+                    android:valueTo="1.0"
+                    android:valueType="floatType"/>
+            <!-- Keep selected button slightly elevated -->
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="translationZ"
+                    android:valueTo="2dp" />
+        </set>
+    </item>
+    <!-- Default state (not pressed, not selected) -->
+    <item>
+        <set>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleX"
+                    android:valueTo="1.0"
+                    android:valueType="floatType"/>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="scaleY"
+                    android:valueTo="1.0"
+                    android:valueType="floatType"/>
+            <objectAnimator
+                    android:duration="@android:integer/config_shortAnimTime"
+                    android:propertyName="translationZ"
+                    android:valueTo="0dp" />
+        </set>
+    </item>
+</selector>

@@ -12,7 +12,6 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-        <!-- ScrollView REMOVED -->
         <RelativeLayout
                 android:id="@+id/main_content_relative_layout"
                 android:layout_width="match_parent"
@@ -23,10 +22,10 @@
             <ImageView
                     android:id="@+id/top_wave_animation"
                     android:layout_width="match_parent"
-                    android:layout_height="280dp"
+                    android:layout_height="300dp"
                     android:scaleType="fitXY"
                     android:src="@drawable/animated_wave_top"
-                    android:layout_alignParentTop="true"/>
+                    android:layout_alignParentTop="true" />
 
             <!-- Title Name -->
             <TextView
@@ -35,10 +34,10 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentTop="true"
                     android:layout_centerHorizontal="true"
-                    android:layout_marginTop="48dp"
+                    android:layout_marginTop="28dp"
                     android:fontFamily="@font/league_spartan_bold"
                     android:letterSpacing="0.05"
-                    android:padding="16dp"
+                    android:padding="8dp"
                     android:shadowColor="#33000000"
                     android:shadowDx="1"
                     android:shadowDy="1"
@@ -54,12 +53,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_below="@id/titleName"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="16dp"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp"
-                    app:cardBackgroundColor="@color/white">
+                    app:cardBackgroundColor="@color/white"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:stateListAnimator="@animator/button_scale_animator">
 
                 <LinearLayout
                         android:layout_width="match_parent"
@@ -111,79 +113,95 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:contentDescription="Open navigation menu"
-                            android:background="?attr/selectableItemBackgroundBorderless"/>
+                            android:background="?attr/selectableItemBackgroundBorderless" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <!-- Filter Buttons -->
-            <HorizontalScrollView
-                    android:id="@+id/filter_buttons_scrollview"
+            <LinearLayout
+                    android:id="@+id/filter_buttons"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
                     android:layout_below="@id/greeting_card"
                     android:layout_marginTop="16dp"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:scrollbars="none">
+                    android:background="@drawable/filter_button_background"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:elevation="2dp">
 
-                <LinearLayout
-                        android:id="@+id/filter_buttons"
-                        android:layout_width="wrap_content"
+                <Button
+                        android:id="@+id/btn_filter_all"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/filter_button_background"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:elevation="2dp">
+                        android:layout_weight="1"
+                        android:text="All"
+                        android:textSize="14sp"
+                        android:textColor="@color/filter_button_text_selector"
+                        android:backgroundTint="@color/white"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="2dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:minHeight="40dp"
+                        android:gravity="center"
+                        android:stateListAnimator="@animator/button_scale_animator" />
 
-                    <Button
-                            android:id="@+id/btn_filter_all"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="All"
-                            android:textSize="14sp"
-                            android:textColor="@color/maroon"
-                            android:backgroundTint="@color/white"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="4dp"/>
+                <Button
+                        android:id="@+id/btn_filter_upcoming"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Upcoming"
+                        android:textSize="14sp"
+                        android:textColor="@color/filter_button_text_selector"
+                        android:backgroundTint="@color/white"
+                        android:layout_marginStart="2dp"
+                        android:layout_marginEnd="2dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:minHeight="40dp"
+                        android:gravity="center"
+                        android:stateListAnimator="@animator/button_scale_animator" />
 
-                    <Button
-                            android:id="@+id/btn_filter_upcoming"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Upcoming"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="4dp"
-                            android:textSize="14sp"
-                            android:textColor="@color/maroon"
-                            android:backgroundTint="@color/white" />
+                <Button
+                        android:id="@+id/btn_filter_ongoing"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Ongoing"
+                        android:textSize="14sp"
+                        android:textColor="@color/filter_button_text_selector"
+                        android:backgroundTint="@color/white"
+                        android:layout_marginStart="2dp"
+                        android:layout_marginEnd="2dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:minHeight="40dp"
+                        android:gravity="center"
+                        android:stateListAnimator="@animator/button_scale_animator" />
 
-                    <Button
-                            android:id="@+id/btn_filter_ongoing"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Ongoing"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="4dp"
-                            android:textSize="14sp"
-                            android:textColor="@color/maroon"
-                            android:backgroundTint="@color/white" />
-
-                    <Button
-                            android:id="@+id/btn_filter_ended"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Ended"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="4dp"
-                            android:textSize="14sp"
-                            android:textColor="@color/maroon"
-                            android:backgroundTint="@color/white" />
-                </LinearLayout>
-            </HorizontalScrollView>
+                <Button
+                        android:id="@+id/btn_filter_ended"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Ended"
+                        android:textSize="14sp"
+                        android:textColor="@color/filter_button_text_selector"
+                        android:backgroundTint="@color/white"
+                        android:layout_marginStart="2dp"
+                        android:layout_marginEnd="4dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:minHeight="40dp"
+                        android:gravity="center"
+                        android:stateListAnimator="@animator/button_scale_animator" />
+            </LinearLayout>
 
             <!-- Excuse Letter - Anchored to bottom -->
             <TextView
@@ -196,7 +214,11 @@
                     android:text="Send a Excuse Letter"
                     android:textColor="@color/maroon"
                     android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp"/>
 
             <!-- Time Out - Anchored above excuse letter -->
             <Button
@@ -213,7 +235,8 @@
                     android:textColor="@color/yellow_gold"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    app:cornerRadius="12dp" />
+                    app:cornerRadius="12dp"
+                    android:stateListAnimator="@animator/button_scale_animator" />
 
             <!-- Time In - Anchored above Time Out -->
             <Button
@@ -230,7 +253,8 @@
                     android:textColor="@color/maroon"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    app:cornerRadius="12dp" />
+                    app:cornerRadius="12dp"
+                    android:stateListAnimator="@animator/button_scale_animator" />
 
             <!-- Attendance Prompt - Anchored above Time In -->
             <TextView
@@ -245,18 +269,37 @@
                     android:textColor="@color/black"
                     android:textStyle="bold" />
 
-            <!-- Event List - Fills space between filter buttons and attendance prompt -->
-            <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recycler_events"
+            <!-- Event box List (Design Image) -->
+            <ImageView
+                    android:id="@+id/event_box_list"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_below="@id/filter_buttons_scrollview"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/filter_buttons"
                     android:layout_above="@id/attendance_prompt"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginStart="32dp"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="16dp"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    tools:listitem="@layout/event_card" />
+                    android:layout_marginEnd="32dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="Event list background"
+                    android:maxHeight="160dp"
+                    android:scaleType="fitXY"
+                    app:srcCompat="@drawable/event_box_list" />
+
+            <!-- Event List (RecyclerView on top of the ImageView) -->
+            <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_events"
+                    android:layout_width="350dp"
+                    android:layout_height="100dp"
+                    android:layout_alignStart="@id/event_box_list"
+                    android:layout_alignEnd="@id/event_box_list"
+                    android:layout_alignTop="@id/event_box_list"
+                    android:layout_alignBottom="@id/event_box_list"
+                    android:padding="6dp"
+                    tools:listitem="@layout/event_card"
+                    android:clipToPadding="true"
+                    android:background="@android:color/transparent" />
 
         </RelativeLayout>
     </LinearLayout>

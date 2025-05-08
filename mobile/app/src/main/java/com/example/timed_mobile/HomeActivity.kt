@@ -2,12 +2,14 @@ package com.example.timed_mobile
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,7 +40,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnTimeOut: Button
     private lateinit var excuseLetterText: TextView
 
-    private lateinit var greetingCardNavIcon: ImageView // Declared
+    private lateinit var greetingCardNavIcon: ImageView
 
     private val allEvents = mutableListOf<EventModel>()
 
@@ -69,9 +71,8 @@ class HomeActivity : AppCompatActivity() {
 
         drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.navigation_view)
-        greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon) // Initialize
+        greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
-        // Set OnClickListener for the new icon in the greeting card
         greetingCardNavIcon.setOnClickListener {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START)
@@ -139,10 +140,9 @@ class HomeActivity : AppCompatActivity() {
                         remove(LoginActivity.KEY_FIRST_NAME)
                         remove(LoginActivity.KEY_ID_NUMBER)
                         remove(LoginActivity.KEY_DEPARTMENT)
-                        // or clear()
                         apply()
                     }
-                    FirebaseAuth.getInstance().signOut() // Good practice
+                    FirebaseAuth.getInstance().signOut()
 
                     Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this, LoginActivity::class.java)
@@ -155,17 +155,45 @@ class HomeActivity : AppCompatActivity() {
             true
         }
 
-        setupFilterButtons()
+        setupFilterButtons() // This will set up the listeners correctly
         setupActionButtons()
         setupExcuseLetterRedirect()
-        loadAndStoreEvents()
+        loadAndStoreEvents() // This will call showEventsByStatus(null) and update button state
+
+        // The initial state for btnAll is now handled within loadAndStoreEvents's success block
+    }
+
+    private fun updateFilterButtonStates(selectedButton: Button) {
+        val filterButtons = listOf(btnAll, btnUpcoming, btnOngoing, btnEnded)
+
+        filterButtons.forEach { button ->
+            if (button.id == selectedButton.id) {
+                button.isSelected = true // For text color selector and StateListAnimator
+                button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.maroon)
+            } else {
+                button.isSelected = false // For text color selector and StateListAnimator
+                button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
+            }
+        }
     }
 
     private fun setupFilterButtons() {
-        btnAll.setOnClickListener { showEventsByStatus(null) }
-        btnUpcoming.setOnClickListener { showEventsByStatus("upcoming") }
-        btnOngoing.setOnClickListener { showEventsByStatus("ongoing") }
-        btnEnded.setOnClickListener { showEventsByStatus("ended") }
+        btnAll.setOnClickListener {
+            updateFilterButtonStates(btnAll)
+            showEventsByStatus(null)
+        }
+        btnUpcoming.setOnClickListener {
+            updateFilterButtonStates(btnUpcoming)
+            showEventsByStatus("upcoming")
+        }
+        btnOngoing.setOnClickListener {
+            updateFilterButtonStates(btnOngoing)
+            showEventsByStatus("ongoing")
+        }
+        btnEnded.setOnClickListener {
+            updateFilterButtonStates(btnEnded)
+            showEventsByStatus("ended")
+        }
     }
 
     private fun setupActionButtons() {
@@ -221,10 +249,13 @@ class HomeActivity : AppCompatActivity() {
 
                     allEvents.add(EventModel(title, status, formattedDate))
                 }
-                showEventsByStatus(null)
+                showEventsByStatus(null) // Display all events initially
+                updateFilterButtonStates(btnAll) // Set "All" button as selected after data load
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
+                // Even on failure, ensure a default button state
+                updateFilterButtonStates(btnAll)
             }
     }
 
@@ -233,17 +264,20 @@ class HomeActivity : AppCompatActivity() {
         val currentDate = Date()
 
         val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = formatter.parse(event.dateFormatted)
+            val eventDate = try { formatter.parse(event.dateFormatted) } catch (e: Exception) { null }
             val dynamicStatus = when {
                 eventDate == null -> "unknown"
-                eventDate.after(currentDate) -> "upcoming"
+                // For "upcoming", check if eventDate is strictly after current time
+                eventDate.after(currentDate) && !event.status.equals("ongoing", ignoreCase = true) -> "upcoming"
+                // For "ongoing", explicitly trust the status if it's "ongoing"
                 event.status.equals("ongoing", ignoreCase = true) -> "ongoing"
-                eventDate.before(currentDate) -> "ended"
+                // For "ended", check if eventDate is before current time and not "ongoing"
+                eventDate.before(currentDate) && !event.status.equals("ongoing", ignoreCase = true) -> "ended"
+                // Fallback to original status if none of the above
                 else -> event.status
             }
             event.copy(status = dynamicStatus)
         }
-
 
         val filtered = if (statusFilter == null) {
             eventsWithDynamicStatus
@@ -253,7 +287,7 @@ class HomeActivity : AppCompatActivity() {
 
         val sorted = filtered.sortedWith(compareBy(
             { statusOrder(it.status) },
-            { formatter.parse(it.dateFormatted) }
+            { try { formatter.parse(it.dateFormatted) } catch (e: Exception) { null } }
         ))
 
         recyclerEvents.adapter = EventAdapter(sorted)
@@ -264,7 +298,7 @@ class HomeActivity : AppCompatActivity() {
             "upcoming" -> 0
             "ongoing" -> 1
             "ended" -> 2
-            else -> 3
+            else -> 3 // unknown or other statuses
         }
     }
 
