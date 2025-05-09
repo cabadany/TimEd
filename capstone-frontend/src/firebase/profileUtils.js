@@ -97,8 +97,14 @@ export const uploadProfilePicture = async (userId, file, onProgress) => {
     throw new Error(`You can only change your profile picture every 3 days. Please wait ${updateCheck.remainingDays} more day(s).`);
   }
 
+  // Verify auth token exists
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.warn('No authentication token found. Upload may fail due to insufficient permissions.');
+  }
+
   // Create a reference to the file location in Firebase Storage
-  const fileExtension = file.name.split('.').pop();
+  const fileExtension = file.name.split('.').pop().toLowerCase();
   const storageRef = ref(storage, `profilePictures/${userId}/profile.${fileExtension}`);
   
   try {
@@ -114,6 +120,18 @@ export const uploadProfilePicture = async (userId, file, onProgress) => {
     return downloadURL;
   } catch (error) {
     console.error("Error uploading profile picture:", error);
+    
+    // Enhance error information
+    if (error.code === 'storage/unauthorized') {
+      console.error('Firebase storage access denied. This may be due to:');
+      console.error('1. Incorrect Firebase storage rules');
+      console.error('2. User not properly authenticated');
+      console.error('3. Incorrect storage bucket configuration');
+      console.error('Actual error:', error);
+      
+      throw new Error('Storage access denied. Please check your authentication or contact support.');
+    }
+    
     throw error;
   }
 };
@@ -130,16 +148,25 @@ export const deleteOldProfilePicture = async (userId) => {
     
     try {
       await deleteObject(jpgRef);
+      console.log('Deleted previous JPG profile picture');
     } catch (error) {
       // File might not exist, ignore error
+      if (error.code !== 'storage/object-not-found') {
+        console.warn('Error deleting JPG profile picture:', error);
+      }
     }
     
     try {
       await deleteObject(pngRef);
+      console.log('Deleted previous PNG profile picture');
     } catch (error) {
       // File might not exist, ignore error
+      if (error.code !== 'storage/object-not-found') {
+        console.warn('Error deleting PNG profile picture:', error);
+      }
     }
   } catch (error) {
     console.error("Error deleting old profile picture:", error);
+    // Don't throw the error, just report it
   }
 }; 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import axios from 'axios';
+import { Modal, Box, Typography, Button } from '@mui/material';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [formShake, setFormShake] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   
   // Refs for input fields
   const idNumberRef = useRef(null);
@@ -205,6 +207,9 @@ function LoginPage() {
     };
   }, [handleLogin]); // Now we only depend on the memoized callback
 
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => setOpenModal(false);
+
   return (
     <div className={`login-page ${isAnimating ? 'fade-out' : ''} ${isDarkMode ? 'dark-mode' : ''}`}>
       {notification.visible && (
@@ -231,7 +236,7 @@ function LoginPage() {
       )}
       
       <div className="login-left">
-        <img src="/timed 1.png" alt="TimEd Logo" className="logo animate-fade-in" />
+        <img src="/timeed.png" alt="TimEd Logo" className="logo animate-fade-in" />
         
         <div className={`login-form animate-slide-up ${formShake ? 'shake' : ''} ${isLoading ? 'form-loading' : ''}`}>
           <h2 className="login-title">Login</h2>
@@ -249,6 +254,7 @@ function LoginPage() {
                 onChange={(e) => setIdNumber(e.target.value)}
                 onKeyDown={handleIdKeyDown}
                 disabled={isLoading || isAnimating}
+                aria-describedby="idNumberHelp"
               />
               <button 
                 className="input-icon-btn" 
@@ -263,6 +269,7 @@ function LoginPage() {
                 </svg>
               </button>
             </div>
+            <div id="idNumberHelp" className="form-help-text">Enter your school ID number</div>
           </div>
           
           <div className="form-group animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -278,6 +285,7 @@ function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handlePasswordKeyDown}
                 disabled={isLoading || isAnimating}
+                aria-describedby="passwordHelp"
               />
               <button 
                 className="input-icon-btn password-toggle"
@@ -328,16 +336,226 @@ function LoginPage() {
               </div>
             ) : isAnimating ? 'Logging in...' : 'Login Now'}
           </button>
+          
+          <button 
+            className="mobile-app-btn"
+            onClick={handleOpenModal}
+            disabled={isAnimating || isLoading}
+          >
+            Mobile App
+          </button>
         </div>
       </div>
       
       <div className="login-right">
-        <img 
-          src="/login-illustration.png" 
-          alt="Login Illustration" 
-          className="illustration animate-fade-in"
-        />
+        <div className="right-content">
+          <div className="welcome-header">
+            <h2 className="welcome-title">Welcome to TimeEd</h2>
+            <p className="welcome-subtitle">Your Modern Event & Attendance System</p>
+          </div>
+          
+          <div className="illustration-container">
+            <div className="floating-elements">
+              <div className="float-element calendar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <div className="float-element chart">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+              </div>
+              <div className="float-element clock">
+                <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <div className="float-element user">
+                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div className="float-element check">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div className="float-element people">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div className="float-element file">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <div className="float-element mobile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3538CD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+            </div>
+            <div className="main-illustration">
+              <img src="/timeed.png" alt="Event Management Illustration" />
+            </div>
+          </div>
+          
+          <div className="feature-labels">
+            <div className="feature-label attendance">
+              <div className="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <span>Attendance Tracking</span>
+            </div>
+            
+            <div className="feature-label events">
+              <div className="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <span>Event Management</span>
+            </div>
+            
+            <div className="feature-label reports">
+              <div className="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <span>Reporting</span>
+            </div>
+            
+            <div className="feature-label mobile-access">
+              <div className="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+              <span>Mobile Access</span>
+            </div>
+          </div>
+          
+          <div className="version-info">
+            <p>Version 1.0 • TimEd System</p>
+          </div>
+        </div>
       </div>
+
+      {/* Mobile App Modal */}
+      <Modal
+        open={openModal}
+        onClose={handleCloseModal}
+        aria-labelledby="mobile-app-modal-title"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: isDarkMode ? '#2d2d2d' : 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          color: isDarkMode ? '#f0f0f0' : 'text.primary'
+        }}>
+          <Typography id="mobile-app-modal-title" variant="h5" component="h2" sx={{ fontWeight: 600 }}>
+            Admin Portal Notice
+          </Typography>
+          
+          <Typography variant="body1" sx={{ textAlign: 'center', mb: 2 }}>
+            This website is for administrative access only. If you are a faculty member, please download our mobile app for the best experience.
+          </Typography>
+          
+          <Box
+            sx={{
+              width: 200,
+              height: 200,
+              bgcolor: 'white',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              mb: 2,
+              border: '1px solid',
+              borderColor: isDarkMode ? '#4d4d4d' : '#e0e0e0',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Generate QR code that links to the app download */}
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('https://drive.google.com/drive/folders/1KoLXlydRPEy7w_N2Z9tatZQLISrotuQq?usp=sharing')}`}
+              alt="QR Code for Mobile App"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </Box>
+          
+          <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'center' }}>
+            Scan this QR code or click the button below to download
+          </Typography>
+          
+          <Button 
+            variant="contained" 
+            href="https://drive.google.com/drive/folders/1KoLXlydRPEy7w_N2Z9tatZQLISrotuQq?usp=sharing"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ 
+              bgcolor: '#3538CD', 
+              '&:hover': { bgcolor: '#2C2EA9' },
+              mt: 1
+            }}
+          >
+            Download Mobile App
+          </Button>
+          
+          <Button 
+            variant="text" 
+            onClick={handleCloseModal}
+            sx={{ 
+              color: isDarkMode ? '#6b6ef7' : '#3538CD',
+              mt: 1
+            }}
+          >
+            Close
+          </Button>
+        </Box>
+      </Modal>
     </div>
   );
 }

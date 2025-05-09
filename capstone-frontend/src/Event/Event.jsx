@@ -79,6 +79,9 @@ export default function EventPage() {
   const [departmentId, setDepartmentId] = useState('');
   const [date, setDate] = useState('');
   const [duration, setDuration] = useState('0:00:00');
+  const [durationHours, setDurationHours] = useState('0');
+  const [durationMinutes, setDurationMinutes] = useState('00');
+  const [durationSeconds, setDurationSeconds] = useState('00');
   
   // State for events data
   const [events, setEvents] = useState([]);
@@ -103,6 +106,11 @@ export default function EventPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState(null);
   const [editedStatus, setEditedStatus] = useState('');
+  // Add separate state for edit dialog duration
+  const [editDurationHours, setEditDurationHours] = useState('0');
+  const [editDurationMinutes, setEditDurationMinutes] = useState('00');
+  const [editDurationSeconds, setEditDurationSeconds] = useState('00');
+  const [editDuration, setEditDuration] = useState('0:00:00');
   
   // Snackbar notification state
   const [snackbar, setSnackbar] = useState({
@@ -338,16 +346,20 @@ useEffect(() => {
     if (!eventToEdit) return;
     
     try {
+      // Format duration from the separate edit components
+      const formattedDuration = `${editDurationHours}:${editDurationMinutes}:${editDurationSeconds}`;
+      
       const updatedEvent = {
         ...eventToEdit,
-        status: editedStatus
+        status: editedStatus,
+        duration: formattedDuration
       };
       
       await axios.put(`http://localhost:8080/api/events/update/${eventToEdit.eventId}`, updatedEvent);
       
       // Update local state
       setEvents(events.map(event => 
-        event.eventId === eventToEdit.eventId ? { ...event, status: editedStatus } : event
+        event.eventId === eventToEdit.eventId ? { ...event, status: editedStatus, duration: formattedDuration } : event
       ));
       
       showSnackbar('Event updated successfully', 'success');
@@ -364,6 +376,9 @@ useEffect(() => {
     setDepartmentId('');
     setDate('');
     setDuration('0:00:00');
+    setDurationHours('0');
+    setDurationMinutes('00');
+    setDurationSeconds('00');
   };
 
   // Navigation handlers
@@ -433,12 +448,27 @@ useEffect(() => {
   const openEditDialog = (event) => {
     setEventToEdit(event);
     setEditedStatus(event.status);
+    
+    // Parse the duration into hours, minutes, seconds for the edit dialog
+    if (event.duration) {
+      const [hours, minutes, seconds] = event.duration.split(':');
+      setEditDurationHours(hours || '0');
+      setEditDurationMinutes(minutes || '00');
+      setEditDurationSeconds(seconds || '00');
+      setEditDuration(event.duration);
+    }
+    
     setEditDialogOpen(true);
   };
   
   const closeEditDialog = () => {
     setEditDialogOpen(false);
     setEventToEdit(null);
+    // Reset edit dialog duration state
+    setEditDurationHours('0');
+    setEditDurationMinutes('00');
+    setEditDurationSeconds('00');
+    setEditDuration('0:00:00');
   };
 
   // File upload handlers
@@ -746,37 +776,105 @@ useEffect(() => {
               <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
                 Duration * (format: 0:00:00)
               </Typography>
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="0:00:00"
-                value={duration}
-                onChange={(e) => {
-                  // Validate and format as 0:00:00
-                  const input = e.target.value;
-                  const timePattern = /^(\d+):([0-5]?\d):([0-5]?\d)$/;
-                  
-                  // Either accept valid format or keep previous value
-                  if (input === '' || timePattern.test(input)) {
-                    setDuration(input);
-                  }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    '& fieldset': {
-                      borderColor: '#E2E8F0',
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {/* Hours input */}
+                <TextField
+                  variant="outlined"
+                  label="Hours"
+                  value={durationHours}
+                  type="number"
+                  inputProps={{ min: 0 }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d+$/.test(val)) {
+                      setDurationHours(val);
+                      setDuration(`${val}:${durationMinutes}:${durationSeconds}`);
+                    }
+                  }}
+                  sx={{
+                    width: '33%',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#CBD5E1',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#0288d1',
+                      },
                     },
-                    '&:hover fieldset': {
-                      borderColor: '#CBD5E1',
+                  }}
+                />
+                {/* Minutes input */}
+                <TextField
+                  variant="outlined"
+                  label="Minutes"
+                  value={durationMinutes}
+                  type="number"
+                  inputProps={{ min: 0, max: 59 }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d+$/.test(val)) {
+                      const formattedVal = val === '' ? '00' : val.padStart(2, '0');
+                      setDurationMinutes(formattedVal);
+                      setDuration(`${durationHours}:${formattedVal}:${durationSeconds}`);
+                    }
+                  }}
+                  sx={{
+                    width: '33%',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#CBD5E1',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#0288d1',
+                      },
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#0288d1',
+                  }}
+                />
+                {/* Seconds input */}
+                <TextField
+                  variant="outlined"
+                  label="Seconds"
+                  value={durationSeconds}
+                  type="number"
+                  inputProps={{ min: 0, max: 59 }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d+$/.test(val)) {
+                      const formattedVal = val === '' ? '00' : val.padStart(2, '0');
+                      setDurationSeconds(formattedVal);
+                      setDuration(`${durationHours}:${formattedVal}:${durationSeconds}`);
+                    }
+                  }}
+                  sx={{
+                    width: '33%',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#CBD5E1',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#0288d1',
+                      },
                     },
-                  },
-                }}
-              />
+                  }}
+                />
+              </Box>
+              {/* Hidden field to hold the combined duration value */}
+              <input type="hidden" value={duration} />
             </Box>
           </Box>
 
@@ -1093,7 +1191,7 @@ useEffect(() => {
             Update the status for event: <strong>{eventToEdit?.eventName}</strong>
           </Typography>
           
-          <FormControl fullWidth>
+          <FormControl fullWidth sx={{ mb: 3 }}>
             <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
               Status *
             </Typography>
@@ -1119,6 +1217,107 @@ useEffect(() => {
               <MenuItem value="Cancelled">Cancelled</MenuItem>
             </Select>
           </FormControl>
+          
+          <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+            Duration *
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            {/* Hours input */}
+            <TextField
+              variant="outlined"
+              label="Hours"
+              value={editDurationHours}
+              type="number"
+              inputProps={{ min: 0 }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || /^\d+$/.test(val)) {
+                  setEditDurationHours(val);
+                  setEditDuration(`${val}:${editDurationMinutes}:${editDurationSeconds}`);
+                }
+              }}
+              sx={{
+                width: '33%',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  '& fieldset': {
+                    borderColor: '#E2E8F0',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#CBD5E1',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#0288d1',
+                  },
+                },
+              }}
+            />
+            {/* Minutes input */}
+            <TextField
+              variant="outlined"
+              label="Minutes"
+              value={editDurationMinutes}
+              type="number"
+              inputProps={{ min: 0, max: 59 }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || /^\d+$/.test(val)) {
+                  const formattedVal = val === '' ? '00' : val.padStart(2, '0');
+                  setEditDurationMinutes(formattedVal);
+                  setEditDuration(`${editDurationHours}:${formattedVal}:${editDurationSeconds}`);
+                }
+              }}
+              sx={{
+                width: '33%',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  '& fieldset': {
+                    borderColor: '#E2E8F0',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#CBD5E1',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#0288d1',
+                  },
+                },
+              }}
+            />
+            {/* Seconds input */}
+            <TextField
+              variant="outlined"
+              label="Seconds"
+              value={editDurationSeconds}
+              type="number"
+              inputProps={{ min: 0, max: 59 }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || /^\d+$/.test(val)) {
+                  const formattedVal = val === '' ? '00' : val.padStart(2, '0');
+                  setEditDurationSeconds(formattedVal);
+                  setEditDuration(`${editDurationHours}:${formattedVal}:${editDurationSeconds}`);
+                }
+              }}
+              sx={{
+                width: '33%',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  '& fieldset': {
+                    borderColor: '#E2E8F0',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#CBD5E1',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#0288d1',
+                  },
+                },
+              }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0', mt: 2 }}>
           <Button 
