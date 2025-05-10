@@ -55,19 +55,61 @@ const AttendanceModal = memo(({
   onTimeInOut, 
   actionLoading,
   formatTimeInStatus,
-  formatTimeoutStatus
+  formatTimeoutStatus,
+  eventId
 }) => {
   const [modalSearchQuery, setModalSearchQuery] = useState('');
-  const [modalFilteredAttendees, setModalFilteredAttendees] = useState(attendees);
-  const [selectedAttendee, setSelectedAttendee] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [modalFilteredUsers, setModalFilteredUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Reset filtered attendees when modal opens or attendees change
   useEffect(() => {
-    setModalFilteredAttendees(attendees);
+    setModalFilteredUsers(allUsers);
     setModalSearchQuery('');
-  }, [attendees, open]);
+  }, [allUsers, open]);
+
+  useEffect(() => {
+    if (open) {
+      fetchAllUsers();
+    }
+  }, [open]);
+
+  const fetchAllUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:8080/api/user/getAll');
+      
+      // Create a map of existing attendees by userId for quick lookup
+      const attendeeMap = new Map();
+      attendees.forEach(attendee => {
+        attendeeMap.set(attendee.userId, attendee);
+      });
+      
+      // Merge user data with attendance data if available
+      const usersWithAttendance = response.data.map(user => {
+        const attendeeData = attendeeMap.get(user.userId);
+        return {
+          ...user,
+          // Include attendance data if user is already an attendee
+          timeIn: attendeeData?.timeIn || 'N/A',
+          timeOut: attendeeData?.timeOut || 'N/A',
+          manualEntry: attendeeData?.manualEntry || 'false',
+          // Make sure department is displayed correctly
+          department: user.department?.name || 'N/A'
+        };
+      });
+      
+      setAllUsers(usersWithAttendance);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setLoading(false);
+    }
+  };
 
   // Handle search input change for modal
   const handleModalSearchChange = (event) => {
@@ -75,22 +117,22 @@ const AttendanceModal = memo(({
     setModalSearchQuery(query);
     
     if (query.trim() === '') {
-      setModalFilteredAttendees(attendees);
+      setModalFilteredUsers(allUsers);
     } else {
-      const filtered = attendees.filter(
-        attendee => 
-          attendee.firstName.toLowerCase().includes(query) ||
-          attendee.lastName.toLowerCase().includes(query) ||
-          attendee.email.toLowerCase().includes(query) ||
-          attendee.department.toLowerCase().includes(query)
+      const filtered = allUsers.filter(
+        user => 
+          (user.firstName && user.firstName.toLowerCase().includes(query)) ||
+          (user.lastName && user.lastName.toLowerCase().includes(query)) ||
+          (user.email && user.email.toLowerCase().includes(query)) ||
+          (user.department && user.department.toLowerCase().includes(query)) ||
+          (user.schoolId && user.schoolId.toLowerCase().includes(query))
       );
-      setModalFilteredAttendees(filtered);
+      setModalFilteredUsers(filtered);
     }
   };
-
   // Open confirmation dialog
-  const handleOpenConfirmDialog = (attendee, action) => {
-    setSelectedAttendee(attendee);
+  const handleOpenConfirmDialog = (user, action) => {
+    setSelectedUser(user);
     setConfirmAction(action);
     setConfirmDialogOpen(true);
   };
@@ -102,12 +144,12 @@ const AttendanceModal = memo(({
 
   // Handle confirmation dialog confirm button
   const handleConfirmAction = () => {
-    if (!selectedAttendee) return;
+    if (!selectedUser) return;
     
     if (confirmAction === 'timein') {
-      onTimeInOut(selectedAttendee.userId, 'timein');
+      onTimeInOut(selectedUser.userId, 'timein');
     } else if (confirmAction === 'timeout') {
-      onTimeInOut(selectedAttendee.userId, 'timeout');
+      onTimeInOut(selectedUser.userId, 'timeout');
     }
     
     setConfirmDialogOpen(false);
@@ -161,7 +203,7 @@ const AttendanceModal = memo(({
           
           <Box sx={{ p: 2.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#FFFFFF' }}>
             <TextField
-              placeholder="Search participants..."
+              placeholder="Search faculty members..."
               variant="outlined"
               size="small"
               value={modalSearchQuery}
@@ -200,122 +242,130 @@ const AttendanceModal = memo(({
             overflowY: 'auto',
             p: 0
           }}>
-            <TableContainer>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Department</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Time In</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Time Out</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', width: 140, py: 1.5 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {modalFilteredAttendees.length === 0 ? (
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
+                <CircularProgress size={32} sx={{ color: '#0288d1' }} />
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table stickyHeader size="small">
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                        {attendees.length === 0 ? (
-                          <Typography>No attendees found for this event</Typography>
-                        ) : (
-                          <Typography>No attendees match your search</Typography>
-                        )}
-                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>School ID</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Department</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Time In</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', py: 1.5 }}>Time Out</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC', width: 140, py: 1.5 }}>Actions</TableCell>
                     </TableRow>
-                  ) : (
-                    modalFilteredAttendees.map((attendee, index) => (
-                      <TableRow 
-                        key={index} 
-                        sx={{ 
-                          '&:hover': { bgcolor: '#F8FAFC' },
-                          bgcolor: index % 2 === 0 ? 'white' : '#F9FAFB'
-                        }}
-                      >
-                        <TableCell sx={{ color: '#1E293B', fontWeight: 500 }}>
-                          {attendee.firstName} {attendee.lastName}
-                        </TableCell>
-                        <TableCell sx={{ color: '#64748B' }}>{attendee.email}</TableCell>
-                        <TableCell sx={{ color: '#1E293B' }}>
-                          {attendee.department !== 'N/A' ? (
-                            <Chip 
-                              label={attendee.department}
-                              size="small"
-                              sx={{
-                                backgroundColor: '#F0FDF4',
-                                color: '#16A34A',
-                                fontWeight: 500,
-                                fontSize: '0.75rem',
-                                height: 24,
-                                borderRadius: '4px'
-                              }}
-                            />
-                          ) : 'N/A'}
-                        </TableCell>
-                        <TableCell sx={{ color: '#64748B' }}>
-                          {formatTimeInStatus(attendee.timeIn, attendee.manualEntry)}
-                        </TableCell>
-                        <TableCell sx={{ color: '#64748B' }}>
-                          {formatTimeoutStatus(attendee.timeOut, attendee.manualEntry)}
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="Manual Time In">
-                              <span>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="primary"
-                                  onClick={() => handleOpenConfirmDialog(attendee, 'timein')}
-                                  disabled={actionLoading}
-                                  startIcon={<Login sx={{ fontSize: 16 }} />}
-                                  sx={{ 
-                                    fontSize: '0.75rem',
-                                    py: 0.5,
-                                    textTransform: 'none',
-                                    borderRadius: '6px',
-                                    boxShadow: '0 2px 4px rgba(2,136,209,0.2)',
-                                    '&:hover': {
-                                      boxShadow: '0 4px 6px rgba(2,136,209,0.25)',
-                                    }
-                                  }}
-                                >
-                                  Time In
-                                </Button>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Manual Time Out">
-                              <span>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="warning"
-                                  onClick={() => handleOpenConfirmDialog(attendee, 'timeout')}
-                                  disabled={actionLoading || attendee.timeIn === 'N/A'}
-                                  startIcon={<Logout sx={{ fontSize: 16 }} />}
-                                  sx={{ 
-                                    fontSize: '0.75rem',
-                                    py: 0.5,
-                                    textTransform: 'none',
-                                    borderRadius: '6px',
-                                    boxShadow: '0 2px 4px rgba(237,137,54,0.2)',
-                                    '&:hover': {
-                                      boxShadow: '0 4px 6px rgba(237,137,54,0.25)',
-                                    }
-                                  }}
-                                >
-                                  Time Out
-                                </Button>
-                              </span>
-                            </Tooltip>
-                          </Box>
+                  </TableHead>
+                  <TableBody>
+                    {modalFilteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                          {allUsers.length === 0 ? (
+                            <Typography>No faculty members found</Typography>
+                          ) : (
+                            <Typography>No faculty members match your search</Typography>
+                          )}
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    ) : (
+                      modalFilteredUsers.map((user, index) => (
+                        <TableRow 
+                          key={index} 
+                          sx={{ 
+                            '&:hover': { bgcolor: '#F8FAFC' },
+                            bgcolor: index % 2 === 0 ? 'white' : '#F9FAFB'
+                          }}
+                        >
+                          <TableCell sx={{ color: '#1E293B', fontWeight: 500 }}>
+                            {user.firstName} {user.lastName}
+                          </TableCell>
+                          <TableCell sx={{ color: '#64748B' }}>{user.schoolId || 'N/A'}</TableCell>
+                          <TableCell sx={{ color: '#64748B' }}>{user.email}</TableCell>
+                          <TableCell sx={{ color: '#1E293B' }}>
+                            {user.department !== 'N/A' ? (
+                              <Chip 
+                                label={user.department}
+                                size="small"
+                                sx={{
+                                  backgroundColor: '#F0FDF4',
+                                  color: '#16A34A',
+                                  fontWeight: 500,
+                                  fontSize: '0.75rem',
+                                  height: 24,
+                                  borderRadius: '4px'
+                                }}
+                              />
+                            ) : 'N/A'}
+                          </TableCell>
+                          <TableCell sx={{ color: '#64748B' }}>
+                            {formatTimeInStatus(user.timeIn, user.manualEntry)}
+                          </TableCell>
+                          <TableCell sx={{ color: '#64748B' }}>
+                            {formatTimeoutStatus(user.timeOut, user.manualEntry)}
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Tooltip title="Manual Time In">
+                                <span>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => handleOpenConfirmDialog(user, 'timein')}
+                                    disabled={actionLoading}
+                                    startIcon={<Login sx={{ fontSize: 16 }} />}
+                                    sx={{ 
+                                      fontSize: '0.75rem',
+                                      py: 0.5,
+                                      textTransform: 'none',
+                                      borderRadius: '6px',
+                                      boxShadow: '0 2px 4px rgba(2,136,209,0.2)',
+                                      '&:hover': {
+                                        boxShadow: '0 4px 6px rgba(2,136,209,0.25)',
+                                      }
+                                    }}
+                                  >
+                                    Time In
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Manual Time Out">
+                                <span>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="warning"
+                                    onClick={() => handleOpenConfirmDialog(user, 'timeout')}
+                                    disabled={actionLoading || user.timeIn === 'N/A'}
+                                    startIcon={<Logout sx={{ fontSize: 16 }} />}
+                                    sx={{ 
+                                      fontSize: '0.75rem',
+                                      py: 0.5,
+                                      textTransform: 'none',
+                                      borderRadius: '6px',
+                                      boxShadow: '0 2px 4px rgba(237,137,54,0.2)',
+                                      '&:hover': {
+                                        boxShadow: '0 4px 6px rgba(237,137,54,0.25)',
+                                      }
+                                    }}
+                                  >
+                                    Time Out
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Box>
         </Box>
       </Modal>
@@ -345,7 +395,7 @@ const AttendanceModal = memo(({
         </DialogTitle>
         <DialogContent sx={{ py: 3, px: 3, mt: 1 }}>
           <Typography variant="body1">
-            Are you sure you want to manually {confirmAction === 'timein' ? 'time in' : 'time out'} <Box component="span" fontWeight="600">{selectedAttendee?.firstName} {selectedAttendee?.lastName}</Box>?
+            Are you sure you want to manually {confirmAction === 'timein' ? 'time in' : 'time out'} <Box component="span" fontWeight="600">{selectedUser?.firstName} {selectedUser?.lastName}</Box>?
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0' }}>
@@ -596,14 +646,14 @@ export default function Attendance() {
         } else if (timestamp._seconds && timestamp._nanoseconds) {
           dateObj = new Date(timestamp._seconds * 1000 + timestamp._nanoseconds / 1000000);
         } else {
-          return 'Invalid Date';
+          return 'N/A';
         }
       } else {
-        return 'Invalid Date';
+        return 'N/A';
       }
       
       if (isNaN(dateObj.getTime())) {
-        return 'Invalid Date';
+        return 'N/A';
       }
       
       return dateObj.toLocaleString('en-PH', {
@@ -752,6 +802,7 @@ export default function Attendance() {
         alignItems: 'center',
         boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
       }}>
+
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton onClick={handleNavigateBack} sx={{ mr: 1 }}>
             <ArrowBack sx={{ color: '#64748B' }} />
@@ -779,38 +830,7 @@ export default function Attendance() {
         overflow: 'auto', 
         bgcolor: '#FFFFFF' 
       }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress size={32} sx={{ color: '#0288d1' }} />
-          </Box>
-        ) : error ? (
-          <Box sx={{ 
-            p: 3, 
-            textAlign: 'center', 
-            color: '#EF4444',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2
-          }}>
-            <Typography variant="h6">No Participant in the List</Typography>
-            <Button 
-              variant="contained" 
-              onClick={handleNavigateBack}
-              startIcon={<ArrowBack />}
-              sx={{
-                backgroundColor: '#0288d1',
-                '&:hover': {
-                  backgroundColor: '#0277bd'
-                }
-              }}
-            >
-              Back to Dashboard
-            </Button>
-          </Box>
-        ) : (
-          <>
-            <Typography variant="h5" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>
+         <Typography variant="h5" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>
               Event Attendance Details
             </Typography>
             
@@ -949,7 +969,64 @@ export default function Attendance() {
                 </Card>
               </Grid>
             </Grid>
-            
+            <Button
+                    variant="contained"
+                    onClick={handleOpenManageModal}
+                    startIcon={<ManageAccounts />}
+                    sx={{
+                      backgroundColor: '#0288d1',
+                      '&:hover': {
+                        backgroundColor: '#0277bd'
+                      },
+                      borderRadius: '8px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 8px rgba(2,136,209,0.2)',
+                      transition: 'all 0.2s ease-in-out',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textTransform: 'none',
+                      padding: '8px 16px',
+                      height: '40px',
+                      '&:active': {
+                        transform: 'scale(0.98)'
+                      }
+                    }}
+                  >
+                    Manage Attendance
+                  </Button>
+                  
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <CircularProgress size={32} sx={{ color: '#0288d1' }} />
+          </Box>
+        ) : error ? (
+          <Box sx={{ 
+            p: 3, 
+            textAlign: 'center', 
+            color: '#EF4444',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <Typography variant="h6">No Participant in the List</Typography>
+            <Button 
+              variant="contained" 
+              onClick={handleNavigateBack}
+              startIcon={<ArrowBack />}
+              sx={{
+                backgroundColor: '#0288d1',
+                '&:hover': {
+                  backgroundColor: '#0277bd'
+                }
+              }}
+            >
+              Back to Dashboard
+            </Button>
+          </Box>
+        ) : (
+          <>
+           
             {/* Attendees Table */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ 
@@ -1006,31 +1083,7 @@ export default function Attendance() {
                     }}
                   />
                   
-                  <Button
-                    variant="contained"
-                    onClick={handleOpenManageModal}
-                    startIcon={<ManageAccounts />}
-                    sx={{
-                      backgroundColor: '#0288d1',
-                      '&:hover': {
-                        backgroundColor: '#0277bd'
-                      },
-                      borderRadius: '8px',
-                      whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 8px rgba(2,136,209,0.2)',
-                      transition: 'all 0.2s ease-in-out',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textTransform: 'none',
-                      padding: '8px 16px',
-                      height: '40px',
-                      '&:active': {
-                        transform: 'scale(0.98)'
-                      }
-                    }}
-                  >
-                    Manage Attendance
-                  </Button>
+            
                 </Box>
               </Box>
               
@@ -1123,15 +1176,16 @@ export default function Attendance() {
       </Snackbar>
 
       {/* Attendance Modal - Separate component with isolated state */}
-      <AttendanceModal
-        open={manageModalOpen}
-        onClose={handleCloseManageModal}
-        attendees={attendees}
-        onTimeInOut={handleModalTimeInOut}
-        actionLoading={actionLoading}
-        formatTimeInStatus={formatTimeInStatus}
-        formatTimeoutStatus={formatTimeoutStatus}
-      />
+       <AttendanceModal
+      open={manageModalOpen}
+      onClose={handleCloseManageModal}
+      attendees={attendees}
+      onTimeInOut={handleModalTimeInOut}
+      actionLoading={actionLoading}
+      formatTimeInStatus={formatTimeInStatus}
+      formatTimeoutStatus={formatTimeoutStatus}
+      eventId={eventId} // Pass the eventId to the modal
+    />
     </Box>
   );
 }

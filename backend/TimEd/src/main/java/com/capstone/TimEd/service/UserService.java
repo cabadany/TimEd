@@ -4,12 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.User;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.cloud.FirestoreClient;
 
 @Service
@@ -59,20 +62,36 @@ public class UserService {
         return null;  // Return null if no user is found
     }
     
-    public void updateUser(String userId, User updatedUser) throws InterruptedException, ExecutionException {
-        Firestore db = FirestoreClient.getFirestore();
-        DocumentReference userDocRef = db.collection(COLLECTION_NAME).document(userId);
-
-        DocumentSnapshot snapshot = userDocRef.get().get();
-        if (!snapshot.exists()) {
-            throw new RuntimeException("User with ID " + userId + " not found.");
+    public void updateUser(String identifier, User updatedUser) throws InterruptedException, ExecutionException {
+        if (identifier == null || updatedUser == null) {
+            throw new IllegalArgumentException("Identifier or updated user data cannot be null.");
         }
 
+        Firestore db = FirestoreClient.getFirestore();
+        DocumentReference userDocRef = null;
+
+        // Check if identifier is schoolId or userId and set correct document reference
+        if (isValidSchoolId(identifier)) {
+            // If it's a schoolId, fetch user by schoolId
+            userDocRef = getUserDocRefBySchoolId(identifier, db);
+        } else {
+            // If it's a userId, fetch user by userId
+            userDocRef = db.collection(COLLECTION_NAME).document(identifier);
+        }
+
+        // Fetch user document
+        DocumentSnapshot snapshot = userDocRef.get().get();
+    
+        // Check password: if not provided in updatedUser, retain existing one
         if (updatedUser.getPassword() == null) {
             String existingPassword = snapshot.getString("password");
             updatedUser.setPassword(existingPassword);
+        } else {
+            // If password is provided, hash it before updating
+            updatedUser.setPassword(hashPassword(updatedUser.getPassword()));
         }
 
+        // Handle department if present
         Department department = updatedUser.getDepartment();
         if (department != null && department.getDepartmentId() != null) {
             updatedUser.setDepartment(department);
@@ -82,8 +101,15 @@ public class UserService {
             updatedUser.setDepartmentId(null);
         }
 
-        userDocRef.set(updatedUser, SetOptions.merge()).get(); // Merge instead of overwrite
+        try {
+            // Perform update (merge the data so existing data isn't overwritten)
+            userDocRef.set(updatedUser, SetOptions.merge()).get(); // Merge instead of overwrite
+        } catch (ExecutionException | InterruptedException e) {
+            // Handle the exception in case the Firestore operation fails
+            throw new RuntimeException("Error updating user data: " + e.getMessage(), e);
+        }
     }
+
     public void deleteUser(String userId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -92,12 +118,40 @@ public class UserService {
         DocumentSnapshot snapshot = future.get();
 
         if (snapshot.exists()) {
+            // ❌ Delete from Firestore
             ApiFuture<WriteResult> writeResult = docRef.delete();
-            writeResult.get(); // Wait for delete
+            writeResult.get(); // wait for completion
+
+            try {
+                // ❌ Delete from Firebase Auth
+                FirebaseAuth.getInstance().deleteUser(userId);
+            } catch (FirebaseAuthException e) {
+                throw new RuntimeException("Failed to delete from Firebase Auth: " + e.getMessage());
+            }
+
         } else {
             throw new RuntimeException("User with ID " + userId + " not found.");
-        }
+        }}
+    
+    private boolean isValidSchoolId(String identifier) {
+        // Example validation logic for schoolId
+        return identifier != null && identifier.matches("\\d{2}-\\d{4}-\\d{3}"); // Example format: 22-2220-751
     }
+
+    // Utility method to get DocumentReference by schoolId
+    private DocumentReference getUserDocRefBySchoolId(String schoolId, Firestore db) throws InterruptedException, ExecutionException {
+        // Query to fetch the user document by schoolId
+        QuerySnapshot querySnapshot = db.collection(COLLECTION_NAME)
+                .whereEqualTo("schoolId", schoolId)
+                .get().get();
+        
+        if (querySnapshot.isEmpty()) {
+            throw new RuntimeException("User with School ID " + schoolId + " not found.");
+        }
+
+        return querySnapshot.getDocuments().get(0).getReference(); // Get first document reference
+    }
+
     // Get user by their Firestore userId (custom UID)
     public User getUserByUserId(String userId) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
@@ -112,4 +166,11 @@ public class UserService {
 
         return null;  // Return null if no user is found
     }
+    
+    private String hashPassword(String password) {
+        // Use BCrypt or any other hashing method you prefer
+        return new BCryptPasswordEncoder().encode(password);
+    }
+    
+    
 }

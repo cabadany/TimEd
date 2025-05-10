@@ -62,12 +62,14 @@ public class UserController {
 
     // DELETE - delete user
     @DeleteMapping("/deleteUser/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable String userId) {
+    public ResponseEntity<String> deleteUser(@PathVariable String userId) {
         try {
             userService.deleteUser(userId);
-            return ResponseEntity.ok("User deleted successfully.");
+            return ResponseEntity.ok("✅ User deleted successfully from Firestore and Firebase Auth.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("❌ " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error deleting user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("🔥 Error deleting user: " + e.getMessage());
         }
     }
 

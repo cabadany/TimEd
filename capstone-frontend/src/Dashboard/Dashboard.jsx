@@ -225,6 +225,7 @@ export default function Dashboard() {
       filteredEvents = filteredEvents.filter(event => 
         event.status.toLowerCase().includes('completed') || 
         event.status.toLowerCase().includes('cancelled') || 
+        event.status.toLowerCase().includes('ended') || 
         event.status.toLowerCase().includes('postponed')
       );
     }

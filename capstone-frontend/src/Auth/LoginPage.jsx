@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import axios from 'axios';
-import { Modal, Box, Typography, Button } from '@mui/material';
+import { Modal, Box, Typography, Button, TextField, CircularProgress } from '@mui/material';
+import { getAuth, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -18,13 +19,25 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [formShake, setFormShake] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  
+
+  // Password reset states
+  const [openPasswordModal, setOpenPasswordModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  // Mobile app modal state
+  const [openMobileModal, setOpenMobileModal] = useState(false);
+
+  // Firebase auth instance
+  const auth = getAuth();
+
   // Refs for input fields
   const idNumberRef = useRef(null);
   const passwordRef = useRef(null);
   const loginBtnRef = useRef(null);
   const forgotPasswordRef = useRef(null);
+  const emailInputRef = useRef(null);
 
   // Auto focus on ID field on initial load
   useEffect(() => {
@@ -39,13 +52,13 @@ function LoginPage() {
   useEffect(() => {
     const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(darkModeMediaQuery.matches);
-    
+
     const handleDarkModeChange = (e) => {
       setIsDarkMode(e.matches);
     };
-    
+
     darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
-    
+
     return () => {
       darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
     };
@@ -57,12 +70,12 @@ function LoginPage() {
       message,
       type
     });
-    
+
     // Shake the form if there's an error
     if (type === 'error') {
       setFormShake(true);
       setTimeout(() => setFormShake(false), 500);
-      
+
       // Focus back on the appropriate field when there's an error
       if (!idNumber) {
         setTimeout(() => idNumberRef.current?.focus(), 600);
@@ -70,27 +83,21 @@ function LoginPage() {
         setTimeout(() => passwordRef.current?.focus(), 600);
       }
     }
-    
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
-      setNotification(prev => ({...prev, visible: false}));
+      setNotification(prev => ({ ...prev, visible: false }));
     }, 5000);
   };
 
   const closeNotification = () => {
-    setNotification(prev => ({...prev, visible: false}));
+    setNotification(prev => ({ ...prev, visible: false }));
   };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
     // Keep focus on password field after toggling
     passwordRef.current?.focus();
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleLogin();
-    }
   };
 
   // For tabbing from ID to password field
@@ -119,8 +126,7 @@ function LoginPage() {
   // For tabbing from forgot password to login button
   const handleForgotPasswordKeyDown = (e) => {
     if (e.key === 'Enter') {
-      // Handle forgot password action
-      console.log('Forgot password clicked');
+      handleOpenPasswordModal();
     } else if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault();
       loginBtnRef.current?.focus();
@@ -136,33 +142,35 @@ function LoginPage() {
       showNotification('Please enter both ID Number and Password');
       return;
     }
-    
+  
     setIsLoading(true);
   
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
-        schoolId: idNumber,
-        password: password
+      // 🔄 Get email from backend using schoolId
+      const emailResponse = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+        params: { schoolId: idNumber }
       });
   
+      const email = emailResponse.data;
+      console.log(email);
+      console.log(password);
+      // ✅ Authenticate using Firebase Authentication with email
+      await signInWithEmailAndPassword(auth, email, password);
+  
+      // 🔓 If login success, call backend to get user role & token (now including password)
+      const response = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+        schoolId: idNumber
+      });
+
+      
       const data = response.data;
   
       if (data.success) {
-        const userRole = data.user?.role;
-  
-        // Save the auth details to localStorage
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);
         localStorage.setItem('role', data.role);
   
-        // Debugging: log what's being stored
-        console.log('Stored token:', localStorage.getItem('token'));
-        console.log('Stored userId:', localStorage.getItem('userId'));
-        console.log('Stored role:', localStorage.getItem('role'));
-  
         if (data.role === 'ADMIN') {
-          console.log('Admin login success:', data);
-  
           setIsAnimating(true);
           setTimeout(() => {
             navigate('/dashboard');
@@ -170,12 +178,8 @@ function LoginPage() {
         } else {
           setIsLoading(false);
           showNotification('Access denied. Only admins can log in.');
-          // Optional: clear any stored auth for non-admins
-          localStorage.removeItem('token');
-          localStorage.removeItem('userId');
-          localStorage.removeItem('role');
+          localStorage.clear();
         }
-  
       } else {
         setIsLoading(false);
         showNotification(data.message || 'Invalid login credentials');
@@ -184,11 +188,19 @@ function LoginPage() {
     } catch (error) {
       console.error('Login failed:', error);
       setIsLoading(false);
-      showNotification(
-        error.response?.data?.message || 'Something went wrong. Probably sabotage.'
-      );
+  
+      if (error.code === 'auth/user-not-found') {
+        showNotification('No Firebase account found with that school ID');
+      } else if (error.code === 'auth/wrong-password') {
+        showNotification('Wrong password.');
+      } else {
+      //  showNotification('Login failed: ' + (error.message || 'Unknown error'));
+      showNotification('Login failed: Check Credentials or Network Connection');
+      }
     }
-  }, [idNumber, password, navigate, showNotification]);
+  }, [idNumber, password, navigate]);
+  
+  
 
   // Add useEffect to handle the 'keydown' event for the entire component
   useEffect(() => {
@@ -205,28 +217,93 @@ function LoginPage() {
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [handleLogin]); // Now we only depend on the memoized callback
+  }, [handleLogin]);
 
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => setOpenModal(false);
+  // Password reset modal handlers
+  const handleOpenPasswordModal = () => {
+    setOpenPasswordModal(true);
+    // Focus on email input field after modal opens
+    setTimeout(() => {
+      emailInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleClosePasswordModal = () => {
+    setOpenPasswordModal(false);
+    setEmail('');
+    setEmailSent(false);
+  };
+
+  // Mobile app modal handlers  
+  const handleOpenMobileModal = () => setOpenMobileModal(true);
+
+  const handleCloseMobileModal = () => setOpenMobileModal(false);
+
+  // Password reset function
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showNotification('Please enter your email address');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      showNotification('Please enter a valid email address');
+      return;
+    }
+
+    setResetLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setEmailSent(true);
+      showNotification('Password reset email sent! Please check your inbox.', 'success');
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      let errorMessage = 'Failed to send password reset email.';
+
+      // More specific error messages
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many attempts. Please try again later.';
+      }
+
+      showNotification(errorMessage);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // Email validation helper
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   return (
     <div className={`login-page ${isAnimating ? 'fade-out' : ''} ${isDarkMode ? 'dark-mode' : ''}`}>
       {notification.visible && (
         <div className={`notification ${notification.type}`}>
           <div className="notification-icon">
-            {notification.type === 'error' && (
+            {notification.type === 'error' ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="12"></line>
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
             )}
           </div>
           <div className="notification-content">
             {notification.message}
           </div>
-          <button className="notification-close" onClick={closeNotification}>
+          <button className="notification-close" onClick={closeNotification} aria-label="Close notification">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -313,9 +390,9 @@ function LoginPage() {
             className="forgot-password animate-slide-up" 
             style={{ animationDelay: '0.3s' }}
             tabIndex="0"
-            role="button"
             ref={forgotPasswordRef}
-            onClick={() => console.log('Forgot password clicked')}
+            role="button"
+            onClick={handleOpenPasswordModal}
             onKeyDown={handleForgotPasswordKeyDown}
             aria-label="Forgot Password"
           >
@@ -339,7 +416,7 @@ function LoginPage() {
           
           <button 
             className="mobile-app-btn"
-            onClick={handleOpenModal}
+            onClick={handleOpenMobileModal}
             disabled={isAnimating || isLoading}
           >
             Mobile App
@@ -473,10 +550,134 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* Mobile App Modal */}
+      {/* Password Reset Modal */}
       <Modal
-        open={openModal}
-        onClose={handleCloseModal}
+        open={openPasswordModal}
+        onClose={handleClosePasswordModal}
+        aria-labelledby="password-reset-modal-title"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: isDarkMode ? '#2d2d2d' : 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          color: isDarkMode ? '#f0f0f0' : 'text.primary'
+        }}>
+          <Typography id="password-reset-modal-title" variant="h5" component="h2" sx={{ fontWeight: 600 }}>
+            Reset Password
+          </Typography>
+          
+          {!emailSent ? (
+            <>
+              <Typography variant="body2" sx={{ textAlign: 'center', mb: 1 }}>
+                Enter your email address to receive a password reset link
+              </Typography>
+              
+              <TextField
+                inputRef={emailInputRef}
+                label="Email Address"
+                variant="outlined"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={resetLoading}
+                error={email !== '' && !isValidEmail(email)}
+                helperText={email !== '' && !isValidEmail(email) ? 'Please enter a valid email' : ''}
+                sx={{
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '&:hover fieldset': {
+                      borderColor: isDarkMode ? '#6b6ef7' : '#3538CD',
+                    },
+                  },
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleForgotPassword();
+                  }
+                }}
+              />
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={handleClosePasswordModal}
+                  disabled={resetLoading}
+                  sx={{ 
+                    borderColor: isDarkMode ? '#6b6ef7' : '#3538CD',
+                    color: isDarkMode ? '#6b6ef7' : '#3538CD',
+                    '&:hover': { 
+                      borderColor: isDarkMode ? '#5254d4' : '#282aa3',
+                      backgroundColor: isDarkMode ? 'rgba(107, 110, 247, 0.1)' : 'rgba(53, 56, 205, 0.1)'
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                
+                <Button 
+                  variant="contained" 
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading || !email || !isValidEmail(email)}
+                  sx={{ 
+                    bgcolor: '#3538CD',
+                    '&:hover': { bgcolor: '#2C2EA9' },
+                    '&:disabled': {
+                      bgcolor: isDarkMode ? '#4e4e4e' : '#c5c5c5',
+                      color: isDarkMode ? '#a0a0a0' : '#ffffff',
+                    }
+                  }}
+                >
+                  {resetLoading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </Button>
+              </Box></>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? "#6b6ef7" : "#3538CD"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <Typography variant="h6" sx={{ textAlign: 'center' }}>
+                Reset Link Sent!
+              </Typography>
+              
+              <Typography variant="body2" sx={{ textAlign: 'center', mb: 1 }}>
+                Please check your email and follow the instructions to reset your password.
+              </Typography>
+              
+              <Button 
+                variant="contained" 
+                onClick={handleClosePasswordModal}
+                sx={{ 
+                  bgcolor: '#3538CD',
+                  '&:hover': { bgcolor: '#2C2EA9' }
+                }}
+              >
+                Close
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Modal>
+
+       {/* Mobile App Modal */}
+       <Modal
+        open={openMobileModal}
+        onClose={handleCloseMobileModal}
         aria-labelledby="mobile-app-modal-title"
       >
         <Box sx={{
@@ -546,7 +747,7 @@ function LoginPage() {
           
           <Button 
             variant="text" 
-            onClick={handleCloseModal}
+            onClick={handleCloseMobileModal}
             sx={{ 
               color: isDarkMode ? '#6b6ef7' : '#3538CD',
               mt: 1
@@ -555,8 +756,11 @@ function LoginPage() {
             Close
           </Button>
         </Box>
+        
       </Modal>
+      
     </div>
+    
   );
 }
 

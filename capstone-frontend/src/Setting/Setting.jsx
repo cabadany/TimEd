@@ -149,7 +149,7 @@ export default function SettingPage() {
   return (
     <Box sx={{ width: '100%' }} className={darkMode ? 'dark-mode' : ''}>
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }} className={darkMode ? 'dark-mode' : ''}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="settings tabs">
           <Tab label="Edit Profile" sx={{ 
             textTransform: 'none', 
@@ -535,7 +535,7 @@ export default function SettingPage() {
               </Box>
             </Paper>
           </Box>
-          
+          {/*
           <Box sx={{ mb: 4 }}>
             <Typography variant="body1" fontWeight="500" color="text.primary" mb={2}>
               Two-Factor Authentication
@@ -554,7 +554,7 @@ export default function SettingPage() {
                 Add an extra layer of security to your account by requiring a verification code in addition to your password.
               </Typography>
             </Paper>
-          </Box>
+          </Box>*/}
         </Box>
       </TabPanel>
     </Box>
