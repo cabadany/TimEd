@@ -39,6 +39,9 @@ public class AttendanceController {
         return ResponseEntity.ok(result);
     }
     
+    
+    
+    
     @PostMapping("/{eventId}/{userId}/manual/{actionType}")
     public ResponseEntity<String> manualAttendanceAction(
             @PathVariable String eventId,
@@ -79,6 +82,22 @@ public class AttendanceController {
             return ResponseEntity
                     .status(500)
                     .body(Collections.emptyList());  // Return an empty list if error occurs
+        }
+    }
+    
+    @GetMapping("/user/{userId}/attended-events")
+    public ResponseEntity<List<Map<String, Object>>> getUserAttendedEvents(@PathVariable String userId) {
+        try {
+            List<Map<String, Object>> events = attendanceService.getUserAttendedEvents(userId);
+
+            if (events.isEmpty()) {
+                return ResponseEntity.status(404).body(null);
+            }
+
+            return ResponseEntity.ok(events);
+        } catch (Exception e) {
+            System.err.println("Error fetching attended events: " + e.getMessage());
+            return ResponseEntity.status(500).body(Collections.emptyList());
         }
     }
 }

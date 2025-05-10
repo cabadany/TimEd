@@ -25,9 +25,25 @@ public class AttendanceService {
         try {
             String now = Instant.now().toString();
 
+            // Fetch event details
+            DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
+
+            if (!eventDoc.exists()) {
+                return "Event does not exist: " + eventId;
+            }
+
+            String eventName = eventDoc.getString("eventName");
+            String eventStatus = eventDoc.getString("status");
+            Object eventDate = eventDoc.get("date"); // Timestamp type
+
+            // Set on event-side
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("attended", true);
             attendanceData.put("timeIn", now);
+            attendanceData.put("manualEntry", false);
+            attendanceData.put("eventName", eventName);
+            attendanceData.put("eventStatus", eventStatus);
+            attendanceData.put("eventDate", eventDate);
 
             firestore.collection("events")
                     .document(eventId)
@@ -35,9 +51,14 @@ public class AttendanceService {
                     .document(userId)
                     .set(attendanceData);
 
+            // Set on user-side
             Map<String, Object> userSide = new HashMap<>();
             userSide.put("eventId", eventId);
             userSide.put("timeIn", now);
+            userSide.put("manualEntry", false);
+            userSide.put("eventName", eventName);
+            userSide.put("eventStatus", eventStatus);
+            userSide.put("eventDate", eventDate);
 
             firestore.collection("users")
                     .document(userId)
@@ -51,13 +72,28 @@ public class AttendanceService {
             return "Failed to mark attendance: " + e.getMessage();
         }
     }
-
+    
     public String markTimeOut(String eventId, String userId) {
         try {
             String now = Instant.now().toString();
 
+            // Fetch event details
+            DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
+
+            if (!eventDoc.exists()) {
+                return "Event does not exist: " + eventId;
+            }
+
+            String eventName = eventDoc.getString("eventName");
+            String eventStatus = eventDoc.getString("status");
+            Object eventDate = eventDoc.get("date");
+
             Map<String, Object> updateMap = new HashMap<>();
             updateMap.put("timeOut", now);
+            updateMap.put("manualEntry", false);
+            updateMap.put("eventName", eventName);
+            updateMap.put("eventStatus", eventStatus);
+            updateMap.put("eventDate", eventDate);
 
             firestore.collection("events")
                     .document(eventId)
@@ -77,6 +113,7 @@ public class AttendanceService {
             return "Failed to mark time-out: " + e.getMessage();
         }
     }
+
     
     public String manualTimeIn(String eventId, String userId) {
         try {
@@ -258,5 +295,37 @@ public class AttendanceService {
         }
 
         return attendees;
+    }
+    
+    public List<Map<String, Object>> getUserAttendedEvents(String userId) throws Exception {
+        Firestore db = FirestoreClient.getFirestore();
+
+        CollectionReference attendedEventsRef = db
+                .collection("users")
+                .document(userId)
+                .collection("attendedEvents");
+
+        ApiFuture<QuerySnapshot> future = attendedEventsRef.get();
+        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+
+        List<Map<String, Object>> attendedEvents = new ArrayList<>();
+
+        for (QueryDocumentSnapshot doc : documents) {
+            Map<String, Object> eventData = new HashMap<>(doc.getData());
+
+            // Optionally fetch main event details too
+            String eventId = (String) eventData.get("eventId");
+            DocumentSnapshot eventDoc = db.collection("events").document(eventId).get().get();
+
+            if (eventDoc.exists()) {
+                eventData.put("eventName", eventDoc.getString("eventName"));
+                eventData.put("eventDate", eventDoc.get("date"));
+                eventData.put("eventStatus", eventDoc.getString("status"));
+            }
+
+            attendedEvents.add(eventData);
+        }
+
+        return attendedEvents;
     }
 }
