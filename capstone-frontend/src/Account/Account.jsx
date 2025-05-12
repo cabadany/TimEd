@@ -1314,7 +1314,7 @@ aria-labelledby="attended-events-modal-title"
                   />
                 </TableCell>
                 <TableCell sx={{ fontWeight: 200, backgroundColor: '#F8FAFC' }}>
-  {event.manualEntry ?'Manual Entry'  : 'Phone'}
+  {event.manualEntry ?'Manual Entry'  : 'QR'}
 </TableCell>
               </TableRow>
             ))}

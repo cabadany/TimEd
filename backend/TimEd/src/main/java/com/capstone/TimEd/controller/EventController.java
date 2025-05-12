@@ -1,5 +1,6 @@
 package com.capstone.TimEd.controller;
 
+import com.capstone.TimEd.config.QRCodeGenerator;
 import com.capstone.TimEd.dto.Eventdto;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.Event;
@@ -47,7 +48,21 @@ public class EventController {
             return null;
         }
     }
+    @GetMapping("/qr/{eventId}")
+    public ResponseEntity<byte[]> generateQrCode(@PathVariable String eventId) {
+        try {
+            String baseUrl = "localhost:5173/qr-join/";
+            String qrUrl = baseUrl + eventId;
 
+            byte[] image = QRCodeGenerator.generateQRCodeImage(qrUrl, 300, 300);
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", "image/png")
+                    .body(image);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(null);
+        }
+    }
     @GetMapping("/getAll")
     public List<Eventdto> getAllEvents() {
         try {
@@ -88,4 +103,9 @@ public class EventController {
         }
     }
 
+    @GetMapping("/getJoinUrl/{eventId}")
+    public String getEventJoinUrl(@PathVariable String eventId) {
+        // Generate the event join URL based on eventId
+        return "https://yourapi.com/join/" + eventId;
+    }
 }

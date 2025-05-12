@@ -6,6 +6,7 @@ import {
 import {
   Home,
   Event,
+  WorkspacePremium,
   People,
   AccountTree,
   Settings
@@ -25,7 +26,9 @@ const MainLayout = ({ children, title }) => {
   const handleNavigateToDashboard = () => {
     navigate('/dashboard');
   };
-  
+  const handleNavigateToCertificate = () => {
+    navigate('/certificates');
+  };
   const handleNavigateToSettings = () => {
     navigate('/settings');
   };
@@ -96,6 +99,20 @@ const MainLayout = ({ children, title }) => {
           >
             ACCOUNTS
           </Button>
+          <Button
+  startIcon={<WorkspacePremium/>}
+  onClick={handleNavigateToCertificate}
+  sx={{
+    justifyContent: 'flex-start',
+    color: location.pathname === '/certificates' ? 'primary.main' : 'text.secondary',
+    fontWeight: location.pathname === '/certificates' ? 600 : 500,
+    py: 1.5,
+    px: 2,
+    textAlign: 'left',
+  }}
+>
+  CERTIFICATES
+</Button>
           <Button
             startIcon={<AccountTree />}
             onClick={handleNavigateToDepartment}

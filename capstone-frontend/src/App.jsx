@@ -11,7 +11,8 @@ import Attendance from './attendance/Attendance';
 import { Box } from '@mui/material';
 import { UserProvider } from './contexts/UserContext';
 import MainLayout from './layouts/MainLayout';
-
+import Certificate from './certificate/certificate';
+import QRJoin from './Event/QRJoin';
 // Simple layout without sidebar or header, for login page
 const SimpleLayout = ({ children }) => {
   return (
@@ -29,7 +30,16 @@ function App() {
           {/* Public routes */}
           <Route path="/" element={<SimpleLayout><LoginPage /></SimpleLayout>} />
           <Route path="/login" element={<SimpleLayout><LoginPage /></SimpleLayout>} />
-          
+          <Route 
+            path="/qr-join/:eventId" 
+            element={
+              <ProtectedRoute>
+               <SimpleLayout>
+                  <QRJoin />
+                  </SimpleLayout>
+              </ProtectedRoute>
+            } 
+          />
           {/* Protected routes with MainLayout */}
           <Route 
             path="/department" 
@@ -51,6 +61,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+      
           <Route 
             path="/dashboard" 
             element={
@@ -67,6 +78,16 @@ function App() {
               <ProtectedRoute>
                 <MainLayout title="Accounts">
                   <Accounts />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+            <Route 
+            path="/certificates" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Certificate">
+                  <Certificate />
                 </MainLayout>
               </ProtectedRoute>
             }

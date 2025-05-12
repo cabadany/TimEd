@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
-
+import { QrCode2,Download  } from '@mui/icons-material';
 import axios from 'axios';
 import {
   Box,
@@ -111,7 +111,8 @@ export default function EventPage() {
   const [editDurationMinutes, setEditDurationMinutes] = useState('00');
   const [editDurationSeconds, setEditDurationSeconds] = useState('00');
   const [editDuration, setEditDuration] = useState('0:00:00');
-  
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+const [currentQrEventId, setCurrentQrEventId] = useState(null);
   // Snackbar notification state
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -127,7 +128,16 @@ export default function EventPage() {
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
   const avatarMenuOpen = Boolean(avatarAnchorEl);
-
+  const openQrModal = (eventId) => {
+    setCurrentQrEventId(eventId);
+    setQrModalOpen(true);
+  };
+  
+  const closeQrModal = () => {
+    setQrModalOpen(false);
+    setCurrentQrEventId(null);
+  };
+  
   // Fetch events and departments on component mount
   useEffect(() => {
     fetchEvents();
@@ -147,71 +157,125 @@ export default function EventPage() {
 
   // Check event status based on current date
   
-useEffect(() => {
-  const currentDate = new Date();
-  
-  // Update event statuses based on current date
-  if (events.length > 0) {
-    // Identify ongoing events
-    const ongoing = events.filter(event => {
-      // Parse the event date correctly with timezone information
-      // Using a more robust approach for timezone parsing
-      let eventDate;
-      if (event.date.includes('UTC+8') || event.date.includes('+09:00')) {
-        // Convert the string to ISO 8601 format with proper timezone
-        const dateStr = event.date.replace('UTC+8', '+03:00');
-        eventDate = new Date(dateStr);
-      } else {
-        // If no timezone info, assume local timezone
-        eventDate = new Date(event.date);
+  // Replace the useEffect that checks event statuses
+  useEffect(() => {
+    // Parse date strings consistently
+    const parseEventDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      // If it's already a Date object, return it
+      if (dateStr instanceof Date) return dateStr;
+      
+      try {
+        // Use simple Date constructor for consistent parsing
+        return new Date(dateStr);
+      } catch (error) {
+        console.error("Error parsing date:", error);
+        return null;
       }
-      
-      // Calculate event end time based on duration
-      const [hours, minutes, seconds] = event.duration.split(':').map(Number);
-      const eventEndTime = new Date(eventDate);
-      eventEndTime.setHours(eventEndTime.getHours() + hours);
-      eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
-      eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-      
-      // Event is ongoing if current time is between start and end time
-      return eventDate <= currentDate && currentDate <= eventEndTime && event.status !== 'Cancelled';
-    });
+    };
     
-    setOngoingEvents(ongoing);
+    // Calculate end time for an event
+    const calculateEndTime = (startDate, duration) => {
+      if (!startDate || !duration) return null;
+      
+      try {
+        const [hours, minutes, seconds] = duration.split(':').map(Number);
+        const endTime = new Date(startDate);
+        endTime.setHours(endTime.getHours() + hours);
+        endTime.setMinutes(endTime.getMinutes() + minutes);
+        endTime.setSeconds(endTime.getSeconds() + seconds);
+        return endTime;
+      } catch (error) {
+        console.error("Error calculating end time:", error);
+        return null;
+      }
+    };
     
-    // Check for events that should be marked as ended or ongoing
-    events.forEach(event => {
-      // Parse the event date with proper timezone handling
-      let eventDate;
-      if (event.date.includes('UTC+9') || event.date.includes('+09:00')) {
-        const dateStr = event.date.replace('UTC+9', '+09:00');
-        eventDate = new Date(dateStr);
-      } else {
-        eventDate = new Date(event.date);
+    // Function to check and update event statuses
+    const checkEventStatuses = () => {
+      if (events.length > 0) {
+        const newEvents = [...events];
+        let hasChanges = false;
+        const now = new Date();
+        
+        // For debugging
+        console.log("Current time:", now.toLocaleString());
+        
+        // Array to hold ongoing events
+        const ongoing = [];
+        
+        // Process each event
+        newEvents.forEach(event => {
+          const eventDate = parseEventDate(event.date);
+          
+          // Skip if we couldn't parse the date
+          if (!eventDate) {
+            console.error("Could not parse date for event:", event);
+            return;
+          }
+          
+          // For debugging
+          console.log(`Event "${event.eventName}" start time:`, eventDate.toLocaleString());
+          
+          const eventEndTime = calculateEndTime(eventDate, event.duration);
+          if (!eventEndTime) {
+            console.error("Could not calculate end time for event:", event);
+            return;
+          }
+          
+          // For debugging
+          console.log(`Event "${event.eventName}" end time:`, eventEndTime.toLocaleString());
+          
+          // Determine if the event is ongoing
+          const isOngoing = now >= eventDate && now <= eventEndTime &&
+                           event.status !== 'Cancelled' && event.status !== 'Ended';
+          
+          // For debugging
+          console.log(`Event "${event.eventName}" is ongoing:`, isOngoing);
+          
+          // Update event status if needed
+          if (now > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+            if (event.status !== 'Ended') {
+              event.status = 'Ended';
+              updateEventStatus(event.eventId, 'Ended');
+              hasChanges = true;
+            }
+          } else if (now >= eventDate && now <= eventEndTime && event.status === 'Upcoming') {
+            if (event.status !== 'Ongoing') {
+              event.status = 'Ongoing';
+              updateEventStatus(event.eventId, 'Ongoing');
+              hasChanges = true;
+            }
+          }
+          
+          // Add to ongoing events if it meets criteria
+          if (isOngoing) {
+            ongoing.push(event);
+          }
+        });
+        
+        // Update state if needed
+        if (hasChanges) {
+          setEvents(newEvents);
+        }
+        
+        // Always update ongoing events
+        setOngoingEvents(ongoing);
+        
+        // For debugging
+        console.log("Total ongoing events:", ongoing.length);
       }
-      
-      // Calculate event end time
-      const [hours, minutes, seconds] = event.duration.split(':').map(Number);
-      const eventEndTime = new Date(eventDate);
-      eventEndTime.setHours(eventEndTime.getHours() + hours);
-      eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
-      eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-      
-      // If event has passed end time but still marked as ongoing or upcoming
-      if (currentDate > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
-        // Update event status to Ended
-        updateEventStatus(event.eventId, 'Ended');
-      }
-      
-      // If event has started but is still marked as upcoming
-      if (currentDate >= eventDate && currentDate <= eventEndTime && event.status === 'Upcoming') {
-        // Update event status to Ongoing
-        updateEventStatus(event.eventId, 'Ongoing');
-      }
-    });
-  }
-}, [events]);
-
+    };
+    
+    // Initial check
+    checkEventStatuses();
+    
+    // Set interval for regular checks
+    const statusCheckInterval = setInterval(checkEventStatuses, 10000);
+    
+    return () => clearInterval(statusCheckInterval);
+  }, [events]);
   // API calls
   const fetchEvents = async () => {
     setLoading(true);
@@ -245,19 +309,23 @@ useEffect(() => {
       return;
     }
     
-    // Ensure the date is correctly formatted with timezone information
-    const formattedDate = new Date(date).toISOString();
-    
-    const eventData = {
-      eventName,
-      departmentId,
-      date: formattedDate, // Use ISO format to preserve exact time
-      duration,
-      status: 'Upcoming'
-    };
-    
-    setLoading(true);
     try {
+      // Parse the date string without modifying timezone
+      const formattedDate = new Date(date).toISOString();
+      
+      console.log("Original date input:", date);
+      console.log("Formatted date for API:", formattedDate);
+      
+      const eventData = {
+        eventName,
+        departmentId,
+        date: formattedDate,
+        duration,
+        status: 'Upcoming'
+      };
+      
+      setLoading(true);
+      
       const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
       
       // Reset form fields
@@ -379,32 +447,6 @@ useEffect(() => {
     setDurationHours('0');
     setDurationMinutes('00');
     setDurationSeconds('00');
-  };
-
-  // Navigation handlers
-  const handleNavigateToEvent = () => {
-    navigate('/event');
-  };
-
-  const handleNavigateToDashboard = () => {
-    navigate('/dashboard');
-  };
-
-  const handleNavigateToSettings = () => {
-    navigate('/settings');
-  };
-  
-  const handleNavigateToAccounts = () => {
-    navigate('/accounts');
-  };
-  
-  const handleNavigateToDepartment = () => {
-    navigate('/department');
-  }
-  
-  // Filter menu handlers
-  const handleFilterClick = (event) => {
-    setFilterAnchorEl(event.currentTarget);
   };
 
   const handleFilterClose = () => {
@@ -531,23 +573,20 @@ useEffect(() => {
   // Format date for display
   const formatDate = (dateString) => {
     try {
-      // Check if the dateString includes time information (from ISO format)
-      const hasTimeInfo = dateString.includes('T');
-      
-      // Create date from the string - preserving the exact time
+      // Create date from the string - ensuring it's treated as a local date
       const date = new Date(dateString);
       
-      // Use local timezone to ensure we respect the input time
+      // Format date with proper locale options
       const options = {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        second: '2-digit',
         hour12: true
       };
       
-      // Format date with the proper locale options
       return date.toLocaleString('en-US', options);
     } catch (e) {
       console.error("Date parsing error:", e);
@@ -560,104 +599,192 @@ useEffect(() => {
       <Box className="event-main">
         {/* Ongoing Events Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Ongoing Events
-          </Typography>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 3, 
-              borderRadius: '8px', 
-              border: '1px solid #E2E8F0' 
-            }}
-          >
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-                <CircularProgress size={30} />
-              </Box>
-            ) : ongoingEvents.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="body1" color="#64748B">
-                  No ongoing events at the moment
-                </Typography>
-              </Box>
-            ) : (
-              <Grid container spacing={3}>
-                {ongoingEvents.map(event => (
-                  <Grid item xs={12} md={6} lg={4} key={event.eventId}>
-                    <Card 
-                      elevation={0} 
+  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+    Ongoing Events
+  </Typography>
+  <Paper 
+    elevation={0} 
+    sx={{ 
+      p: 3, 
+      borderRadius: '8px', 
+      border: '1px solid #E2E8F0' 
+    }}
+  >
+    {loading ? (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+        <CircularProgress size={30} />
+      </Box>
+    ) : ongoingEvents.length === 0 ? (
+      <Box sx={{ textAlign: 'center', py: 2 }}>
+        <Typography variant="body1" color="#64748B">
+          No ongoing events at the moment
+        </Typography>
+      </Box>
+    ) : (
+      <Grid container spacing={3}>
+        {ongoingEvents.map(event => {
+          // Calculate remaining time
+          const startDate = new Date(event.date);
+          const [hours, minutes, seconds] = event.duration.split(':').map(Number);
+          const endTime = new Date(startDate);
+          endTime.setHours(endTime.getHours() + hours);
+          endTime.setMinutes(endTime.getMinutes() + minutes);
+          endTime.setSeconds(endTime.getSeconds() + seconds);
+          
+          const now = new Date();
+          const remainingMs = endTime - now;
+          const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+          const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          // Format for display
+          const remainingTimeText = remainingMs > 0 
+            ? `${remainingHours}h ${remainingMinutes}m remaining` 
+            : "Time expired";
+            
+          return (
+            <Grid item xs={12} md={6} lg={4} key={event.eventId}>
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  border: '1px solid #E2E8F0', 
+                  borderRadius: '8px',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  overflow: 'visible'
+                }}
+              >
+                {/* Time remaining badge */}
+                <Box sx={{
+                  position: 'absolute',
+                  top: -10,
+                  right: 16,
+                  bgcolor: remainingMs > 0 ? '#E0F2FE' : '#FEE2E2',
+                  color: remainingMs > 0 ? '#0369A1' : '#B91C1C',
+                  borderRadius: '12px',
+                  px: 2,
+                  py: 0.5,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}>
+                  {remainingTimeText}
+                </Box>
+                
+                <CardContent sx={{ flex: 1 }}>
+                  <Box sx={{ 
+                    mb: 2, 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}>
+                    <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                      {event.eventName}
+                    </Typography>
+                    <Chip 
+                      label="Ongoing" 
+                      size="small"
                       sx={{ 
-                        border: '1px solid #E2E8F0', 
-                        borderRadius: '8px',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column'
+                        bgcolor: '#E0F2FE',
+                        color: '#0369A1',
+                        fontWeight: 500,
+                        fontSize: '0.75rem'
+                      }} 
+                    />
+                  </Box>
+                  
+                  <Typography variant="body2" color="#64748B" gutterBottom>
+                    <strong>Department:</strong> {getDepartmentName(event.departmentId)}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="#64748B" gutterBottom>
+                    <strong>Started:</strong> {formatDate(event.date)}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="#64748B" gutterBottom>
+                    <strong>Duration:</strong> {event.duration}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="#64748B">
+                    <strong>Ends at:</strong> {formatDate(endTime.toISOString())}
+                  </Typography>
+                </CardContent>
+                
+                <Divider />
+                
+                <CardActions sx={{ justifyContent: 'space-between', p: 2, flexWrap: 'wrap', gap: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={<QrCode2 />}
+                    onClick={() => openQrModal(event.eventId)}
+                    sx={{ 
+                      color: '#0288d1',
+                      bgcolor: '#E0F2FE',
+                      '&:hover': {
+                        bgcolor: '#BAE6FD'
+                      }
+                    }}
+                  >
+                    QR Code
+                  </Button>
+                  
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      startIcon={<AccessTime />}
+                      onClick={() => {
+                        // Set up for extension
+                        setEventToEdit(event);
+                        setEditedStatus(event.status);
+                        
+                        // Parse duration and add 30 minutes by default for extension
+                        const [hours, minutes, seconds] = event.duration.split(':');
+                        const newHours = hours;
+                        const newMinutes = String(parseInt(minutes) + 30).padStart(2, '0');
+                        
+                        setEditDurationHours(newHours);
+                        setEditDurationMinutes(newMinutes);
+                        setEditDurationSeconds(seconds);
+                        setEditDuration(`${newHours}:${newMinutes}:${seconds}`);
+                        
+                        setEditDialogOpen(true);
+                      }}
+                      sx={{ 
+                        color: '#059669', 
+                        bgcolor: '#DCFCE7',
+                        '&:hover': {
+                          bgcolor: '#BBF7D0'
+                        }
                       }}
                     >
-                      <CardContent sx={{ flex: 1 }}>
-                        <Box sx={{ 
-                          mb: 2, 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start'
-                        }}>
-                          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-                            {event.eventName}
-                          </Typography>
-                          <Chip 
-                            label="Ongoing" 
-                            size="small"
-                            sx={{ 
-                              bgcolor: '#E0F2FE',
-                              color: '#0369A1',
-                              fontWeight: 500,
-                              fontSize: '0.75rem'
-                            }} 
-                          />
-                        </Box>
-                        
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Department:</strong> {getDepartmentName(event.departmentId)}
-                        </Typography>
-                        
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Started:</strong> {formatDate(event.date)}
-                        </Typography>
-                        
-                        <Typography variant="body2" color="#64748B">
-                          <strong>Duration:</strong> {event.duration}
-                        </Typography>
-                      </CardContent>
-                      
-                      <Divider />
-                      
-                      <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
-                        <Button
-                          size="small"
-                          startIcon={<Edit />}
-                          onClick={() => openEditDialog(event)}
-                          sx={{ color: '#0288d1' }}
-                        >
-                          Update Status
-                        </Button>
-                        
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<Cancel />}
-                          onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
-                        >
-                          Cancel Event
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Paper>
-        </Box>
+                      Extend
+                    </Button>
+                    
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Cancel />}
+                      onClick={() => updateEventStatus(event.eventId, 'Ended')}
+                      sx={{
+                        bgcolor: '#FEF2F2',
+                        '&:hover': {
+                          bgcolor: '#FEE2E2'
+                        }
+                      }}
+                    >
+                      End
+                    </Button>
+                  </Box>
+                </CardActions>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+    )}
+  </Paper>
+</Box>
 
         <Typography variant="h6" fontWeight="600" color="#1E293B">
           Add New Event
@@ -1006,24 +1133,32 @@ useEffect(() => {
                           }}
                         />
                       </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => openEditDialog(event)}
-                            sx={{ color: '#64748B' }}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => openDeleteDialog(event)} 
-                            sx={{ color: '#64748B' }}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </TableCell>
+                    <TableCell>
+  <Box sx={{ display: 'flex', gap: 1 }}>
+    <IconButton 
+      size="small" 
+      onClick={() => openQrModal(event.eventId)}
+      sx={{ color: '#64748B' }}
+      title="Show QR Code"
+    >
+      <QrCode2 fontSize="small" />
+    </IconButton>
+    <IconButton 
+      size="small" 
+      onClick={() => openEditDialog(event)}
+      sx={{ color: '#64748B' }}
+    >
+      <Edit fontSize="small" />
+    </IconButton>
+    <IconButton 
+      size="small" 
+      onClick={() => openDeleteDialog(event)} 
+      sx={{ color: '#64748B' }}
+    >
+      <Delete fontSize="small" />
+    </IconButton>
+  </Box>
+</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -1340,7 +1475,152 @@ useEffect(() => {
           </Button>
         </DialogActions>
       </Dialog>
-
+      <Dialog
+  open={qrModalOpen}
+  onClose={closeQrModal}
+  maxWidth="xs"
+  PaperProps={{
+    sx: { borderRadius: '12px' }
+  }}
+>
+  <DialogTitle sx={{ 
+    borderBottom: '1px solid #E2E8F0', 
+    py: 2,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <QrCode2 sx={{ color: '#0288d1' }} />
+      <Typography variant="h6">Event Check-in QR</Typography>
+    </Box>
+    <IconButton onClick={closeQrModal} size="small">
+      <Close fontSize="small" />
+    </IconButton>
+  </DialogTitle>
+  
+  <DialogContent sx={{ pt: 3, pb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    {currentQrEventId && (
+      <>
+        <Typography variant="subtitle1" color="#1E293B" sx={{ mb: 1, fontWeight: 500, textAlign: 'center' }}>
+          {events.find(e => e.eventId === currentQrEventId)?.eventName || 'Event'}
+        </Typography>
+        
+        <Typography variant="body2" color="#64748B" sx={{ mb: 3, textAlign: 'center' }}>
+          Faculty members can scan this QR code to check in to this event
+        </Typography>
+        
+        <Box sx={{ 
+          width: '240px', 
+          height: '240px', 
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          mb: 2,
+          p: 2,
+          border: '1px solid #E2E8F0',
+          borderRadius: '8px',
+          position: 'relative'
+        }}>
+          <img 
+            src={`http://localhost:8080/api/events/qr/${currentQrEventId}`} 
+            alt="Event QR Code" 
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
+          />
+          {/* Pulsing animation effect */}
+          <Box sx={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            border: '2px solid #0288d1',
+            borderRadius: '8px',
+            animation: 'pulse 2s infinite',
+            '@keyframes pulse': {
+              '0%': {
+                transform: 'scale(1)',
+                opacity: 1
+              },
+              '50%': {
+                transform: 'scale(1.05)',
+                opacity: 0.6
+              },
+              '100%': {
+                transform: 'scale(1)',
+                opacity: 1
+              }
+            }
+          }} />
+        </Box>
+        
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          gap: 1,
+          mb: 1
+        }}>
+          <Chip 
+            icon={<Event fontSize="small" />}
+            label={formatDate(events.find(e => e.eventId === currentQrEventId)?.date || new Date().toISOString())}
+            size="small"
+            sx={{ 
+              bgcolor: '#F1F5F9',
+              color: '#475569',
+              fontSize: '0.75rem'
+            }}
+          />
+        </Box>
+        
+        <Typography variant="caption" color="#94A3B8" sx={{ mt: 1 }}>
+          Event ID: {currentQrEventId}
+        </Typography>
+      </>
+    )}
+  </DialogContent>
+  
+  <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0', justifyContent: 'space-between' }}>
+    <Button 
+      variant="outlined"
+      onClick={() => {
+        // Create an anchor element
+        const link = document.createElement('a');
+        // Set the href to the QR code URL
+        link.href = `http://localhost:8080/api/events/qr/${currentQrEventId}`;
+        // Set the download attribute with filename
+        link.download = `event-${currentQrEventId}-qr.png`;
+        // Append to document, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }}
+      startIcon={<Download />}
+      sx={{
+        borderColor: '#CBD5E1',
+        color: '#64748B',
+        '&:hover': {
+          borderColor: '#94A3B8',
+          bgcolor: 'rgba(148, 163, 184, 0.04)',
+        }
+      }}
+    >
+      Download
+    </Button>
+    
+    <Button
+      variant="contained"
+      onClick={closeQrModal}
+      endIcon={<Close />}
+      sx={{
+        bgcolor: '#0288d1',
+        '&:hover': {
+          bgcolor: '#0277bd',
+        }
+      }}
+    >
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
       {/* Upload CSV Modal */}
       <Modal
         open={showUploadModal}
@@ -1419,22 +1699,6 @@ useEffect(() => {
           </Box>
         </Box>
       </Modal>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

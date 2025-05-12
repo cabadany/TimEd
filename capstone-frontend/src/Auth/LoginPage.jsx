@@ -154,6 +154,8 @@ function LoginPage() {
       const email = emailResponse.data;
       console.log(email);
       console.log(password);
+      console.log("auth token firebase", auth);
+      console.log("JWT token: ");
       // ✅ Authenticate using Firebase Authentication with email
       await signInWithEmailAndPassword(auth, email, password);
   
@@ -162,14 +164,17 @@ function LoginPage() {
         schoolId: idNumber
       });
 
-      
+      const jwtToken = response.data.token;
+
+console.log("JWT Token:", jwtToken);
       const data = response.data;
   
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);
         localStorage.setItem('role', data.role);
-  
+        const userI2 = localStorage.getItem("userId"); // or get from auth context
+        console.log("User ID:", userI2);
         if (data.role === 'ADMIN') {
           setIsAnimating(true);
           setTimeout(() => {

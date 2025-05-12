@@ -1,9 +1,16 @@
 package com.capstone.TimEd.controller;
 
 import com.capstone.TimEd.service.AttendanceService;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +25,7 @@ public class AttendanceController {
         this.attendanceService = attendanceService;
     }
 
-    @PostMapping("/{eventId}/{userId}")
+    @PostMapping("/{eventId}/{userId}")	
     public ResponseEntity<String> markAttendance(
             @PathVariable String eventId,
             @PathVariable String userId) {
@@ -98,6 +105,20 @@ public class AttendanceController {
         } catch (Exception e) {
             System.err.println("Error fetching attended events: " + e.getMessage());
             return ResponseEntity.status(500).body(Collections.emptyList());
+        }
+    }
+    
+    public String generateEventQrCode(String eventId, String userId) {
+        try {
+            String joinUrl = "http://localhost:5173/join-event/" + eventId + "?userId=" + userId;
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            BitMatrix bitMatrix = qrCodeWriter.encode(joinUrl, BarcodeFormat.QR_CODE, 300, 300);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
+            return Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate QR code: " + e.getMessage());
         }
     }
 }
