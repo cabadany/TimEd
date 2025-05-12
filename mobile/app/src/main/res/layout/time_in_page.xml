@@ -113,7 +113,8 @@
             android:clickable="true"
             android:contentDescription="QR Scanner Button"
             android:focusable="true"
-            app:srcCompat="@drawable/ic_qr_scanner" />
+            app:srcCompat="@drawable/ic_qr_scanner"
+            android:stateListAnimator="@animator/button_scale_animator"/>
 
     <!-- QR Scanner reminder text -->
     <TextView
