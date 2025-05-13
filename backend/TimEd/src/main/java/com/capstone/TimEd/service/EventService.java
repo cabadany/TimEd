@@ -113,6 +113,31 @@ public class EventService {
         }
     }// Method to update an event's details
 
+    // Method to update an event's certificateId
+    public void updateEventCertificateId(String eventId, String certificateId) throws ExecutionException, InterruptedException {
+        try {
+            // Update only the certificateId field
+            Map<String, Object> updateMap = new HashMap<>();
+            updateMap.put("certificateId", certificateId);
+            
+            // Log the operation for debugging
+            System.out.println("Updating event " + eventId + " with certificateId " + certificateId);
+            
+            // Update the event in Firestore
+            WriteResult result = firestore.collection("events")
+                    .document(eventId)
+                    .update(updateMap)
+                    .get();
+            
+            System.out.println("Event updated at: " + result.getUpdateTime());
+            
+        } catch (Exception e) {
+            System.err.println("Error updating event certificateId: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
     // Method to update an event's details and return the updated event
     public Event updateEvent(String eventId, Event updatedEvent) throws ExecutionException, InterruptedException {
         try {
@@ -135,6 +160,11 @@ public class EventService {
             updateMap.put("date", updatedEvent.getDate());
             updateMap.put("duration", updatedEvent.getDuration());
             updateMap.put("departmentId", updatedEvent.getDepartmentId());
+            
+            // Also update certificateId if it exists
+            if (updatedEvent.getCertificateId() != null) {
+                updateMap.put("certificateId", updatedEvent.getCertificateId());
+            }
 
             // Apply the update in Firestore
             firestore.collection("events")
@@ -153,18 +183,38 @@ public class EventService {
     // Method to add a new event
     public String addEvent(Event event) {
         try {
+            // Log the received date for debugging
+            System.out.println("Received event date: " + event.getDate());
+
+            // Preserve the time exactly as received from frontend
+            if (event.getDate() != null) {
+                // Get the timezone from the server
+                TimeZone serverTimezone = TimeZone.getDefault();
+                System.out.println("Server timezone: " + serverTimezone.getID());
+                
+                // This will help with debugging time conversion issues
+                SimpleDateFormat debugFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                debugFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                System.out.println("Event date in UTC: " + debugFormat.format(event.getDate()));
+            }
+            
             // Add event to Firestore and let Firestore generate the document ID
             DocumentReference eventRef = firestore.collection("events").add(event).get();
 
             // Get the auto-generated ID and set it to the event object
             event.setEventId(eventRef.getId());
 
-            // Optionally, update the event document with the generated eventId (if you want to persist the eventId)
+            // Update the event document with the generated eventId
             eventRef.set(event);
+            
+            System.out.println("Event added successfully with ID: " + eventRef.getId());
 
-            return "Event added successfully with ID: " + eventRef.getId();
+            // Return just the ID, not a success message
+            return eventRef.getId();
 
         } catch (Exception e) {
+            System.err.println("Error adding event: " + e.getMessage());
+            e.printStackTrace();  // Print full stack trace for debugging
             return "Failed to add event: " + e.getMessage();
         }
     }

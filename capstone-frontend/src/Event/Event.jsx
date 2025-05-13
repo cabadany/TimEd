@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
-import { QrCode2,Download  } from '@mui/icons-material';
+import { QrCode2,Download, BrandingWatermark } from '@mui/icons-material';
 import axios from 'axios';
 import {
   Box,
@@ -69,6 +69,28 @@ import {
 } from '@mui/icons-material';
 import './Event.css';
 import NotificationSystem from '../components/NotificationSystem';
+import CertificateEditor from '../components/CertificateEditor';
+
+// Default certificate template
+const defaultCertificate = {
+  title: 'CERTIFICATE',
+  subtitle: 'OF ACHIEVEMENT',
+  recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
+  recipientName: '{Recipient Name}',
+  description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
+  signatories: [
+    { name: 'John Doe', title: 'REPRESENTATIVE' },
+    { name: 'Jane Smith', title: 'REPRESENTATIVE' }
+  ],
+  eventName: '{Event Name}',
+  eventDate: '{Event Date}',
+  certificateNumber: '{Certificate Number}',
+  backgroundColor: '#ffffff',
+  borderColor: '#0047AB',
+  headerColor: '#0047AB',
+  textColor: '#000000',
+  fontFamily: 'Times New Roman'
+};
 
 export default function EventPage() {
   const navigate = useNavigate();
@@ -112,7 +134,7 @@ export default function EventPage() {
   const [editDurationSeconds, setEditDurationSeconds] = useState('00');
   const [editDuration, setEditDuration] = useState('0:00:00');
   const [qrModalOpen, setQrModalOpen] = useState(false);
-const [currentQrEventId, setCurrentQrEventId] = useState(null);
+  const [currentQrEventId, setCurrentQrEventId] = useState(null);
   // Snackbar notification state
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -128,6 +150,12 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
   const avatarMenuOpen = Boolean(avatarAnchorEl);
+
+  // Add state for certificate template
+  const [showCertificateEditor, setShowCertificateEditor] = useState(false);
+  const [currentCertificateData, setCurrentCertificateData] = useState(null);
+  const [eventForCertificate, setEventForCertificate] = useState(null);
+  
   const openQrModal = (eventId) => {
     setCurrentQrEventId(eventId);
     setQrModalOpen(true);
@@ -167,7 +195,7 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
       if (dateStr instanceof Date) return dateStr;
       
       try {
-        // Use simple Date constructor for consistent parsing
+        // Create a Date object directly from the string
         return new Date(dateStr);
       } catch (error) {
         console.error("Error parsing date:", error);
@@ -281,7 +309,18 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
     setLoading(true);
     try {
       const response = await axios.get('http://localhost:8080/api/events/getAll');
-      setEvents(response.data);
+      
+      // Log the received events for debugging
+      console.log("Received events from backend:", response.data);
+      
+      // Process the events to ensure correct time display
+      const processedEvents = response.data.map(event => {
+        // Log the date format from backend for debugging
+        console.log(`Event ${event.eventName} date from backend:`, event.date);
+        return event;
+      });
+      
+      setEvents(processedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
       showSnackbar('Failed to load events', 'error');
@@ -327,6 +366,52 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
       setLoading(true);
       
       const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
+      
+      // After creating the event, also save the certificate template if one exists
+      if (currentCertificateData) {
+        // The backend now returns just the event ID
+        const newEventId = response.data;
+        console.log("Created event with ID:", newEventId);
+        
+        // Create payload for certificate with the new event ID
+        const certificatePayload = {
+          ...currentCertificateData,
+          eventId: newEventId,
+          eventName: eventName
+        };
+        
+        try {
+          console.log("Saving certificate template for new event:", certificatePayload);
+          // Save the certificate template
+          const certificateResponse = await axios.post('http://localhost:8080/api/certificates', certificatePayload);
+          console.log("Certificate saved successfully:", certificateResponse.data);
+          
+          // Link the certificate to the event
+          if (certificateResponse.data && certificateResponse.data.id) {
+            try {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+                certificateId: certificateResponse.data.id,
+                eventId: newEventId
+              });
+              console.log("Certificate linked to event successfully");
+            } catch (linkError) {
+              console.error("Error linking certificate to event:", linkError);
+            }
+          }
+          
+          // Verify the certificate was saved
+          try {
+            console.log('Verifying certificate was saved correctly');
+            const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${newEventId}`);
+            console.log('Certificate verification response:', verifyResponse.data);
+          } catch (verifyError) {
+            console.error('Certificate verification failed:', verifyError);
+          }
+        } catch (certError) {
+          console.error("Error saving certificate template for new event:", certError);
+          // Don't show error to user - the event was created successfully
+        }
+      }
       
       // Reset form fields
       resetForm();
@@ -443,10 +528,10 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
     setEventName('');
     setDepartmentId('');
     setDate('');
-    setDuration('0:00:00');
-    setDurationHours('0');
-    setDurationMinutes('00');
-    setDurationSeconds('00');
+    setDuration('');
+    setCurrentCertificateData(null);
+    setEventForCertificate(null);
+    setShowCertificateEditor(false);
   };
 
   const handleFilterClose = () => {
@@ -593,6 +678,367 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
       return dateString;
     }
   };
+
+  // Format date for backend - reverting to simpler approach that worked before
+  const formatDateForBackend = (dateString) => {
+    try {
+      console.log("Original date input:", dateString);
+      
+      // Parse the date-time from input field (format: YYYY-MM-DDTHH:mm)
+      const [datePart, timePart] = dateString.split('T');
+      
+      if (!datePart || !timePart) {
+        console.error("Invalid date format:", dateString);
+        return null;
+      }
+      
+      // Extract date parts
+      const [year, month, day] = datePart.split('-');
+      
+      // Extract time parts
+      const [hours, minutes] = timePart.split(':');
+      
+      // Construct a Date object with explicit parts
+      // Important: month is 0-indexed in JavaScript Date constructor
+      const dateObj = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      
+      console.log("Constructed Date object:", dateObj);
+      console.log("Constructed Date string:", dateObj.toString());
+      
+      return dateObj;
+    } catch (e) {
+      console.error("Error formatting date for backend:", e);
+      return null;
+    }
+  };
+
+  // New function to handle opening certificate editor for a new template
+  const openCertificateEditor = (event = null) => {
+    console.log('Opening certificate editor for event:', event);
+    
+    // If an event is provided, this is for an existing event
+    if (event && event.eventId) {
+      // Make sure event object has all needed properties
+      const fullEvent = {
+        ...event,
+        eventId: event.eventId, // Ensure eventId is correctly set
+        eventName: event.eventName || 'Unknown Event'
+      };
+      
+      console.log('Setting eventForCertificate:', fullEvent);
+      setEventForCertificate(fullEvent);
+      
+      // Ensure the event ID is correctly passed
+      if (!event.eventId) {
+        console.error('Event ID is missing or undefined');
+        // Still show the editor with default certificate
+        const defaultTemplate = { ...defaultCertificate };
+        defaultTemplate.eventName = event.eventName || eventName || 'New Event';
+        setCurrentCertificateData(defaultTemplate);
+        setShowCertificateEditor(true);
+        return;
+      }
+      
+      // Show loading indicator while fetching
+      setLoading(true);
+      
+      // Try to fetch existing certificate for this event
+      fetchCertificateForEvent(event.eventId)
+        .then((certificateData) => {
+          // Certificate data should now be set in state
+          console.log('Certificate data loaded for event:', event.eventName, certificateData);
+          setShowCertificateEditor(true);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error('Error fetching certificate for event:', error);
+          // Still show the editor with default certificate if fetch fails
+          console.log('Using default certificate template due to fetch error');
+          setShowCertificateEditor(true);
+          setLoading(false);
+        });
+      
+      return; // Return early to prevent the immediate setShowCertificateEditor(true) below
+    } 
+    // If no event provided, but we're in the Add Event form with a certificate already
+    else if (currentCertificateData) {
+      // Just open the editor with the current data
+      console.log('Editing current certificate template in Add Event form');
+      
+      // Update certificate data with current event name from form
+      if (eventName) {
+        setCurrentCertificateData(prev => ({
+          ...prev,
+          eventName: eventName
+        }));
+      }
+    } 
+    // Creating a brand new template
+    else {
+      console.log('Creating new certificate template');
+      
+      // Initialize with current event name from form
+      const defaultTemplate = { ...defaultCertificate };
+      if (eventName) {
+        defaultTemplate.eventName = eventName;
+      }
+      
+      setCurrentCertificateData(defaultTemplate);
+    }
+    
+    setShowCertificateEditor(true);
+  };
+
+  // Close certificate editor
+  const closeCertificateEditor = () => {
+    setShowCertificateEditor(false);
+    setEventForCertificate(null);
+    setCurrentCertificateData(null);
+  };
+
+  // Fetch certificate template for a specific event
+  const fetchCertificateForEvent = async (eventId) => {
+    try {
+      setLoading(true);
+      console.log(`Fetching certificate for event ID: ${eventId}`);
+      
+      try {
+        // Try to fetch an existing certificate
+        const response = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventId}`);
+        console.log('Certificate fetch response:', response);
+        
+        if (response.data && Object.keys(response.data).length > 0) {
+          console.log('Found certificate for event:', response.data);
+          setCurrentCertificateData(response.data);
+          return response.data;
+        } else {
+          // No certificate in response data
+          throw new Error('No certificate data in response');
+        }
+      } catch (fetchError) {
+        // Handle 404 (no certificate found) as a normal case, not an error
+        console.log('No existing certificate found for this event. Creating new template.');
+        
+        // Create a default template
+        const defaultTemplate = { ...defaultCertificate };
+        if (eventForCertificate?.eventName) {
+          defaultTemplate.eventName = eventForCertificate.eventName;
+        }
+        
+        setCurrentCertificateData(defaultTemplate);
+        return defaultTemplate;
+      }
+    } catch (error) {
+      console.error('Unexpected error in certificate fetch process:', error);
+      
+      // Set a default template in case of error
+      const defaultTemplate = { ...defaultCertificate };
+      if (eventForCertificate?.eventName) {
+        defaultTemplate.eventName = eventForCertificate.eventName;
+      }
+      
+      setCurrentCertificateData(defaultTemplate);
+      return defaultTemplate;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save certificate template
+  const saveCertificateTemplate = async (certificateData) => {
+    try {
+      setLoading(true);
+      
+      // Create the payload with event information if available
+      const payload = {
+        ...certificateData,
+        // Don't include eventId if we're creating a new event - it will be assigned later
+        eventId: eventForCertificate?.eventId || null,
+        eventName: eventForCertificate?.eventName || eventName || certificateData.eventName
+      };
+      
+      // Log what we're saving for debugging
+      console.log('Saving certificate template:', payload);
+      console.log('Event for certificate:', eventForCertificate);
+      
+      let response;
+      if (certificateData.id) {
+        // Update existing certificate
+        console.log('Updating existing certificate with ID:', certificateData.id);
+        response = await axios.put(`http://localhost:8080/api/certificates/${certificateData.id}`, payload);
+      } else {
+        // Create new certificate
+        console.log('Creating new certificate template with eventId:', payload.eventId);
+        response = await axios.post('http://localhost:8080/api/certificates', payload);
+      }
+      
+      console.log('Certificate save response:', response);
+      
+      // Get the complete data from response or fallback to input data
+      const savedCertificateData = response.data || certificateData;
+      
+      // Set the current certificate data to show in preview
+      setCurrentCertificateData(savedCertificateData);
+      
+      // Show success message
+      showSnackbar('Certificate template saved successfully', 'success');
+      
+      // Link certificate to event if both certificate and event exist
+      if (savedCertificateData.id && savedCertificateData.eventId) {
+        try {
+          console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
+          await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+            certificateId: savedCertificateData.id,
+            eventId: savedCertificateData.eventId
+          });
+          console.log('Certificate linked to event successfully');
+        } catch (linkError) {
+          console.error('Error linking certificate to event:', linkError);
+        }
+      }
+      
+      // Double check certificate was saved
+      if (payload.eventId) {
+        try {
+          console.log('Verifying certificate was saved correctly for eventId:', payload.eventId);
+          const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${payload.eventId}`);
+          console.log('Certificate verification response:', verifyResponse.data);
+        } catch (verifyError) {
+          console.error('Certificate verification failed:', verifyError);
+        }
+      }
+      
+      // Close the editor 
+      setShowCertificateEditor(false);
+      
+      // Return to trigger the preview update in UI
+      return savedCertificateData;
+      
+    } catch (error) {
+      console.error('Error saving certificate:', error);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      }
+      showSnackbar('Failed to save certificate template', 'error');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Apply certificate template to current event form without saving to database
+  const applyTemplateToEvent = async (certificateData) => {
+    try {
+      console.log('Applying certificate template to current event form:', certificateData);
+      console.log('Current eventForCertificate:', eventForCertificate);
+      
+      // Update eventName in the certificate if current form has a value
+      let templateToApply = { ...certificateData };
+      if (eventName) {
+        templateToApply.eventName = eventName;
+      }
+      
+      // Set the current certificate data to show in preview
+      setCurrentCertificateData(templateToApply);
+      
+      // Also save the template for existing event if we're editing an existing event
+      if (eventForCertificate?.eventId) {
+        console.log('Apply: Saving certificate for existing event with ID:', eventForCertificate.eventId);
+        
+        // Make sure the certificate has the event ID
+        const payload = {
+          ...templateToApply,
+          eventId: eventForCertificate.eventId,
+          eventName: eventForCertificate.eventName || templateToApply.eventName
+        };
+        
+        console.log('Apply: Final certificate payload:', payload);
+        
+        // First, check if a certificate already exists for this event
+        try {
+          const checkResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+          
+          // If certificate exists, update it
+          if (checkResponse.data && checkResponse.data.id) {
+            console.log('Apply: Updating existing certificate:', checkResponse.data.id);
+            const updateResponse = await axios.put(`http://localhost:8080/api/certificates/${checkResponse.data.id}`, {
+              ...payload,
+              id: checkResponse.data.id
+            });
+            console.log('Apply: Certificate updated successfully:', updateResponse.data);
+            
+            // Link certificate to event
+            await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+              certificateId: checkResponse.data.id,
+              eventId: eventForCertificate.eventId
+            });
+          } else {
+            // No certificate found, create new one
+            console.log('Apply: Creating new certificate for event:', eventForCertificate.eventId);
+            const createResponse = await axios.post('http://localhost:8080/api/certificates', payload);
+            console.log('Apply: Certificate created successfully:', createResponse.data);
+            
+            // Link certificate to event
+            if (createResponse.data && createResponse.data.id) {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+                certificateId: createResponse.data.id,
+                eventId: eventForCertificate.eventId
+              });
+            }
+            
+            // Verify the certificate was saved
+            try {
+              console.log('Apply: Verifying certificate was saved correctly');
+              const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+              console.log('Apply: Certificate verification response:', verifyResponse.data);
+            } catch (verifyError) {
+              console.error('Apply: Certificate verification failed:', verifyError);
+            }
+          }
+        } catch (error) {
+          // If 404, create a new certificate
+          if (error.response && error.response.status === 404) {
+            console.log('Apply: No certificate found, creating new one for event:', eventForCertificate.eventId);
+            const createResponse = await axios.post('http://localhost:8080/api/certificates', payload);
+            console.log('Apply: Certificate created successfully:', createResponse.data);
+            
+            // Link certificate to event
+            if (createResponse.data && createResponse.data.id) {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+                certificateId: createResponse.data.id,
+                eventId: eventForCertificate.eventId
+              });
+            }
+            
+            // Verify the certificate was saved
+            try {
+              console.log('Apply: Verifying certificate was saved correctly');
+              const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+              console.log('Apply: Certificate verification response:', verifyResponse.data);
+            } catch (verifyError) {
+              console.error('Apply: Certificate verification failed:', verifyError);
+            }
+          } else {
+            console.error('Apply: Error checking for existing certificate:', error);
+          }
+        }
+      } else {
+        console.log('Apply: No eventForCertificate with ID - not saving to database yet');
+      }
+      
+      // Show success message
+      showSnackbar('Certificate template applied to event', 'success');
+      
+      // Close the editor
+      setShowCertificateEditor(false);
+      
+    } catch (error) {
+      console.error('Error applying certificate template:', error);
+      showSnackbar('Failed to apply certificate template', 'error');
+    }
+  };
+
   return (
     <Box className="event-container">
       {/* Event Content */}
@@ -879,7 +1325,10 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
                 variant="outlined"
                 type="datetime-local"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  console.log("Date input changed:", e.target.value);
+                  setDate(e.target.value);
+                }}
                 // No min attribute to prevent any browser-based default time setting
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -979,7 +1428,7 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
                     if (val === '' || /^\d+$/.test(val)) {
                       const formattedVal = val === '' ? '00' : val.padStart(2, '0');
                       setDurationSeconds(formattedVal);
-                      setDuration(`${durationHours}:${formattedVal}:${durationSeconds}`);
+                      setDuration(`${durationHours}:${durationMinutes}:${formattedVal}`);
                     }
                   }}
                   sx={{
@@ -1002,6 +1451,176 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
               </Box>
               {/* Hidden field to hold the combined duration value */}
               <input type="hidden" value={duration} />
+            </Box>
+            
+            <Box sx={{ gridColumn: "span 2" }}>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Certificate Template
+              </Typography>
+              <Box sx={{ 
+                border: '1px dashed #CBD5E1', 
+                borderRadius: '4px', 
+                p: 2, 
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center', 
+                alignItems: 'center',
+                minHeight: '120px',
+                bgcolor: '#F8FAFC'
+              }}>
+                {currentCertificateData ? (
+                  <>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start',
+                      mb: 2,
+                      p: 2,
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '4px',
+                      width: '100%',
+                      bgcolor: '#FFFFFF',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '4px',
+                        bgcolor: '#0288d1'
+                      }} />
+                      
+                      <Box 
+                        sx={{ 
+                          width: '80px', 
+                          height: '60px', 
+                          border: `2px solid ${currentCertificateData.borderColor || '#0047AB'}`,
+                          borderRadius: '4px',
+                          mr: 2,
+                          bgcolor: currentCertificateData.backgroundColor || '#FFFFFF',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '4px',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* Miniature curved header background */}
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: -20, 
+                            left: -20, 
+                            width: 60, 
+                            height: 40, 
+                            backgroundColor: currentCertificateData.headerColor || '#0047AB',
+                            borderRadius: '50%',
+                            transform: 'rotate(-45deg)',
+                            zIndex: 0
+                          }} 
+                        />
+                        
+                        <Typography variant="caption" sx={{ 
+                          fontSize: '8px', 
+                          fontWeight: 'bold', 
+                          color: currentCertificateData.textColor || '#000000',
+                          zIndex: 1,
+                          textAlign: 'center'
+                        }}>
+                          {currentCertificateData.title || 'CERTIFICATE'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          fontSize: '6px', 
+                          color: currentCertificateData.textColor || '#000000',
+                          zIndex: 1,
+                          textAlign: 'center'
+                        }}>
+                          {currentCertificateData.subtitle || 'OF ACHIEVEMENT'}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2" fontWeight="600">
+                          {currentCertificateData.title || 'Certificate Template'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', mb: 1 }} color="#64748B">
+                          Template selected for this event
+                        </Typography>
+                        
+                        <Chip 
+                          size="small" 
+                          label={currentCertificateData.eventName !== '{Event Name}' ? 
+                            currentCertificateData.eventName : eventName || 'Current Event'} 
+                          sx={{ 
+                            bgcolor: '#E0F2FE', 
+                            color: '#0288d1',
+                            fontSize: '0.75rem',
+                            height: '22px'
+                          }} 
+                        />
+                      </Box>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Edit />}
+                        onClick={() => openCertificateEditor()}
+                        sx={{
+                          borderColor: '#CBD5E1',
+                          color: '#64748B',
+                          '&:hover': {
+                            borderColor: '#94A3B8',
+                            bgcolor: 'rgba(148, 163, 184, 0.04)',
+                          },
+                        }}
+                      >
+                        Edit Template
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Delete />}
+                        onClick={() => {
+                          setCurrentCertificateData(null);
+                          showSnackbar('Certificate template removed', 'info');
+                        }}
+                        sx={{
+                          borderColor: '#FCA5A5',
+                          color: '#B91C1C',
+                          '&:hover': {
+                            borderColor: '#EF4444',
+                            bgcolor: 'rgba(239, 68, 68, 0.04)',
+                          },
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  </>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    startIcon={<BrandingWatermark />}
+                    onClick={() => openCertificateEditor()}
+                    sx={{
+                      borderColor: '#0288d1',
+                      color: '#0288d1',
+                      '&:hover': {
+                        borderColor: '#0277bd',
+                        bgcolor: 'rgba(2, 136, 209, 0.04)',
+                      },
+                    }}
+                  >
+                    Create Certificate Template
+                  </Button>
+                )}
+              </Box>
             </Box>
           </Box>
 
@@ -1145,10 +1764,10 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
     </IconButton>
     <IconButton 
       size="small" 
-      onClick={() => openEditDialog(event)}
+      onClick={() => openCertificateEditor(event)}
       sx={{ color: '#64748B' }}
     >
-      <Edit fontSize="small" />
+      <BrandingWatermark />
     </IconButton>
     <IconButton 
       size="small" 
@@ -1432,7 +2051,7 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
                 if (val === '' || /^\d+$/.test(val)) {
                   const formattedVal = val === '' ? '00' : val.padStart(2, '0');
                   setEditDurationSeconds(formattedVal);
-                  setEditDuration(`${editDurationHours}:${formattedVal}:${editDurationSeconds}`);
+                  setEditDuration(`${editDurationHours}:${editDurationMinutes}:${formattedVal}`);
                 }
               }}
               sx={{
@@ -1697,6 +2316,35 @@ const [currentQrEventId, setCurrentQrEventId] = useState(null);
               Upload
             </Button>
           </Box>
+        </Box>
+      </Modal>
+
+      {/* Certificate Editor Modal */}
+      <Modal
+        open={showCertificateEditor}
+        onClose={closeCertificateEditor}
+        aria-labelledby="certificate-editor-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%',
+          maxWidth: 1200,
+          height: '90vh',
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 0,
+          borderRadius: 2,
+          overflow: 'auto'
+        }}>
+          <CertificateEditor 
+            initialData={currentCertificateData} 
+            onSave={saveCertificateTemplate}
+            onApply={!eventForCertificate ? applyTemplateToEvent : undefined}
+            onClose={closeCertificateEditor}
+          />
         </Box>
       </Modal>
     </Box>

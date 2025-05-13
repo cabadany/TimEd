@@ -86,7 +86,17 @@ function App() {
             path="/certificates" 
             element={
               <ProtectedRoute>
-                <MainLayout title="Certificate">
+                <MainLayout title="Certificates">
+                  <Certificate />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/certificates/:eventId" 
+            element={
+              <ProtectedRoute>
+                <MainLayout title="Event Certificates">
                   <Certificate />
                 </MainLayout>
               </ProtectedRoute>

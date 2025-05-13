@@ -5,6 +5,7 @@ import com.capstone.TimEd.dto.Eventdto;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.Event;
 import com.capstone.TimEd.service.EventService;
+import com.capstone.TimEd.service.CertificateService;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
@@ -26,11 +27,13 @@ import java.util.concurrent.ExecutionException;
 @RequestMapping("/api/events")
 public class EventController {
 	 @Autowired
-	    public EventController(EventService eventService) {
+	    public EventController(EventService eventService, CertificateService certificateService) {
 	        this.eventService = eventService;
+	        this.certificateService = certificateService;
 	    }
     @Autowired private final Firestore firestore = FirestoreClient.getFirestore();
     private EventService eventService;
+    private CertificateService certificateService;
 
     @PostMapping("/createEvent")
     public String saveEvent(@RequestBody Event event) throws ExecutionException, InterruptedException {
@@ -48,6 +51,25 @@ public class EventController {
             return null;
         }
     }
+    
+    /**
+     * Get certificate ID for a specific event
+     * This is a compatibility endpoint that redirects to the certificate service
+     */
+    @GetMapping("/getCertificateId/{eventId}")
+    public ResponseEntity<?> getCertificateId(@PathVariable String eventId) {
+        try {
+            // Redirect to the certificate service to fetch certificate by event ID
+            return certificateService.getCertificateByEventId(eventId) != null
+                ? ResponseEntity.ok(certificateService.getCertificateByEventId(eventId))
+                : ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No certificate found for event ID: " + eventId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error retrieving certificate: " + e.getMessage());
+        }
+    }
+    
     @GetMapping("/qr/{eventId}")
     public ResponseEntity<byte[]> generateQrCode(@PathVariable String eventId) {
         try {
