@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,8 @@ import com.google.firebase.cloud.FirestoreClient;
 
 @Service
 public class UserService {
-
+	@Autowired
+	 private Firestore firestore;
     private static final String COLLECTION_NAME = "users";
 
     // Create a new user in Firestore
@@ -132,7 +134,16 @@ public class UserService {
         } else {
             throw new RuntimeException("User with ID " + userId + " not found.");
         }}
-    
+    public User getUserById(String userId) throws Exception {
+        DocumentReference userRef = firestore.collection("users").document(userId);
+        ApiFuture<DocumentSnapshot> future = userRef.get();
+        DocumentSnapshot document = future.get();
+        if (document.exists()) {
+            return document.toObject(User.class);
+        } else {
+            return null;
+        }
+    }
     private boolean isValidSchoolId(String identifier) {
         // Example validation logic for schoolId
         return identifier != null && identifier.matches("\\d{2}-\\d{4}-\\d{3}"); // Example format: 22-2220-751

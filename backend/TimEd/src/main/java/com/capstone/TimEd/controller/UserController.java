@@ -48,7 +48,19 @@ public class UserController {
         }
     }
 
-
+    @GetMapping("/getUser/{userId}")
+    public ResponseEntity<?> getUserByUserId(@PathVariable String userId) {
+        try {
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with ID: " + userId);
+            }
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving user: " + e.getMessage());
+        }
+    }
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
