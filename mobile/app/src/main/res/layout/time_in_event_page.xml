@@ -38,7 +38,8 @@
             android:contentDescription="Back button"
             android:focusable="true"
             android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button" />
+            app:srcCompat="@drawable/ic_back_button"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Title Name -->
     <TextView
@@ -72,6 +73,11 @@
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp">
 
+        <!-- FrameLayout to hold camera preview and overlay -->
+        <FrameLayout android:id="@+id/camera_preview_host_frame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
         <!-- Camera preview placeholder -->
         <ImageView
                 android:id="@+id/camera_preview_placeholder"
@@ -81,78 +87,95 @@
                 android:scaleType="centerCrop"
                 tools:ignore="ContentDescription" />
 
-    </androidx.cardview.widget.CardView>
+        <!-- QR Scan Box Overlay -->
+        <View
+                android:id="@+id/qr_scan_box_overlay"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_gravity="center"
+                android:background="@drawable/qr_scan_box_border"
+                android:visibility="gone" />
+        <!-- This View will be made visible from your Activity code -->
 
-    <!-- Shutter Camera Icon -->
-    <ImageView
-            android:id="@+id/icon_shutter_camera"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_below="@id/camera_container"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="12dp"
-            android:contentDescription="Camera Icon"
-            app:srcCompat="@drawable/ic_shutter_camera" />
+    </FrameLayout>
 
-    <!-- QR Scanner Click Reminder - must match selfieReminder in your code -->
-    <TextView
-            android:id="@+id/qr_scanner_click_reminder"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/icon_shutter_camera"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_bold"
-            android:gravity="center"
-            android:letterSpacing="0.05"
-            android:padding="4dp"
-            android:text="Aim your camera at a QR code and press SCAN"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+</androidx.cardview.widget.CardView>
 
-    <!-- Scan QR Code Button - must match scanButton in your code -->
-    <Button
-            android:id="@+id/scan_qr_code"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/qr_scanner_click_reminder"
-            android:layout_centerHorizontal="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="40dp"
-            android:backgroundTint="@color/yellow_gold"
-            android:elevation="6dp"
-            android:fontFamily="@font/roboto_medium"
-            android:minHeight="48dp"
-            android:padding="10dp"
-            android:text="Start Scanning"
-            android:textColor="@color/maroon"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:cornerRadius="8dp" />
+        <!-- Shutter Camera Icon -->
+<ImageView
+android:id="@+id/icon_shutter_camera"
+android:layout_width="48dp"
+android:layout_height="48dp"
+android:layout_below="@id/camera_container"
+android:layout_centerHorizontal="true"
+android:layout_marginTop="12dp"
+android:contentDescription="Camera Icon"
+app:srcCompat="@drawable/ic_shutter_camera"
+android:clickable="true"
+android:focusable="true"
+android:stateListAnimator="@animator/button_scale_animator" />
 
-    <!-- Manual Type Code Button -->
-    <Button
-            android:id="@+id/manual_code_time_in"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/scan_qr_code"
-            android:layout_centerHorizontal="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginBottom="20dp"
-            android:backgroundTint="@color/yellow_gold"
-            android:elevation="6dp"
-            android:fontFamily="@font/roboto_medium"
-            android:minHeight="48dp"
-            android:padding="10dp"
-            android:text="Manual Type Code"
-            android:textColor="@color/maroon"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:cornerRadius="8dp" />
+        <!-- QR Scanner Click Reminder - must match selfieReminder in your code -->
+<TextView
+android:id="@+id/qr_scanner_click_reminder"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_below="@id/icon_shutter_camera"
+android:layout_marginStart="32dp"
+android:layout_marginTop="12dp"
+android:layout_marginEnd="32dp"
+android:fontFamily="@font/roboto_bold"
+android:gravity="center"
+android:letterSpacing="0.05"
+android:padding="4dp"
+android:text="Aim your camera at a QR code and press SCAN"
+android:textColor="@color/black"
+android:textSize="16sp"
+android:textStyle="bold" />
 
-</RelativeLayout>
+        <!-- Scan QR Code Button - must match scanButton in your code -->
+<Button
+android:id="@+id/scan_qr_code"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_below="@id/qr_scanner_click_reminder"
+android:layout_centerHorizontal="true"
+android:layout_marginStart="40dp"
+android:layout_marginTop="12dp"
+android:layout_marginEnd="40dp"
+android:backgroundTint="@color/yellow_gold"
+android:elevation="6dp"
+android:fontFamily="@font/roboto_medium"
+android:minHeight="48dp"
+android:padding="10dp"
+android:text="Start Scanning"
+android:textColor="@color/maroon"
+android:textSize="16sp"
+android:textStyle="bold"
+app:cornerRadius="8dp"
+android:stateListAnimator="@animator/button_scale_animator" />
+
+        <!-- Manual Type Code Button -->
+<Button
+android:id="@+id/manual_code_time_in"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_below="@id/scan_qr_code"
+android:layout_centerHorizontal="true"
+android:layout_marginStart="40dp"
+android:layout_marginTop="12dp"
+android:layout_marginEnd="40dp"
+android:layout_marginBottom="20dp"
+android:backgroundTint="@color/yellow_gold"
+android:elevation="6dp"
+android:fontFamily="@font/roboto_medium"
+android:minHeight="48dp"
+android:padding="10dp"
+android:text="Manual Type Code"
+android:textColor="@color/maroon"
+android:textSize="16sp"
+android:textStyle="bold"
+app:cornerRadius="8dp"
+android:stateListAnimator="@animator/button_scale_animator" />
+
+        </RelativeLayout>
