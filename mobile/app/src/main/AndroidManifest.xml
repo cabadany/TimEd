@@ -127,6 +127,12 @@
             android:label="@string/time_out_page"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".EventDetailActivity"
+            android:exported="false"
+            android:label="Event Details"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

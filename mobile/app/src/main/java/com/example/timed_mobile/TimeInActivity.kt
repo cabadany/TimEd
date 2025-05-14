@@ -26,7 +26,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
@@ -251,14 +251,11 @@ class TimeInActivity : AppCompatActivity() {
         // Add the preview view to container
         container.addView(previewView)
 
-        // Get the class-level faceBoxOverlay (don't create a new local variable)
-        // and only add if it's not null
-        // Ensure faceBoxOverlay is initialized before this call (it is in onCreate)
-        if (faceBoxOverlay.parent != null) {
+        // Safely add the faceBoxOverlay only if it’s not already in the container
+        if (faceBoxOverlay.parent != container) {
             (faceBoxOverlay.parent as? ViewGroup)?.removeView(faceBoxOverlay)
+            container.addView(faceBoxOverlay)
         }
-        container.addView(faceBoxOverlay)
-
 
         Log.d(TAG, "Camera preview setup complete")
     }
@@ -411,6 +408,13 @@ class TimeInActivity : AppCompatActivity() {
     }
 
     private fun checkAlreadyTimedIn(uid: String, callback: (Boolean) -> Unit) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+        if (currentUid == null || currentUid != uid) {
+            Toast.makeText(this, "User authentication mismatch.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -418,20 +422,28 @@ class TimeInActivity : AppCompatActivity() {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-        FirebaseDatabase.getInstance().getReference("timeLogs").child(uid)
-            .orderByChild("timestamp").startAt(today.toDouble())
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val already = snapshot.children.any {
-                    it.child("type").value == "TimeIn"
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(currentUid)
+
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var already = false
+                for (child in snapshot.children) {
+                    val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                    val type = child.child("type").getValue(String::class.java) ?: continue
+                    if (timestamp >= today && type == "TimeIn") {
+                        already = true
+                        break
+                    }
                 }
                 callback(already)
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error checking time-in status: ${e.message}")
-                Toast.makeText(this, "Could not verify time-in status", Toast.LENGTH_SHORT).show()
-                callback(false) // Assume not timed in on error to allow attempt
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("TimeInActivity", "Error checking time-in status: ${error.message}")
+                Toast.makeText(this@TimeInActivity, "Could not verify time-in status", Toast.LENGTH_SHORT).show()
+                callback(false)
             }
+        })
     }
 
     private fun capturePhotoAndUpload() {
