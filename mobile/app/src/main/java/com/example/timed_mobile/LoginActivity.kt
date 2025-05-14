@@ -19,14 +19,13 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var firestore: FirebaseFirestore
 
-    // SharedPreferences constants
     companion object {
         const val PREFS_NAME = "TimedAppPrefs"
         const val KEY_IS_LOGGED_IN = "isLoggedIn"
         const val KEY_USER_ID = "userId"
         const val KEY_EMAIL = "email"
         const val KEY_FIRST_NAME = "firstName"
-        const val KEY_ID_NUMBER = "idNumber" // School ID
+        const val KEY_ID_NUMBER = "idNumber"
         const val KEY_DEPARTMENT = "department"
     }
 
@@ -84,7 +83,7 @@ class LoginActivity : AppCompatActivity() {
                         }
 
                         if (dbPassword == password) {
-                            val userId = document.id // This is the Firestore document ID
+                            val userId = document.id
                             val firstName = document.getString("firstName") ?: ""
                             val lastName = document.getString("lastName") ?: ""
                             val name = "$firstName $lastName"
@@ -102,7 +101,7 @@ class LoginActivity : AppCompatActivity() {
                                 putString(KEY_USER_ID, userId)
                                 putString(KEY_EMAIL, email)
                                 putString(KEY_FIRST_NAME, firstName)
-                                putString(KEY_ID_NUMBER, idNumber) // This is the schoolId used for login
+                                putString(KEY_ID_NUMBER, idNumber)
                                 putString(KEY_DEPARTMENT, department)
                                 apply()
                             }
