@@ -384,4 +384,87 @@ public class EventService {
         return eventDtos;
     }
 
+    public List<Eventdto> getPaginatedEvents(int page, int size) throws ExecutionException, InterruptedException {
+        List<Eventdto> eventDtos = new ArrayList<>();
+        try {
+            // Create query to get events sorted by date (most recent first)
+            Query query = firestore.collection("events").orderBy("date", Query.Direction.DESCENDING);
+            
+            // Execute query to get all document IDs first (lighter operation)
+            ApiFuture<QuerySnapshot> countQuery = query.get();
+            List<QueryDocumentSnapshot> allDocs = countQuery.get().getDocuments();
+            
+            // Calculate pagination details
+            int totalCount = allDocs.size();
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, totalCount);
+            
+            // If requested page is out of bounds, return empty list
+            if (startIndex >= totalCount) {
+                return new ArrayList<>();
+            }
+            
+            // Get only the IDs of documents we need for this page
+            List<String> pageDocIds = new ArrayList<>();
+            for (int i = startIndex; i < endIndex; i++) {
+                pageDocIds.add(allDocs.get(i).getId());
+            }
+            
+            // Batch fetch only the events we need by ID
+            List<ApiFuture<DocumentSnapshot>> futures = new ArrayList<>();
+            for (String docId : pageDocIds) {
+                futures.add(firestore.collection("events").document(docId).get());
+            }
+            
+            // Process only the events for this page
+            for (ApiFuture<DocumentSnapshot> future : futures) {
+                DocumentSnapshot doc = future.get();
+                if (doc.exists()) {
+                    Event event = doc.toObject(Event.class);
+                    
+                    // Set document ID as eventId if not set
+                    if (event.getEventId() == null) {
+                        event.setEventId(doc.getId());
+                    }
+                    
+                    // Format the date
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                    String formattedDate = event.getDate() != null ? dateFormat.format(event.getDate()) : "";
+                    
+                    // Create EventDTO with minimal department info (just department ID)
+                    // Avoid fetching full department details for better performance
+                    Eventdto eventDto = new Eventdto(
+                        event.getEventId(),
+                        event.getEventName(),
+                        event.getStatus(),
+                        formattedDate,
+                        event.getDuration(),
+                        event.getDepartmentId()
+                    );
+                    
+                    eventDtos.add(eventDto);
+                }
+            }
+            
+            return eventDtos;
+        } catch (Exception e) {
+            System.err.println("Error in paginated events: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    public int getTotalEventCount() throws ExecutionException, InterruptedException {
+        try {
+            // Get all events and count them
+            // For Firestore, this is not ideal for large collections, but works for this use case
+            ApiFuture<QuerySnapshot> future = firestore.collection("events").get();
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            return documents.size();
+        } catch (Exception e) {
+            System.err.println("Error counting events: " + e.getMessage());
+            return 0;
+        }
+    }
+
 }

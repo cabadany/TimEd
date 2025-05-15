@@ -86,13 +86,14 @@ public class EventController {
         }
     }
     @GetMapping("/getAll")
-    public List<Eventdto> getAllEvents() {
+    public List<Eventdto> getAllEvents(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         try {
-            return eventService.getAllEvents();  // Returns a list of Eventdto, not Event
+            return eventService.getPaginatedEvents(page, size);
         } catch (Exception e) {
-            // Log error and return an empty list or handle error as appropriate
-            System.err.println("Error fetching all events: " + e.getMessage());
-            return new ArrayList<>(); // Return an empty list in case of an error
+            System.err.println("Error fetching paginated events: " + e.getMessage());
+            return new ArrayList<>();
         }
     }
     
@@ -129,5 +130,27 @@ public class EventController {
     public String getEventJoinUrl(@PathVariable String eventId) {
         // Generate the event join URL based on eventId
         return "https://yourapi.com/join/" + eventId;
+    }
+
+    @GetMapping("/getPaginated")
+    public ResponseEntity<Map<String, Object>> getPaginatedEvents(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+        try {
+            List<Eventdto> events = eventService.getPaginatedEvents(page, size);
+            int totalEvents = eventService.getTotalEventCount();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", events);
+            response.put("totalElements", totalEvents);
+            response.put("totalPages", (int) Math.ceil((double) totalEvents / size));
+            response.put("currentPage", page);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error fetching paginated events: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 }
