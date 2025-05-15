@@ -25,7 +25,8 @@ import {
   Divider,
   List,
   ListItem,
-  Tooltip
+  Tooltip,
+  Skeleton
 } from '@mui/material';
 import {
   Visibility,
@@ -37,6 +38,49 @@ import {
   Group
 } from '@mui/icons-material';
 import './dashboard.css';
+
+// Skeleton loading components
+const DashboardSkeleton = () => (
+  <>
+    <Box sx={{ mb: 4 }}>
+      <Skeleton variant="text" width={150} height={30} sx={{ mb: 2 }} />
+      <Grid container spacing={3}>
+        {[1, 2, 3, 4].map((_, index) => (
+          <Grid item xs={12} sm={6} md={3} key={index}>
+            <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <CardContent sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Skeleton variant="circular" width={20} height={20} sx={{ mr: 1 }} />
+                  <Skeleton variant="text" width={120} />
+                </Box>
+                <Skeleton variant="rectangular" width={60} height={40} />
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  </>
+);
+
+// Event table skeleton
+const TableRowsSkeleton = () => (
+  <>
+    {[...Array(5)].map((_, index) => (
+      <TableRow key={index}>
+        <TableCell><Skeleton variant="text" width="70%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="80%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="80%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+        <TableCell><Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} /></TableCell>
+        <TableCell>
+          <Skeleton variant="circular" width={30} height={30} />
+        </TableCell>
+      </TableRow>
+    ))}
+  </>
+);
 
 export default function Dashboard() {
   
@@ -51,6 +95,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('');
+  const [totalEvents, setTotalEvents] = useState(0);
 
   useEffect(() => {
     fetchDepartments();
@@ -71,18 +116,29 @@ export default function Dashboard() {
     try {
       setLoading(true);
       
-      // Construct URL with query parameters for date range filtering
-      let url = 'http://localhost:8080/api/events/getAll';
+      // Use the paginated endpoint but with a large size to get all events
+      // Use cache buster to prevent caching issues
+      let url = 'http://localhost:8080/api/events/getPaginated';
+      const params = { 
+        page: 0,
+        size: 100, // Get up to 100 events at once
+        _cache: new Date().getTime() // Cache buster
+      };
       
       if (startDate || endDate) {
         url = 'http://localhost:8080/api/events/getByDateRange';
-        if (startDate) url += `?startDate=${startDate}`;
-        if (endDate) url += `${startDate ? '&' : '?'}endDate=${endDate}`;
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
       }
       
-      const response = await axios.get(url);
+      const response = await axios.get(url, { params });
 
-      const formattedEvents = response.data.map(event => {
+      // If using paginated endpoint, response structure is different
+      const responseData = response.data.content || response.data;
+      const totalCount = response.data.totalElements || responseData.length;
+      setTotalEvents(totalCount);
+
+      const formattedEvents = responseData.map(event => {
         // Handle Firebase timestamp - improved parser that checks various timestamp formats
         let formattedDate = 'Invalid Date';
         
@@ -274,58 +330,79 @@ export default function Dashboard() {
         {/* Event Summary Cards */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Event Summary</Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <CalendarToday sx={{ color: '#304FFF', mr: 1, fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Events</Typography>
-                  </Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>{events.length}</Typography>
-                </CardContent>
-              </Card>
+          {loading ? (
+            <Grid container spacing={3}>
+              {[1, 2, 3, 4].map((_, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                  <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <CardContent sx={{ p: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Skeleton variant="circular" width={20} height={20} sx={{ mr: 1 }} />
+                        <Skeleton variant="text" width={120} />
+                      </Box>
+                      <Skeleton variant="rectangular" width={60} height={40} />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <AccessTime sx={{ color: '#FF5630', mr: 1, fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Upcoming Events</Typography>
-                  </Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                    {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
-                  </Typography>
-                </CardContent>
-              </Card>
+          ) : (
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <CalendarToday sx={{ color: '#304FFF', mr: 1, fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Events</Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ fontWeight: 600 }}>{totalEvents}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <AccessTime sx={{ color: '#FF5630', mr: 1, fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Upcoming Events</Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                      {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Group sx={{ color: '#00B8D9', mr: 1, fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Ongoing Events</Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                      {events.filter(event => event.status.toLowerCase().includes('ongoing')).length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <CalendarToday sx={{ color: '#36B37E', mr: 1, fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Completed Events</Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                      {events.filter(event => 
+                        event.status.toLowerCase().includes('completed') || 
+                        event.status.toLowerCase().includes('ended')
+                      ).length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Group sx={{ color: '#00B8D9', mr: 1, fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Ongoing Events</Typography>
-                  </Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                    {events.filter(event => event.status.toLowerCase().includes('ongoing')).length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <CalendarToday sx={{ color: '#36B37E', mr: 1, fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Completed Events</Typography>
-                  </Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                    {events.filter(event => event.status.toLowerCase().includes('completed')).length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          )}
         </Box>
 
         {/* Filter and Table Section */}
@@ -389,9 +466,24 @@ export default function Dashboard() {
           
           {/* Events Table */}
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
+            <TableContainer>
+              <Table sx={{ minWidth: 650 }}>
+                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Event ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Event Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Department</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRowsSkeleton />
+                </TableBody>
+              </Table>
+            </TableContainer>
           ) : error ? (
             <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
               <Typography>{error}</Typography>
