@@ -1,10 +1,12 @@
 package com.example.timed_mobile.adapter
 
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.timed_mobile.EventDetailActivity
 import com.example.timed_mobile.R
 import com.example.timed_mobile.model.EventModel
 
@@ -28,6 +30,16 @@ class EventAdapter(private val eventList: List<EventModel>) :
         holder.eventTitle.text = event.title
         holder.eventStatus.text = "🗂 Status: ${event.status}"
         holder.eventDate.text = "📅 ${event.dateFormatted}"
+
+        holder.itemView.setOnClickListener {
+            val context = it.context
+            val intent = Intent(context, EventDetailActivity::class.java).apply {
+                putExtra("eventTitle", event.title)
+                putExtra("eventDate", event.dateFormatted)
+                putExtra("eventStatus", event.status)
+            }
+            context.startActivity(intent)
+        }
     }
 
     override fun getItemCount(): Int = eventList.size
