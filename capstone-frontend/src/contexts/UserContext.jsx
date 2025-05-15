@@ -27,8 +27,8 @@ export const UserProvider = ({ children }) => {
       }
       
       try {
-        // Fetch user data from the API
-        const response = await axios.get(`http://localhost:8080/api/user/${userId}`);
+        // Fetch user data from the API - fixed endpoint to match backend controller
+        const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
         setUser(response.data);
         
         // Check if user has a profile picture URL
@@ -55,27 +55,25 @@ export const UserProvider = ({ children }) => {
     if (!userId) return;
     
     try {
+      // Try to get PNG version (as seen in Firebase)
+      const imageRef = ref(storage, `profilePictures/${userId}/profile.png`);
+      const url = await getDownloadURL(imageRef);
+      setProfilePictureUrl(url);
+      return url;
+    } catch (error) {
       try {
-        // Try to get JPG version first
+        // If PNG not found, try JPG as fallback
         const imageRef = ref(storage, `profilePictures/${userId}/profile.jpg`);
         const url = await getDownloadURL(imageRef);
         setProfilePictureUrl(url);
         return url;
-      } catch (error) {
-        try {
-          // If JPG not found, try PNG
-          const imageRef = ref(storage, `profilePictures/${userId}/profile.png`);
-          const url = await getDownloadURL(imageRef);
-          setProfilePictureUrl(url);
-          return url;
-        } catch (innerError) {
-          // No profile picture found
-          return null;
-        }
+      } catch (innerError) {
+        // No profile picture found, set default avatar
+        console.log("No profile picture found for user, using default");
+        // You could set a default avatar here if needed
+        // setProfilePictureUrl('/default-avatar.png');
+        return null;
       }
-    } catch (error) {
-      console.error('Error loading profile picture from Firebase:', error);
-      return null;
     }
   };
   
