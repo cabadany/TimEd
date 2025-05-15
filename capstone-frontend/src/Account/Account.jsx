@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
-  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem
+  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton
 } from '@mui/material';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
@@ -57,6 +57,28 @@ const formatTime = (timeString) => {
     return 'Invalid time';
   }
 };
+
+// Account table loading placeholder
+const AccountTableSkeleton = () => (
+  <>
+    {[...Array(5)].map((_, index) => (
+      <TableRow key={index}>
+        <TableCell><Skeleton variant="text" width="70%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="80%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+        <TableCell><Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} /></TableCell>
+        <TableCell>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Skeleton variant="circular" width={30} height={30} />
+            <Skeleton variant="circular" width={30} height={30} />
+            <Skeleton variant="circular" width={30} height={30} />
+          </Box>
+        </TableCell>
+      </TableRow>
+    ))}
+  </>
+);
 
 export default function AccountPage() {
   const navigate = useNavigate();
@@ -555,11 +577,7 @@ export default function AccountPage() {
             </TableHead>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    <CircularProgress size={30} />
-                  </TableCell>
-                </TableRow>
+                <AccountTableSkeleton />
               ) : error ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>

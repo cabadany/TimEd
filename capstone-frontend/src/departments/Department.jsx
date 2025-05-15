@@ -33,7 +33,8 @@ import {
   InputLabel,
   Select,
   OutlinedInput,
-  Tooltip
+  Tooltip,
+  Skeleton
 } from '@mui/material';
 import {
   Search,
@@ -179,9 +180,17 @@ export default function DepartmentManagement() {
 
   // Handle opening the modal for viewing a department
   const handleViewDepartment = (department) => {
-    setSelectedDepartment(department);
+    setSelectedDepartment(null); // Reset to trigger skeleton loading
     setModalMode('view');
     setShowModal(true);
+    
+    // Simulate loading state for better demonstration of skeleton loading
+    const modalLoading = setTimeout(() => {
+      setSelectedDepartment(department);
+    }, 1000); // Simulate network delay of 1 second
+    
+    // Cleanup timeout on component unmount
+    return () => clearTimeout(modalLoading);
   };
 
   // Handle opening the modal for adding a new department
@@ -199,15 +208,29 @@ export default function DepartmentManagement() {
 
   // Handle opening the modal for editing a department
   const handleEditDepartment = (department) => {
-    setSelectedDepartment(department);
+    setSelectedDepartment(null); // Reset to trigger skeleton loading
     setFormData({
-      name: department.name,
-      abbreviation: department.abbreviation,
-      numberOfFaculty: department.numberOfFaculty,
-      offeredPrograms: [...department.offeredPrograms]
+      name: '',
+      abbreviation: '',
+      numberOfFaculty: 0,
+      offeredPrograms: []
     });
     setModalMode('edit');
     setShowModal(true);
+    
+    // Simulate loading state for better demonstration of skeleton loading
+    const modalLoading = setTimeout(() => {
+      setSelectedDepartment(department);
+      setFormData({
+        name: department.name,
+        abbreviation: department.abbreviation,
+        numberOfFaculty: department.numberOfFaculty,
+        offeredPrograms: [...department.offeredPrograms]
+      });
+    }, 1000); // Simulate network delay of 1 second
+    
+    // Cleanup timeout on component unmount
+    return () => clearTimeout(modalLoading);
   };
 
   // Handle closing the modal
@@ -267,6 +290,82 @@ export default function DepartmentManagement() {
   const handleNextPage = () => {
     setCurrentPage(prev => Math.min(prev + 1, pageCount));
   };
+
+  // Skeleton loading component for departments table
+  const DepartmentTableSkeleton = () => (
+    <>
+      {[...Array(5)].map((_, index) => (
+        <TableRow key={`skeleton-${index}`}>
+          <TableCell><Skeleton variant="text" width="70%" /></TableCell>
+          <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+          <TableCell><Skeleton variant="text" width="30%" /></TableCell>
+          <TableCell>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 1 }} />
+              <Skeleton variant="rectangular" width={70} height={24} sx={{ borderRadius: 1 }} />
+              <Skeleton variant="rectangular" width={65} height={24} sx={{ borderRadius: 1 }} />
+            </Box>
+          </TableCell>
+          <TableCell>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+              <Skeleton variant="circular" width={30} height={30} />
+              <Skeleton variant="circular" width={30} height={30} />
+              <Skeleton variant="circular" width={30} height={30} />
+            </Box>
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+  
+  // Skeleton loading component for the header section
+  const DepartmentHeaderSkeleton = () => (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Skeleton variant="text" width={150} height={32} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Skeleton variant="rectangular" width={300} height={40} sx={{ borderRadius: 1 }} />
+        <Skeleton variant="rectangular" width={100} height={40} sx={{ borderRadius: 1 }} />
+        <Skeleton variant="rectangular" width={150} height={40} sx={{ borderRadius: 1 }} />
+      </Box>
+    </Box>
+  );
+  
+  // Skeleton loading component for the department modal
+  const DepartmentModalSkeleton = () => (
+    <Box>
+      <Grid container spacing={3}>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="caption" color="#64748B">
+            <Skeleton variant="text" width={100} />
+          </Typography>
+          <Skeleton variant="text" width="80%" height={24} />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="caption" color="#64748B">
+            <Skeleton variant="text" width={80} />
+          </Typography>
+          <Skeleton variant="text" width="60%" height={24} />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="caption" color="#64748B">
+            <Skeleton variant="text" width={120} />
+          </Typography>
+          <Skeleton variant="text" width="40%" height={24} />
+        </Grid>
+        <Grid item xs={12}>
+          <Typography variant="caption" color="#64748B">
+            <Skeleton variant="text" width={130} />
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+            <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" width={90} height={24} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" width={70} height={24} sx={{ borderRadius: 1 }} />
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
+  );
 
   return (
     <Box className="department-container">
@@ -399,11 +498,7 @@ export default function DepartmentManagement() {
               </TableHead>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                      <CircularProgress size={24} sx={{ color: '#0288d1' }} />
-                    </TableCell>
-                  </TableRow>
+                  <DepartmentTableSkeleton />
                 ) : error ? (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ color: '#EF4444' }}>{error}</TableCell>
@@ -534,7 +629,10 @@ export default function DepartmentManagement() {
           </Box>
           
           <Box sx={{ p: 3 }}>
-            {modalMode === 'view' ? (
+            {loading && modalMode === 'view' ? (
+              // Skeleton loading for view mode
+              <DepartmentModalSkeleton />
+            ) : modalMode === 'view' ? (
               // View Mode
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
@@ -672,7 +770,13 @@ export default function DepartmentManagement() {
           </Box>
           
           <Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 1, borderTop: '1px solid #E2E8F0' }}>
-            {modalMode === 'view' ? (
+            {loading && modalMode === 'view' ? (
+              // Skeleton loading for view mode buttons
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
+                <Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
+              </Box>
+            ) : modalMode === 'view' ? (
               // View Mode Actions
               <>
                 <Button
