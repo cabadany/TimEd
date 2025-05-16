@@ -22,7 +22,12 @@ export default function QRJoin() {
         console.log('Time in response:', timeInResponse.data);
 
         if (isMounted) {
-          alert('Successfully timed in! A certificate will be sent to your email.');
+          if (timeInResponse.data.includes("Already timed in")) {
+            setError("You have already timed in for this event and received a certificate.");
+            alert('You have already timed in for this event and received a certificate.');
+          } else {
+            alert('Successfully timed in! A certificate will be sent to your email.');
+          }
 
           // Try to close window
           window.close();
@@ -67,7 +72,7 @@ export default function QRJoin() {
     <div style={styles.container}>
       {error ? (
         <div style={styles.errorContainer}>
-          <p style={styles.errorText}>Error: {error}</p>
+          <p style={styles.errorText}>{error}</p>
           <button
             onClick={handleCloseWindow}
             style={styles.button}

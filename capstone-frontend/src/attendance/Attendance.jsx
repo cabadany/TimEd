@@ -542,6 +542,15 @@ export default function Attendance() {
       const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timein`);
       
       if (response.status === 200) {
+        if (response.data.includes("already timed in")) {
+          setSnackbar({
+            open: true,
+            message: 'User has already timed in for this event and received a certificate.',
+            severity: 'warning'
+          });
+          return;
+        }
+
         // Refresh attendee list
         const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
         const newAttendees = attendeesResponse.data;

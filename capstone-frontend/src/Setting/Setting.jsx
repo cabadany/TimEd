@@ -20,6 +20,7 @@ import './Setting.css';
 import ProfilePicture from '../components/ProfilePicture';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -44,12 +45,12 @@ function TabPanel(props) {
 export default function SettingPage() {
   // State variables
   const [tabValue, setTabValue] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [departmentData, setDepartmentData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { darkMode, toggleDarkMode } = useTheme();
   
   // Form fields
   const [firstName, setFirstName] = useState('');
@@ -69,17 +70,6 @@ export default function SettingPage() {
   const [userId, setUserId] = useState('');
   
   useEffect(() => {
-    // Check if dark mode is stored in localStorage
-    const storedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(storedDarkMode);
-    
-    // Apply dark mode to body if enabled
-    if (storedDarkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-    
     // Fetch user data
     const fetchUserData = async () => {
       try {
@@ -188,19 +178,6 @@ export default function SettingPage() {
     }
   };
   
-  // Handle dark mode toggle
-  const handleDarkModeToggle = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode);
-    
-    if (newDarkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-  };
-  
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -229,53 +206,50 @@ export default function SettingPage() {
   };
   
   // Save profile changes
-  // Save profile changes
-const handleSaveProfile = async () => {
-  const userIdToUse = userId || localStorage.getItem("userId");
-  
-  if (!userIdToUse) {
-      console.error('User  ID not found');
-      setErrorMessage('User  ID not found. Please try logging in again.');
-      return;
-  }
-  
-  try {
-      setLoading(true);
-      
-      // Prepare user data with proper structure
-      const userData = {
-        userId: userIdToUse,
-          firstName,
-          lastName,
-          email,
-          schoolId,
-          role,
-          department: {
-              departmentId: department ? department.departmentId : null // Ensure department is structured correctly
-          }
-      };
-      
-      console.log("User  data being sent:", userData);
-      
-      // Update user profile in the database
-      const response = await axios.put(`http://localhost:8080/api/user/updateUser/${userIdToUse}`, userData);
-      
-      if (response.status === 200) {
-          setSuccessMessage('Profile updated successfully');
-          // Reset lock states
-          setFirstNameLocked(true);
-          setLastNameLocked(true);
-          setSchoolIdLocked(true);
-      }
-  } catch (error) {
-      console.error('Error updating profile:', error);
-      setErrorMessage('Failed to update profile: ' + (error.response?.data?.message || error.message));
-  } finally {
-      setLoading(false);
-  }
-};
-
-
+  const handleSaveProfile = async () => {
+    const userIdToUse = userId || localStorage.getItem("userId");
+    
+    if (!userIdToUse) {
+        console.error('User  ID not found');
+        setErrorMessage('User  ID not found. Please try logging in again.');
+        return;
+    }
+    
+    try {
+        setLoading(true);
+        
+        // Prepare user data with proper structure
+        const userData = {
+          userId: userIdToUse,
+            firstName,
+            lastName,
+            email,
+            schoolId,
+            role,
+            department: {
+                departmentId: department ? department.departmentId : null // Ensure department is structured correctly
+            }
+        };
+        
+        console.log("User  data being sent:", userData);
+        
+        // Update user profile in the database
+        const response = await axios.put(`http://localhost:8080/api/user/updateUser/${userIdToUse}`, userData);
+        
+        if (response.status === 200) {
+            setSuccessMessage('Profile updated successfully');
+            // Reset lock states
+            setFirstNameLocked(true);
+            setLastNameLocked(true);
+            setSchoolIdLocked(true);
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        setErrorMessage('Failed to update profile: ' + (error.response?.data?.message || error.message));
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
     <Box sx={{ width: '100%' }} className={darkMode ? 'dark-mode' : ''}>
@@ -635,7 +609,7 @@ const handleSaveProfile = async () => {
                 control={
                   <Switch 
                     checked={darkMode} 
-                    onChange={handleDarkModeToggle}
+                    onChange={toggleDarkMode}
                     color="primary"
                   />
                 }

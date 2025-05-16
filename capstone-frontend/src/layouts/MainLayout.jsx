@@ -12,12 +12,13 @@ import {
   Settings
 } from '@mui/icons-material';
 import AppHeader from '../components/AppHeader';
-import { useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MainLayout = ({ children, title }) => {
-  const navigate = useNavigate();
   const location = useLocation();
-  
+  const navigate = useNavigate();
+  const { darkMode } = useTheme();
+
   // Navigation handlers
   const handleNavigateToEvent = () => {
     navigate('/event');
@@ -42,18 +43,24 @@ const MainLayout = ({ children, title }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      height: '100vh', 
+      width: '100%', 
+      overflow: 'hidden',
+      bgcolor: darkMode ? 'background.default' : 'background.paper'
+    }} className={darkMode ? 'dark-mode' : ''}>
       {/* Sidebar */}
       <Box sx={{ 
         width: 240, 
-        bgcolor: 'background.paper', 
+        bgcolor: darkMode ? '#1e1e1e' : 'background.paper', 
         borderRight: '1px solid',
-        borderColor: 'divider',
+        borderColor: darkMode ? '#333333' : 'divider',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0
       }} className="sidebar">
-        <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: darkMode ? '#333333' : 'divider', display: 'flex', justifyContent: 'center' }}>
             <img src="/timed 1.png" alt="TimeED Logo" style={{ height: 80 }} />
         </Box>
         <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -62,7 +69,7 @@ const MainLayout = ({ children, title }) => {
             onClick={handleNavigateToDashboard}
             sx={{ 
               justifyContent: 'flex-start', 
-              color: location.pathname === '/dashboard' ? 'primary.main' : 'text.secondary',
+              color: location.pathname === '/dashboard' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
               fontWeight: location.pathname === '/dashboard' ? 600 : 500,
               py: 1.5,
               px: 2,
@@ -76,7 +83,7 @@ const MainLayout = ({ children, title }) => {
             onClick={handleNavigateToEvent}
             sx={{ 
               justifyContent: 'flex-start', 
-              color: location.pathname === '/event' ? 'primary.main' : 'text.secondary',
+              color: location.pathname === '/event' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
               fontWeight: location.pathname === '/event' ? 600 : 500,
               py: 1.5,
               px: 2,
@@ -90,7 +97,7 @@ const MainLayout = ({ children, title }) => {
             onClick={handleNavigateToAccounts}
             sx={{ 
               justifyContent: 'flex-start', 
-              color: location.pathname === '/accounts' ? 'primary.main' : 'text.secondary',
+              color: location.pathname === '/accounts' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
               fontWeight: location.pathname === '/accounts' ? 600 : 500,
               py: 1.5,
               px: 2,
@@ -100,25 +107,25 @@ const MainLayout = ({ children, title }) => {
             ACCOUNTS
           </Button>
           <Button
-  startIcon={<WorkspacePremium/>}
-  onClick={handleNavigateToCertificate}
-  sx={{
-    justifyContent: 'flex-start',
-    color: location.pathname === '/certificates' ? 'primary.main' : 'text.secondary',
-    fontWeight: location.pathname === '/certificates' ? 600 : 500,
-    py: 1.5,
-    px: 2,
-    textAlign: 'left',
-  }}
->
-  CERTIFICATES
-</Button>
+            startIcon={<WorkspacePremium/>}
+            onClick={handleNavigateToCertificate}
+            sx={{
+              justifyContent: 'flex-start',
+              color: location.pathname === '/certificates' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
+              fontWeight: location.pathname === '/certificates' ? 600 : 500,
+              py: 1.5,
+              px: 2,
+              textAlign: 'left',
+            }}
+          >
+            CERTIFICATES
+          </Button>
           <Button
             startIcon={<AccountTree />}
             onClick={handleNavigateToDepartment}
             sx={{
               justifyContent: 'flex-start',
-              color: location.pathname === '/department' ? 'primary.main' : 'text.secondary',
+              color: location.pathname === '/department' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
               fontWeight: location.pathname === '/department' ? 600 : 500,
               py: 1.5,
               px: 2,
@@ -132,7 +139,7 @@ const MainLayout = ({ children, title }) => {
             onClick={handleNavigateToSettings}
             sx={{ 
               justifyContent: 'flex-start', 
-              color: location.pathname === '/settings' ? 'primary.main' : 'text.secondary',
+              color: location.pathname === '/settings' ? 'primary.main' : darkMode ? '#f5f5f5' : 'text.secondary',
               fontWeight: location.pathname === '/settings' ? 600 : 500,
               py: 1.5,
               px: 2,
@@ -150,7 +157,8 @@ const MainLayout = ({ children, title }) => {
         display: 'flex', 
         flexDirection: 'column', 
         height: '100vh',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        bgcolor: darkMode ? '#121212' : 'background.default'
       }}>
         {/* Header */}
         <AppHeader 
@@ -162,7 +170,7 @@ const MainLayout = ({ children, title }) => {
           p: 3, 
           flex: 1, 
           overflow: 'auto', 
-          bgcolor: 'background.default' 
+          bgcolor: darkMode ? '#121212' : 'background.default'
         }}>
           {children}
         </Box>

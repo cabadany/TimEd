@@ -17,11 +17,13 @@ import {
   Logout
 } from '@mui/icons-material';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import NotificationSystem from './NotificationSystem';
 
 const AppHeader = ({ title }) => {
   const navigate = useNavigate();
   const { profilePictureUrl, loading } = useUser();
+  const { darkMode } = useTheme();
   
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
@@ -54,14 +56,14 @@ const AppHeader = ({ title }) => {
     <Box sx={{ 
       py: 1.5, 
       px: 3,
-      bgcolor: 'background.paper', 
+      bgcolor: darkMode ? '#1e1e1e' : 'background.paper', 
       borderBottom: '1px solid',
-      borderColor: 'divider',
+      borderColor: darkMode ? '#333333' : 'divider',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center'
     }}>
-      <Typography variant="h5" fontWeight="600" color="text.primary">
+      <Typography variant="h5" fontWeight="600" color={darkMode ? '#f5f5f5' : 'text.primary'}>
         {title}
       </Typography>
       
@@ -103,6 +105,8 @@ const AppHeader = ({ title }) => {
             sx: { 
               width: 180,
               mt: 1,
+              bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
+              color: darkMode ? '#f5f5f5' : 'text.primary',
               '& .MuiMenuItem-root': {
                 fontSize: 14,
                 py: 1

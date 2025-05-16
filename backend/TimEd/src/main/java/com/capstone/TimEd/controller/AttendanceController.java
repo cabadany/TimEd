@@ -47,53 +47,58 @@ public class AttendanceController {
         try {
             System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
             String result = attendanceService.markAttendance(eventId, userId);
-            System.out.println("Attendance marked successfully: " + result); try {
-                // Get user details directly from Firestore instead of fetching all attendees
-                DocumentReference userRef = FirestoreClient.getFirestore()
-                    .collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId);
-                
-                DocumentSnapshot userDoc = userRef.get().get();
-                if (userDoc.exists()) {
-                    Map<String, String> userAttendance = new HashMap<>();
-                    userAttendance.put("userId", userId);
-                    userAttendance.put("timeIn", userDoc.getString("timeIn"));
-                    userAttendance.put("timeOut", userDoc.getString("timeOut"));
-                    userAttendance.put("manualEntry", String.valueOf(userDoc.getBoolean("manualEntry")));
+            System.out.println("Attendance marked successfully: " + result);
+
+            // Only generate and send certificate if this is a new time-in
+            if (!result.contains("Already timed in")) {
+                try {
+                    // Get user details directly from Firestore
+                    DocumentReference userRef = FirestoreClient.getFirestore()
+                        .collection("events")
+                        .document(eventId)
+                        .collection("attendees")
+                        .document(userId);
                     
-                    // Get user email
-                    DocumentSnapshot fullUserDoc = FirestoreClient.getFirestore()
-                        .collection("users")
-                        .document(userId)
-                        .get()
-                        .get();
-                    
-                    if (fullUserDoc.exists()) {
-                        String facultyEmail = fullUserDoc.getString("email");
-                        String firstName = fullUserDoc.getString("firstName");
-                        String lastName = fullUserDoc.getString("lastName");
+                    DocumentSnapshot userDoc = userRef.get().get();
+                    if (userDoc.exists()) {
+                        Map<String, String> userAttendance = new HashMap<>();
+                        userAttendance.put("userId", userId);
+                        userAttendance.put("timeIn", userDoc.getString("timeIn"));
+                        userAttendance.put("timeOut", userDoc.getString("timeOut"));
+                        userAttendance.put("manualEntry", String.valueOf(userDoc.getBoolean("manualEntry")));
                         
-                        userAttendance.put("email", facultyEmail);
-                        userAttendance.put("firstName", firstName);
-                        userAttendance.put("lastName", lastName);
+                        // Get user email
+                        DocumentSnapshot fullUserDoc = FirestoreClient.getFirestore()
+                            .collection("users")
+                            .document(userId)
+                            .get()
+                            .get();
                         
-                        System.out.println("Generating certificate for faculty member: " + firstName + " " + lastName);
-                        byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-                        System.out.println("Certificate generated successfully");
-                        
-                        System.out.println("Sending certificate email to: " + facultyEmail);
-                        emailService.sendCertificateEmail(facultyEmail, eventId, certificatePdf);
-                        System.out.println("Certificate email sent successfully to faculty member");
+                        if (fullUserDoc.exists()) {
+                            String facultyEmail = fullUserDoc.getString("email");
+                            String firstName = fullUserDoc.getString("firstName");
+                            String lastName = fullUserDoc.getString("lastName");
+                            
+                            userAttendance.put("email", facultyEmail);
+                            userAttendance.put("firstName", firstName);
+                            userAttendance.put("lastName", lastName);
+                            
+                            System.out.println("Generating certificate for faculty member: " + firstName + " " + lastName);
+                            byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
+                            System.out.println("Certificate generated successfully");
+                            
+                            System.out.println("Sending certificate email to: " + facultyEmail);
+                            emailService.sendCertificateEmail(facultyEmail, eventId, certificatePdf);
+                            System.out.println("Certificate email sent successfully to faculty member");
+                        }
                     }
+                } catch (Exception e) {
+                    // Log certificate error but don't fail the time-in
+                    System.err.println("Error generating/sending certificate: " + e.getMessage());
+                    e.printStackTrace();
+                    // Still return success for the time-in
+                    return ResponseEntity.ok(result + " (Note: Certificate generation failed)");
                 }
-            } catch (Exception e) {
-                // Log certificate error but don't fail the time-in
-                System.err.println("Error generating/sending certificate: " + e.getMessage());
-                e.printStackTrace();
-                // Still return success for the time-in
-                return ResponseEntity.ok(result + " (Note: Certificate generation failed)");
             }
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -124,18 +129,22 @@ public class AttendanceController {
             String result;
             if ("timein".equalsIgnoreCase(actionType)) {
                 result = attendanceService.manualTimeIn(eventId, userId);
-                List<Map<String, String>> attendees = attendanceService.getAttendees(eventId);
-                Map<String, String> userAttendance = null;
-                for (Map<String, String> attendee : attendees) {
-                    if (attendee.get("userId").equals(userId)) {
-                        userAttendance = attendee;
-                        break;
-                    }
-                }
                 
-                if (userAttendance != null) {
-                    byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-                    emailService.sendCertificateEmail(userAttendance.get("email"), eventId, certificatePdf);
+                // Only generate and send certificate if this is a new time-in
+                if (!result.contains("already timed in")) {
+                    List<Map<String, String>> attendees = attendanceService.getAttendees(eventId);
+                    Map<String, String> userAttendance = null;
+                    for (Map<String, String> attendee : attendees) {
+                        if (attendee.get("userId").equals(userId)) {
+                            userAttendance = attendee;
+                            break;
+                        }
+                    }
+                    
+                    if (userAttendance != null) {
+                        byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
+                        emailService.sendCertificateEmail(userAttendance.get("email"), eventId, certificatePdf);
+                    }
                 }
             } else if ("timeout".equalsIgnoreCase(actionType)) {
                 result = attendanceService.manualTimeOut(eventId, userId);

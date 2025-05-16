@@ -748,7 +748,7 @@ export default function Certificate() {
         // Send email with certificate
         await axios.post('http://localhost:8080/api/email/send', {
           to: attendee.email,
-          from: 'johnwayne.largo@cit.edu',
+          from: 'timedcit@outlook.com',
           subject: `Your Certificate for ${certificateTemplate.eventName}`,
           text: `Dear ${attendee.firstName} ${attendee.lastName},\n\nPlease find attached your certificate for ${certificateTemplate.eventName}.\n\nBest regards,\nTimEd Team`,
           attachments: [{

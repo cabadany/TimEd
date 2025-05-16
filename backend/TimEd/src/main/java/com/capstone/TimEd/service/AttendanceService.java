@@ -23,6 +23,17 @@ public class AttendanceService {
 
     public String markAttendance(String eventId, String userId) {
         try {
+            // Check if user has already timed in for this event
+            DocumentReference attendeeRef = firestore.collection("events")
+                    .document(eventId)
+                    .collection("attendees")
+                    .document(userId);
+            
+            DocumentSnapshot attendeeDoc = attendeeRef.get().get();
+            if (attendeeDoc.exists() && attendeeDoc.getBoolean("attended") != null && attendeeDoc.getBoolean("attended")) {
+                return "Already timed in for this event. Certificate has already been generated.";
+            }
+
             String now = Instant.now().toString();
 
             // Fetch event details
@@ -127,6 +138,10 @@ public class AttendanceService {
             
             ApiFuture<DocumentSnapshot> future = attendeeRef.get();
             DocumentSnapshot document = future.get();
+            
+            if (document.exists() && document.getBoolean("attended") != null && document.getBoolean("attended")) {
+                return "User has already timed in for this event. Certificate has already been generated.";
+            }
             
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("attended", true);
