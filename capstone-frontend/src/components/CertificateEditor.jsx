@@ -22,7 +22,9 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Container
+  Container,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Close,
@@ -39,9 +41,12 @@ import {
   Delete,
   Edit,
   ExpandMore,
-  BrandingWatermark
+  BrandingWatermark,
+  Upload,
+  QrCode2
 } from '@mui/icons-material';
 import '../certificate/certificate.css';
+import axios from 'axios';
 
 const fontFamilies = [
   'Arial',
@@ -73,7 +78,23 @@ const defaultCertificate = {
   borderColor: '#0047AB',
   headerColor: '#0047AB',
   textColor: '#000000',
-  fontFamily: 'Times New Roman'
+  fontFamily: 'Times New Roman',
+  fontSize: 12,
+  dateFormat: 'MMMM dd, yyyy',
+  showBorder: true,
+  borderWidth: 2,
+  margins: { top: 50, right: 50, bottom: 50, left: 50 },
+  backgroundImage: null,
+  backgroundImageOpacity: 0.3,
+  logoImage: null,
+  logoWidth: 100,
+  logoHeight: 100,
+  logoPosition: 'top-center',
+  watermarkImage: null,
+  watermarkImageOpacity: 0.1,
+  signatureImages: {},
+  showQRCode: true,
+  qrCodePosition: 'bottom-right'
 };
 
 export default function CertificateEditor({ initialData, onSave, onClose, onApply }) {
@@ -209,6 +230,91 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
     setActiveTab(newValue);
   };
 
+  // Add new functions for image handling
+  const handleImageUpload = async (type, file, signatoryName = null) => {
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      
+      if (signatoryName) {
+        formData.append('signatures[' + signatoryName + ']', file);
+      } else {
+        formData.append(type, file);
+      }
+
+      const response = await axios.post(
+        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      // Update the certificate state with the new image
+      if (response.status === 200) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result.split(',')[1];
+          
+          if (signatoryName) {
+            setCertificate(prev => ({
+              ...prev,
+              signatureImages: {
+                ...prev.signatureImages,
+                [signatoryName]: base64String
+              }
+            }));
+          } else {
+            setCertificate(prev => ({
+              ...prev,
+              [type + 'Image']: base64String
+            }));
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  };
+
+  const handleImageDelete = async (type, signatoryName = null) => {
+    try {
+      const params = {};
+      if (signatoryName) {
+        params.signatory = signatoryName;
+      } else {
+        params[type] = true;
+      }
+
+      await axios.delete(
+        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
+        { params }
+      );
+
+      // Update the certificate state
+      if (signatoryName) {
+        setCertificate(prev => ({
+          ...prev,
+          signatureImages: {
+            ...prev.signatureImages,
+            [signatoryName]: null
+          }
+        }));
+      } else {
+        setCertificate(prev => ({
+          ...prev,
+          [type + 'Image']: null
+        }));
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    }
+  };
+
   // Certificate component to show in preview
   const CertificatePreview = () => (
     <Box
@@ -218,7 +324,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         backgroundColor: certificate.backgroundColor || '#ffffff',
         position: 'relative',
         overflow: 'hidden',
-        border: `12px solid ${certificate.borderColor || '#0047AB'}`,
+        border: certificate.showBorder ? `${certificate.borderWidth}px solid ${certificate.borderColor || '#0047AB'}` : 'none',
         borderRadius: '8px',
         display: 'flex',
         flexDirection: 'column',
@@ -229,7 +335,70 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         padding: '16px 12px',
       }}
     >
-      {/* Blue curved header background */}
+      {/* Background Image */}
+      {certificate.backgroundImage && (
+        <Box
+          component="img"
+          src={`data:image/png;base64,${certificate.backgroundImage}`}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: certificate.backgroundImageOpacity,
+            zIndex: 0
+          }}
+        />
+      )}
+
+      {/* Logo */}
+      {certificate.logoImage && (
+        <Box
+          component="img"
+          src={`data:image/png;base64,${certificate.logoImage}`}
+          sx={{
+            position: 'absolute',
+            width: certificate.logoWidth,
+            height: certificate.logoHeight,
+            objectFit: 'contain',
+            zIndex: 2,
+            ...(certificate.logoPosition === 'top-left' && {
+              top: 20,
+              left: 20
+            }),
+            ...(certificate.logoPosition === 'top-center' && {
+              top: 20,
+              left: '50%',
+              transform: 'translateX(-50%)'
+            }),
+            ...(certificate.logoPosition === 'top-right' && {
+              top: 20,
+              right: 20
+            })
+          }}
+        />
+      )}
+
+      {/* Watermark */}
+      {certificate.watermarkImage && (
+        <Box
+          component="img"
+          src={`data:image/png;base64,${certificate.watermarkImage}`}
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '50%',
+            height: 'auto',
+            opacity: certificate.watermarkImageOpacity,
+            zIndex: 1
+          }}
+        />
+      )}
+{/*
       <Box 
         sx={{ 
           position: 'absolute', 
@@ -244,7 +413,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         }} 
       />
       
-      {/* Blue curved footer background */}
       <Box 
         sx={{ 
           position: 'absolute', 
@@ -257,10 +425,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           transform: 'rotate(135deg)',
           zIndex: 0
         }} 
-      />
+      />*/}
       
       <Box sx={{ 
-        zIndex: 1, 
+        zIndex: 2, 
         width: '100%', 
         textAlign: 'center',
         display: 'flex',
@@ -358,66 +526,80 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         >
           {certificate.eventDate}
         </Typography>
-      </Box>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-around', 
-        width: '100%',
-        mt: 'auto',
-        mb: 1,
-        zIndex: 1
-      }}>
-        {certificate.signatories.map((signatory, index) => (
-          <Box 
-            key={index} 
-            sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center',
-              minWidth: '70px'
+
+        {/* Signatures */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-around', 
+          width: '100%', 
+          mt: 4 
+        }}>
+          {certificate.signatories.map((signatory, index) => (
+            <Box key={index} sx={{ textAlign: 'center', minWidth: 200 }}>
+              {certificate.signatureImages?.[signatory.name] ? (
+                <Box
+                  component="img"
+                  src={`data:image/png;base64,${certificate.signatureImages[signatory.name]}`}
+                  sx={{
+                    width: 150,
+                    height: 60,
+                    objectFit: 'contain',
+                    mb: 1
+                  }}
+                />
+              ) : (
+                <Divider sx={{ width: 150, margin: '0 auto', mb: 1 }} />
+              )}
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                {signatory.name}
+              </Typography>
+              <Typography variant="body2">
+                {signatory.title}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {/* QR Code */}
+        {certificate.showQRCode && (
+          <Box
+            sx={{
+              position: 'absolute',
+              ...(certificate.qrCodePosition === 'bottom-right' && {
+                bottom: 20,
+                right: 20
+              }),
+              ...(certificate.qrCodePosition === 'bottom-left' && {
+                bottom: 20,
+                left: 20
+              }),
+              ...(certificate.qrCodePosition === 'top-right' && {
+                top: 20,
+                right: 20
+              }),
+              ...(certificate.qrCodePosition === 'top-left' && {
+                top: 20,
+                left: 20
+              }),
+              zIndex: 2
             }}
           >
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                mb: 0.5, 
-                fontStyle: 'italic',
-                fontSize: { xs: '11px', sm: '14px' },
-                borderBottom: '1px solid',
-                pb: 0.5,
-                width: '100%',
-                textAlign: 'center'
+            {/* QR Code will be added by the backend */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                border: '1px solid #000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              {signatory.name}
-            </Typography>
-            <Typography 
-              variant="caption" 
-              sx={{ 
-                fontSize: { xs: '8px', sm: '10px' }, 
-                fontWeight: 'bold' 
-              }}
-            >
-              {signatory.title}
-            </Typography>
+              <QrCode2 />
+            </Box>
           </Box>
-        ))}
+        )}
       </Box>
-      
-      <Typography 
-        variant="caption" 
-        sx={{ 
-          position: 'absolute',
-          bottom: 5,
-          right: 5,
-          fontSize: '8px',
-          opacity: 0.7,
-          zIndex: 1
-        }}
-      >
-        {certificate.certificateNumber}
-      </Typography>
     </Box>
   );
 
@@ -497,15 +679,15 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         }}>
           {/* Tabs for editing */}
           <Box sx={{ px: 2, pt: 2 }}>
-            <Tabs 
-              value={activeTab} 
-              onChange={handleTabChange} 
-              sx={{ borderBottom: '1px solid #eee' }}
-              variant="fullWidth"
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
             >
-              <Tab label="TEXT CONTENT" />
-              <Tab label="STYLE OPTIONS" />
-              <Tab label="SIGNATORIES" />
+              <Tab label="Content" icon={<TextFormat />} iconPosition="start" />
+              <Tab label="Style" icon={<ColorLens />} iconPosition="start" />
+              <Tab label="Images" icon={<BrandingWatermark />} iconPosition="start" />
+              <Tab label="Signatories" icon={<Edit />} iconPosition="start" />
             </Tabs>
           </Box>
 
@@ -708,6 +890,164 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             )}
 
             {activeTab === 2 && (
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" gutterBottom>Background Image</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<Upload />}
+                    >
+                      Upload Background
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload('background', e.target.files[0])}
+                      />
+                    </Button>
+                    {certificate.backgroundImage && (
+                      <>
+                        <IconButton onClick={() => handleImageDelete('background')}>
+                          <Delete />
+                        </IconButton>
+                        <Typography variant="body2" color="text.secondary">
+                          Opacity:
+                        </Typography>
+                        <Slider
+                          value={certificate.backgroundImageOpacity}
+                          onChange={(e, value) => handleTextChange('backgroundImageOpacity', value)}
+                          min={0}
+                          max={1}
+                          step={0.1}
+                          sx={{ width: 100 }}
+                        />
+                      </>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" gutterBottom>Logo</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<Upload />}
+                    >
+                      Upload Logo
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload('logo', e.target.files[0])}
+                      />
+                    </Button>
+                    {certificate.logoImage && (
+                      <>
+                        <IconButton onClick={() => handleImageDelete('logo')}>
+                          <Delete />
+                        </IconButton>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                          <Select
+                            value={certificate.logoPosition}
+                            onChange={(e) => handleTextChange('logoPosition', e.target.value)}
+                          >
+                            <MenuItem value="top-left">Top Left</MenuItem>
+                            <MenuItem value="top-center">Top Center</MenuItem>
+                            <MenuItem value="top-right">Top Right</MenuItem>
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          type="number"
+                          label="Width"
+                          value={certificate.logoWidth}
+                          onChange={(e) => handleTextChange('logoWidth', Number(e.target.value))}
+                          size="small"
+                          sx={{ width: 100 }}
+                        />
+                        <TextField
+                          type="number"
+                          label="Height"
+                          value={certificate.logoHeight}
+                          onChange={(e) => handleTextChange('logoHeight', Number(e.target.value))}
+                          size="small"
+                          sx={{ width: 100 }}
+                        />
+                      </>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" gutterBottom>Watermark</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<Upload />}
+                    >
+                      Upload Watermark
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload('watermark', e.target.files[0])}
+                      />
+                    </Button>
+                    {certificate.watermarkImage && (
+                      <>
+                        <IconButton onClick={() => handleImageDelete('watermark')}>
+                          <Delete />
+                        </IconButton>
+                        <Typography variant="body2" color="text.secondary">
+                          Opacity:
+                        </Typography>
+                        <Slider
+                          value={certificate.watermarkImageOpacity}
+                          onChange={(e, value) => handleTextChange('watermarkImageOpacity', value)}
+                          min={0}
+                          max={1}
+                          step={0.1}
+                          sx={{ width: 100 }}
+                        />
+                      </>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" gutterBottom>QR Code Settings</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={certificate.showQRCode}
+                          onChange={(e) => handleTextChange('showQRCode', e.target.checked)}
+                        />
+                      }
+                      label="Show QR Code"
+                    />
+                    {certificate.showQRCode && (
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <Select
+                          value={certificate.qrCodePosition}
+                          onChange={(e) => handleTextChange('qrCodePosition', e.target.value)}
+                        >
+                          <MenuItem value="bottom-right">Bottom Right</MenuItem>
+                          <MenuItem value="bottom-left">Bottom Left</MenuItem>
+                          <MenuItem value="top-right">Top Right</MenuItem>
+                          <MenuItem value="top-left">Top Left</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            )}
+
+            {activeTab === 3 && (
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                   <Typography variant="subtitle1">

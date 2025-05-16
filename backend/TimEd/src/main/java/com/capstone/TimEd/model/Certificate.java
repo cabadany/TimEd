@@ -14,14 +14,53 @@ public class Certificate {
     private String description;
     private List<Map<String, String>> signatories;
     private String certificateNumber;
+    
+    // Style properties
     private String backgroundColor;
     private String borderColor;
     private String headerColor;
     private String textColor;
     private String fontFamily;
+    private int fontSize = 12; // Default font size
+    private String dateFormat = "MMMM dd, yyyy";
+    private boolean showBorder = true;
+    private int borderWidth = 2;
+    private Map<String, Float> margins; // top, right, bottom, left
+
+    // Image properties
+    private String backgroundImage; // Base64 encoded image
+    private float backgroundImageOpacity = 0.3f;
+    private String logoImage; // Base64 encoded image
+    private float logoWidth = 100;
+    private float logoHeight = 100;
+    private String logoPosition = "top-center"; // top-left, top-center, top-right
+    private String watermarkImage; // Base64 encoded image
+    private float watermarkImageOpacity = 0.1f;
+    private Map<String, String> signatureImages; // Map of signatory name to Base64 encoded signature image
+
+    // QR Code properties
+    private boolean showQRCode = true;
+    private String qrCodePosition = "bottom-right"; // bottom-right, bottom-left, top-right, top-left
 
     // Default constructor
     public Certificate() {
+        // Set default values
+        this.backgroundColor = "#ffffff";
+        this.borderColor = "#000000";
+        this.headerColor = "#000000";
+        this.textColor = "#000000";
+        this.fontFamily = "Times New Roman";
+        this.fontSize = 12;
+        this.dateFormat = "MMMM dd, yyyy";
+        this.showBorder = true;
+        this.borderWidth = 1;
+        this.backgroundImageOpacity = 0.3f;
+        this.watermarkImageOpacity = 0.1f;
+        this.logoPosition = "top-center";
+        this.logoWidth = 150f;
+        this.logoHeight = 150f;
+        this.showQRCode = false;
+        this.qrCodePosition = "bottom-right";
     }
 
     // Constructor with fields
@@ -30,6 +69,7 @@ public class Certificate {
                      List<Map<String, String>> signatories, String certificateNumber,
                      String backgroundColor, String borderColor, String headerColor,
                      String textColor, String fontFamily) {
+        this();  // Call default constructor for default values
         this.id = id;
         this.eventId = eventId;
         this.eventName = eventName;
@@ -47,124 +87,97 @@ public class Certificate {
         this.fontFamily = fontFamily;
     }
 
-    // Getters and Setters
-    public String getId() {
-        return id;
-    }
+    // Getters and Setters for all fields
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public String getEventId() { return eventId; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
 
-    public String getEventId() {
-        return eventId;
-    }
+    public String getEventName() { return eventName; }
+    public void setEventName(String eventName) { this.eventName = eventName; }
 
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getEventName() {
-        return eventName;
-    }
+    public String getSubtitle() { return subtitle; }
+    public void setSubtitle(String subtitle) { this.subtitle = subtitle; }
 
-    public void setEventName(String eventName) {
-        this.eventName = eventName;
-    }
+    public String getRecipientText() { return recipientText; }
+    public void setRecipientText(String recipientText) { this.recipientText = recipientText; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getRecipientName() { return recipientName; }
+    public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getSubtitle() {
-        return subtitle;
-    }
+    public List<Map<String, String>> getSignatories() { return signatories; }
+    public void setSignatories(List<Map<String, String>> signatories) { this.signatories = signatories; }
 
-    public void setSubtitle(String subtitle) {
-        this.subtitle = subtitle;
-    }
+    public String getCertificateNumber() { return certificateNumber; }
+    public void setCertificateNumber(String certificateNumber) { this.certificateNumber = certificateNumber; }
 
-    public String getRecipientText() {
-        return recipientText;
-    }
+    public String getBackgroundColor() { return backgroundColor; }
+    public void setBackgroundColor(String backgroundColor) { this.backgroundColor = backgroundColor; }
 
-    public void setRecipientText(String recipientText) {
-        this.recipientText = recipientText;
-    }
+    public String getBorderColor() { return borderColor; }
+    public void setBorderColor(String borderColor) { this.borderColor = borderColor; }
 
-    public String getRecipientName() {
-        return recipientName;
-    }
+    public String getHeaderColor() { return headerColor; }
+    public void setHeaderColor(String headerColor) { this.headerColor = headerColor; }
 
-    public void setRecipientName(String recipientName) {
-        this.recipientName = recipientName;
-    }
+    public String getTextColor() { return textColor; }
+    public void setTextColor(String textColor) { this.textColor = textColor; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getFontFamily() { return fontFamily; }
+    public void setFontFamily(String fontFamily) { this.fontFamily = fontFamily; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public int getFontSize() { return fontSize; }
+    public void setFontSize(int fontSize) { this.fontSize = fontSize; }
 
-    public List<Map<String, String>> getSignatories() {
-        return signatories;
-    }
+    public String getDateFormat() { return dateFormat; }
+    public void setDateFormat(String dateFormat) { this.dateFormat = dateFormat; }
 
-    public void setSignatories(List<Map<String, String>> signatories) {
-        this.signatories = signatories;
-    }
+    public boolean isShowBorder() { return showBorder; }
+    public void setShowBorder(boolean showBorder) { this.showBorder = showBorder; }
 
-    public String getCertificateNumber() {
-        return certificateNumber;
-    }
+    public int getBorderWidth() { return borderWidth; }
+    public void setBorderWidth(int borderWidth) { this.borderWidth = borderWidth; }
 
-    public void setCertificateNumber(String certificateNumber) {
-        this.certificateNumber = certificateNumber;
-    }
+    public Map<String, Float> getMargins() { return margins; }
+    public void setMargins(Map<String, Float> margins) { this.margins = margins; }
 
-    public String getBackgroundColor() {
-        return backgroundColor;
-    }
+    public String getBackgroundImage() { return backgroundImage; }
+    public void setBackgroundImage(String backgroundImage) { this.backgroundImage = backgroundImage; }
 
-    public void setBackgroundColor(String backgroundColor) {
-        this.backgroundColor = backgroundColor;
-    }
+    public float getBackgroundImageOpacity() { return backgroundImageOpacity; }
+    public void setBackgroundImageOpacity(float backgroundImageOpacity) { this.backgroundImageOpacity = backgroundImageOpacity; }
 
-    public String getBorderColor() {
-        return borderColor;
-    }
+    public String getLogoImage() { return logoImage; }
+    public void setLogoImage(String logoImage) { this.logoImage = logoImage; }
 
-    public void setBorderColor(String borderColor) {
-        this.borderColor = borderColor;
-    }
+    public float getLogoWidth() { return logoWidth; }
+    public void setLogoWidth(float logoWidth) { this.logoWidth = logoWidth; }
 
-    public String getHeaderColor() {
-        return headerColor;
-    }
+    public float getLogoHeight() { return logoHeight; }
+    public void setLogoHeight(float logoHeight) { this.logoHeight = logoHeight; }
 
-    public void setHeaderColor(String headerColor) {
-        this.headerColor = headerColor;
-    }
+    public String getLogoPosition() { return logoPosition; }
+    public void setLogoPosition(String logoPosition) { this.logoPosition = logoPosition; }
 
-    public String getTextColor() {
-        return textColor;
-    }
+    public String getWatermarkImage() { return watermarkImage; }
+    public void setWatermarkImage(String watermarkImage) { this.watermarkImage = watermarkImage; }
 
-    public void setTextColor(String textColor) {
-        this.textColor = textColor;
-    }
+    public float getWatermarkImageOpacity() { return watermarkImageOpacity; }
+    public void setWatermarkImageOpacity(float watermarkImageOpacity) { this.watermarkImageOpacity = watermarkImageOpacity; }
 
-    public String getFontFamily() {
-        return fontFamily;
-    }
+    public Map<String, String> getSignatureImages() { return signatureImages; }
+    public void setSignatureImages(Map<String, String> signatureImages) { this.signatureImages = signatureImages; }
 
-    public void setFontFamily(String fontFamily) {
-        this.fontFamily = fontFamily;
-    }
+    public boolean isShowQRCode() { return showQRCode; }
+    public void setShowQRCode(boolean showQRCode) { this.showQRCode = showQRCode; }
+
+    public String getQrCodePosition() { return qrCodePosition; }
+    public void setQrCodePosition(String qrCodePosition) { this.qrCodePosition = qrCodePosition; }
 } 

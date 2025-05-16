@@ -1,5 +1,6 @@
 package com.capstone.TimEd.controller;
 
+import com.capstone.TimEd.model.Certificate;
 import com.capstone.TimEd.service.AttendanceService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -84,6 +85,13 @@ public class AttendanceController {
                             userAttendance.put("lastName", lastName);
                             
                             System.out.println("Generating certificate for faculty member: " + firstName + " " + lastName);
+                            
+                            // Get the certificate template for this event
+                            Certificate certificateTemplate = certificateService.getCertificateByEventId(eventId);
+                            if (certificateTemplate == null) {
+                                System.out.println("No custom certificate template found for event " + eventId + ", using default template");
+                            }
+                            
                             byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
                             System.out.println("Certificate generated successfully");
                             
