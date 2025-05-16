@@ -1,13 +1,23 @@
 package com.example.timed_mobile
 
+import android.annotation.SuppressLint
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
+import android.view.animation.AnimationSet // Import AnimationSet
+import android.view.animation.AlphaAnimation // Import AlphaAnimation
+import android.app.Dialog // Import Dialog
+import android.graphics.Color // Import Color
+import android.graphics.drawable.ColorDrawable // Import ColorDrawable
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.view.animation.TranslateAnimation
 import android.view.Gravity
+import android.view.MotionEvent // Import MotionEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowManager
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -46,7 +56,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var greetingCardNavIcon: ImageView
 
     private lateinit var tutorialOverlay: FrameLayout
-    private lateinit var highlightView: View
+    private val TOTAL_QUICK_TOUR_STEPS = 4 // Define total steps for the quick tour
+    private var previousTargetLocation: IntArray? =
+        null // To store the last target's screen location
 
     private val allEvents = mutableListOf<EventModel>()
 
@@ -67,22 +79,40 @@ class HomeActivity : AppCompatActivity() {
     private var idNumber: String? = null
     private var department: String? = null
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
+
+        tutorialOverlay = findViewById(R.id.tutorial_overlay) // Add this line back
+
+        tutorialOverlay.setOnTouchListener(object : View.OnTouchListener {
+            @SuppressLint("ClickableViewAccessibility") // Added to acknowledge manual touch handling
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                // Call performClick when an ACTION_UP event is detected.
+                // This is important for accessibility, allowing services to recognize the action.
+                // If the View (v) has no OnClickListener, this call typically handles
+                // default accessibility behavior or does nothing, which is appropriate for an overlay.
+                if (event?.action == MotionEvent.ACTION_UP) {
+                    v?.performClick()
+                }
+                // Return true to indicate that the touch event has been handled
+                // and should not be processed further by other views.
+                return true
+            }
+        })
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
             topDrawable.start()
         }
-
-        // Initialize the overlay and highlight view
-        tutorialOverlay = findViewById(R.id.tutorial_overlay)
+        // Explicitly consume any touches on the tutorialOverlay
 
         // Help button functionality
         val helpButton = findViewById<ImageView>(R.id.btn_help)
         helpButton.setOnClickListener {
+            previousTargetLocation = null // Reset for a new tour
             showTutorialDialog()
         }
 
@@ -319,15 +349,15 @@ class HomeActivity : AppCompatActivity() {
 
         val sorted = filtered.sortedWith(
             compareBy(
-            { statusOrder(it.status) },
-            {
-                try {
-                    formatter.parse(it.dateFormatted)
-                } catch (e: Exception) {
-                    null
+                { statusOrder(it.status) },
+                {
+                    try {
+                        formatter.parse(it.dateFormatted)
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
-            }
-        ))
+            ))
 
         recyclerEvents.adapter = EventAdapter(sorted)
     }
@@ -350,35 +380,66 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showTutorialDialog() {
-        val options = arrayOf("Quick Tour", "Detailed Tour", "Feature-Specific Tutorials")
-        AlertDialog.Builder(this)
-            .setTitle("Interactive Guide")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showQuickTour() // Start the Quick Tour
-                    1 -> showFilterButtonsTour()
-                    2 -> showEventListTour()
-                    3 -> showAttendanceSectionTour()
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_tutorial_options)
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        // Adjust dialog width to be responsive
+        val window = dialog.window
+        if (window != null) {
+            val layoutParams = WindowManager.LayoutParams()
+            layoutParams.copyFrom(window.attributes)
+
+            // Set dialog width to 90% of screen width
+            val displayMetrics = resources.displayMetrics
+            layoutParams.width = (displayMetrics.widthPixels * 0.90).toInt()
+            // You can also set a maxHeight if needed, e.g.,
+            // layoutParams.height = (displayMetrics.heightPixels * 0.85).toInt();
+            // For now, let's keep height as wrap_content by not setting it explicitly here,
+            // as the XML root is android:layout_height="wrap_content"
+
+            window.attributes = layoutParams
+        }
 
 
-                }
-            }
-            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
-            .show()
+        val layoutQuickTour = dialog.findViewById<LinearLayout>(R.id.layout_quick_tour)
+        val btnCancel = dialog.findViewById<Button>(R.id.btn_cancel_tutorial_dialog)
+
+        layoutQuickTour.setOnClickListener {
+            previousTargetLocation = null // Reset for a new tour
+            showQuickTour()
+            dialog.dismiss()
+        }
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
-    private fun showCustomTutorialDialog(message: String, targetView: View, onNext: () -> Unit) {
+    private fun showCustomTutorialDialog(
+        message: String,
+        targetView: View,
+        currentStep: Int,
+        totalSteps: Int,
+        onNext: () -> Unit
+    ) {
+        tutorialOverlay.visibility = View.VISIBLE // Make sure overlay is visible
+
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null)
+        // ... (findViewById for progressText, messageText, nextButton, closeButton)
+        val progressTextView = dialogView.findViewById<TextView>(R.id.tutorial_progress_text)
         val messageTextView = dialogView.findViewById<TextView>(R.id.tutorial_message)
         val nextButton = dialogView.findViewById<Button>(R.id.tutorial_next_button)
+        val closeButton = dialogView.findViewById<ImageButton>(R.id.btn_close_tutorial_step)
+
+
+        progressTextView.text = "Step $currentStep of $totalSteps"
         messageTextView.text = message
 
-        // Apply fade-in animation
-        val fadeIn = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.fade_in)
-        dialogView.startAnimation(fadeIn)
-
-        // Measure dialog size before showing
         dialogView.measure(
             View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST)
@@ -386,46 +447,110 @@ class HomeActivity : AppCompatActivity() {
         val dialogWidth = dialogView.measuredWidth
         val dialogHeight = dialogView.measuredHeight
 
+        var finalDialogX: Int
+        var finalDialogY: Int
+        // ... (Your existing robust dialogX, dialogY calculation logic from previous step) ...
+        val currentTargetLocationOnScreen = IntArray(2)
+        targetView.getLocationOnScreen(currentTargetLocationOnScreen)
+        if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0) {
+            val spaceBelow = resources.displayMetrics.heightPixels - (currentTargetLocationOnScreen[1] + targetView.height)
+            val spaceAbove = currentTargetLocationOnScreen[1]
+            val margin = (16 * resources.displayMetrics.density).toInt()
+            val maxX = resources.displayMetrics.widthPixels - dialogWidth - margin
+            val minX = margin
+            finalDialogX = when {
+                maxX < minX -> margin
+                else -> (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minX, maxX)
+            }
+            val showBelow = spaceBelow >= dialogHeight + 24
+            finalDialogY = if (showBelow) {
+                currentTargetLocationOnScreen[1] + targetView.height + 16
+            } else if (spaceAbove >= dialogHeight + 24) {
+                currentTargetLocationOnScreen[1] - dialogHeight - 16
+            } else {
+                (resources.displayMetrics.heightPixels - dialogHeight) / 2
+            }
+        } else {
+            finalDialogX = (resources.displayMetrics.widthPixels - dialogWidth) / 2
+            finalDialogY = (resources.displayMetrics.heightPixels - dialogHeight) / 2
+        }
+        // End of dialogX, dialogY calculation
+
+
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
-        popupWindow.isOutsideTouchable = true
+        popupWindow.isOutsideTouchable = false
+        popupWindow.isFocusable = true
         popupWindow.setBackgroundDrawable(ContextCompat.getDrawable(this, android.R.color.transparent))
 
-        val location = IntArray(2)
-        targetView.getLocationOnScreen(location)
-        val targetX = location[0]
-        val targetY = location[1]
-        val targetWidth = targetView.width
-        val targetHeight = targetView.height
-
-        val screenHeight = resources.displayMetrics.heightPixels
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        val spaceBelow = screenHeight - (targetY + targetHeight)
-        val spaceAbove = targetY
-
-        // Center horizontally over the target, but clamp to screen edges with 16dp margin
-        val margin = (16 * resources.displayMetrics.density).toInt()
-        val maxX = screenWidth - dialogWidth - margin
-        val minX = margin
-        val dialogX = when {
-            maxX < minX -> margin // fallback if dialog is too wide
-            else -> (targetX + targetWidth / 2 - dialogWidth / 2).coerceIn(minX, maxX)
-        }
-
-        val showBelow = spaceBelow >= dialogHeight + 24
-        val dialogY = if (showBelow) {
-            targetY + targetHeight + 16
-        } else if (spaceAbove >= dialogHeight + 24) {
-            targetY - dialogHeight - 16
+        // ... (Animation setup as in the previous correct step) ...
+        val animationSet = AnimationSet(true)
+        val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
+        alphaAnimation.duration = 400
+        alphaAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
+        animationSet.addAnimation(alphaAnimation)
+        var startTranslateX = 0f
+        var startTranslateY = 0f
+        if (previousTargetLocation != null) {
+            val prevTargetCenterX = previousTargetLocation!![0] + targetView.width / 2
+            val prevTargetCenterY = previousTargetLocation!![1] + targetView.height / 2
+            val deltaX = (prevTargetCenterX - (finalDialogX + dialogWidth / 2)).toFloat()
+            val deltaY = (prevTargetCenterY - (finalDialogY + dialogHeight / 2)).toFloat()
+            if (kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY)) {
+                startTranslateX = deltaX; startTranslateY = 0f
+            } else {
+                startTranslateX = 0f; startTranslateY = deltaY
+            }
         } else {
-            (screenHeight - dialogHeight) / 2
+            startTranslateX = -dialogWidth.toFloat() * 1.2f; startTranslateY = 0f
         }
+        val translateAnimation = TranslateAnimation(startTranslateX, 0f, startTranslateY, 0f)
+        translateAnimation.duration = 600
+        translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.anticipate_overshoot_interpolator)
+        animationSet.addAnimation(translateAnimation)
+        dialogView.startAnimation(animationSet)
+        // End of animation setup
 
-        popupWindow.showAtLocation(targetView, Gravity.NO_GRAVITY, dialogX, dialogY)
+
+        popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
+
+        val currentTargetScreenPos = IntArray(2)
+        targetView.getLocationOnScreen(currentTargetScreenPos)
+        previousTargetLocation = currentTargetScreenPos
+
+        val dismissPopupAndOverlay = {
+            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+            fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                override fun onAnimationStart(animation: Animation?) {}
+                override fun onAnimationEnd(animation: Animation?) {
+                    popupWindow.dismiss()
+                    tutorialOverlay.visibility = View.GONE
+                    previousTargetLocation = null
+                }
+                override fun onAnimationRepeat(animation: Animation?) {}
+            })
+            dialogView.startAnimation(fadeOut)
+        }
 
         nextButton.setOnClickListener {
-            popupWindow.dismiss()
+            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+            fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                override fun onAnimationStart(animation: Animation?) {}
+                override fun onAnimationEnd(animation: Animation?) {
+                    popupWindow.dismiss()
+                    if (currentStep == totalSteps) {
+                        tutorialOverlay.visibility = View.GONE
+                        previousTargetLocation = null
+                    }
+                }
+                override fun onAnimationRepeat(animation: Animation?) {}
+            })
+            dialogView.startAnimation(fadeOut)
             onNext()
+        }
+
+        closeButton.setOnClickListener {
+            dismissPopupAndOverlay()
+            Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -433,40 +558,49 @@ class HomeActivity : AppCompatActivity() {
     // Function to hide the overlay
     private fun hideOverlay() {
         tutorialOverlay.visibility = View.GONE
-        highlightView.visibility = View.GONE
     }
 
     private fun showQuickTour() {
         val greetingCard = findViewById<View>(R.id.greeting_card)
+        // previousTargetLocation is null or set from previous tour
         showCustomTutorialDialog(
-            message = "This is your personalized greeting card. It shows your name, ID, and department.",
-            targetView = greetingCard
+            message = "Welcome! This is your personalized greeting card, showing your name and details.",
+            targetView = greetingCard,
+            currentStep = 1,
+            totalSteps = TOTAL_QUICK_TOUR_STEPS
         ) { showFilterButtonsTour() }
     }
 
     private fun showFilterButtonsTour() {
         val filterButtons = findViewById<View>(R.id.filter_buttons)
         showCustomTutorialDialog(
-            message = "Use these buttons to filter events by category: All, Upcoming, Ongoing, or Ended.",
-            targetView = filterButtons
+            message = "Here you can filter events: view All, Upcoming, Ongoing, or past Ended events.",
+            targetView = filterButtons,
+            currentStep = 2,
+            totalSteps = TOTAL_QUICK_TOUR_STEPS
         ) { showEventListTour() }
     }
 
     private fun showEventListTour() {
         val eventList = findViewById<View>(R.id.recycler_events)
         showCustomTutorialDialog(
-            message = "This is the event list. It shows all the events based on your selected filter.",
-            targetView = eventList
+            message = "Your selected events will appear here. Scroll to see more if available.",
+            targetView = eventList,
+            currentStep = 3,
+            totalSteps = TOTAL_QUICK_TOUR_STEPS
         ) { showAttendanceSectionTour() }
     }
 
     private fun showAttendanceSectionTour() {
-        val attendanceSection = findViewById<View>(R.id.btntime_in)
+        val attendanceButton = findViewById<View>(R.id.btntime_in)
         showCustomTutorialDialog(
-            message = "Use the Time-In and Time-Out buttons to mark your attendance.",
-            targetView = attendanceSection
+            message = "Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.",
+            targetView = attendanceButton,
+            currentStep = 4,
+            totalSteps = TOTAL_QUICK_TOUR_STEPS
         ) {
             Toast.makeText(this, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
+            // previousTargetLocation will be reset by the dismiss logic if it's the last step
         }
     }
 
