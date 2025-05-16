@@ -33,7 +33,7 @@ function App() {
           <Route 
             path="/qr-join/:eventId" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly={false}>
                <SimpleLayout>
                   <QRJoin />
                   </SimpleLayout>

@@ -9,7 +9,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Badge
+  Badge,
+  CircularProgress
 } from '@mui/material';
 import {
   Notifications,
@@ -20,7 +21,7 @@ import NotificationSystem from './NotificationSystem';
 
 const AppHeader = ({ title }) => {
   const navigate = useNavigate();
-  const { profilePictureUrl } = useUser();
+  const { profilePictureUrl, loading } = useUser();
   
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
@@ -67,19 +68,31 @@ const AppHeader = ({ title }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <NotificationSystem />
         
-        <Avatar 
-          onClick={handleAvatarClick}
-          src={profilePictureUrl}
-          sx={{ 
-            width: 36, 
-            height: 36,
-            bgcolor: 'primary.light',
-            color: 'primary.contrastText',
-            cursor: 'pointer'
-          }}
-        >
-          {!profilePictureUrl && 'U'}
-        </Avatar>
+        <Box sx={{ position: 'relative' }}>
+          {loading ? (
+            <CircularProgress 
+              size={36} 
+              thickness={4}
+              sx={{ 
+                color: 'primary.main',
+              }}
+            />
+          ) : (
+            <Avatar 
+              onClick={handleAvatarClick}
+              src={profilePictureUrl}
+              sx={{ 
+                width: 36, 
+                height: 36,
+                bgcolor: 'primary.light',
+                color: 'primary.contrastText',
+                cursor: 'pointer'
+              }}
+            >
+              {!profilePictureUrl && 'U'}
+            </Avatar>
+          )}
+        </Box>
         
         <Menu
           anchorEl={avatarAnchorEl}
@@ -102,12 +115,16 @@ const AppHeader = ({ title }) => {
             handleAvatarClose();
           }}>
             <ListItemIcon>
-              <Avatar 
-                src={profilePictureUrl}
-                sx={{ width: 24, height: 24, mr: 1 }}
-              >
-                {!profilePictureUrl && 'U'}
-              </Avatar>
+              {loading ? (
+                <CircularProgress size={24} thickness={4} />
+              ) : (
+                <Avatar 
+                  src={profilePictureUrl}
+                  sx={{ width: 24, height: 24, mr: 1 }}
+                >
+                  {!profilePictureUrl && 'U'}
+                </Avatar>
+              )}
             </ListItemIcon>
             <ListItemText>Profile</ListItemText>
           </MenuItem>
