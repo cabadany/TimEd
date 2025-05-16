@@ -1,6 +1,8 @@
 import { useState, useEffect, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   Box,
   Typography,
@@ -681,11 +683,87 @@ export default function Certificate() {
     try {
       setActionLoading(true);
       // This would connect to your backend endpoint that triggers email sending
-      await axios.post(`http://localhost:8080/api/certificates/sendCertificates`, {
-        certificateId,
-        eventId
-      });
-      showSnackbar('Certificates have been sent to all attendees', 'success');
+      const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+      const attendees = attendeesResponse.data;
+      
+      // Get certificate template
+      const certificateTemplate = certificates.find(cert => cert.id === certificateId);
+      if (!certificateTemplate) {
+        throw new Error('Certificate template not found');
+      }
+
+      // Create a temporary div for certificate rendering
+      const certificateDiv = document.createElement('div');
+      certificateDiv.style.width = '800px';
+      certificateDiv.style.height = '600px';
+      certificateDiv.style.position = 'absolute';
+      certificateDiv.style.left = '-9999px';
+      document.body.appendChild(certificateDiv);
+
+      // Process each attendee
+      for (const attendee of attendees) {
+        // Create certificate HTML for this attendee
+        certificateDiv.innerHTML = `
+          <div style="
+            width: 800px;
+            height: 600px;
+            padding: 40px;
+            text-align: center;
+            border: 10px solid ${certificateTemplate.borderColor || '#0047AB'};
+            background-color: ${certificateTemplate.backgroundColor || '#ffffff'};
+            font-family: ${certificateTemplate.fontFamily || 'Arial'};
+            color: ${certificateTemplate.textColor || '#000000'};
+          ">
+            <h1 style="font-size: 50px; font-weight: bold; margin-bottom: 20px;">
+              ${certificateTemplate.title || 'CERTIFICATE'}
+            </h1>
+            <h2 style="font-size: 35px; font-weight: bold; margin-bottom: 20px;">
+              ${certificateTemplate.subtitle || 'OF ACHIEVEMENT'}
+            </h2>
+            <p style="font-size: 25px; margin-bottom: 20px;">
+              ${certificateTemplate.recipientText || 'PRESENTED TO'}
+            </p>
+            <h3 style="font-size: 40px; font-weight: bold; font-style: italic; margin-bottom: 20px;">
+              ${attendee.firstName} ${attendee.lastName}
+            </h3>
+            <p style="font-size: 20px; margin-bottom: 40px;">
+              ${certificateTemplate.description || 'For outstanding participation'}
+            </p>
+            <div style="margin-top: 40px; font-size: 18px;">
+              <p>Date: ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        `;
+
+        // Convert the certificate to PDF
+        const canvas = await html2canvas(certificateDiv);
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF('l', 'px', [800, 600]);
+        pdf.addImage(imgData, 'PNG', 0, 0, 800, 600);
+        
+        // Convert PDF to base64
+        const pdfData = pdf.output('datauristring');
+
+        // Send email with certificate
+        await axios.post('http://localhost:8080/api/email/send', {
+          to: attendee.email,
+          from: 'johnwayne.largo@cit.edu',
+          subject: `Your Certificate for ${certificateTemplate.eventName}`,
+          text: `Dear ${attendee.firstName} ${attendee.lastName},\n\nPlease find attached your certificate for ${certificateTemplate.eventName}.\n\nBest regards,\nTimEd Team`,
+          attachments: [{
+            filename: 'certificate.pdf',
+            content: pdfData.split(',')[1],
+            encoding: 'base64',
+            contentType: 'application/pdf'
+          }]
+        });
+      }
+
+      // Clean up
+      document.body.removeChild(certificateDiv);
+      
+      showSnackbar('Certificates have been generated and sent successfully', 'success');
     } catch (error) {
       console.error('Error sending certificates:', error);
       showSnackbar('Failed to send certificates', 'error');

@@ -18,6 +18,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.LineSeparator;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.properties.HorizontalAlignment;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.io.font.constants.StandardFonts;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.Map;
 @Service
 public class CertificateService {
 
@@ -172,5 +189,130 @@ public class CertificateService {
     public String sendCertificates(String certificateId, String eventId) throws ExecutionException, InterruptedException {
         // This would be implemented to actually send certificates, but for now it's just a stub
         return "Certificates sent successfully";
+    }
+    
+    public byte[] generateCertificate(Map<String, String> attendee, String eventId) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf);
+
+        // Set up fonts
+        PdfFont titleFont = PdfFontFactory.createFont(StandardFonts.TIMES_BOLD);
+        PdfFont subtitleFont = PdfFontFactory.createFont(StandardFonts.TIMES_BOLD);
+        PdfFont normalFont = PdfFontFactory.createFont(StandardFonts.TIMES_ROMAN);
+        PdfFont italicFont = PdfFontFactory.createFont(StandardFonts.TIMES_ITALIC);
+
+        // Get event name from Firestore
+        String eventName;
+        try {
+            DocumentSnapshot eventDoc = FirestoreClient.getFirestore()
+                .collection("events")
+                .document(eventId)
+                .get()
+                .get();
+            eventName = eventDoc.getString("eventName");
+        } catch (Exception e) {
+            eventName = eventId; // Fallback to eventId if can't get name
+        }
+
+        // Add certificate content with professional design
+        // Title
+        Paragraph title = new Paragraph("CERTIFICATE")
+                .setFont(titleFont)
+                .setFontSize(36)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginTop(50);
+        document.add(title);
+
+        // Subtitle
+        Paragraph subtitle = new Paragraph("OF ACHIEVEMENT")
+                .setFont(subtitleFont)
+                .setFontSize(24)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(50);
+        document.add(subtitle);
+
+        // Recipient intro
+        document.add(new Paragraph("THIS CERTIFICATE IS PROUDLY PRESENTED TO")
+                .setFont(normalFont)
+                .setFontSize(14)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(20));
+
+        // Recipient name
+        document.add(new Paragraph(attendee.get("firstName") + " " + attendee.get("lastName"))
+                .setFont(titleFont)
+                .setFontSize(28)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(30));
+
+        // Description
+        document.add(new Paragraph("For actively participating in")
+                .setFont(italicFont)
+                .setFontSize(16)
+                .setTextAlignment(TextAlignment.CENTER));
+
+        // Event name
+        document.add(new Paragraph(eventName)
+                .setFont(titleFont)
+                .setFontSize(24)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(20));
+
+        // Add attendance time details
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+        
+        // Parse time in
+        LocalDateTime timeIn;
+        try {
+            String timeInStr = attendee.get("timeIn");
+            if (timeInStr != null && !timeInStr.equals("N/A")) {
+                try {
+                    timeIn = LocalDateTime.parse(timeInStr);
+                } catch (Exception e) {
+                    try {
+                        timeIn = LocalDateTime.parse(timeInStr.substring(0, timeInStr.indexOf('.')));
+                    } catch (Exception e2) {
+                        timeIn = LocalDateTime.now();
+                    }
+                }
+            } else {
+                timeIn = LocalDateTime.now();
+            }
+        } catch (Exception e) {
+            timeIn = LocalDateTime.now();
+        }
+
+        document.add(new Paragraph("Date: " + timeIn.format(formatter))
+                .setFont(normalFont)
+                .setFontSize(14)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(50));
+
+        // Add signatories
+        LineSeparator line = new LineSeparator(new SolidLine());
+        line.setWidth(UnitValue.createPercentValue(40)); // adjust length
+        line.setHorizontalAlignment(HorizontalAlignment.CENTER);
+        line.setMarginBottom(5); // spacing before title
+
+        document.add(line);
+
+        // Label below the line
+        document.add(new Paragraph("Event Representative")
+                .setFont(normalFont)
+                .setFontSize(12)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(30));
+
+        /*     // Add certificate number or unique identifier
+        document.add(new Paragraph("Certificate ID: " + eventId + "-" + attendee.get("userId"))
+                .setFont(italicFont)
+                .setFontSize(8)
+                .setTextAlignment(TextAlignment.RIGHT)
+                .setMarginTop(30));*/
+
+        document.close();
+        return baos.toByteArray();
     }
 } 
