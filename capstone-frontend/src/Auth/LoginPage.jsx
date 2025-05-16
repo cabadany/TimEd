@@ -28,6 +28,11 @@ function LoginPage() {
 
   // Mobile app modal state
   const [openMobileModal, setOpenMobileModal] = useState(false);
+  
+  // User info modal state
+  const [openUserInfoModal, setOpenUserInfoModal] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [userInfoLoading, setUserInfoLoading] = useState(false);
 
   // Firebase auth instance
   const auth = getAuth();
@@ -99,6 +104,69 @@ function LoginPage() {
     // Keep focus on password field after toggling
     passwordRef.current?.focus();
   };
+  
+  // Function to fetch user details by schoolId
+  const fetchUserBySchoolId = async () => {
+    if (!idNumber) {
+      showNotification('Please enter ID Number first', 'error');
+      return;
+    }
+    
+    setUserInfoLoading(true);
+    try {
+      // First, try to get the user's email using the existing endpoint
+      const response = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+        params: { schoolId: idNumber }
+      });
+      
+      if (response.data) {
+        try {
+          // Get the user's login info first
+          const loginResponse = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+            schoolId: idNumber
+          });
+          
+          if (loginResponse.data && loginResponse.data.userId) {
+            // Now use the userId to get full user details
+            const userDetailsResponse = await axios.get(`http://localhost:8080/api/user/getUser/${loginResponse.data.userId}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+                'Content-Type': 'application/json'
+              }
+            }).catch(() => ({ data: null }));
+            
+            // Combine data from both responses
+            setUserInfo({
+              firstName: userDetailsResponse.data?.firstName || loginResponse.data.firstName || "User",
+              lastName: userDetailsResponse.data?.lastName || loginResponse.data.lastName || "",
+              email: response.data,
+              role: loginResponse.data.role || "USER",
+              userId: loginResponse.data.userId || ""
+            });
+            setOpenUserInfoModal(true);
+          } else {
+            showNotification('No user found with this ID', 'error');
+          }
+        } catch (error) {
+          console.error('Error fetching user details:', error);
+          showNotification('Error retrieving user information', 'error');
+        }
+      } else {
+        showNotification('No user found with this ID', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      showNotification('No user found with this ID', 'error');
+    } finally {
+      setUserInfoLoading(false);
+    }
+  };
+  
+  // Handle close user info modal
+  const handleCloseUserInfoModal = () => {
+    setOpenUserInfoModal(false);
+    setUserInfo(null);
+  };
 
   // For tabbing from ID to password field
   const handleIdKeyDown = (e) => {
@@ -166,7 +234,7 @@ function LoginPage() {
 
       const jwtToken = response.data.token;
 
-console.log("JWT Token:", jwtToken);
+      console.log("JWT Token:", jwtToken);
       const data = response.data;
   
       if (data.success) {
@@ -260,28 +328,20 @@ console.log("JWT Token:", jwtToken);
 
     try {
       await sendPasswordResetEmail(auth, email);
-      setEmailSent(true);
-      showNotification('Password reset email sent! Please check your inbox.', 'success');
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
-      let errorMessage = 'Failed to send password reset email.';
-
-      // More specific error messages
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many attempts. Please try again later.';
-      }
-
-      showNotification(errorMessage);
-    } finally {
       setResetLoading(false);
+      setEmailSent(true);
+    } catch (error) {
+      setResetLoading(false);
+      
+      if (error.code === 'auth/user-not-found') {
+        showNotification('No account found with that email address', 'error');
+      } else {
+        showNotification('Error sending reset email: ' + error.message, 'error');
+      }
     }
   };
 
-  // Email validation helper
+  // Email validation function
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -340,15 +400,24 @@ console.log("JWT Token:", jwtToken);
               />
               <button 
                 className="input-icon-btn" 
-                disabled={isLoading || isAnimating}
+                disabled={isLoading || isAnimating || userInfoLoading || !idNumber}
                 aria-label="ID Icon"
                 type="button"
+                onClick={fetchUserBySchoolId}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="12" cy="10" r="3"></circle>
-                  <path d="M12 13c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"></path>
-                </svg>
+                {userInfoLoading ? (
+                  <div className="small-spinner">
+                    <div className="bounce1"></div>
+                    <div className="bounce2"></div>
+                    <div className="bounce3"></div>
+                  </div>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="12" cy="10" r="3"></circle>
+                    <path d="M12 13c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"></path>
+                  </svg>
+                )}
               </button>
             </div>
             <div id="idNumberHelp" className="form-help-text">Enter your school ID number</div>
@@ -764,6 +833,198 @@ console.log("JWT Token:", jwtToken);
         
       </Modal>
       
+      {/* User Info Modal */}
+      <Modal
+        open={openUserInfoModal}
+        onClose={handleCloseUserInfoModal}
+        aria-labelledby="user-info-modal-title"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 350,
+          bgcolor: isDarkMode ? '#2d2d2d' : 'background.paper',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+          borderRadius: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          overflow: 'hidden',
+          color: isDarkMode ? '#f0f0f0' : 'text.primary'
+        }}>
+          {/* Header with user icon */}
+          <Box sx={{ 
+            width: '100%', 
+            py: 3,
+            px: 2, 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'relative',
+            borderBottom: '1px solid',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+          }}>
+            {/* User avatar/icon */}
+            <Box sx={{
+              width: 70,
+              height: 70,
+              borderRadius: '50%',
+              bgcolor: isDarkMode ? '#3538CD' : '#3f51b5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+            }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </Box>
+            
+            {/* User name */}
+            <Typography 
+              id="user-info-modal-title" 
+              variant="h5" 
+              component="h2" 
+              sx={{ 
+                fontWeight: 600, 
+                textAlign: 'center',
+                fontSize: '1.4rem'
+              }}
+            >
+              You are {userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : '...'}
+            </Typography>
+            
+            {/* User email */}
+            {userInfo && userInfo.email && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: isDarkMode ? '#a0a0a0' : '#666', 
+                  textAlign: 'center',
+                  mt: 0.5,
+                  fontSize: '0.9rem'
+                }}
+              >
+                {userInfo.email}
+              </Typography>
+            )}
+          </Box>
+          
+          {/* Content area */}
+          <Box sx={{ width: '100%', px: 3, py: 2 }}>
+            {/* User role */}
+            {userInfo && userInfo.role && (
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 1.5
+              }}>
+                <Box sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  px: 2,
+                  py: 0.75,
+                  borderRadius: 5,
+                  bgcolor: userInfo.role === 'ADMIN' 
+                    ? isDarkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)' 
+                    : isDarkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)',
+                  color: userInfo.role === 'ADMIN' ? '#4caf50' : '#ff9800',
+                  fontWeight: 500,
+                  fontSize: '0.875rem'
+                }}>
+                  {userInfo.role === 'ADMIN' ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <polyline points="17 11 19 13 23 9"></polyline>
+                      </svg>
+                      Administrator Account
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                      Faculty Account
+                    </>
+                  )}
+                </Box>
+              </Box>
+            )}
+            
+            {/* Non-admin notice */}
+            {userInfo && userInfo.role !== 'ADMIN' && (
+              <Box sx={{ 
+                bgcolor: isDarkMode ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255, 152, 0, 0.05)', 
+                p: 2, 
+                borderRadius: 2,
+                mt: 1,
+                border: '1px solid',
+                borderColor: isDarkMode ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.15)'
+              }}>
+                <Typography variant="body2" sx={{ textAlign: 'center', fontSize: '0.875rem' }}>
+                  Please note: This web portal is for administrators only. Faculty members should use our mobile app.
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  onClick={handleOpenMobileModal}
+                  sx={{ 
+                    mt: 1.5, 
+                    display: 'block', 
+                    mx: 'auto',
+                    color: isDarkMode ? '#ff9800' : '#e65100',
+                    borderColor: isDarkMode ? '#ff9800' : '#e65100',
+                    '&:hover': {
+                      borderColor: isDarkMode ? '#ffb74d' : '#ff9800',
+                      backgroundColor: isDarkMode ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255, 152, 0, 0.04)'
+                    }
+                  }}
+                >
+                  Get Mobile App
+                </Button>
+              </Box>
+            )}
+          </Box>
+          
+          {/* Footer with close button */}
+          <Box sx={{ 
+            width: '100%', 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'center',
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.02)',
+            borderTop: '1px solid',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+          }}>
+            <Button 
+              variant="contained" 
+              onClick={handleCloseUserInfoModal}
+              sx={{ 
+                bgcolor: '#3538CD',
+                '&:hover': { bgcolor: '#2C2EA9' },
+                px: 4,
+                py: 1,
+                fontWeight: 500,
+                letterSpacing: '0.5px',
+                boxShadow: '0 4px 8px rgba(53, 56, 205, 0.25)',
+                minWidth: '120px'
+              }}
+            >
+              CLOSE
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
     </div>
     
   );

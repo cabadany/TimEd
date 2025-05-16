@@ -1278,3 +1278,38 @@ body, html, #root {
     margin-top: 3rem;
   }
 }
+
+/* Small spinner for the input icon button */
+.small-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.small-spinner > div {
+  width: 4px;
+  height: 4px;
+  margin: 0 1px;
+  background-color: currentColor;
+  border-radius: 100%;
+  display: inline-block;
+  animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.small-spinner .bounce1 {
+  animation-delay: -0.32s;
+}
+
+.small-spinner .bounce2 {
+  animation-delay: -0.16s;
+}
+
+@keyframes sk-bouncedelay {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 40% { 
+    transform: scale(1.0);
+  }
+}
