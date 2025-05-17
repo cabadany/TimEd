@@ -38,6 +38,7 @@ import {
   Group
 } from '@mui/icons-material';
 import './dashboard.css';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -83,6 +84,7 @@ const TableRowsSkeleton = () => (
 );
 
 export default function Dashboard() {
+  const { darkMode } = useTheme();
   
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -324,75 +326,166 @@ export default function Dashboard() {
   };
 
   return (
-    <Box className="dashboard-container">
+    <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`} sx={{ 
+      padding: '20px 24px', 
+      backgroundColor: darkMode ? 'var(--background-primary)' : '#F9FAFC',
+      minHeight: '100vh',
+      width: '100%',
+      color: darkMode ? 'var(--text-primary)' : 'inherit'
+    }}>
       {/* Dashboard Content */}
-      <Box className="dashboard-main">
+      <Box className="dashboard-main" sx={{ maxWidth: '1400px', margin: '0 auto' }}>
+        
         {/* Event Summary Cards */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Event Summary</Typography>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>Event Summary</Typography>
           {loading ? (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {[1, 2, 3, 4].map((_, index) => (
-                <Grid item xs={12} sm={6} md={3} key={index}>
-                  <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    <CardContent sx={{ p: 2 }}>
+                <Grid item xs={6} sm={3} md={3} key={index}>
+                  <Card sx={{ 
+                    borderRadius: '10px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    bgcolor: darkMode ? 'var(--card-bg)' : 'white'
+                  }}>
+                    <CardContent sx={{ p: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Skeleton variant="circular" width={20} height={20} sx={{ mr: 1 }} />
-                        <Skeleton variant="text" width={120} />
+                        <Skeleton variant="circular" width={16} height={16} sx={{ mr: 1 }} />
+                        <Skeleton variant="text" width={100} />
                       </Box>
-                      <Skeleton variant="rectangular" width={60} height={40} />
+                      <Skeleton variant="rectangular" width={50} height={30} />
                     </CardContent>
                   </Card>
                 </Grid>
               ))}
             </Grid>
           ) : (
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card className="stat-card">
-                  <CardContent sx={{ p: 2 }}>
-                    <Box className="stat-icon">
-                      <CalendarToday />
+            <Grid container spacing={2}>
+              <Grid item xs={6} sm={3} md={3}>
+                <Card className="stat-card" sx={{ 
+                  borderRadius: '10px', 
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                  background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
+                  transition: 'all 0.2s ease',
+                  height: '100%',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                  }
+                }}>
+                  <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box className="stat-icon" sx={{ 
+                      background: darkMode ? 'var(--accent-light)' : 'rgba(65, 105, 225, 0.1)', 
+                      color: darkMode ? 'var(--accent-color)' : 'royalblue',
+                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      mb: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <CalendarToday fontSize="small" />
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Events</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>{totalEvents}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Total Events</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: darkMode ? 'var(--accent-color)' : 'royalblue', mb: 0, mt: 'auto' }}>{totalEvents}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card className="stat-card">
-                  <CardContent sx={{ p: 2 }}>
-                    <Box className="stat-icon">
-                      <AccessTime />
+              <Grid item xs={6} sm={3} md={3}>
+                <Card className="stat-card" sx={{ 
+                  borderRadius: '10px', 
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                  background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f9f8ff 0%, #ffffff 100%)',
+                  transition: 'all 0.2s ease',
+                  height: '100%',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                  }
+                }}>
+                  <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box className="stat-icon" sx={{ 
+                      background: darkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)', 
+                      color: 'orange',
+                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      mb: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <AccessTime fontSize="small" />
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Upcoming Events</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Upcoming Events</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'orange', mb: 0, mt: 'auto' }}>
                       {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card className="stat-card">
-                  <CardContent sx={{ p: 2 }}>
-                    <Box className="stat-icon">
-                      <Group />
+              <Grid item xs={6} sm={3} md={3}>
+                <Card className="stat-card" sx={{ 
+                  borderRadius: '10px', 
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                  background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8feff 0%, #ffffff 100%)',
+                  transition: 'all 0.2s ease',
+                  height: '100%',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                  }
+                }}>
+                  <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box className="stat-icon" sx={{ 
+                      background: darkMode ? 'rgba(0, 150, 136, 0.15)' : 'rgba(0, 150, 136, 0.1)', 
+                      color: 'teal',
+                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      mb: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Group fontSize="small" />
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Ongoing Events</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Ongoing Events</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'teal', mb: 0, mt: 'auto' }}>
                       {events.filter(event => event.status.toLowerCase().includes('ongoing')).length}
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card className="stat-card">
-                  <CardContent sx={{ p: 2 }}>
-                    <Box className="stat-icon">
-                      <CalendarToday />
+              <Grid item xs={6} sm={3} md={3}>
+                <Card className="stat-card" sx={{ 
+                  borderRadius: '10px', 
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                  background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8f8fc 0%, #ffffff 100%)',
+                  transition: 'all 0.2s ease',
+                  height: '100%',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                  }
+                }}>
+                  <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box className="stat-icon" sx={{ 
+                      background: darkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)', 
+                      color: 'green',
+                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      mb: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <CalendarToday fontSize="small" />
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Completed Events</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Completed Events</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'green', mb: 0, mt: 'auto' }}>
                       {events.filter(event => 
                         event.status.toLowerCase().includes('completed') || 
                         event.status.toLowerCase().includes('ended')
@@ -406,19 +499,41 @@ export default function Dashboard() {
         </Box>
 
         {/* Filter and Table Section */}
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <Box sx={{ 
+          bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+          borderRadius: '16px', 
+          boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+          overflow: 'hidden',
+          border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)'
+        }}>
           {/* Tab and Filter Section */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            p: { xs: 2, md: 3 }, 
+            borderBottom: '1px solid', 
+            borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 2, md: 0 }
+          }}>
             <Tabs 
               value={activeTab} 
               onChange={handleTabChange}
               sx={{ 
                 '& .MuiTab-root': { 
-                  minWidth: 100, 
+                  minWidth: { xs: 80, md: 100 }, 
                   textTransform: 'none',
                   fontSize: '14px',
                   fontWeight: 500
-                } 
+                },
+                '& .Mui-selected': {
+                  color: darkMode ? 'var(--accent-color)' : 'royalblue',
+                  fontWeight: 600
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue'
+                }
               }}
             >
               <Tab label="All Events" />
@@ -427,7 +542,13 @@ export default function Dashboard() {
               <Tab label="Past Events" />
             </Tabs>
             
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2,
+              flexWrap: { xs: 'wrap', md: 'nowrap' },
+              width: { xs: '100%', md: 'auto' },
+              justifyContent: { xs: 'center', md: 'flex-end' }
+            }}>
               <TextField
                 type="date"
                 size="small"
@@ -435,6 +556,14 @@ export default function Dashboard() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    '&:hover fieldset': {
+                      borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                    },
+                  }
+                }}
               />
               <TextField
                 type="date"
@@ -443,13 +572,30 @@ export default function Dashboard() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    '&:hover fieldset': {
+                      borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                    },
+                  }
+                }}
               />
               <Button 
                 variant="contained" 
                 color="primary"
                 size="small"
                 onClick={handleDateFilterChange}
-                sx={{ textTransform: 'none' }}
+                sx={{ 
+                  textTransform: 'none', 
+                  borderRadius: '8px',
+                  backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    backgroundColor: darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)',
+                    boxShadow: darkMode ? '0 4px 12px rgba(107, 110, 247, 0.25)' : '0 4px 12px rgba(65, 105, 225, 0.25)',
+                  }
+                }}
               >
                 Apply Filter
               </Button>
@@ -457,7 +603,16 @@ export default function Dashboard() {
                 variant="outlined" 
                 size="small"
                 onClick={handleClearDateFilter}
-                sx={{ textTransform: 'none' }}
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                  color: 'text.secondary',
+                  '&:hover': {
+                    borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                  }
+                }}
               >
                 Clear
               </Button>
@@ -468,15 +623,15 @@ export default function Dashboard() {
           {loading ? (
             <TableContainer>
               <Table sx={{ minWidth: 650 }}>
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Event ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Event Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Department</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -495,21 +650,21 @@ export default function Dashboard() {
           ) : (
             <TableContainer>
               <Table sx={{ minWidth: 650 }}>
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Event ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Event Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Department</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {currentEvents.map((event) => (
-                    <TableRow key={event.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                      <TableCell component="th" scope="row" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                    <TableRow key={event.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
+                      <TableCell component="th" scope="row" sx={{ fontWeight: 500, color: darkMode ? 'var(--accent-color)' : 'primary.main' }}>
                         {event.id}
                       </TableCell>
                       <TableCell>{event.name}</TableCell>
@@ -543,30 +698,77 @@ export default function Dashboard() {
           )}
           
           {/* Pagination Controls */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-              Page {currentPage} of {totalPages || 1}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            p: { xs: 2, md: 3 }, 
+            borderTop: '1px solid', 
+            borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
+            bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
+          }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ChevronLeft />}
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1 || totalPages === 0}
-              sx={{ minWidth: 100, textTransform: 'none', mr: 1 }}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              endIcon={<ChevronRight />}
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages || totalPages === 0}
-              sx={{ minWidth: 100, textTransform: 'none' }}
-            >
-              Next
-            </Button>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
+                Page {currentPage} of {totalPages || 1}
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ChevronLeft />}
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1 || totalPages === 0}
+                sx={{ 
+                  minWidth: { xs: 40, md: 100 }, 
+                  textTransform: 'none', 
+                  mr: 1,
+                  borderRadius: '8px',
+                  borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                  color: 'text.secondary',
+                  px: { xs: 1, md: 2 },
+                  '&:hover': {
+                    borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                  }
+                }}
+              >
+                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                  Previous
+                </Box>
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                endIcon={<ChevronRight />}
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages || totalPages === 0}
+                sx={{ 
+                  minWidth: { xs: 40, md: 100 }, 
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                  color: 'text.secondary',
+                  px: { xs: 1, md: 2 },
+                  '&:hover': {
+                    borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                  }
+                }}
+              >
+                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                  Next
+                </Box>
+              </Button>
+            </Box>
           </Box>
         </Box>
       </Box>
@@ -583,12 +785,13 @@ export default function Dashboard() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: { xs: '90%', sm: 600 },
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper',
           boxShadow: 24,
           borderRadius: 2,
           p: 3,
           maxHeight: '90vh',
-          overflow: 'auto'
+          overflow: 'auto',
+          border: darkMode ? '1px solid var(--border-color)' : 'none'
         }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" fontWeight={600}>Event Details</Typography>
@@ -597,7 +800,7 @@ export default function Dashboard() {
             </IconButton>
           </Box>
           
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: 2, borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
           
           {selectedEvent && (
             <List sx={{ p: 0 }}>
@@ -607,7 +810,7 @@ export default function Dashboard() {
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.id}</Typography>
                 </Box>
               </ListItem>
-              <Divider />
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
@@ -615,7 +818,7 @@ export default function Dashboard() {
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.name}</Typography>
                 </Box>
               </ListItem>
-              <Divider />
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
@@ -623,7 +826,7 @@ export default function Dashboard() {
                   <Typography variant="body1" fontWeight={500}>{getDepartmentName(selectedEvent.departmentId)}</Typography>
                 </Box>
               </ListItem>
-              <Divider />
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
@@ -631,7 +834,7 @@ export default function Dashboard() {
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.date}</Typography>
                 </Box>
               </ListItem>
-              <Divider />
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
@@ -639,7 +842,7 @@ export default function Dashboard() {
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.duration}</Typography>
                 </Box>
               </ListItem>
-              <Divider />
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
@@ -659,7 +862,11 @@ export default function Dashboard() {
             <Button 
               variant="outlined" 
               onClick={() => setShowModal(false)}
-              sx={{ textTransform: 'none', mr: 1 }}
+              sx={{ 
+                textTransform: 'none', 
+                mr: 1,
+                borderColor: darkMode ? 'var(--border-color)' : 'inherit'
+              }}
             >
               Close
             </Button>
@@ -671,7 +878,13 @@ export default function Dashboard() {
                 // Navigate to attendance page with event ID
                 window.location.href = `/attendance/${selectedEvent.id}`;
               }}
-              sx={{ textTransform: 'none' }}
+              sx={{ 
+                textTransform: 'none',
+                backgroundColor: darkMode ? 'var(--accent-color)' : undefined,
+                '&:hover': {
+                  backgroundColor: darkMode ? 'var(--accent-hover)' : undefined
+                }
+              }}
             >
               View Attendance
             </Button>

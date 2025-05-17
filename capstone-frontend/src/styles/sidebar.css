@@ -1,0 +1,186 @@
+/* Sidebar Styles */
+.sidebar-container {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.dark-mode .sidebar-container {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Menu Item Hover Effect */
+.sidebar-menu-item {
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden !important;
+}
+
+.sidebar-menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.sidebar-menu-item:hover::before {
+  left: 100%;
+}
+
+.sidebar-item-active {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .sidebar-item-active {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Hover animation */
+.sidebar-item-hovered {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Toggle Button Animation */
+.sidebar-toggle {
+  transform: scale(1);
+  transition: transform 0.2s ease, background-color 0.2s ease !important;
+}
+
+.sidebar-toggle:hover {
+  transform: scale(1.1);
+}
+
+/* Collapse Animation for Toggle Icon */
+.sidebar-collapsed .sidebar-toggle svg {
+  animation: rotate-right 0.3s forwards;
+}
+
+.sidebar-container:not(.sidebar-collapsed) .sidebar-toggle svg {
+  animation: rotate-left 0.3s forwards;
+}
+
+@keyframes rotate-right {
+  from { transform: rotate(0); }
+  to { transform: rotate(180deg); }
+}
+
+@keyframes rotate-left {
+  from { transform: rotate(180deg); }
+  to { transform: rotate(0); }
+}
+
+/* Menu Item Animations */
+.sidebar-collapsed .sidebar-menu-item {
+  animation: collapse-menu 0.3s forwards;
+}
+
+.sidebar-container:not(.sidebar-collapsed) .sidebar-menu-item {
+  animation: expand-menu 0.3s forwards;
+}
+
+@keyframes collapse-menu {
+  from { padding-left: 16px; }
+  to { padding-left: 0; }
+}
+
+@keyframes expand-menu {
+  from { padding-left: 0; }
+  to { padding-left: 16px; }
+}
+
+/* Logo Animation */
+.sidebar-collapsed .logo-container img {
+  animation: shrink-logo 0.3s forwards;
+}
+
+.sidebar-container:not(.sidebar-collapsed) .logo-container img {
+  animation: expand-logo 0.3s forwards;
+}
+
+@keyframes shrink-logo {
+  from { height: 80px; }
+  to { height: 40px; }
+}
+
+@keyframes expand-logo {
+  from { height: 40px; }
+  to { height: 80px; }
+}
+
+/* Active Indicator Animation */
+.sidebar-menu-item::after {
+  transition: all 0.3s ease !important;
+}
+
+.sidebar-item-active::after {
+  animation: indicator-pulse 2s infinite;
+}
+
+@keyframes indicator-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(65, 105, 225, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0);
+  }
+}
+
+/* Tooltip Animation */
+.MuiTooltip-popper {
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Custom Scrollbar for Sidebar Menu */
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+} 
