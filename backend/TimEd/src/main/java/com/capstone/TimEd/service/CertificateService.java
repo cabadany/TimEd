@@ -34,9 +34,7 @@ import java.util.concurrent.ExecutionException;
 import java.awt.Graphics2D;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
-import com.itextpdf.layout.properties.PageHorizontalAlignment;
-import com.itextpdf.layout.properties.PageVerticalAlignment;
-import com.itextpdf.layout.properties.PageSize;
+
 import com.itextpdf.layout.element.Text;
 
 @Service
@@ -313,8 +311,8 @@ public class CertificateService {
         PdfDocument pdf = new PdfDocument(writer);
         
         // Set page size to landscape (swap width and height)
-        PageSize pageSize = PageSize.A4.rotate();
-        pdf.setDefaultPageSize(pageSize);
+      //  PageSize pageSize = PageSize.A4.rotate();
+        //pdf.setDefaultPageSize(pageSize);
         
         Document document = new Document(pdf);
 
@@ -506,43 +504,106 @@ public class CertificateService {
             String eventName;
             String eventDate = "";
             try {
+                System.out.println("Fetching event details for ID: " + eventId);
+                
+                // First attempt: direct lookup with the provided ID
                 DocumentSnapshot eventDoc = FirestoreClient.getFirestore()
                     .collection("events")
                     .document(eventId)
                     .get()
                     .get();
                 
-                eventName = eventDoc.getString("eventName");
-                
-                // Get event date
-                if (eventDoc.contains("date")) {
-                    eventDate = eventDoc.getString("date");
-                    System.out.println("Found event date: " + eventDate);
-                } else if (eventDoc.contains("eventDate")) {
-                    eventDate = eventDoc.getString("eventDate");
-                    System.out.println("Found event date: " + eventDate);
-                } else {
-                    // Try to find date in timestamp fields
-                    Object timestamp = eventDoc.get("timestamp");
-                    if (timestamp != null) {
-                        if (timestamp instanceof com.google.cloud.Timestamp) {
-                            com.google.cloud.Timestamp ts = (com.google.cloud.Timestamp) timestamp;
-                            eventDate = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy")
-                                .format(java.time.LocalDateTime.ofInstant(
-                                    ts.toDate().toInstant(), 
-                                    java.time.ZoneId.systemDefault()));
-                            System.out.println("Converted timestamp to date: " + eventDate);
-                        } else {
-                            eventDate = timestamp.toString();
-                        }
+                // If document doesn't exist or doesn't have eventName, try a query approach
+                if (!eventDoc.exists() || eventDoc.getString("eventName") == null) {
+                    System.out.println("Direct lookup failed. Trying to find event by eventId field...");
+                    
+                    // Try to find events where eventId field matches our input
+                    ApiFuture<QuerySnapshot> queryFuture = FirestoreClient.getFirestore()
+                        .collection("events")
+                        .whereEqualTo("eventId", eventId)
+                        .limit(1)
+                        .get();
+                    
+                    List<QueryDocumentSnapshot> documents = queryFuture.get().getDocuments();
+                    
+                    if (!documents.isEmpty()) {
+                        eventDoc = documents.get(0);
+                        System.out.println("Found event through query by eventId field");
                     } else {
-                        System.out.println("No date field found in event document");
+                        System.out.println("No event found with eventId field = " + eventId);
                     }
+                }
+
+                // Get event name with fallbacks
+                if (eventDoc.exists()) {
+                    System.out.println("Event document data: " + eventDoc.getData());
+                    
+                    eventName = eventDoc.getString("eventName");
+                    System.out.println("Extracted eventName: " + eventName);
+                    
+                    if (eventName == null || eventName.isEmpty()) {
+                        eventName = eventDoc.getString("name");
+                        if (eventName == null || eventName.isEmpty()) {
+                            eventName = eventDoc.getString("title");
+                            if (eventName == null || eventName.isEmpty()) {
+                                // Last resort - try to get any field that might have event name info
+                                Map<String, Object> eventData = eventDoc.getData();
+                                for (String key : eventData.keySet()) {
+                                    if (key.toLowerCase().contains("name") || key.toLowerCase().contains("title")) {
+                                        Object value = eventData.get(key);
+                                        if (value != null && value instanceof String) {
+                                            eventName = (String) value;
+                                            System.out.println("Using alternative field for event name: " + key);
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // If we still don't have a name, use a friendly format
+                                if (eventName == null || eventName.isEmpty()) {
+                                    eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
+                                    System.out.println("No event name found, using formatted ID: " + eventName);
+                                }
+                            }
+                        }
+                    }
+                    
+                    System.out.println("Final event name to use: " + eventName);
+                    
+                    // Get event date
+                    if (eventDoc.contains("date")) {
+                        eventDate = eventDoc.getString("date");
+                        System.out.println("Found event date: " + eventDate);
+                    } else if (eventDoc.contains("eventDate")) {
+                        eventDate = eventDoc.getString("eventDate");
+                        System.out.println("Found event date: " + eventDate);
+                    } else {
+                        // Try to find date in timestamp fields
+                        Object timestamp = eventDoc.get("timestamp");
+                        if (timestamp != null) {
+                            if (timestamp instanceof com.google.cloud.Timestamp) {
+                                com.google.cloud.Timestamp ts = (com.google.cloud.Timestamp) timestamp;
+                                eventDate = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy")
+                                    .format(java.time.LocalDateTime.ofInstant(
+                                        ts.toDate().toInstant(), 
+                                        java.time.ZoneId.systemDefault()));
+                                System.out.println("Converted timestamp to date: " + eventDate);
+                            } else {
+                                eventDate = timestamp.toString();
+                            }
+                        } else {
+                            System.out.println("No date field found in event document");
+                        }
+                    }
+                } else {
+                    throw new Exception("Could not find event document for ID: " + eventId);
                 }
             } catch (Exception e) {
                 System.err.println("Error fetching event details: " + e.getMessage());
-                eventName = eventId;
+                // Use a more user-friendly fallback instead of just the raw ID
+                eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
                 eventDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM dd, yyyy"));
+                System.out.println("Using fallback event name: " + eventName);
             }
 
             // Event name
@@ -962,30 +1023,22 @@ public class CertificateService {
         try {
             System.out.println("[DEBUG] tryExplicitFormatApproach: Trying with explicit format types");
             
-            // Try different format types supported by iText
-            int[] formatTypes = {
-                ImageDataFactory.JPEG,
-                ImageDataFactory.PNG,
-                ImageDataFactory.GIF,
-                ImageDataFactory.BMP,
-                ImageDataFactory.TIFF
+            // List of common image formats to try
+            String[] formatTypes = {
+                "JPEG", "PNG", "GIF", "BMP", "TIFF"
             };
             
-            for (int formatType : formatTypes) {
+            // Try each format
+            for (String formatName : formatTypes) {
                 try {
-                    String formatName;
-                    switch (formatType) {
-                        case ImageDataFactory.JPEG: formatName = "JPEG"; break;
-                        case ImageDataFactory.PNG: formatName = "PNG"; break;
-                        case ImageDataFactory.GIF: formatName = "GIF"; break;
-                        case ImageDataFactory.BMP: formatName = "BMP"; break;
-                        case ImageDataFactory.TIFF: formatName = "TIFF"; break;
-                        default: formatName = "Unknown";
-                    }
-                    
                     System.out.println("[DEBUG] tryExplicitFormatApproach: Trying " + formatName + " format");
                     
-                    ImageData imageData = ImageDataFactory.create(imageBytes, formatType);
+                    // Create temporary file with the specific extension
+                    java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("certificate_bg_", "." + formatName.toLowerCase());
+                    java.nio.file.Files.write(tempFile, imageBytes);
+                    
+                    // Try to create an image from the temp file
+                    ImageData imageData = ImageDataFactory.create(tempFile.toUri().toURL());
                     Image image = new Image(imageData);
                     image.setFixedPosition(0, 0);
                     image.setWidth(pdf.getDefaultPageSize().getWidth());
@@ -997,12 +1050,37 @@ public class CertificateService {
                     image.setOpacity(opacity);
                     
                     document.add(image);
+                    
+                    // Clean up the temp file
+                    java.nio.file.Files.deleteIfExists(tempFile);
+                    
                     System.out.println("[DEBUG] tryExplicitFormatApproach: Success with " + formatName + " format!");
                     return true;
                 } catch (Exception e) {
-                    System.err.println("[DEBUG] tryExplicitFormatApproach: Failed with format type " + formatType + ": " + e.getMessage());
+                    System.err.println("[DEBUG] tryExplicitFormatApproach: Failed with format " + formatName + ": " + e.getMessage());
                     // Continue to next format
                 }
+            }
+            
+            // Direct approach using raw bytes
+            try {
+                System.out.println("[DEBUG] tryExplicitFormatApproach: Trying direct byte array approach");
+                ImageData imageData = ImageDataFactory.create(imageBytes);
+                Image image = new Image(imageData);
+                image.setFixedPosition(0, 0);
+                image.setWidth(pdf.getDefaultPageSize().getWidth());
+                image.setHeight(pdf.getDefaultPageSize().getHeight());
+                
+                // Set opacity
+                float opacity = template.getBackgroundImageOpacity();
+                if (opacity <= 0 || opacity > 1) opacity = 0.3f;
+                image.setOpacity(opacity);
+                
+                document.add(image);
+                System.out.println("[DEBUG] tryExplicitFormatApproach: Success with direct byte array approach!");
+                return true;
+            } catch (Exception e) {
+                System.err.println("[DEBUG] tryExplicitFormatApproach: Failed with direct byte array approach: " + e.getMessage());
             }
             
             // If we've tried all formats and none worked
