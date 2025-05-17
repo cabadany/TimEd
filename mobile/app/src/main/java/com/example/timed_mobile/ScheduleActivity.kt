@@ -18,10 +18,9 @@ import java.util.Locale
 
 class ScheduleActivity : AppCompatActivity() {
 
-    private lateinit var homeIcon: ImageView
-    private lateinit var calendarIcon: ImageView
-    private lateinit var profileIcon: ImageView
+
     private lateinit var dateLabel: TextView
+    private lateinit var backButton: ImageView
 
     private val classes = listOf(
         ClassInfo("IT332", "Web Development", "Room 301", "10:30 am - 12:00 pm", R.drawable.schedule_circle_orange),
@@ -33,10 +32,8 @@ class ScheduleActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.schedule_page)
 
-        homeIcon = findViewById(R.id.bottom_nav_home)
-        calendarIcon = findViewById(R.id.bottom_nav_calendar)
-        profileIcon = findViewById(R.id.bottom_nav_profile)
         dateLabel = findViewById(R.id.date_label)
+        backButton = findViewById(R.id.icon_back_button)
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
@@ -44,19 +41,17 @@ class ScheduleActivity : AppCompatActivity() {
             topDrawable.start()
         }
 
+        backButton.setOnClickListener { view ->
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            view.postDelayed({
+                finish()
+            }, 50)
+        }
+
         updateDateLabel()
-
-        setupAnimatedClickListener(homeIcon) {
-            startActivity(Intent(this, HomeActivity::class.java))
-        }
-
-        setupAnimatedClickListener(profileIcon) {
-            startActivity(Intent(this, ProfileActivity::class.java))
-        }
-
-        setupAnimatedClickListener(calendarIcon) {
-            Toast.makeText(this, "You are already on the Calendar screen", Toast.LENGTH_SHORT).show()
-        }
 
         setupClassCards()
     }

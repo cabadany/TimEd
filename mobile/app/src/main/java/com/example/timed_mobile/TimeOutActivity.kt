@@ -55,13 +55,18 @@ class TimeOutActivity : AppCompatActivity() {
     }
 
     private fun logTimeOutToFirebase() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs")
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (authUid == null) {
+            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(authUid)
 
         val log = mapOf(
-            "userId" to userId,
             "timestamp" to System.currentTimeMillis(),
-            "type" to "timeout"
+            "type" to "TimeOut"
         )
 
         dbRef.push().setValue(log).addOnSuccessListener {
