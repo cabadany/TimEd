@@ -1201,48 +1201,6 @@ aria-labelledby="view-professor-modal-title"
           </ListItem>
         </List>
       </Box>
-      
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Button
-          variant="outlined"
-          startIcon={<EventAvailable />}
-          onClick={() => {
-            setShowViewModal(false);
-            handleViewAttendedEvents(viewingProfessor);
-          }}
-          sx={{
-            borderColor: '#10B981',
-            color: '#10B981',
-            '&:hover': {
-              borderColor: '#059669',
-              bgcolor: 'transparent',
-            },
-            textTransform: 'none',
-            fontWeight: 500
-          }}
-        >
-          View Attended Events
-        </Button>
-        
-        <Button
-          variant="contained"
-          startIcon={<Edit />}
-          onClick={() => {
-            setShowViewModal(false);
-            handleEditClick(viewingProfessor);
-          }}
-          sx={{
-            bgcolor: '#0288d1',
-            '&:hover': {
-              bgcolor: '#0277bd',
-            },
-            textTransform: 'none',
-            fontWeight: 500
-          }}
-        >
-          Edit Faculty
-        </Button>
-      </Box>
     </Box>
   )}
 </Box>
