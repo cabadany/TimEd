@@ -3,23 +3,24 @@ package com.example.timed_mobile
 import android.annotation.SuppressLint
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.view.animation.AnimationSet // Import AnimationSet
-import android.view.animation.AlphaAnimation // Import AlphaAnimation
-import android.app.Dialog // Import Dialog
-import android.graphics.Color // Import Color
-import android.graphics.drawable.ColorDrawable // Import ColorDrawable
+import android.view.animation.AnimationSet
+import android.view.animation.AlphaAnimation
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.view.animation.TranslateAnimation
 import android.view.Gravity
-import android.view.MotionEvent // Import MotionEvent
+import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -27,11 +28,17 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.timed_mobile.adapter.EventAdapter
 import com.example.timed_mobile.model.EventModel
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,24 +61,11 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var excuseLetterText: TextView
 
     private lateinit var greetingCardNavIcon: ImageView
-
     private lateinit var tutorialOverlay: FrameLayout
-    private val TOTAL_QUICK_TOUR_STEPS = 4 // Define total steps for the quick tour
-    private var previousTargetLocation: IntArray? =
-        null // To store the last target's screen location
 
+    private val TOTAL_QUICK_TOUR_STEPS = 4
+    private var previousTargetLocation: IntArray? = null
     private val allEvents = mutableListOf<EventModel>()
-
-    private val timeInLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
-                if (isTimedIn) {
-                    Toast.makeText(this, "✅ Time-In recorded successfully!", Toast.LENGTH_LONG)
-                        .show()
-                }
-            }
-        }
 
     private var userId: String? = null
     private var userEmail: String? = null
@@ -79,40 +73,37 @@ class HomeActivity : AppCompatActivity() {
     private var idNumber: String? = null
     private var department: String? = null
 
+    private val timeInLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
+                if (isTimedIn) {
+                    Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
+                    loadTodayTimeInPhoto()
+                }
+            }
+        }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
 
-        tutorialOverlay = findViewById(R.id.tutorial_overlay) // Add this line back
-
-        tutorialOverlay.setOnTouchListener(object : View.OnTouchListener {
-            @SuppressLint("ClickableViewAccessibility") // Added to acknowledge manual touch handling
-            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                // Call performClick when an ACTION_UP event is detected.
-                // This is important for accessibility, allowing services to recognize the action.
-                // If the View (v) has no OnClickListener, this call typically handles
-                // default accessibility behavior or does nothing, which is appropriate for an overlay.
-                if (event?.action == MotionEvent.ACTION_UP) {
-                    v?.performClick()
-                }
-                // Return true to indicate that the touch event has been handled
-                // and should not be processed further by other views.
-                return true
+        tutorialOverlay = findViewById(R.id.tutorial_overlay)
+        tutorialOverlay.setOnTouchListener { v, event ->
+            if (event?.action == MotionEvent.ACTION_UP) {
+                v?.performClick()
             }
-        })
+            true
+        }
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
-        // Explicitly consume any touches on the tutorialOverlay
+        if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
 
-        // Help button functionality
         val helpButton = findViewById<ImageView>(R.id.btn_help)
         helpButton.setOnClickListener {
-            previousTargetLocation = null // Reset for a new tour
+            previousTargetLocation = null
             showTutorialDialog()
         }
 
@@ -149,8 +140,7 @@ class HomeActivity : AppCompatActivity() {
         department = intent.getStringExtra("department") ?: "N/A"
 
         if (userId == null) {
-            Toast.makeText(this, "User session error. Please log in again.", Toast.LENGTH_LONG)
-                .show()
+            Toast.makeText(this, "User session error. Please log in again.", Toast.LENGTH_LONG).show()
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
@@ -160,6 +150,8 @@ class HomeActivity : AppCompatActivity() {
 
         greetingName.text = "Hi, $userFirstName 👋"
         greetingDetails.text = "ID: $idNumber • $department"
+
+        loadTodayTimeInPhoto() // Load photo on launch
 
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
@@ -194,7 +186,6 @@ class HomeActivity : AppCompatActivity() {
                         apply()
                     }
                     FirebaseAuth.getInstance().signOut()
-
                     Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this, LoginActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -206,12 +197,10 @@ class HomeActivity : AppCompatActivity() {
             true
         }
 
-        setupFilterButtons() // This will set up the listeners correctly
+        setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
-        loadAndStoreEvents() // This will call showEventsByStatus(null) and update button state
-
-        // The initial state for btnAll is now handled within loadAndStoreEvents's success block
+        loadAndStoreEvents()
     }
 
     private fun updateFilterButtonStates(selectedButton: Button) {
@@ -226,6 +215,70 @@ class HomeActivity : AppCompatActivity() {
                 button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
             }
         }
+    }
+
+    private fun hasTimedOutToday(): Boolean {
+        val prefs = getSharedPreferences("TimeOutPrefs", MODE_PRIVATE)
+        val lastTimedOutDate = prefs.getString("lastTimedOutDate", null)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        return lastTimedOutDate == today
+    }
+
+    private fun setTimedOutToday() {
+        val prefs = getSharedPreferences("TimeOutPrefs", MODE_PRIVATE)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        prefs.edit().putString("lastTimedOutDate", today).apply()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
+
+        if (hasTimedOutToday()) {
+            profileImageView.setImageResource(R.drawable.ic_profile)
+        } else {
+            loadTodayTimeInPhoto()
+        }
+    }
+
+    private fun loadTodayTimeInPhoto() {
+        val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                            if (!imageUrl.isNullOrEmpty()) {
+                                Glide.with(this@HomeActivity)
+                                    .load(imageUrl)
+                                    .into(profileImageView)
+                                return
+                            }
+                        }
+                    }
+                    // No match or missing image
+                    profileImageView.setImageResource(R.drawable.ic_profile)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    profileImageView.setImageResource(R.drawable.ic_profile)
+                }
+            })
     }
 
     private fun setupFilterButtons() {
@@ -264,12 +317,23 @@ class HomeActivity : AppCompatActivity() {
         }
 
         btnTimeOut.setOnClickListener {
-            val intent = Intent(this, TimeOutActivity::class.java).apply {
-                putExtra("userId", userId)
-                putExtra("email", userEmail ?: "")
-                putExtra("firstName", userFirstName ?: "User")
-            }
-            startActivity(intent)
+            AlertDialog.Builder(this)
+                .setTitle("Time - Out Confirmation")
+                .setMessage("Are you sure you want to time out for today?")
+                .setPositiveButton("Yes") { _, _ ->
+                    val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
+                    profileImageView.setImageResource(R.drawable.ic_profile)
+                    setTimedOutToday()
+
+                    val intent = Intent(this, TimeOutActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail ?: "")
+                        putExtra("firstName", userFirstName ?: "User")
+                    }
+                    startActivity(intent)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
 
