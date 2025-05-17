@@ -241,6 +241,10 @@ function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);
         localStorage.setItem('role', data.role);
+        
+        // Dispatch a custom event to notify UserContext of authentication changes
+        window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: data.userId } }));
+        
         const userI2 = localStorage.getItem("userId"); // or get from auth context
         console.log("User ID:", userI2);
         if (data.role === 'ADMIN') {

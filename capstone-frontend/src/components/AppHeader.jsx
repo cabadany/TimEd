@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -22,8 +22,27 @@ import NotificationSystem from './NotificationSystem';
 
 const AppHeader = ({ title }) => {
   const navigate = useNavigate();
-  const { profilePictureUrl, loading } = useUser();
+  const { profilePictureUrl, loading, user } = useUser();
   const { darkMode } = useTheme();
+  const [avatarLoading, setAvatarLoading] = useState(true);
+  
+  // Set up avatar loading state
+  useEffect(() => {
+    if (profilePictureUrl) {
+      const img = new Image();
+      img.onload = () => {
+        setAvatarLoading(false);
+      };
+      img.onerror = () => {
+        // If error loading the image, stop showing loading state
+        setAvatarLoading(false);
+      };
+      img.src = profilePictureUrl;
+    } else {
+      // If there's no profile picture URL, don't show loading state
+      setAvatarLoading(false);
+    }
+  }, [profilePictureUrl]);
   
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
@@ -46,10 +65,21 @@ const AppHeader = ({ title }) => {
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     
+    // Dispatch auth-change event to clear UserContext
+    window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: null } }));
+    
     // Redirect to login page after logout
     navigate('/login');
     
     handleAvatarClose();
+  };
+  
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (user && user.firstName && user.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+    }
+    return 'U';
   };
   
   return (
@@ -71,7 +101,7 @@ const AppHeader = ({ title }) => {
         <NotificationSystem />
         
         <Box sx={{ position: 'relative' }}>
-          {loading ? (
+          {loading || avatarLoading ? (
             <CircularProgress 
               size={36} 
               thickness={4}
@@ -91,7 +121,7 @@ const AppHeader = ({ title }) => {
                 cursor: 'pointer'
               }}
             >
-              {!profilePictureUrl && 'U'}
+              {!profilePictureUrl && getUserInitials()}
             </Avatar>
           )}
         </Box>
@@ -119,14 +149,14 @@ const AppHeader = ({ title }) => {
             handleAvatarClose();
           }}>
             <ListItemIcon>
-              {loading ? (
+              {loading || avatarLoading ? (
                 <CircularProgress size={24} thickness={4} />
               ) : (
                 <Avatar 
                   src={profilePictureUrl}
                   sx={{ width: 24, height: 24, mr: 1 }}
                 >
-                  {!profilePictureUrl && 'U'}
+                  {!profilePictureUrl && getUserInitials()}
                 </Avatar>
               )}
             </ListItemIcon>

@@ -14,14 +14,51 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profilePictureUrl, setProfilePictureUrl] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem('userId'));
   
-  // Load user data on component mount
+  // Watch for changes to userId in localStorage
+  useEffect(() => {
+    const checkUserIdChange = () => {
+      const currentUserId = localStorage.getItem('userId');
+      if (currentUserId !== userId) {
+        setUserId(currentUserId);
+      }
+    };
+
+    // Handler for auth-change custom event
+    const handleAuthChange = (event) => {
+      const newUserId = event.detail?.userId;
+      if (newUserId && newUserId !== userId) {
+        setUserId(newUserId);
+      } else {
+        // Force reload if same userId to handle re-login cases
+        checkUserIdChange();
+      }
+    };
+
+    // Check for changes to localStorage
+    window.addEventListener('storage', checkUserIdChange);
+    
+    // Listen for our custom auth-change event
+    window.addEventListener('auth-change', handleAuthChange);
+    
+    // Also check when the component mounts
+    checkUserIdChange();
+    
+    return () => {
+      window.removeEventListener('storage', checkUserIdChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
+  }, [userId]);
+  
+  // Load user data when userId changes
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
       
-      const userId = localStorage.getItem('userId');
       if (!userId) {
+        setUser(null);
+        setProfilePictureUrl(null);
         setLoading(false);
         return;
       }
@@ -48,7 +85,7 @@ export const UserProvider = ({ children }) => {
     };
     
     fetchUserData();
-  }, []);
+  }, [userId]);
   
   // Load profile picture from Firebase
   const loadProfilePictureFromFirebase = async (userId) => {
