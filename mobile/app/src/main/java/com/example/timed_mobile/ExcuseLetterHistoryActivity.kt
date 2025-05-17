@@ -1,15 +1,15 @@
 package com.example.timed_mobile
 
 import android.os.Bundle
-import android.view.View
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.timed_mobile.adapter.ExcuseLetterAdapter
+import com.example.timed_mobile.model.ExcuseLetterModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import java.text.SimpleDateFormat
-import java.util.*
 
 class ExcuseLetterHistoryActivity : AppCompatActivity() {
 
@@ -26,27 +26,30 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
         adapter = ExcuseLetterAdapter(excuseList)
         recyclerView.adapter = adapter
 
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId == null) {
-            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
-            return
-        }
+        fetchExcuses()
+    }
+
+    private fun fetchExcuses() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         FirebaseFirestore.getInstance()
             .collection("excuseLetters")
             .whereEqualTo("userId", userId)
-            .orderBy("submittedAt")
+            .orderBy("submittedAt") // optional
             .get()
             .addOnSuccessListener { result ->
                 excuseList.clear()
                 for (doc in result) {
-                    val model = doc.toObject(ExcuseLetterModel::class.java)
-                    excuseList.add(model)
+                    val date = doc.getString("date") ?: "N/A"
+                    val reason = doc.getString("reason") ?: "N/A"
+                    val status = doc.getString("status") ?: "Pending"
+                    excuseList.add(ExcuseLetterModel(date, reason, status))
                 }
                 adapter.notifyDataSetChanged()
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load: ${it.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to load excuses", Toast.LENGTH_SHORT).show()
+                Log.e("ExcuseHistory", "Fetch failed", it)
             }
     }
 }

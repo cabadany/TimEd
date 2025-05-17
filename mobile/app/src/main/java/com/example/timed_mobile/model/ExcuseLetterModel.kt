@@ -1,8 +1,7 @@
-package com.example.timed_mobile
+package com.example.timed_mobile.model
 
 data class ExcuseLetterModel(
     val date: String = "",
     val reason: String = "",
-    val details: String = "",
-    val status: String = "Pending"
+    val status: String = ""
 )
