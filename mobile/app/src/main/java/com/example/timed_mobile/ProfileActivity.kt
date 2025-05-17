@@ -22,29 +22,25 @@ import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 
 class ProfileActivity : AppCompatActivity() {
-    private lateinit var homeIcon: ImageView
-    private lateinit var profileIcon: ImageView
-    private lateinit var calendarIcon: ImageView
     private lateinit var editButton: Button
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button
     private lateinit var logoutText: TextView
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
+    private lateinit var backButton: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
 
-        homeIcon = findViewById(R.id.bottom_nav_home)
-        calendarIcon = findViewById(R.id.bottom_nav_calendar)
-        profileIcon = findViewById(R.id.bottom_nav_profile)
         editButton = findViewById(R.id.btn_edit_profile)
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
         logoutText = findViewById(R.id.logout_text)
         teacherName = findViewById(R.id.profile_name)
         teacherId = findViewById(R.id.profile_id_number)
+        backButton = findViewById(R.id.icon_back_button)
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
@@ -52,16 +48,14 @@ class ProfileActivity : AppCompatActivity() {
             topDrawable.start()
         }
 
-        setupAnimatedClickListener(homeIcon) {
-            startActivity(Intent(this, HomeActivity::class.java))
-        }
-
-        setupAnimatedClickListener(calendarIcon) {
-            startActivity(Intent(this, ScheduleActivity::class.java))
-        }
-
-        setupAnimatedClickListener(profileIcon) {
-            Toast.makeText(this, "You are already on the Profile screen", Toast.LENGTH_SHORT).show()
+        backButton.setOnClickListener { view ->
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            view.postDelayed({
+                finish()
+            }, 50)
         }
 
         editButton.setOnClickListener {

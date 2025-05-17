@@ -168,16 +168,20 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="All"
-                        android:textSize="14sp"
                         android:textColor="@color/filter_button_text_selector"
                         android:backgroundTint="@color/white"
                         android:layout_marginStart="4dp"
                         android:layout_marginEnd="2dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:minHeight="40dp"
                         android:gravity="center"
-                        android:stateListAnimator="@animator/button_scale_animator" />
+                        android:stateListAnimator="@animator/button_scale_animator"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"
+                        android:maxLines="1" />
 
                 <Button
                         android:id="@+id/btn_filter_upcoming"
@@ -185,16 +189,20 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Upcoming"
-                        android:textSize="14sp"
                         android:textColor="@color/filter_button_text_selector"
                         android:backgroundTint="@color/white"
                         android:layout_marginStart="2dp"
                         android:layout_marginEnd="2dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:minHeight="40dp"
                         android:gravity="center"
-                        android:stateListAnimator="@animator/button_scale_animator" />
+                        android:stateListAnimator="@animator/button_scale_animator"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"
+                        android:maxLines="1" />
 
                 <Button
                         android:id="@+id/btn_filter_ongoing"
@@ -202,16 +210,20 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Ongoing"
-                        android:textSize="14sp"
                         android:textColor="@color/filter_button_text_selector"
                         android:backgroundTint="@color/white"
                         android:layout_marginStart="2dp"
                         android:layout_marginEnd="2dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:minHeight="40dp"
                         android:gravity="center"
-                        android:stateListAnimator="@animator/button_scale_animator" />
+                        android:stateListAnimator="@animator/button_scale_animator"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"
+                        android:maxLines="1" />
 
                 <Button
                         android:id="@+id/btn_filter_ended"
@@ -219,16 +231,20 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Ended"
-                        android:textSize="14sp"
                         android:textColor="@color/filter_button_text_selector"
                         android:backgroundTint="@color/white"
                         android:layout_marginStart="2dp"
                         android:layout_marginEnd="4dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:minHeight="40dp"
                         android:gravity="center"
-                        android:stateListAnimator="@animator/button_scale_animator" />
+                        android:stateListAnimator="@animator/button_scale_animator"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"
+                        android:maxLines="1" />
             </LinearLayout>
 
             <!-- Excuse Letter - Anchored to bottom -->
