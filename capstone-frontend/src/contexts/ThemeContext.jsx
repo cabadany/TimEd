@@ -11,13 +11,39 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  // Initialize with browser preference
   const [darkMode, setDarkMode] = useState(() => {
-    const storedDarkMode = localStorage.getItem('darkMode');
-    return storedDarkMode === 'true';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Update the theme when browser preference changes
   useEffect(() => {
-    localStorage.setItem('darkMode', darkMode);
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleBrowserThemeChange = (e) => {
+      setDarkMode(e.matches);
+    };
+
+    // Add event listener for theme changes
+    if (darkModeMediaQuery.addEventListener) {
+      darkModeMediaQuery.addEventListener('change', handleBrowserThemeChange);
+    } else {
+      // For older browsers that don't support addEventListener
+      darkModeMediaQuery.addListener(handleBrowserThemeChange);
+    }
+
+    // Clean up
+    return () => {
+      if (darkModeMediaQuery.removeEventListener) {
+        darkModeMediaQuery.removeEventListener('change', handleBrowserThemeChange);
+      } else {
+        darkModeMediaQuery.removeListener(handleBrowserThemeChange);
+      }
+    };
+  }, []);
+
+  // Apply theme to document body
+  useEffect(() => {
     if (darkMode) {
       document.body.classList.add('dark-mode');
     } else {
@@ -25,12 +51,8 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(prev => !prev);
-  };
-
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+    <ThemeContext.Provider value={{ darkMode }}>
       {children}
     </ThemeContext.Provider>
   );

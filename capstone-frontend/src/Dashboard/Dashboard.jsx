@@ -255,17 +255,17 @@ export default function Dashboard() {
     setCurrentPage(1); // Reset to first page when changing tabs
   };
 
-  // Get appropriate status color for badges
-  const getStatusColor = (status = 'Unknown') => {
+  // Get appropriate status class for badges
+  const getStatusClass = (status = 'Unknown') => {
     const normalizedStatus = status.toLowerCase();
     
-    if (normalizedStatus.includes('upcoming')) return 'primary';
-    if (normalizedStatus.includes('ongoing')) return 'success';
-    if (normalizedStatus.includes('completed')) return 'info';
-    if (normalizedStatus.includes('cancelled')) return 'error';
-    if (normalizedStatus.includes('postponed')) return 'warning';
+    if (normalizedStatus.includes('upcoming')) return 'status-pending';
+    if (normalizedStatus.includes('ongoing')) return 'status-active';
+    if (normalizedStatus.includes('completed')) return 'status-completed';
+    if (normalizedStatus.includes('cancelled')) return 'status-canceled';
+    if (normalizedStatus.includes('postponed')) return 'status-inactive';
     
-    return 'default';
+    return 'status-inactive';
   };
 
   // Filter events based on active tab
@@ -349,23 +349,23 @@ export default function Dashboard() {
           ) : (
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                <Card className="stat-card">
                   <CardContent sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <CalendarToday sx={{ color: '#304FFF', mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Events</Typography>
+                    <Box className="stat-icon">
+                      <CalendarToday />
                     </Box>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Events</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 600 }}>{totalEvents}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                <Card className="stat-card">
                   <CardContent sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <AccessTime sx={{ color: '#FF5630', mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Upcoming Events</Typography>
+                    <Box className="stat-icon">
+                      <AccessTime />
                     </Box>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Upcoming Events</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 600 }}>
                       {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
                     </Typography>
@@ -373,12 +373,12 @@ export default function Dashboard() {
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                <Card className="stat-card">
                   <CardContent sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Group sx={{ color: '#00B8D9', mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Ongoing Events</Typography>
+                    <Box className="stat-icon">
+                      <Group />
                     </Box>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Ongoing Events</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 600 }}>
                       {events.filter(event => event.status.toLowerCase().includes('ongoing')).length}
                     </Typography>
@@ -386,12 +386,12 @@ export default function Dashboard() {
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                <Card className="stat-card">
                   <CardContent sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <CalendarToday sx={{ color: '#36B37E', mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Completed Events</Typography>
+                    <Box className="stat-icon">
+                      <CalendarToday />
                     </Box>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Completed Events</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 600 }}>
                       {events.filter(event => 
                         event.status.toLowerCase().includes('completed') || 
@@ -520,7 +520,7 @@ export default function Dashboard() {
                         <Chip 
                           label={event.status} 
                           size="small" 
-                          color={getStatusColor(event.status)} 
+                          className={`status-chip ${getStatusClass(event.status)}`}
                           variant="outlined"
                         />
                       </TableCell>
@@ -647,7 +647,7 @@ export default function Dashboard() {
                   <Chip 
                     label={selectedEvent.status} 
                     size="small" 
-                    color={getStatusColor(selectedEvent.status)} 
+                    className={`status-chip ${getStatusClass(selectedEvent.status)}`}
                     sx={{ mt: 0.5 }}
                   />
                 </Box>

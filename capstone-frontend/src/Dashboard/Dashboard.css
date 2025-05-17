@@ -13,7 +13,9 @@ body, html {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: #ffffff;
+  background-color: var(--background-primary, #ffffff);
+  color: var(--text-primary, #333333);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Override App.css settings to ensure full width/height */
@@ -29,11 +31,13 @@ body, html {
 /* Date input styling */
 input[type="date"] {
   border: none;
-  border-bottom: 1px solid #0288d1;
+  border-bottom: 1px solid var(--accent-color, #0288d1);
   padding: 4px 8px;
   font-size: 14px;
   outline: none;
   background-color: transparent;
+  color: var(--text-primary, #333333);
+  transition: border-color 0.3s ease, color 0.3s ease;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -50,13 +54,15 @@ table {
 th, td {
   text-align: left;
   padding: 12px 16px;
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid var(--table-border, #E2E8F0);
+  transition: border-color 0.3s ease;
 }
 
 th {
   font-weight: 600;
-  color: #475569;
-  background-color: #F8FAFC;
+  color: var(--text-secondary, #475569);
+  background-color: var(--table-header-bg, #F8FAFC);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Button styling */
@@ -71,16 +77,16 @@ button {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--scrollbar-track, #f1f1f1);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb, #cbd5e1);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--scrollbar-hover, #94a3b8);
 }
 
 /* Notification Pulse Animation */
@@ -106,13 +112,13 @@ button {
 /* Notification menu styling */
 .notification-item {
   padding: 12px 16px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border-color, #F1F5F9);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.3s ease;
 }
 
 .notification-item:hover {
-  background-color: #F8FAFC;
+  background-color: var(--accent-light, #F8FAFC);
 }
 
 .notification-item:last-child {
@@ -121,37 +127,107 @@ button {
 
 .notification-event-name {
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary, #334155);
   font-size: 14px;
   margin-bottom: 4px;
+  transition: color 0.3s ease;
 }
 
 .notification-department {
-  color: #64748B;
+  color: var(--text-secondary, #64748B);
   font-size: 12px;
+  transition: color 0.3s ease;
 }
 
 .notification-date {
-  color: #64748B;
+  color: var(--text-tertiary, #64748B);
   font-size: 11px;
   display: flex;
   align-items: center;
   margin-top: 4px;
+  transition: color 0.3s ease;
 }
 
 .notification-header {
   padding: 16px;
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+  transition: border-color 0.3s ease;
 }
 
 .notification-title {
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary, #334155);
   font-size: 16px;
+  transition: color 0.3s ease;
 }
 
 .notification-subtitle {
-  color: #64748B;
+  color: var(--text-secondary, #64748B);
   font-size: 12px;
   margin-top: 4px;
+  transition: color 0.3s ease;
+}
+
+/* Status chip styling */
+.status-chip {
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-weight: 500;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.status-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--status-yellow, #f59e0b);
+}
+
+.status-completed {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--status-green, #10b981);
+}
+
+.status-canceled {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--status-red, #ef4444);
+}
+
+.status-active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--status-blue, #3b82f6);
+}
+
+.status-inactive {
+  background-color: rgba(156, 163, 175, 0.1);
+  color: var(--status-gray, #9ca3af);
+}
+
+/* Stat cards */
+.stat-card {
+  background-color: var(--card-bg, #ffffff);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow, 0 2px 10px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--accent-light, rgba(53, 56, 205, 0.1));
+  color: var(--accent-color, #3538CD);
+  margin-bottom: 10px;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

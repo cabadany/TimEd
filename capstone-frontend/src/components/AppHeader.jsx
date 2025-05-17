@@ -10,7 +10,8 @@ import {
   ListItemIcon,
   ListItemText,
   Badge,
-  CircularProgress
+  CircularProgress,
+  Divider
 } from '@mui/material';
 import {
   Notifications,
@@ -133,7 +134,7 @@ const AppHeader = ({ title }) => {
           PaperProps={{
             elevation: 3,
             sx: { 
-              width: 180,
+              width: 200,
               mt: 1,
               bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
               color: darkMode ? '#f5f5f5' : 'text.primary',
@@ -162,7 +163,11 @@ const AppHeader = ({ title }) => {
             </ListItemIcon>
             <ListItemText>Profile</ListItemText>
           </MenuItem>
+          <Divider />
           <MenuItem onClick={handleLogout}>
+            <ListItemIcon>
+              <Logout color="inherit" />
+            </ListItemIcon>
             <ListItemText>Logout</ListItemText>
           </MenuItem>
         </Menu>
