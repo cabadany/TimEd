@@ -561,8 +561,14 @@ public class CertificateService {
                                 
                                 // If we still don't have a name, use a friendly format
                                 if (eventName == null || eventName.isEmpty()) {
-                                    eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
-                                    System.out.println("No event name found, using formatted ID: " + eventName);
+                                    // Check if the certificate template has an eventName field
+                                    if (template != null && template.getEventName() != null && !template.getEventName().isEmpty()) {
+                                        eventName = template.getEventName();
+                                        System.out.println("Using certificate template's eventName: " + eventName);
+                                    } else {
+                                        eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
+                                        System.out.println("No event name found, using formatted ID: " + eventName);
+                                    }
                                 }
                             }
                         }
@@ -596,12 +602,24 @@ public class CertificateService {
                         }
                     }
                 } else {
-                    throw new Exception("Could not find event document for ID: " + eventId);
+                    // No event document found, check if certificate template has event name
+                    if (template != null && template.getEventName() != null && !template.getEventName().isEmpty()) {
+                        eventName = template.getEventName();
+                        System.out.println("Using certificate template's eventName instead: " + eventName);
+                    } else {
+                        throw new Exception("Could not find event document or certificate eventName for ID: " + eventId);
+                    }
                 }
             } catch (Exception e) {
                 System.err.println("Error fetching event details: " + e.getMessage());
-                // Use a more user-friendly fallback instead of just the raw ID
-                eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
+                // First check if the certificate template has an eventName field
+                if (template != null && template.getEventName() != null && !template.getEventName().isEmpty()) {
+                    eventName = template.getEventName();
+                    System.out.println("Using certificate template's eventName as fallback: " + eventName);
+                } else {
+                    // Use a more user-friendly fallback instead of just the raw ID
+                    eventName = "Event #" + eventId.substring(0, Math.min(8, eventId.length()));
+                }
                 eventDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM dd, yyyy"));
                 System.out.println("Using fallback event name: " + eventName);
             }
