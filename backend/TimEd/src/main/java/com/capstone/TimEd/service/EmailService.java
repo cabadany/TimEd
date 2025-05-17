@@ -28,7 +28,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
             helper.setTo(to);
-            helper.setFrom("johnwayne.largo@cit.edu");
+            helper.setFrom("timedsystemcit@gmail.com");
             helper.setSubject("Certificate of Attendance");
             helper.setText("Dear Faculty Member,\n\n" +
                     "Please find attached your Certificate of Attendance for the event.\n\n" +
