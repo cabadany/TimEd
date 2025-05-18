@@ -13,9 +13,19 @@ import {
   Tooltip,
   CircularProgress,
   Alert,
-  Snackbar
+  Snackbar,
+  Card,
+  Avatar,
+  Grid,
+  Divider,
+  Zoom,
+  Fade,
+  Grow,
+  Modal,
+  Backdrop,
+  Drawer
 } from '@mui/material';
-import { ChevronRight, Lock, LockOpen } from '@mui/icons-material';
+import { ChevronRight, Lock, LockOpen, School, PersonOutline, Work, LinkedIn, GitHub, Email, Language, Close } from '@mui/icons-material';
 import './Setting.css';
 import ProfilePicture from '../components/ProfilePicture';
 import axios from 'axios';
@@ -51,6 +61,10 @@ export default function SettingPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const { darkMode, toggleDarkMode } = useTheme();
+  
+  // Team member modal state
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Form fields
   const [firstName, setFirstName] = useState('');
@@ -251,6 +265,17 @@ export default function SettingPage() {
     }
   };
 
+  // Handle team member click
+  const handleMemberClick = (member) => {
+    setSelectedMember(member);
+    setIsModalOpen(true);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <Box sx={{ width: '100%' }} className={darkMode ? 'dark-mode' : ''}>
       {/* Notification Snackbars */}
@@ -285,7 +310,7 @@ export default function SettingPage() {
             color: tabValue === 0 ? 'primary.main' : 'text.secondary',
             '&.Mui-selected': { color: 'primary.main' }
           }} />
-          <Tab label="Preferences" sx={{ 
+          <Tab label="About Us" sx={{ 
             textTransform: 'none', 
             fontWeight: 600,
             color: tabValue === 1 ? 'primary.main' : 'text.secondary',
@@ -595,54 +620,286 @@ export default function SettingPage() {
       </TabPanel>
         
       <TabPanel value={tabValue} index={1}>
-        <Box sx={{ maxWidth: 600 }}>
-          <Typography variant="h6" fontWeight="600" color="text.primary" mb={3}>
-            Application Preferences
+        <Box sx={{ maxWidth: '100%' }} className="about-us-section">
+          <Fade in={tabValue === 1} timeout={800}>
+            <Typography variant="h4" fontWeight="700" color="primary" mb={4} className="section-title about-title">
+              About TimeED
           </Typography>
+          </Fade>
           
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="body1" fontWeight="500" color="text.primary" mb={2}>
-              Appearance
-            </Typography>
-            <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={darkMode} 
-                    onChange={toggleDarkMode}
-                    color="primary"
-                  />
+          <Zoom in={tabValue === 1} style={{ transitionDelay: tabValue === 1 ? '300ms' : '0ms' }}>
+            <Paper 
+              sx={{ 
+                p: 4, 
+                mb: 5, 
+                borderRadius: 3, 
+                boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                background: 'linear-gradient(145deg, #ffffff 0%, #f9fafc 100%)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '5px',
+                  background: 'linear-gradient(90deg, #304FFF 0%, #8C9EFF 100%)',
                 }
-                label="Dark Mode"
-                sx={{ '& .MuiTypography-root': { color: 'text.primary', fontWeight: 500 } }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, ml: 4 }}>
-                Turn on dark mode to reduce eye strain and save battery power.
+              }}
+              className="mission-paper"
+            >
+              <Typography variant="h5" fontWeight="600" color="text.primary" mb={3} className="pulse-animation">
+                Our Mission
+            </Typography>
+              <Typography variant="body1" color="text.secondary" paragraph className="mission-statement" sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
+                TimeED is a comprehensive time management and educational platform designed to help educational institutions 
+                streamline their operations. Our system provides tools for event management, attendance tracking, 
+                certificate generation, and department organization to enhance productivity and efficiency in educational settings.
+              </Typography>
+              <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.05rem' }}>
+                We are committed to creating intuitive, user-friendly solutions that address the unique challenges faced by schools, 
+                colleges, and universities in managing their day-to-day activities.
               </Typography>
             </Paper>
+          </Zoom>
+          
+          <Fade in={tabValue === 1} timeout={1000} style={{ transitionDelay: tabValue === 1 ? '600ms' : '0ms' }}>
+            <Typography variant="h4" fontWeight="700" color="primary" mb={4} className="section-title team-title">
+              Development Team
+            </Typography>
+          </Fade>
+          
+          <Box 
+            sx={{ 
+              mb: 5, 
+              position: 'relative',
+              background: '#0d0d0d',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              p: 0
+            }}
+            className="team-showcase"
+          >
+            <Box 
+              sx={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                background: 'url(/wavy-pattern.svg), linear-gradient(to right, rgba(30,30,30,0.7), rgba(30,30,30,0.7))',
+                opacity: 0.1,
+                zIndex: 0
+              }} 
+              className="background-pattern"
+            />
+            
+            <Box 
+              sx={{ 
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                alignItems: 'stretch',
+                position: 'relative',
+                zIndex: 1
+              }}
+            >
+              {[
+                { 
+                  name: 'Cabana, Danisse', 
+                  firstName: 'Danisse',
+                  lastName: 'Cabana',
+                  id: 'null', 
+                  role: 'null', 
+                  avatar: 'D',
+                  image: 'https://randomuser.me/api/portraits/women/44.jpg', 
+                  description: 'Team member specializing in frontend development with a focus on creating intuitive user interfaces.',
+                  social: { github: '#', linkedin: '#', email: '#' }
+                },
+                { 
+                  name: 'Tumungha, Alexa', 
+                  firstName: 'Alexa',
+                  lastName: 'Tumungha',
+                  id: 'null', 
+                  role: 'null', 
+                  avatar: 'A',
+                  image: 'https://randomuser.me/api/portraits/women/68.jpg',
+                  description: 'Expert in UX/UI design principles with experience in creating responsive web applications.',
+                  social: { github: '#', linkedin: '#', email: '#' }
+                },
+                { 
+                  name: 'Navaroo, Mikhail James', 
+                  firstName: 'Mikhail James',
+                  lastName: 'Navaroo',
+                  id: 'null', 
+                  role: 'null', 
+                  avatar: 'M',
+                  image: 'https://randomuser.me/api/portraits/men/32.jpg',
+                  description: 'Skilled backend developer focused on creating efficient and scalable system architecture.',
+                  social: { github: '#', linkedin: '#', email: '#' }
+                },
+                { 
+                  name: 'Largo, John Wayne', 
+                  firstName: 'John Wayne',
+                  lastName: 'Largo',
+                  id: 'null', 
+                  role: 'null', 
+                  avatar: 'J',
+                  image: 'https://randomuser.me/api/portraits/men/45.jpg',
+                  description: 'Full-stack developer with expertise in database design and system integrations.',
+                  social: { github: '#', linkedin: '#', email: '#' }
+                },
+                { 
+                  name: 'Gemongala, Clark', 
+                  firstName: 'Clark',
+                  lastName: 'Gemongala',
+                  id: 'null', 
+                  role: 'null', 
+                  avatar: 'C',
+                  image: 'https://randomuser.me/api/portraits/men/94.jpg',
+                  description: 'Project member with a passion for educational technology and innovative solutions.',
+                  social: { github: '#', linkedin: '#', email: '#' }
+                }
+              ].map((member, index) => (
+                <Box 
+                  key={index}
+                  onClick={() => handleMemberClick(member)}
+                  sx={{
+                    flex: 1,
+                    position: 'relative',
+                    height: { xs: '60vw', sm: '50vw', md: '400px' },
+                    maxHeight: { xs: '350px', sm: '400px', md: '500px' },
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    filter: 'grayscale(100%)',
+                    '&:hover': {
+                      filter: 'grayscale(0%)',
+                      flex: { md: 1.2 },
+                    },
+                    '&:hover .member-info': {
+                      opacity: 1,
+                      transform: 'translateY(0)'
+                    },
+                    '&:before': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '70%',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))',
+                      zIndex: 1
+                    },
+                    '&:after': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      borderRight: '1px solid rgba(255,255,255,0.1)',
+                      zIndex: 2,
+                      display: { xs: 'none', md: 'block' }
+                    },
+                    '&:last-child:after': {
+                      display: 'none'
+                    }
+                  }}
+                  className="team-member-banner"
+                >
+                  <Box
+                    component="img"
+                    src={member.image}
+                    alt={member.name}
+                    sx={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                  <Box
+                    className="member-info"
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: '100%',
+                      padding: '20px',
+                      opacity: 0.8,
+                      transform: 'translateY(10px)',
+                      transition: 'all 0.3s ease',
+                      zIndex: 2
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ color: 'white', fontWeight: 700, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                      {member.firstName}
+              </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                      {member.lastName}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      width: '30%',
+                      background: 'linear-gradient(to left, rgba(196, 30, 58, 0.8), rgba(196, 30, 58, 0))',
+                      zIndex: 0,
+                      opacity: 0.5
+                    }}
+                    className="red-overlay"
+                  />
+                </Box>
+              ))}
+            </Box>
           </Box>
           
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="body1" fontWeight="500" color="text.primary" mb={2}>
-              Notifications
+          <Fade in={tabValue === 1} timeout={1000} style={{ transitionDelay: tabValue === 1 ? '900ms' : '0ms' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                mt: 3,
+                mb: 4,
+                borderRadius: 3,
+                background: 'rgba(48, 79, 255, 0.03)',
+                textAlign: 'center'
+              }}
+              className="contact-section"
+            >
+              <Typography variant="h5" fontWeight="600" color="primary.main" mb={2}>
+                Want to connect with our team?
             </Typography>
-            <Paper sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={notificationEnabled} 
-                    onChange={handleNotificationToggle}
-                    color="primary"
-                  />
-                }
-                label="Enable Notifications"
-                sx={{ '& .MuiTypography-root': { color: 'text.primary', fontWeight: 500 } }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, ml: 4 }}>
-                Receive notifications about event updates, new messages, and system alerts.
+              <Typography variant="body1" color="text.secondary" mb={3} sx={{ maxWidth: '800px' }}>
+                We're always looking to improve TimeED. If you have suggestions, questions, or would like to learn more about our platform, please reach out!
               </Typography>
-            </Paper>
+              <Button 
+                variant="contained" 
+                    color="primary"
+                startIcon={<Email />}
+                sx={{ 
+                  borderRadius: '50px',
+                  px: 4,
+                  py: 1.2,
+                  boxShadow: '0 6px 20px rgba(48, 79, 255, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 8px 25px rgba(48, 79, 255, 0.4)',
+                  }
+                }}
+              >
+                Contact Us
+              </Button>
           </Box>
+          </Fade>
         </Box>
       </TabPanel>
         
@@ -730,6 +987,134 @@ export default function SettingPage() {
           </Box>
         </Box>
       </TabPanel>
+      
+      {/* Member Detail Modal */}
+      <Drawer
+        anchor="right"
+        open={isModalOpen}
+        onClose={handleModalClose}
+        transitionDuration={450}
+        className="member-detail-drawer"
+        PaperProps={{
+          sx: {
+            width: { xs: '100%', sm: '450px' },
+            background: darkMode ? '#1a1a1a' : 'white',
+            boxShadow: '0 0 30px rgba(0,0,0,0.2)',
+          },
+        }}
+      >
+        {selectedMember && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box
+              sx={{
+                position: 'relative',
+                height: '220px',
+                background: 'linear-gradient(145deg, rgba(48, 79, 255, 0.9) 0%, rgba(48, 79, 255, 0.7) 100%)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                p: 3
+              }}
+              className="drawer-header"
+            >
+              <IconButton
+                onClick={handleModalClose}
+                sx={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  color: 'white',
+                  bgcolor: 'rgba(0,0,0,0.2)',
+                  '&:hover': {
+                    bgcolor: 'rgba(0,0,0,0.3)',
+                  }
+                }}
+              >
+                <Close />
+              </IconButton>
+              
+              <Avatar
+                src={selectedMember.image}
+                alt={selectedMember.name}
+                sx={{
+                  width: 120,
+                  height: 120,
+                  border: '4px solid white',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                  mb: 2
+                }}
+              />
+              
+              <Typography variant="h5" sx={{ color: 'white', fontWeight: 700 }}>
+                {selectedMember.firstName} {selectedMember.lastName}
+              </Typography>
+            </Box>
+            
+            <Box sx={{ p: 3, flex: 1, overflow: 'auto' }}>
+              <Typography variant="h6" color="primary" fontWeight={600} sx={{ mb: 3 }}>
+                Team Member Details
+              </Typography>
+              
+              <Paper sx={{ p: 2, mb: 3, borderRadius: 2, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <Typography variant="body1" color="text.secondary" paragraph>
+                  {selectedMember.description}
+                </Typography>
+              </Paper>
+              
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <School fontSize="small" sx={{ color: 'primary.main', mr: 1.5 }} />
+                  <Typography variant="body1" color="text.secondary" fontWeight="500">
+                    School ID: {selectedMember.id}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Work fontSize="small" sx={{ color: 'primary.main', mr: 1.5 }} />
+                  <Typography variant="body1" color="text.secondary" fontWeight="500">
+                    Role: {selectedMember.role}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              <Divider sx={{ my: 3 }} />
+              
+              <Typography variant="h6" color="primary" fontWeight={600} sx={{ mb: 2 }}>
+                Connect
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  startIcon={<GitHub />}
+                  sx={{ flex: 1, borderRadius: '8px' }}
+                >
+                  GitHub
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  startIcon={<LinkedIn />}
+                  sx={{ flex: 1, borderRadius: '8px' }}
+                >
+                  LinkedIn
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  startIcon={<Email />}
+                  sx={{ flex: 1, borderRadius: '8px' }}
+                >
+                  Email
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </Drawer>
     </Box>
   );
 }

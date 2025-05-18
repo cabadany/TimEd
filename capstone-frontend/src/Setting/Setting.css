@@ -477,3 +477,481 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .hidden-file-input {
   display: none;
 }
+
+/* About Us section styling - Enhanced */
+.about-us-section {
+  animation: fadeIn 0.5s ease-in-out;
+  padding-bottom: 2rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.about-title, .team-title {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 2rem;
+  color: #304FFF;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 70px;
+  height: 4px;
+  background: linear-gradient(90deg, #304FFF 0%, #8C9EFF 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.section-title:hover::after {
+  width: 100%;
+}
+
+.dark-mode .section-title::after {
+  background: linear-gradient(90deg, #90caf9 0%, #64b5f6 100%);
+}
+
+/* Fixed and standardized card layout */
+.team-member-grid-item {
+  display: flex;
+  height: 100%;
+}
+
+.team-member-card {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 450px;
+  width: 100%;
+}
+
+.member-card-header {
+  min-height: 180px;
+  max-height: 180px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(145deg, rgba(48, 79, 255, 0.9) 0%, rgba(48, 79, 255, 0.7) 100%);
+  color: white;
+}
+
+.member-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+  height: calc(100% - 180px);
+}
+
+/* Fix line-clamp compatibility */
+.member-description {
+  min-height: 4.5rem;
+  max-height: 4.5rem;
+  height: 4.5rem;
+  display: -webkit-box;
+  display: box; /* Standard fallback */
+  -webkit-line-clamp: 3;
+  line-clamp: 3; /* Standard property */
+  -webkit-box-orient: vertical;
+  box-orient: vertical; /* Standard property */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 1rem;
+}
+
+/* Alternative for browsers without line-clamp support */
+@supports not ((-webkit-line-clamp: 3) or (line-clamp: 3)) {
+  .member-description {
+    position: relative;
+    max-height: 4.5rem;
+    overflow: hidden;
+    padding-right: 1rem; /* space for ellipsis */
+  }
+  
+  .member-description::after {
+    content: '...';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding-left: 0.5rem;
+    background: linear-gradient(to right, transparent, white 50%);
+  }
+  
+  .dark-mode .member-description::after {
+    background: linear-gradient(to right, transparent, #1a1a1a 50%);
+  }
+}
+
+.member-details {
+  margin-top: auto;
+  margin-bottom: 1rem;
+}
+
+.member-social {
+  height: 50px;
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 0.5rem;
+}
+
+.dark-mode .member-card-header {
+  background: linear-gradient(145deg, rgba(90, 125, 255, 0.9) 0%, rgba(90, 125, 255, 0.7) 100%);
+}
+
+.dark-mode .member-social {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure consistent hover effects */
+.team-member-card:hover {
+  transform: translateY(-10px) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark-mode .team-member-card:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Ensure all avatars have the same size */
+.member-avatar {
+  width: 90px !important;
+  height: 90px !important;
+  font-size: 2.2rem !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-bottom: 1rem !important;
+  border-radius: 50% !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Reset any weird margins that might cause inconsistencies */
+.MuiCardContent-root {
+  padding: 1.5rem !important;
+}
+
+.MuiGrid-root .MuiGrid-item {
+  display: flex;
+}
+
+/* Adjust card grid for better consistency at different screen sizes */
+@media (max-width: 959px) {
+  .team-member-grid-item {
+    max-width: 50%;
+    flex-basis: 50%;
+  }
+}
+
+@media (max-width: 599px) {
+  .team-member-grid-item {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+}
+
+.mission-paper {
+  transform-origin: center;
+  transition: all 0.3s ease;
+}
+
+.mission-paper:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.dark-mode .mission-paper {
+  background: linear-gradient(145deg, #1e1e1e 0%, #262626 100%) !important;
+}
+
+.dark-mode .mission-paper:hover {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+}
+
+.mission-statement {
+  position: relative;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background-color: rgba(48, 79, 255, 0.03);
+  border-left: 4px solid #304FFF;
+  transition: all 0.3s ease;
+}
+
+.mission-statement:hover {
+  background-color: rgba(48, 79, 255, 0.05);
+  transform: translateX(5px);
+}
+
+.dark-mode .mission-statement {
+  background-color: rgba(144, 202, 249, 0.05);
+  border-left-color: #90caf9;
+}
+
+.dark-mode .mission-statement:hover {
+  background-color: rgba(144, 202, 249, 0.08);
+}
+
+.contact-section {
+  transition: all 0.3s ease;
+}
+
+.contact-section:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(48, 79, 255, 0.05);
+}
+
+.dark-mode .contact-section {
+  background: rgba(144, 202, 249, 0.05);
+}
+
+/* Pulse animation for the "Our Mission" title */
+.pulse-animation {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Social media icons hover effects */
+.member-social {
+  transition: all 0.3s ease;
+}
+
+.member-social .MuiIconButton-root {
+  transition: all 0.3s ease;
+}
+
+.member-social .MuiIconButton-root:hover {
+  background-color: rgba(48, 79, 255, 0.1);
+  transform: translateY(-3px);
+}
+
+.dark-mode .member-social .MuiIconButton-root:hover {
+  background-color: rgba(144, 202, 249, 0.1);
+}
+
+/* Enhanced dark mode styles for About Us section */
+.dark-mode .about-us-section {
+  color: #f5f5f5;
+}
+
+.dark-mode .about-title, 
+.dark-mode .team-title {
+  color: #90caf9;
+}
+
+/* Improve button interaction */
+.MuiButton-contained {
+  text-transform: none !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.5rem !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 10px rgba(48, 79, 255, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.MuiButton-contained:hover {
+  box-shadow: 0 4px 15px rgba(48, 79, 255, 0.3) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Improved Paper components */
+.MuiPaper-root {
+  transition: box-shadow 0.3s ease, transform 0.3s ease !important;
+}
+
+/* Improved form field styling */
+.MuiOutlinedInput-root {
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #304FFF !important;
+}
+
+/* Improved switch styling */
+.MuiSwitch-root {
+  padding: 12px !important;
+}
+
+.MuiSwitch-switchBase.Mui-checked {
+  transform: translateX(16px) !important;
+}
+
+.MuiSwitch-thumb {
+  width: 16px !important;
+  height: 16px !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+}
+
+/* Loading animation for staggered card appearances */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add hover effect for team cards */
+.team-member-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(48, 79, 255, 0.05) 0%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.team-member-card:hover::before {
+  opacity: 1;
+}
+
+.dark-mode .team-member-card::before {
+  background: linear-gradient(135deg, rgba(144, 202, 249, 0.05) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+/* New Team Showcase Design */
+.team-showcase {
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.team-member-banner {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.team-member-banner img {
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.team-member-banner:hover img {
+  transform: scale(1.05);
+}
+
+.member-info {
+  pointer-events: none;
+}
+
+.red-overlay {
+  transition: opacity 0.5s ease;
+}
+
+.team-member-banner:hover .red-overlay {
+  opacity: 0.8;
+}
+
+/* Right-side modal styles */
+.member-detail-drawer .MuiPaper-root {
+  overflow-x: hidden;
+}
+
+.drawer-header {
+  position: relative;
+}
+
+.drawer-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: url('/wavy-pattern.svg');
+  background-size: cover;
+  opacity: 0.1;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.drawer-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dark mode styles for team showcase */
+.dark-mode .team-showcase {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .drawer-header {
+  background: linear-gradient(145deg, rgba(66, 99, 235, 0.9) 0%, rgba(66, 99, 235, 0.7) 100%);
+}
+
+.dark-mode .member-detail-drawer .MuiPaper-root {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .member-detail-drawer .MuiDivider-root {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .team-member-banner {
+    filter: grayscale(0) !important;
+  }
+  
+  .team-member-banner .member-info {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+  
+  .team-showcase {
+    border-radius: 12px !important;
+  }
+}
+
+/* Animation for modal content */
+.member-detail-drawer .MuiPaper-root {
+  animation: slideIn 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Modify existing styles to work with the new design */
+.team-member-grid-item {
+  display: flex;
+  height: 100%;
+}
+
+.dark-mode .team-member-banner:before {
+  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0));
+}
