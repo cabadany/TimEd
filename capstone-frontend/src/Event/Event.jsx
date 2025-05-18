@@ -388,113 +388,54 @@ export default function EventPage() {
 
   // Check event status based on current date
   
-  // Replace the useEffect that checks event statuses
   useEffect(() => {
-    // Use a ref to track if the component is mounted 
-    const isMounted = true;
+    const currentDate = new Date();
     
-    // Parse date strings consistently - improved performance by caching Date objects
-    const parseEventDate = (dateStr) => {
-      if (!dateStr) return null;
-      
-      // If it's already a Date object, return it
-      if (dateStr instanceof Date) return dateStr;
-      
-      try {
-        // Create a Date object directly from the string
-        return new Date(dateStr);
-      } catch (error) {
-        console.error("Error parsing date:", error);
-        return null;
-      }
-    };
-    
-    // Calculate end time for an event
-    const calculateEndTime = (startDate, duration) => {
-      if (!startDate || !duration) return null;
-      
-      try {
-        const [hours, minutes, seconds] = duration.split(':').map(Number);
-        const endTime = new Date(startDate);
-        endTime.setHours(endTime.getHours() + hours);
-        endTime.setMinutes(endTime.getMinutes() + minutes);
-        endTime.setSeconds(endTime.getSeconds() + seconds);
-        return endTime;
-      } catch (error) {
-        console.error("Error calculating end time:", error);
-        return null;
-      }
-    };
-    
-    // More efficient status checker - only processes events that might need status updates
-    const checkEventStatuses = () => {
-      if (!events.length || !isMounted) return;
-      
-      const now = new Date();
-      const ongoing = [];
-      let hasChanges = false;
-      
-      const newEvents = events.map(event => {
-        // Use memory references to avoid re-parsing dates if possible
-        event._parsedDate = event._parsedDate || parseEventDate(event.date);
-        const eventDate = event._parsedDate;
+    // Update event statuses based on current date
+    if (events.length > 0) {
+      // Identify ongoing events
+      const ongoing = events.filter(event => {
+        // Create date from the string
+        const eventDate = new Date(event.date);
         
-        if (!eventDate) return event;
+        // Calculate event end time based on duration
+        const [hours, minutes, seconds] = event.duration.split(':').map(Number);
+        const eventEndTime = new Date(eventDate);
+        eventEndTime.setHours(eventEndTime.getHours() + hours);
+        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
         
-        // Only calculate end time if needed for status check
-        event._endTime = event._endTime || calculateEndTime(eventDate, event.duration);
-        const eventEndTime = event._endTime;
-        
-        if (!eventEndTime) return event;
-        
-        // Make a copy of the event only if we need to change it
-        let updatedEvent = event;
-        
-        // Determine event status
-        if (now > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
-          if (event.status !== 'Ended') {
-            updatedEvent = {...event, status: 'Ended'};
-            updateEventStatus(event.eventId, 'Ended');
-            hasChanges = true;
-          }
-        } else if (now >= eventDate && now <= eventEndTime && event.status === 'Upcoming') {
-          if (event.status !== 'Ongoing') {
-            updatedEvent = {...event, status: 'Ongoing'};
-            updateEventStatus(event.eventId, 'Ongoing');
-            hasChanges = true;
-          }
-        }
-        
-        // Add to ongoing events if criteria are met
-        if (now >= eventDate && now <= eventEndTime && 
-            updatedEvent.status !== 'Cancelled' && updatedEvent.status !== 'Ended') {
-          ongoing.push(updatedEvent);
-        }
-        
-        return updatedEvent;
+        // Event is ongoing if current time is between start and end time
+        return eventDate <= currentDate && currentDate <= eventEndTime && event.status !== 'Cancelled';
       });
       
-      // Only update state if needed
-      if (hasChanges && isMounted) {
-        setEvents(newEvents);
-      }
+      setOngoingEvents(ongoing);
       
-      // Always update ongoing events
-      if (isMounted) {
-        setOngoingEvents(ongoing);
-      }
-    };
-    
-    // Initial check
-    checkEventStatuses();
-    
-    // Check status less frequently (60 seconds instead of 30)
-    const statusCheckInterval = setInterval(checkEventStatuses, 60000);
-    
-    return () => {
-      // Clean up interval on unmount
-      clearInterval(statusCheckInterval);
-    };
+      // Check for events that should be marked as ended or ongoing
+      events.forEach(event => {
+        // Parse the event date
+        const eventDate = new Date(event.date);
+        
+        // Calculate event end time
+        const [hours, minutes, seconds] = event.duration.split(':').map(Number);
+        const eventEndTime = new Date(eventDate);
+        eventEndTime.setHours(eventEndTime.getHours() + hours);
+        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+        
+        // If event has passed end time but still marked as ongoing or upcoming
+        if (currentDate > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+          // Update event status to Ended
+          updateEventStatus(event.eventId, 'Ended');
+        }
+        
+        // If event has started but is still marked as upcoming
+        if (currentDate >= eventDate && currentDate <= eventEndTime && event.status === 'Upcoming') {
+          // Update event status to Ongoing
+          updateEventStatus(event.eventId, 'Ongoing');
+        }
+      });
+    }
   }, [events]);
 
   // API calls - optimize fetchEvents to include loading state
@@ -557,11 +498,11 @@ export default function EventPage() {
     }
     
     try {
-      // Parse the date string without modifying timezone
-      const formattedDate = new Date(date).toISOString();
+      // Create a Date object from the input
+      const dateObj = new Date(date);
       
-      console.log("Original date input:", date);
-      console.log("Formatted date for API:", formattedDate);
+      // Format date in ISO format
+      const formattedDate = dateObj.toISOString();
       
       const eventData = {
         eventName,
@@ -572,54 +513,7 @@ export default function EventPage() {
       };
       
       setLoading(true);
-      
       const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
-      
-      // After creating the event, also save the certificate template if one exists
-      if (currentCertificateData) {
-        // The backend now returns just the event ID
-        const newEventId = response.data;
-        console.log("Created event with ID:", newEventId);
-        
-        // Create payload for certificate with the new event ID
-        const certificatePayload = {
-          ...currentCertificateData,
-          eventId: newEventId,
-          eventName: eventName
-        };
-        
-        try {
-          console.log("Saving certificate template for new event:", certificatePayload);
-          // Save the certificate template
-          const certificateResponse = await axios.post('http://localhost:8080/api/certificates', certificatePayload);
-          console.log("Certificate saved successfully:", certificateResponse.data);
-          
-          // Link the certificate to the event
-          if (certificateResponse.data && certificateResponse.data.id) {
-            try {
-              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
-                certificateId: certificateResponse.data.id,
-                eventId: newEventId
-              });
-              console.log("Certificate linked to event successfully");
-            } catch (linkError) {
-              console.error("Error linking certificate to event:", linkError);
-            }
-          }
-          
-          // Verify the certificate was saved
-          try {
-            console.log('Verifying certificate was saved correctly');
-            const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${newEventId}`);
-            console.log('Certificate verification response:', verifyResponse.data);
-          } catch (verifyError) {
-            console.error('Certificate verification failed:', verifyError);
-          }
-        } catch (certError) {
-          console.error("Error saving certificate template for new event:", certError);
-          // Don't show error to user - the event was created successfully
-        }
-      }
       
       // Reset form fields
       resetForm();
@@ -1307,30 +1201,87 @@ export default function EventPage() {
         ))}
       </Grid>
     ) : ongoingEvents.length === 0 ? (
-      <Box sx={{ textAlign: 'center', py: 2 }}>
-        <Typography variant="body1" color="#64748B">
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
+        <CalendarToday sx={{ fontSize: 40, color: '#94A3B8', mb: 1 }} />
+        <Typography variant="body1" color="#1E293B" fontWeight={500}>
           No ongoing events at the moment
+        </Typography>
+        <Typography variant="body2" color="#64748B">
+          All scheduled events will appear here when they're in progress
         </Typography>
       </Box>
     ) : (
       <Grid container spacing={3}>
         {ongoingEvents.map(event => (
-          <EventCard 
-            key={event.eventId}
-            event={event}
-            getDepartmentName={getDepartmentName}
-            formatDate={formatDate}
-            openQrModal={openQrModal}
-            updateEventStatus={updateEventStatus}
-            setEventToEdit={setEventToEdit}
-            setEditedStatus={setEditedStatus}
-            setEditDurationHours={setEditDurationHours}
-            setEditDurationMinutes={setEditDurationMinutes}
-            setEditDurationSeconds={setEditDurationSeconds}
-            setEditDuration={setEditDuration}
-            setEditDialogOpen={setEditDialogOpen}
-            openCertificateEditor={openCertificateEditor}
-          />
+          <Grid item xs={12} md={6} lg={4} key={event.eventId}>
+            <Card 
+              elevation={0} 
+              sx={{ 
+                border: '1px solid #E2E8F0', 
+                borderRadius: '8px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <CardContent sx={{ flex: 1 }}>
+                <Box sx={{ 
+                  mb: 2, 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start'
+                }}>
+                  <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                    {event.eventName}
+                  </Typography>
+                  <Chip 
+                    label="Ongoing" 
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#E0F2FE',
+                      color: '#0369A1',
+                      fontWeight: 500,
+                      fontSize: '0.75rem'
+                    }} 
+                  />
+                </Box>
+                
+                <Typography variant="body2" color="#64748B" gutterBottom>
+                  <strong>Department:</strong> {getDepartmentName(event.departmentId)}
+                </Typography>
+                
+                <Typography variant="body2" color="#64748B" gutterBottom>
+                  <strong>Started:</strong> {formatDate(event.date)}
+                </Typography>
+                
+                <Typography variant="body2" color="#64748B">
+                  <strong>Duration:</strong> {event.duration}
+                </Typography>
+              </CardContent>
+              
+              <Divider />
+              
+              <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+                <Button
+                  size="small"
+                  startIcon={<Edit />}
+                  onClick={() => openEditDialog(event)}
+                  sx={{ color: '#0288d1' }}
+                >
+                  Update Status
+                </Button>
+                
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Cancel />}
+                  onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
+                >
+                  Cancel Event
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
         ))}
       </Grid>
     )}
