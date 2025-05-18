@@ -8,27 +8,27 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.timed_mobile.R
 import com.example.timed_mobile.model.ExcuseLetterModel
 
-class ExcuseLetterAdapter(private val excuses: List<ExcuseLetterModel>) :
-    RecyclerView.Adapter<ExcuseLetterAdapter.ExcuseViewHolder>() {
+class ExcuseLetterAdapter(private val list: List<ExcuseLetterModel>) :
+    RecyclerView.Adapter<ExcuseLetterAdapter.ViewHolder>() {
 
-    class ExcuseViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val date: TextView = view.findViewById(R.id.text_date)
-        val reason: TextView = view.findViewById(R.id.text_reason)
-        val status: TextView = view.findViewById(R.id.text_status)
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val dateText: TextView = itemView.findViewById(R.id.item_date)
+        val reasonText: TextView = itemView.findViewById(R.id.item_reason)
+        val statusText: TextView = itemView.findViewById(R.id.item_status)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ExcuseViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_excuse_letter, parent, false)
-        return ExcuseViewHolder(view)
+        return ViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ExcuseViewHolder, position: Int) {
-        val excuse = excuses[position]
-        holder.date.text = excuse.date
-        holder.reason.text = excuse.reason
-        holder.status.text = "Status: ${excuse.status}"
-    }
+    override fun getItemCount(): Int = list.size
 
-    override fun getItemCount() = excuses.size
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val item = list[position]
+        holder.dateText.text = item.date
+        holder.reasonText.text = item.reason
+        holder.statusText.text = item.status
+    }
 }
