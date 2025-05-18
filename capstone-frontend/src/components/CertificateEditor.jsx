@@ -75,8 +75,7 @@ const defaultCertificate = {
   eventDate: '{Event Date}',
   certificateNumber: '{Certificate Number}',
   backgroundColor: '#ffffff',
-  borderColor: '#0047AB',
-  headerColor: '#0047AB',
+  headerColor: '#000000',
   textColor: '#000000',
   fontFamily: 'Times New Roman',
   fontSize: 12,
@@ -324,7 +323,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         backgroundColor: certificate.backgroundColor || '#ffffff',
         position: 'relative',
         overflow: 'hidden',
-        border: certificate.showBorder ? `${certificate.borderWidth}px solid ${certificate.borderColor || '#0047AB'}` : 'none',
+        border: certificate.showBorder ? `${certificate.borderWidth}px solid ${certificate.borderColor || '#000000'}` : 'none',
         borderRadius: '8px',
         display: 'flex',
         flexDirection: 'column',
@@ -398,34 +397,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           }}
         />
       )}
-{/*
-      <Box 
-        sx={{ 
-          position: 'absolute', 
-          top: -100, 
-          left: -100, 
-          width: 300, 
-          height: 300, 
-          backgroundColor: certificate.headerColor || '#0047AB',
-          borderRadius: '50%',
-          transform: 'rotate(-45deg)',
-          zIndex: 0
-        }} 
-      />
-      
-      <Box 
-        sx={{ 
-          position: 'absolute', 
-          bottom: -100, 
-          right: -100, 
-          width: 300, 
-          height: 300, 
-          backgroundColor: certificate.headerColor || '#0047AB',
-          borderRadius: '50%',
-          transform: 'rotate(135deg)',
-          zIndex: 0
-        }} 
-      />*/}
       
       <Box sx={{ 
         zIndex: 2, 
@@ -841,7 +812,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           onChange={(e) => handleColorChange('borderColor', e.target.value)}
                           size="small"
                           fullWidth
-                          placeholder="#0047AB"
+                          placeholder="#000000"
                           inputProps={{ pattern: '^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' }}
                         />
                       </Box>
@@ -879,7 +850,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           onChange={(e) => handleColorChange('headerColor', e.target.value)}
                           size="small"
                           fullWidth
-                          placeholder="#0047AB"
+                          placeholder="#000000"
                           inputProps={{ pattern: '^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' }}
                         />
                       </Box>

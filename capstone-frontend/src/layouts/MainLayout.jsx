@@ -14,7 +14,8 @@ import {
   AccountTree,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Email
 } from '@mui/icons-material';
 import AppHeader from '../components/AppHeader';
 import { useTheme } from '../contexts/ThemeContext';
@@ -49,6 +50,10 @@ const MainLayout = ({ children, title }) => {
   
   const handleNavigateToDepartment = () => {
     navigate('/department');
+  };
+  
+  const handleNavigateToExcuseLetters = () => {
+    navigate('/excuse-letters');
   };
 
   // Function to check if a route is active
@@ -92,6 +97,13 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToDepartment, 
       path: '/department',
       tooltip: 'Departments'
+    },
+    {
+      icon: <Email />,
+      text: 'EXCUSE LETTERS',
+      onClick: handleNavigateToExcuseLetters,
+      path: '/excuse-letters',
+      tooltip: 'Excuse Letters'
     },
     { 
       icon: <Settings />, 
