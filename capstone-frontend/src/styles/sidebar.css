@@ -8,11 +8,12 @@
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
 }
 
-/* Menu Item Hover Effect */
+/* Enhanced Menu Item Hover Effect */
 .sidebar-menu-item {
   transition: all 0.3s ease !important;
   position: relative;
   overflow: hidden !important;
+  border-left: 4px solid transparent;
 }
 
 .sidebar-menu-item::before {
@@ -36,12 +37,16 @@
   left: 100%;
 }
 
+/* Improved active item styling */
 .sidebar-item-active {
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-left: 4px solid #1976d2 !important;
 }
 
 .dark-mode .sidebar-item-active {
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* Hover animation */
@@ -63,31 +68,23 @@
 
 /* Toggle Button Animation */
 .sidebar-toggle {
-  transform: scale(1);
-  transition: transform 0.2s ease, background-color 0.2s ease !important;
+  transition: all 0.3s ease !important;
+  z-index: 9999;
+  overflow: visible;
 }
 
-.sidebar-toggle:hover {
-  transform: scale(1.1);
+/* Make sure toggle is visible in dark mode */
+.dark-mode .sidebar-toggle {
+  border-color: #333 !important;
 }
 
-/* Collapse Animation for Toggle Icon */
-.sidebar-collapsed .sidebar-toggle svg {
-  animation: rotate-right 0.3s forwards;
+/* Remove the rotation animations as they might interfere with icon changes */
+.sidebar-toggle svg {
+  transition: all 0.2s ease;
 }
 
-.sidebar-container:not(.sidebar-collapsed) .sidebar-toggle svg {
-  animation: rotate-left 0.3s forwards;
-}
-
-@keyframes rotate-right {
-  from { transform: rotate(0); }
-  to { transform: rotate(180deg); }
-}
-
-@keyframes rotate-left {
-  from { transform: rotate(180deg); }
-  to { transform: rotate(0); }
+.sidebar-toggle:hover svg {
+  transform: scale(1.2);
 }
 
 /* Menu Item Animations */
@@ -133,10 +130,6 @@
   transition: all 0.3s ease !important;
 }
 
-.sidebar-item-active::after {
-  animation: indicator-pulse 2s infinite;
-}
-
 @keyframes indicator-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.4);
@@ -151,11 +144,22 @@
 
 /* Tooltip Animation */
 .MuiTooltip-popper {
-  animation: fade-in 0.2s ease;
+  position: absolute !important;
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Fix for initial tooltip positioning */
+.MuiTooltip-tooltip {
+  position: relative !important;
+  transform: none !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  letter-spacing: 0.5px !important;
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateX(-10px); }
+  from { opacity: 0; transform: translateX(-5px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -183,4 +187,161 @@
 
 .dark-mode .sidebar-menu::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Add subtle menu category dividers */
+.sidebar-menu-item:nth-of-type(3)::after,
+.sidebar-menu-item:nth-of-type(6)::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .sidebar-menu-item:nth-of-type(3)::after,
+.dark-mode .sidebar-menu-item:nth-of-type(6)::after {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Scale up icons slightly when hovering over them in collapsed mode */
+.sidebar-collapsed .sidebar-menu-item:hover svg {
+  transform: scale(1.2);
+  transition: transform 0.2s ease;
+}
+
+/* Enhance logo section appearance */
+.sidebar-container img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: filter 0.3s ease, height 0.3s ease;
+}
+
+.dark-mode .sidebar-container img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Focus style for keyboard navigation */
+.sidebar-menu-item:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: -2px;
+}
+
+/* Enhanced animations for Accounts menu item */
+.group-main:nth-of-type(3) {
+  position: relative;
+  overflow: visible !important;
+}
+
+.group-main:nth-of-type(3)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+/* Enhanced animations for Departments menu item */
+.group-resources:nth-of-type(5) {
+  position: relative;
+  overflow: visible !important;
+}
+
+.group-resources:nth-of-type(5)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+/* Enhanced animations for Excuse Letters menu item */
+.group-resources:nth-of-type(6) {
+  position: relative;
+  overflow: visible !important;
+}
+
+.group-resources:nth-of-type(6)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+/* Badge animations */
+.MuiBadge-badge {
+  transition: all 0.3s ease !important;
+}
+
+/* Specific badge animations for notification items */
+.group-main:nth-of-type(3) .MuiBadge-badge,
+.group-resources:nth-of-type(5) .MuiBadge-badge,
+.group-resources:nth-of-type(6) .MuiBadge-badge {
+  animation: badge-pulse 2s infinite;
+}
+
+@keyframes badge-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(211, 47, 47, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
+  }
+}
+
+/* Enhanced hover effect for notification items */
+.group-main:nth-of-type(3):hover,
+.group-resources:nth-of-type(5):hover,
+.group-resources:nth-of-type(6):hover {
+  background-color: rgba(25, 118, 210, 0.06) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px) !important;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.dark-mode .group-main:nth-of-type(3):hover,
+.dark-mode .group-resources:nth-of-type(5):hover,
+.dark-mode .group-resources:nth-of-type(6):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Item glow effect when active */
+.group-main:nth-of-type(3).sidebar-item-active,
+.group-resources:nth-of-type(5).sidebar-item-active,
+.group-resources:nth-of-type(6).sidebar-item-active {
+  box-shadow: 0 0 15px rgba(25, 118, 210, 0.15) !important;
+  border-left: 4px solid #1976d2 !important;
+}
+
+/* Entrance animation for notification items */
+@keyframes item-entrance {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.group-main:nth-of-type(3),
+.group-resources:nth-of-type(5),
+.group-resources:nth-of-type(6) {
+  animation: item-entrance 0.3s ease-out;
 } 

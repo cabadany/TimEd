@@ -4,7 +4,8 @@ import {
   Button,
   Tooltip,
   Collapse,
-  Divider
+  Divider,
+  Badge
 } from '@mui/material';
 import {
   Home,
@@ -21,6 +22,7 @@ import AppHeader from '../components/AppHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import '../styles/sidebar.css';
+import axios from 'axios';
 
 const MainLayout = ({ children, title }) => {
   const location = useLocation();
@@ -28,6 +30,62 @@ const MainLayout = ({ children, title }) => {
   const { darkMode } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
+  
+  // Add state for badge counts
+  const [departmentCount, setDepartmentCount] = useState(0);
+  const [accountCount, setAccountCount] = useState(0);
+  const [excuseLetterCount, setExcuseLetterCount] = useState(0);
+  
+  // Fetch counts on component mount
+  useEffect(() => {
+    fetchDepartmentCount();
+    fetchAccountCount();
+    fetchExcuseLetterCount();
+  }, []);
+  
+  // Fetch department count
+  const fetchDepartmentCount = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/departments');
+      if (response.data && Array.isArray(response.data)) {
+        setDepartmentCount(response.data.length);
+      }
+    } catch (error) {
+      console.error('Error fetching departments count:', error);
+    }
+  };
+  
+  // Fetch account count
+  const fetchAccountCount = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/user/getAll', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.data && Array.isArray(response.data)) {
+        setAccountCount(response.data.length);
+      }
+    } catch (error) {
+      console.error('Error fetching accounts count:', error);
+    }
+  };
+  
+  // Fetch excuse letter count
+  const fetchExcuseLetterCount = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/excuse-letters/getAll', {
+        params: { page: 0, size: 1000 } // Get a large count to ensure we get all
+      });
+      if (response.data && response.data.content && Array.isArray(response.data.content)) {
+        setExcuseLetterCount(response.data.content.length);
+      } else if (response.data && response.data.totalElements) {
+        setExcuseLetterCount(response.data.totalElements);
+      }
+    } catch (error) {
+      console.error('Error fetching excuse letters count:', error);
+    }
+  };
 
   // Navigation handlers
   const handleNavigateToEvent = () => {
@@ -63,54 +121,67 @@ const MainLayout = ({ children, title }) => {
 
   // Menu items data for easy mapping
   const menuItems = [
+    // Main menu group
     { 
       icon: <Home />, 
       text: 'DASHBOARD', 
       onClick: handleNavigateToDashboard, 
       path: '/dashboard',
-      tooltip: 'Dashboard'
+      tooltip: 'Dashboard',
+      group: 'main'
     },
     { 
       icon: <Event />, 
       text: 'EVENT', 
       onClick: handleNavigateToEvent, 
       path: '/event',
-      tooltip: 'Events'
+      tooltip: 'Events',
+      group: 'main'
     },
     { 
       icon: <People />, 
       text: 'ACCOUNTS', 
       onClick: handleNavigateToAccounts, 
       path: '/accounts',
-      tooltip: 'Accounts'
+      tooltip: 'Accounts',
+      badge: accountCount > 0 ? accountCount : null,
+      group: 'main'
     },
+    // Resources group
     { 
       icon: <WorkspacePremium />, 
       text: 'CERTIFICATES', 
       onClick: handleNavigateToCertificate, 
       path: '/certificates',
-      tooltip: 'Certificates'
+      tooltip: 'Certificates',
+      group: 'resources'
     },
     { 
       icon: <AccountTree />, 
       text: 'DEPARTMENTS', 
       onClick: handleNavigateToDepartment, 
       path: '/department',
-      tooltip: 'Departments'
+      tooltip: 'Departments',
+      badge: departmentCount > 0 ? departmentCount : null,
+      group: 'resources'
     },
     {
       icon: <Email />,
       text: 'EXCUSE LETTERS',
       onClick: handleNavigateToExcuseLetters,
       path: '/excuse-letters',
-      tooltip: 'Excuse Letters'
+      tooltip: 'Excuse Letters',
+      badge: excuseLetterCount > 0 ? excuseLetterCount : null,
+      group: 'resources'
     },
+    // Settings group
     { 
       icon: <Settings />, 
       text: 'SETTING', 
       onClick: handleNavigateToSettings, 
       path: '/settings',
-      tooltip: 'Settings'
+      tooltip: 'Settings',
+      group: 'settings'
     }
   ];
 
@@ -146,7 +217,8 @@ const MainLayout = ({ children, title }) => {
           display: 'flex', 
           justifyContent: 'center',
           alignItems: 'center',
-          transition: 'padding 0.3s ease'
+          transition: 'padding 0.3s ease',
+          position: 'relative'
         }}>
           <img 
             src="/timed 1.png" 
@@ -155,38 +227,43 @@ const MainLayout = ({ children, title }) => {
               height: collapsed ? 40 : 80,
               transition: 'height 0.3s ease'
             }} 
+            className="logo-image"
           />
-        </Box>
-
-        {/* Sidebar toggle button */}
-        <Box 
-          className="sidebar-toggle"
-          onClick={() => setCollapsed(!collapsed)}
-          sx={{
-            position: 'absolute',
-            top: '100px',
-            right: 0,
-            zIndex: 10,
-            width: 22,
-            height: 22,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            borderRadius: '50% 0 0 50%',
-            backgroundColor: darkMode ? '#333' : '#f0f0f0',
-            border: '1px solid',
-            borderColor: darkMode ? '#444' : '#ddd',
-            borderRight: 'none',
-            color: darkMode ? '#aaa' : '#666',
-            transition: 'transform 0.3s ease',
-            '&:hover': {
-              backgroundColor: darkMode ? '#444' : '#e0e0e0',
-              color: darkMode ? '#fff' : '#333'
+          
+          {/* Sidebar toggle button */}
+          <Box 
+            className="sidebar-toggle"
+            onClick={() => setCollapsed(!collapsed)}
+            sx={{
+              position: 'fixed',
+              left: collapsed ? 70 : 240,
+              top: 70,
+              transform: 'translateX(-50%)',
+              zIndex: 1300,
+              width: 30, 
+              height: 30,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              borderRadius: '50%',
+              backgroundColor: 'primary.main',
+              color: '#fff',
+              boxShadow: '0 3px 5px rgba(0, 0, 0, 0.2)',
+              transition: 'all 0.3s ease, left 0.3s ease',
+              border: '2px solid white',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+                transform: 'translateX(-50%) scale(1.1)',
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
+              }
+            }}
+          >
+            {collapsed ? 
+              <ChevronRight sx={{ fontSize: 20 }} /> : 
+              <ChevronLeft sx={{ fontSize: 20 }} />
             }
-          }}
-        >
-          {collapsed ? <ChevronRight sx={{ fontSize: 18 }} /> : <ChevronLeft sx={{ fontSize: 18 }} />}
+          </Box>
         </Box>
 
         {/* Menu Items */}
@@ -221,13 +298,23 @@ const MainLayout = ({ children, title }) => {
               title={collapsed ? item.tooltip : ""}
               placement="right"
               arrow
+              PopperProps={{
+                sx: {
+                  // Fix for tooltip initial position
+                  "& .MuiTooltip-tooltip": {
+                    position: "relative",
+                    // This ensures tooltip is properly positioned right away
+                    animation: "none !important"
+                  }
+                }
+              }}
             >
               <Button 
                 startIcon={!collapsed && item.icon}
                 onClick={item.onClick}
                 onMouseEnter={() => setHoveredItem(index)}
                 onMouseLeave={() => setHoveredItem(null)}
-                className={`sidebar-menu-item ${isActive(item.path) ? 'sidebar-item-active' : ''} ${hoveredItem === index ? 'sidebar-item-hovered' : ''}`}
+                className={`sidebar-menu-item ${isActive(item.path) ? 'sidebar-item-active' : ''} ${hoveredItem === index ? 'sidebar-item-hovered' : ''} group-${item.group}`}
                 sx={{ 
                   justifyContent: collapsed ? 'center' : 'flex-start', 
                   color: isActive(item.path) 
@@ -245,28 +332,49 @@ const MainLayout = ({ children, title }) => {
                   '&:hover': {
                     backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                     transform: 'translateY(-1px)'
-                  },
-                  '&::after': isActive(item.path) ? {
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '4px',
-                    height: '60%',
-                    backgroundColor: 'primary.main',
-                    borderRadius: '0 4px 4px 0'
-                  } : {}
+                  }
                 }}
               >
                 {collapsed ? (
                   // Only show icon when collapsed
-                  <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
                     {item.icon}
+                    {item.badge && (
+                      <Badge 
+                        badgeContent={item.badge} 
+                        color="error"
+                        sx={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          '& .MuiBadge-badge': {
+                            fontSize: '0.5rem',
+                            height: 14,
+                            minWidth: 14,
+                            padding: '0 2px'
+                          }
+                        }}
+                      />
+                    )}
                   </Box>
                 ) : (
                   // Show text when expanded
-                  item.text
+                  <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{item.text}</span>
+                    {item.badge && (
+                      <Badge 
+                        badgeContent={item.badge} 
+                        color="error"
+                        sx={{
+                          '& .MuiBadge-badge': {
+                            fontSize: '0.6rem',
+                            height: 16,
+                            minWidth: 16
+                          }
+                        }}
+                      />
+                    )}
+                  </Box>
                 )}
               </Button>
             </Tooltip>

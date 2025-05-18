@@ -320,22 +320,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: #333333;
 }
 
-/* Sidebar active indicator */
-.sidebar-item-active {
-  position: relative;
-}
-
-.sidebar-item-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: #304FFF;
-  border-radius: 0 4px 4px 0;
-}
-
 /* Search input styling */
 .search-input {
   background-color: #F1F5F9;
