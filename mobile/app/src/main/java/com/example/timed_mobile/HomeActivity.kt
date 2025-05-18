@@ -283,7 +283,7 @@ class HomeActivity : AppCompatActivity() {
                             if (!imageUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
                                     .load(imageUrl)
-                                    .circleCrop()  // ✅ This line applies the circular transformation
+                                    .circleCrop()
                                     .into(profileImageView)
                                 return
                             }

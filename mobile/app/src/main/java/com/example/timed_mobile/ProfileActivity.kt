@@ -1,25 +1,25 @@
 package com.example.timed_mobile
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
-import android.content.Intent
-import android.os.Bundle
-import android.util.Log
-import android.widget.*
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.Window
-import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import de.hdodenhof.circleimageview.CircleImageView
 
 class ProfileActivity : AppCompatActivity() {
+
     private lateinit var editButton: Button
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button
@@ -27,6 +27,9 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
     private lateinit var backButton: ImageView
+    private lateinit var profileEmail: TextView
+    private lateinit var profileDepartment: TextView
+    private lateinit var profileImage: CircleImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +42,9 @@ class ProfileActivity : AppCompatActivity() {
         teacherName = findViewById(R.id.profile_name)
         teacherId = findViewById(R.id.profile_id_number)
         backButton = findViewById(R.id.icon_back_button)
+        profileEmail = findViewById(R.id.profile_email)
+        profileDepartment = findViewById(R.id.profile_department)
+        profileImage = findViewById(R.id.profile_image)
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
@@ -87,19 +93,31 @@ class ProfileActivity : AppCompatActivity() {
 
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("users")
-            .whereEqualTo("userId", currentUserId)
+            .document(currentUserId)
             .get()
-            .addOnSuccessListener { result ->
-                if (!result.isEmpty) {
-                    val document = result.documents[0]
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
                     val firstName = document.getString("firstName") ?: ""
                     val lastName = document.getString("lastName") ?: ""
                     val department = document.getString("department") ?: "N/A"
+                    val email = document.getString("email") ?: "No email"
+                    val profilePhotoUrl = document.getString("profileImageUrl")
 
                     teacherName.text = "$firstName $lastName"
                     teacherId.text = department
+                    profileEmail.text = email
+                    profileDepartment.text = department
+
+                    if (!profilePhotoUrl.isNullOrEmpty()) {
+                        Glide.with(this)
+                            .load(profilePhotoUrl)
+                            .placeholder(R.drawable.profile_placeholder)
+                            .into(profileImage)
+                    } else {
+                        profileImage.setImageResource(R.drawable.profile_placeholder)
+                    }
                 } else {
-                    Log.e("FIRESTORE", "No user matched UID: $currentUserId")
+                    Log.e("FIRESTORE", "No profile found for UID: $currentUserId")
                     Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
                 }
             }
