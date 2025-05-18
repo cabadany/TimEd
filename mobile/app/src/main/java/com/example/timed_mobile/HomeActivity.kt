@@ -169,12 +169,6 @@ class HomeActivity : AppCompatActivity() {
                     }.also { startActivity(it) }
                 }
 
-                R.id.nav_schedule -> {
-                    Intent(this, ScheduleActivity::class.java).apply {
-                        putExtra("userId", userId)
-                    }.also { startActivity(it) }
-                }
-
                 R.id.nav_excuse_letter -> {
                     Intent(this, ExcuseLetterActivity::class.java).apply {
                         putExtra("userId", userId)
@@ -189,6 +183,11 @@ class HomeActivity : AppCompatActivity() {
                     Intent(this, ExcuseLetterHistoryActivity::class.java).apply {
                         putExtra("userId", userId)
                     }.also { startActivity(it) }
+                }
+
+                R.id.nav_event_log -> {
+                    startActivity(Intent(this, EventLogActivity::class.java))
+                    true
                 }
 
                 R.id.nav_logout -> {

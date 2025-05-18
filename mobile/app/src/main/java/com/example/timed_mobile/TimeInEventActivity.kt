@@ -533,7 +533,8 @@ class TimeInEventActivity : AppCompatActivity() {
             "eventName" to eventNameForLog,
             "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
             "selfieUrl" to selfieUrl,
-            "type" to "event_time_in" // Specific type
+            "type" to "event_time_in",
+            "hasTimedOut" to false
         )
         Log.d(TAG, "Logging to Firestore: $record")
 

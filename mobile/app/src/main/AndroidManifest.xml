@@ -138,6 +138,14 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-    </application>
+        <activity
+            android:name=".EventLogActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".ManualTimeOutActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
 </manifest>

@@ -10,16 +10,16 @@
         android:title="Profile" />
 
     <item
-        android:id="@+id/nav_schedule"
-        android:title="Schedule" />
-
-    <item
         android:id="@+id/nav_excuse_letter"
         android:title="Excuse Letter" />
 
     <item
         android:id="@+id/nav_excuse_letter_history"
         android:title="Excuse Letter History" />
+
+    <item
+        android:id="@+id/nav_event_log"
+        android:title="Event Log" />
 
     <item
         android:id="@+id/nav_logout"

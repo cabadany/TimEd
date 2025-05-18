@@ -20,12 +20,26 @@
             android:src="@drawable/animated_wave_top"
             android:layout_alignParentTop="true" />
 
-        <!-- Title -->
+        <!-- Back Button -->
+        <ImageView
+            android:id="@+id/icon_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp"
+            android:contentDescription="Back"
+            app:srcCompat="@drawable/ic_back_button" />
+
+        <!-- Event Title -->
         <TextView
             android:id="@+id/detail_event_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="350dp"
+            android:layout_marginTop="220dp"
             android:layout_centerHorizontal="true"
             android:text="Event Title"
             android:textSize="24sp"
@@ -39,7 +53,7 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/detail_event_title"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:text="Event Date"
             android:textSize="16sp"
             android:textColor="@color/black" />
@@ -55,6 +69,20 @@
             android:text="Status: Ongoing"
             android:textSize="16sp"
             android:textColor="@color/black" />
+
+        <!-- Event Description -->
+        <TextView
+            android:id="@+id/detail_event_description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/detail_event_status"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="12dp"
+            android:text="Description will appear here."
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:padding="12dp"
+            android:textAlignment="center" />
 
         <!-- Time In Button -->
         <Button
