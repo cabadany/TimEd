@@ -52,7 +52,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var recyclerEvents: RecyclerView
     private lateinit var firestore: FirebaseFirestore
 
-    private lateinit var btnAll: Button
+    private lateinit var btnCancelled: Button
     private lateinit var btnUpcoming: Button
     private lateinit var btnOngoing: Button
     private lateinit var btnEnded: Button
@@ -122,13 +122,14 @@ class HomeActivity : AppCompatActivity() {
         greetingName = findViewById(R.id.greeting_name)
         greetingDetails = findViewById(R.id.home_greeting)
         recyclerEvents = findViewById(R.id.recycler_events)
-        btnAll = findViewById(R.id.btn_filter_all)
+        btnCancelled = findViewById(R.id.btn_filter_cancelled)
         btnUpcoming = findViewById(R.id.btn_filter_upcoming)
         btnOngoing = findViewById(R.id.btn_filter_ongoing)
         btnEnded = findViewById(R.id.btn_filter_ended)
         btnTimeIn = findViewById(R.id.btntime_in)
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
+
 
         recyclerEvents.layoutManager = LinearLayoutManager(this)
         firestore = FirebaseFirestore.getInstance()
@@ -220,14 +221,14 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateFilterButtonStates(selectedButton: Button) {
-        val filterButtons = listOf(btnAll, btnUpcoming, btnOngoing, btnEnded)
+        val filterButtons = listOf(btnUpcoming, btnOngoing, btnEnded, btnCancelled)
 
         filterButtons.forEach { button ->
             if (button.id == selectedButton.id) {
-                button.isSelected = true // For text color selector and StateListAnimator
+                button.isSelected = true
                 button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.maroon)
             } else {
-                button.isSelected = false // For text color selector and StateListAnimator
+                button.isSelected = false
                 button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
             }
         }
@@ -298,21 +299,21 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupFilterButtons() {
-        btnAll.setOnClickListener {
-            updateFilterButtonStates(btnAll)
-            showEventsByStatus(null)
-        }
         btnUpcoming.setOnClickListener {
             updateFilterButtonStates(btnUpcoming)
-            showEventsByStatus("upcoming")
+            showEventsByStatus("Upcoming")
         }
         btnOngoing.setOnClickListener {
             updateFilterButtonStates(btnOngoing)
-            showEventsByStatus("ongoing")
+            showEventsByStatus("Ongoing")
         }
         btnEnded.setOnClickListener {
             updateFilterButtonStates(btnEnded)
-            showEventsByStatus("ended")
+            showEventsByStatus("Ended")
+        }
+        btnCancelled.setOnClickListener {
+            updateFilterButtonStates(btnCancelled)
+            showEventsByStatus("cancelled")
         }
     }
 
@@ -380,14 +381,13 @@ class HomeActivity : AppCompatActivity() {
 
                     allEvents.add(EventModel(title, status, formattedDate))
                 }
-                showEventsByStatus(null) // Display all events initially
-                updateFilterButtonStates(btnAll) // Set "All" button as selected after data load
+
+                showEventsByStatus("upcoming")
+                updateFilterButtonStates(btnUpcoming)
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT)
-                    .show()
-                // Even on failure, ensure a default button state
-                updateFilterButtonStates(btnAll)
+                Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
+                updateFilterButtonStates(btnUpcoming)
             }
     }
 
