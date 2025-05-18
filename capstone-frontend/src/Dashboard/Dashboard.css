@@ -28,6 +28,19 @@ body, html {
   text-align: left !important;
 }
 
+/* Dashboard container and main area */
+.dashboard-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--background-primary, #F9FAFC);
+  color: var(--text-primary, #333333);
+}
+
+.dashboard-main {
+  max-width: 1400px;
+  padding: 20px 24px;
+}
+
 /* Date input styling */
 input[type="date"] {
   border: none;

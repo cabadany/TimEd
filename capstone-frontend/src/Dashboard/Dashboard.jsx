@@ -426,19 +426,13 @@ export default function Dashboard() {
   };
 
   return (
-    <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`} sx={{ 
-      padding: '20px 24px', 
-      backgroundColor: darkMode ? 'var(--background-primary)' : '#F9FAFC',
-      minHeight: '100vh',
-      width: '100%',
-      color: darkMode ? 'var(--text-primary)' : 'inherit'
-    }}>
+    <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
       {/* Dashboard Content */}
-      <Box className="dashboard-main" sx={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <Box className="dashboard-main">
         
         {/* Event Summary Cards */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>Event Summary</Typography>
+          <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 2 }}>Event Summary</Typography>
           {loading ? (
             <Grid container spacing={2}>
               {[1, 2, 3, 4].map((_, index) => (
