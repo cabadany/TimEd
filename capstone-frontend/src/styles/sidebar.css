@@ -17,53 +17,72 @@
 }
 
 .sidebar-menu-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  transition: left 0.5s ease;
-  pointer-events: none;
+  content: none; /* Remove gradient animation */
 }
 
-.sidebar-menu-item:hover::before {
-  left: 100%;
+.sidebar-menu-item:hover {
+  background-color: rgba(25, 118, 210, 0.04) !important;
+  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
+}
+
+.dark-mode .sidebar-menu-item:hover {
+  background-color: rgba(66, 165, 245, 0.05) !important;
+  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
 }
 
 /* Improved active item styling */
 .sidebar-item-active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  background-color: rgba(0, 0, 0, 0.03) !important;
+  box-shadow: none;
+  background-color: rgba(25, 118, 210, 0.08) !important;
   border-left: 4px solid #1976d2 !important;
+  position: relative;
+  font-weight: 600 !important;
 }
 
+/* Add a subtle gradient to active items */
+.sidebar-item-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(25, 118, 210, 0.12),
+    rgba(25, 118, 210, 0.04),
+    rgba(25, 118, 210, 0.01)
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Dark mode styling */
 .dark-mode .sidebar-item-active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: none;
+  background-color: rgba(66, 165, 245, 0.08) !important;
+  border-left: 4px solid #42a5f5 !important;
 }
 
-/* Hover animation */
+.dark-mode .sidebar-item-active::before {
+  background: linear-gradient(
+    to right,
+    rgba(66, 165, 245, 0.12),
+    rgba(66, 165, 245, 0.04),
+    rgba(66, 165, 245, 0.01)
+  );
+}
+
+/* Remove hover animation */
 .sidebar-item-hovered {
-  animation: pulse 1s infinite;
+  /* Remove animation */
+  animation: none;
+  /* Instead add a subtle background change */
+  background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-  }
+.dark-mode .sidebar-item-hovered {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Toggle Button Animation */
@@ -87,23 +106,15 @@
   transform: scale(1.2);
 }
 
-/* Menu Item Animations */
+/* Menu Item expanded/collapsed state - no animations */
 .sidebar-collapsed .sidebar-menu-item {
-  animation: collapse-menu 0.3s forwards;
+  animation: none;
+  padding-left: 0;
 }
 
 .sidebar-container:not(.sidebar-collapsed) .sidebar-menu-item {
-  animation: expand-menu 0.3s forwards;
-}
-
-@keyframes collapse-menu {
-  from { padding-left: 16px; }
-  to { padding-left: 0; }
-}
-
-@keyframes expand-menu {
-  from { padding-left: 0; }
-  to { padding-left: 16px; }
+  animation: none;
+  padding-left: 16px;
 }
 
 /* Logo Animation */
@@ -273,75 +284,58 @@
   );
 }
 
-/* Badge animations */
+/* Badge styling without animations */
 .MuiBadge-badge {
-  transition: all 0.3s ease !important;
+  transition: none !important;
 }
 
-/* Specific badge animations for notification items */
+/* Clean badge styling for notification items */
 .group-main:nth-of-type(3) .MuiBadge-badge,
 .group-resources:nth-of-type(5) .MuiBadge-badge,
 .group-resources:nth-of-type(6) .MuiBadge-badge {
-  animation: badge-pulse 2s infinite;
+  animation: none;
 }
 
-@keyframes badge-pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4);
-  }
-  25% {
-    transform: scale(1.1);
-  }
-  50% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(211, 47, 47, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
-  }
-}
-
-/* Enhanced hover effect for notification items */
+/* Enhanced hover effect for notification items - no animations */
 .group-main:nth-of-type(3):hover,
 .group-resources:nth-of-type(5):hover,
 .group-resources:nth-of-type(6):hover {
-  background-color: rgba(25, 118, 210, 0.06) !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px) !important;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  background-color: rgba(25, 118, 210, 0.04) !important;
+  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
 }
 
 .dark-mode .group-main:nth-of-type(3):hover,
 .dark-mode .group-resources:nth-of-type(5):hover,
 .dark-mode .group-resources:nth-of-type(6):hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(66, 165, 245, 0.05) !important;
+  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
+  box-shadow: none !important;
 }
 
-/* Item glow effect when active */
+/* Item active effect when active - consistent with new design */
 .group-main:nth-of-type(3).sidebar-item-active,
 .group-resources:nth-of-type(5).sidebar-item-active,
 .group-resources:nth-of-type(6).sidebar-item-active {
-  box-shadow: 0 0 15px rgba(25, 118, 210, 0.15) !important;
+  box-shadow: none !important;
+  background-color: rgba(25, 118, 210, 0.08) !important;
   border-left: 4px solid #1976d2 !important;
 }
 
-/* Entrance animation for notification items */
-@keyframes item-entrance {
-  0% {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
+/* Dark mode styling for special items */
+.dark-mode .group-main:nth-of-type(3).sidebar-item-active,
+.dark-mode .group-resources:nth-of-type(5).sidebar-item-active,
+.dark-mode .group-resources:nth-of-type(6).sidebar-item-active {
+  box-shadow: none !important;
+  background-color: rgba(66, 165, 245, 0.08) !important;
+  border-left: 4px solid #42a5f5 !important;
 }
 
+/* Remove entrance animation for notification items - no animations requested */
 .group-main:nth-of-type(3),
 .group-resources:nth-of-type(5),
 .group-resources:nth-of-type(6) {
-  animation: item-entrance 0.3s ease-out;
+  animation: none;
 } 

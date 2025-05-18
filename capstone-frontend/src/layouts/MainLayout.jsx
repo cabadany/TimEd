@@ -325,13 +325,13 @@ const MainLayout = ({ children, title }) => {
                   px: collapsed ? 1 : 2,
                   textAlign: 'left',
                   borderRadius: '8px',
-                  transition: 'all 0.2s ease',
+                  transition: 'none',
                   position: 'relative',
                   overflow: 'hidden',
                   minWidth: 'unset',
                   '&:hover': {
-                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    transform: 'translateY(-1px)'
+                    backgroundColor: 'transparent', // Let CSS handle the hover effect
+                    transform: 'none'
                   }
                 }}
               >
