@@ -565,6 +565,44 @@ export default function EventPage() {
       setLoading(true);
       const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
       
+      // Get the new event ID from the response
+      const newEventId = response.data;
+      console.log('Created event with ID:', newEventId);
+      
+      // If we have a certificate template, save it for the new event
+      if (currentCertificateData) {
+        try {
+          console.log('Saving certificate template for new event:', newEventId);
+          
+          // Create a copy of the certificate with the new event ID and name
+          const certificatePayload = {
+            ...currentCertificateData,
+            eventId: newEventId,
+            eventName: eventName
+          };
+          
+          // Save the certificate template
+          const certificateResponse = await axios.post('http://localhost:8080/api/certificates', certificatePayload);
+          console.log('Certificate saved successfully:', certificateResponse.data);
+          
+          // Link the certificate to the event
+          if (certificateResponse.data && certificateResponse.data.id) {
+            try {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+                certificateId: certificateResponse.data.id,
+                eventId: newEventId
+              });
+              console.log('Certificate linked to event successfully');
+            } catch (linkError) {
+              console.error('Error linking certificate to event:', linkError);
+            }
+          }
+        } catch (certError) {
+          console.error('Error saving certificate template for new event:', certError);
+          // Don't show error to user - the event was created successfully
+        }
+      }
+      
       // Reset form fields
       resetForm();
       
@@ -901,17 +939,6 @@ export default function EventPage() {
       console.log('Setting eventForCertificate:', fullEvent);
       setEventForCertificate(fullEvent);
       
-      // Ensure the event ID is correctly passed
-      if (!event.eventId) {
-        console.error('Event ID is missing or undefined');
-        // Still show the editor with default certificate
-        const defaultTemplate = { ...defaultCertificate };
-        defaultTemplate.eventName = event.eventName || eventName || 'New Event';
-        setCurrentCertificateData(defaultTemplate);
-        setShowCertificateEditor(true);
-        return;
-      }
-      
       // Show loading indicator while fetching
       setLoading(true);
       
@@ -921,17 +948,17 @@ export default function EventPage() {
           // Certificate data should now be set in state
           console.log('Certificate data loaded for event:', event.eventName, certificateData);
           setShowCertificateEditor(true);
-          setLoading(false);
         })
         .catch(error => {
           console.error('Error fetching certificate for event:', error);
-          // Still show the editor with default certificate if fetch fails
-          console.log('Using default certificate template due to fetch error');
+          // If fetch fails, create a default template with event data
+          const defaultTemplate = createDefaultTemplate(event.eventId);
+          setCurrentCertificateData(defaultTemplate);
           setShowCertificateEditor(true);
+        })
+        .finally(() => {
           setLoading(false);
         });
-      
-      return; // Return early to prevent the immediate setShowCertificateEditor(true) below
     } 
     // If no event provided, but we're in the Add Event form with a certificate already
     else if (currentCertificateData) {
@@ -945,21 +972,22 @@ export default function EventPage() {
           eventName: eventName
         }));
       }
+      
+      setShowCertificateEditor(true);
     } 
     // Creating a brand new template
     else {
       console.log('Creating new certificate template');
       
       // Initialize with current event name from form
-      const defaultTemplate = { ...defaultCertificate };
+      const defaultTemplate = createDefaultTemplate();
       if (eventName) {
         defaultTemplate.eventName = eventName;
       }
       
       setCurrentCertificateData(defaultTemplate);
+      setShowCertificateEditor(true);
     }
-    
-    setShowCertificateEditor(true);
   };
 
   // Close certificate editor
@@ -985,36 +1013,41 @@ export default function EventPage() {
           setCurrentCertificateData(response.data);
           return response.data;
         } else {
-          // No certificate in response data
-          throw new Error('No certificate data in response');
+          // No certificate in response data, creating new template
+          console.log('No certificate data in response, creating new template');
+          const defaultTemplate = createDefaultTemplate(eventId);
+          setCurrentCertificateData(defaultTemplate);
+          return defaultTemplate;
         }
       } catch (fetchError) {
         // Handle 404 (no certificate found) as a normal case, not an error
         console.log('No existing certificate found for this event. Creating new template.');
         
         // Create a default template
-        const defaultTemplate = { ...defaultCertificate };
-        if (eventForCertificate?.eventName) {
-          defaultTemplate.eventName = eventForCertificate.eventName;
-        }
-        
+        const defaultTemplate = createDefaultTemplate(eventId);
         setCurrentCertificateData(defaultTemplate);
         return defaultTemplate;
       }
-    } catch (error) {
-      console.error('Unexpected error in certificate fetch process:', error);
-      
-      // Set a default template in case of error
-      const defaultTemplate = { ...defaultCertificate };
-      if (eventForCertificate?.eventName) {
-        defaultTemplate.eventName = eventForCertificate.eventName;
-      }
-      
-      setCurrentCertificateData(defaultTemplate);
-      return defaultTemplate;
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to create a default certificate template
+  const createDefaultTemplate = (eventId) => {
+    const defaultTemplate = { ...defaultCertificate };
+    
+    // Add event details if available
+    if (eventForCertificate?.eventName) {
+      defaultTemplate.eventName = eventForCertificate.eventName;
+    }
+    
+    // Add event ID if provided
+    if (eventId) {
+      defaultTemplate.eventId = eventId;
+    }
+    
+    return defaultTemplate;
   };
 
   // Save certificate template
@@ -1035,64 +1068,81 @@ export default function EventPage() {
       console.log('Event for certificate:', eventForCertificate);
       
       let response;
-      if (certificateData.id) {
-        // Update existing certificate
-        console.log('Updating existing certificate with ID:', certificateData.id);
-        response = await axios.put(`http://localhost:8080/api/certificates/${certificateData.id}`, payload);
-      } else {
-        // Create new certificate
-        console.log('Creating new certificate template with eventId:', payload.eventId);
-        response = await axios.post('http://localhost:8080/api/certificates', payload);
-      }
       
-      console.log('Certificate save response:', response);
-      
-      // Get the complete data from response or fallback to input data
-      const savedCertificateData = response.data || certificateData;
-      
-      // Set the current certificate data to show in preview
-      setCurrentCertificateData(savedCertificateData);
-      
-      // Show success message
-      showSnackbar('Certificate template saved successfully', 'success');
-      
-      // Link certificate to event if both certificate and event exist
-      if (savedCertificateData.id && savedCertificateData.eventId) {
-        try {
-          console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
-          await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
-            certificateId: savedCertificateData.id,
-            eventId: savedCertificateData.eventId
-          });
-          console.log('Certificate linked to event successfully');
-        } catch (linkError) {
-          console.error('Error linking certificate to event:', linkError);
+      try {
+        if (certificateData.id) {
+          // Update existing certificate
+          console.log('Updating existing certificate with ID:', certificateData.id);
+          response = await axios.put(`http://localhost:8080/api/certificates/${certificateData.id}`, payload);
+        } else {
+          // Create new certificate
+          console.log('Creating new certificate template with eventId:', payload.eventId);
+          response = await axios.post('http://localhost:8080/api/certificates', payload);
         }
-      }
-      
-      // Double check certificate was saved
-      if (payload.eventId) {
-        try {
-          console.log('Verifying certificate was saved correctly for eventId:', payload.eventId);
-          const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${payload.eventId}`);
-          console.log('Certificate verification response:', verifyResponse.data);
-        } catch (verifyError) {
-          console.error('Certificate verification failed:', verifyError);
+        
+        console.log('Certificate save response:', response);
+        
+        // Get the complete data from response or fallback to input data
+        const savedCertificateData = response.data || certificateData;
+        
+        // Set the current certificate data to show in preview
+        setCurrentCertificateData(savedCertificateData);
+        
+        // Show success message
+        showSnackbar('Certificate template saved successfully', 'success');
+        
+        // Link certificate to event if both certificate and event exist
+        if (savedCertificateData.id && savedCertificateData.eventId) {
+          try {
+            console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
+            await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
+              certificateId: savedCertificateData.id,
+              eventId: savedCertificateData.eventId
+            });
+            console.log('Certificate linked to event successfully');
+          } catch (linkError) {
+            console.error('Error linking certificate to event:', linkError);
+            // Continue execution - don't block on linking error
+          }
         }
+        
+        // Double check certificate was saved - only if we have an event ID
+        if (savedCertificateData.eventId) {
+          try {
+            console.log('Verifying certificate was saved correctly for eventId:', savedCertificateData.eventId);
+            const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${savedCertificateData.eventId}`);
+            console.log('Certificate verification response:', verifyResponse.data);
+          } catch (verifyError) {
+            console.error('Certificate verification failed:', verifyError);
+            // Continue execution - verification is just for debugging
+          }
+        }
+        
+        // Close the editor 
+        setShowCertificateEditor(false);
+        
+        // Return to trigger the preview update in UI
+        return savedCertificateData;
+      } catch (apiError) {
+        console.error('API error saving certificate:', apiError);
+        if (apiError.response) {
+          console.error('Error response data:', apiError.response.data);
+          console.error('Error response status:', apiError.response.status);
+        }
+        
+        // If we couldn't save to the server but have data, still update the local state
+        // This ensures the UI still works even if the backend is having issues
+        if (certificateData) {
+          setCurrentCertificateData(certificateData);
+          showSnackbar('Failed to save to server, but template is available for this session', 'warning');
+          return certificateData;
+        }
+        
+        throw apiError; // Re-throw to be caught by outer try/catch
       }
-      
-      // Close the editor 
-      setShowCertificateEditor(false);
-      
-      // Return to trigger the preview update in UI
-      return savedCertificateData;
       
     } catch (error) {
       console.error('Error saving certificate:', error);
-      if (error.response) {
-        console.error('Error response data:', error.response.data);
-        console.error('Error response status:', error.response.status);
-      }
       showSnackbar('Failed to save certificate template', 'error');
       return null;
     } finally {
@@ -1115,86 +1165,75 @@ export default function EventPage() {
       // Set the current certificate data to show in preview
       setCurrentCertificateData(templateToApply);
       
-      // Also save the template for existing event if we're editing an existing event
+      // Only save to backend if we're editing an existing event
       if (eventForCertificate?.eventId) {
         console.log('Apply: Saving certificate for existing event with ID:', eventForCertificate.eventId);
         
-        // Make sure the certificate has the event ID
-        const payload = {
-          ...templateToApply,
-          eventId: eventForCertificate.eventId,
-          eventName: eventForCertificate.eventName || templateToApply.eventName
-        };
-        
-        console.log('Apply: Final certificate payload:', payload);
-        
-        // First, check if a certificate already exists for this event
         try {
-          const checkResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+          // Make sure the certificate has the event ID
+          const payload = {
+            ...templateToApply,
+            eventId: eventForCertificate.eventId,
+            eventName: eventForCertificate.eventName || templateToApply.eventName
+          };
           
-          // If certificate exists, update it
-          if (checkResponse.data && checkResponse.data.id) {
-            console.log('Apply: Updating existing certificate:', checkResponse.data.id);
-            const updateResponse = await axios.put(`http://localhost:8080/api/certificates/${checkResponse.data.id}`, {
+          console.log('Apply: Final certificate payload:', payload);
+          
+          // First, check if a certificate already exists for this event
+          let certificateExists = false;
+          let existingCertificateId = null;
+          
+          try {
+            const checkResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+            
+            // Certificate exists if we get data back with an ID
+            if (checkResponse.data && checkResponse.data.id) {
+              certificateExists = true;
+              existingCertificateId = checkResponse.data.id;
+              console.log('Apply: Found existing certificate:', existingCertificateId);
+            }
+          } catch (checkError) {
+            // 404 means no certificate exists yet - this is expected
+            if (checkError.response && checkError.response.status === 404) {
+              console.log('Apply: No existing certificate found (404)');
+            } else {
+              console.error('Apply: Error checking for certificate:', checkError);
+            }
+          }
+          
+          let response;
+          
+          if (certificateExists && existingCertificateId) {
+            // Update existing certificate
+            console.log('Apply: Updating existing certificate:', existingCertificateId);
+            response = await axios.put(`http://localhost:8080/api/certificates/${existingCertificateId}`, {
               ...payload,
-              id: checkResponse.data.id
+              id: existingCertificateId
             });
-            console.log('Apply: Certificate updated successfully:', updateResponse.data);
-            
-            // Link certificate to event
-            await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
-              certificateId: checkResponse.data.id,
-              eventId: eventForCertificate.eventId
-            });
+            console.log('Apply: Certificate updated successfully:', response.data);
           } else {
-            // No certificate found, create new one
+            // Create new certificate
             console.log('Apply: Creating new certificate for event:', eventForCertificate.eventId);
-            const createResponse = await axios.post('http://localhost:8080/api/certificates', payload);
-            console.log('Apply: Certificate created successfully:', createResponse.data);
-            
-            // Link certificate to event
-            if (createResponse.data && createResponse.data.id) {
+            response = await axios.post('http://localhost:8080/api/certificates', payload);
+            console.log('Apply: Certificate created successfully:', response.data);
+          }
+          
+          // Try to link certificate to event if we got a valid response
+          if (response && response.data && response.data.id) {
+            try {
               await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
-                certificateId: createResponse.data.id,
+                certificateId: response.data.id,
                 eventId: eventForCertificate.eventId
               });
-            }
-            
-            // Verify the certificate was saved
-            try {
-              console.log('Apply: Verifying certificate was saved correctly');
-              const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
-              console.log('Apply: Certificate verification response:', verifyResponse.data);
-            } catch (verifyError) {
-              console.error('Apply: Certificate verification failed:', verifyError);
+              console.log('Apply: Certificate linked to event successfully');
+            } catch (linkError) {
+              console.error('Apply: Error linking certificate to event:', linkError);
             }
           }
-        } catch (error) {
-          // If 404, create a new certificate
-          if (error.response && error.response.status === 404) {
-            console.log('Apply: No certificate found, creating new one for event:', eventForCertificate.eventId);
-            const createResponse = await axios.post('http://localhost:8080/api/certificates', payload);
-            console.log('Apply: Certificate created successfully:', createResponse.data);
-            
-            // Link certificate to event
-            if (createResponse.data && createResponse.data.id) {
-              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
-                certificateId: createResponse.data.id,
-                eventId: eventForCertificate.eventId
-              });
-            }
-            
-            // Verify the certificate was saved
-            try {
-              console.log('Apply: Verifying certificate was saved correctly');
-              const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
-              console.log('Apply: Certificate verification response:', verifyResponse.data);
-            } catch (verifyError) {
-              console.error('Apply: Certificate verification failed:', verifyError);
-            }
-          } else {
-            console.error('Apply: Error checking for existing certificate:', error);
-          }
+          
+        } catch (saveError) {
+          console.error('Apply: Error saving certificate to server:', saveError);
+          // Continue with local template even if we can't save to server
         }
       } else {
         console.log('Apply: No eventForCertificate with ID - not saving to database yet');
