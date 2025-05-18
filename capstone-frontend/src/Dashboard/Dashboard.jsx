@@ -46,6 +46,7 @@ import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
+import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -97,6 +98,7 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState('');
   const [activeTab, setActiveTab] = useState(0);
   const [mainTab, setMainTab] = useState(0);
+  const [attendanceTab, setAttendanceTab] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -111,6 +113,12 @@ export default function Dashboard() {
   const [certificateTemplate, setCertificateTemplate] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  
+  // Faculty attendance states
+  const [facultyLogs, setFacultyLogs] = useState([]);
+  const [loadingFacultyLogs, setLoadingFacultyLogs] = useState(false);
+  const [facultySearchDate, setFacultySearchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [facultyTimeFilter, setFacultyTimeFilter] = useState('today');
 
   // Default certificate template
   const defaultCertificate = {
@@ -452,6 +460,120 @@ export default function Dashboard() {
     }
   };
 
+  const handleAttendanceTabChange = (event, newValue) => {
+    setAttendanceTab(newValue);
+  };
+
+  const fetchFacultyLogs = (timeFilter) => {
+    setLoadingFacultyLogs(true);
+    const db = getDatabase();
+    let logsRef;
+    
+    // Apply time filter
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (timeFilter === 'today') {
+      const todayStr = today.toISOString().split('T')[0];
+      logsRef = query(
+        ref(db, 'timeLogs'),
+        orderByChild('date'),
+        startAt(todayStr),
+        endAt(todayStr + '\uf8ff')
+      );
+    } else if (timeFilter === 'week') {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      logsRef = query(
+        ref(db, 'timeLogs'),
+        orderByChild('date'),
+        startAt(weekStartStr),
+        endAt(today.toISOString().split('T')[0] + '\uf8ff')
+      );
+    } else if (timeFilter === 'month') {
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split('T')[0];
+      logsRef = query(
+        ref(db, 'timeLogs'),
+        orderByChild('date'),
+        startAt(monthStartStr),
+        endAt(today.toISOString().split('T')[0] + '\uf8ff')
+      );
+    } else if (timeFilter === 'custom' && facultySearchDate) {
+      logsRef = query(
+        ref(db, 'timeLogs'),
+        orderByChild('date'),
+        startAt(facultySearchDate),
+        endAt(facultySearchDate + '\uf8ff')
+      );
+    } else {
+      // Default to last 30 entries
+      logsRef = query(
+        ref(db, 'timeLogs'),
+        orderByChild('timestamp'),
+        limitToLast(30)
+      );
+    }
+    
+    onValue(logsRef, (snapshot) => {
+      const logs = [];
+      snapshot.forEach((childSnapshot) => {
+        const log = childSnapshot.val();
+        
+        // Only include faculty who have timed in (has a timeIn value)
+        if (log.timeIn) {
+          log.id = childSnapshot.key;
+          logs.push(log);
+        }
+      });
+      
+      // Sort logs by date and time (newest first)
+      logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      setFacultyLogs(logs);
+      setLoadingFacultyLogs(false);
+    }, (error) => {
+      console.error('Error fetching faculty logs:', error);
+      setLoadingFacultyLogs(false);
+    });
+  };
+
+  const handleFacultyTimeFilterChange = (filter) => {
+    setFacultyTimeFilter(filter);
+    fetchFacultyLogs(filter);
+  };
+
+  // Calculate duration between timeIn and timeOut
+  const calculateDuration = (timeIn, timeOut) => {
+    if (!timeIn || !timeOut) return 'N/A';
+    
+    const [timeInHours, timeInMinutes] = timeIn.replace(/\s?[AP]M/, '').split(':').map(Number);
+    const [timeOutHours, timeOutMinutes] = timeOut.replace(/\s?[AP]M/, '').split(':').map(Number);
+    
+    const timeInPeriod = timeIn.includes('PM') ? 'PM' : 'AM';
+    const timeOutPeriod = timeOut.includes('PM') ? 'PM' : 'AM';
+    
+    let startHours = timeInHours;
+    if (timeInPeriod === 'PM' && timeInHours !== 12) startHours += 12;
+    if (timeInPeriod === 'AM' && timeInHours === 12) startHours = 0;
+    
+    let endHours = timeOutHours;
+    if (timeOutPeriod === 'PM' && timeOutHours !== 12) endHours += 12;
+    if (timeOutPeriod === 'AM' && timeOutHours === 12) endHours = 0;
+    
+    const startMinutes = startHours * 60 + timeInMinutes;
+    const endMinutes = endHours * 60 + timeOutMinutes;
+    
+    if (endMinutes < startMinutes) return 'Invalid time';
+    
+    const durationMinutes = endMinutes - startMinutes;
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    return `${hours}h ${minutes}m`;
+  };
+
   const handleMainTabChange = (event, newValue) => {
     setMainTab(newValue);
     
@@ -460,7 +582,7 @@ export default function Dashboard() {
     
     // Load attendance data if switching to attendance tab
     if (newValue === 2) {
-      fetchAttendanceLogs();
+      fetchFacultyLogs(facultyTimeFilter);
     }
   };
 
@@ -991,39 +1113,46 @@ export default function Dashboard() {
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
             p: 3
           }}>
-            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Day-to-Day Attendance Logs</Typography>
+            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Faculty Day-to-Day Attendance</Typography>
             
+            {/* Faculty Logs Filter and Search Section */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-              <TextField
-                size="small"
-                variant="outlined"
-                placeholder="Search attendance logs..."
-                sx={{ width: '300px' }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Filter by:
+                </Typography>
+                <Button
+                  variant={facultyTimeFilter === 'today' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => handleFacultyTimeFilterChange('today')}
+                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={facultyTimeFilter === 'week' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => handleFacultyTimeFilterChange('week')}
+                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
+                >
+                  This Week
+                </Button>
+                <Button
+                  variant={facultyTimeFilter === 'month' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => handleFacultyTimeFilterChange('month')}
+                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
+                >
+                  This Month
+                </Button>
+              </Box>
               
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   type="date"
                   size="small"
-                  label="From"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '8px',
-                    },
-                  }}
-                />
-                <TextField
-                  type="date"
-                  size="small"
-                  label="To"
+                  value={facultySearchDate}
+                  onChange={(e) => setFacultySearchDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   sx={{ 
                     '& .MuiOutlinedInput-root': {
@@ -1035,6 +1164,10 @@ export default function Dashboard() {
                   variant="contained" 
                   color="primary"
                   size="small"
+                  onClick={() => {
+                    setFacultyTimeFilter('custom');
+                    fetchFacultyLogs('custom');
+                  }}
                   sx={{ 
                     textTransform: 'none', 
                     borderRadius: '8px',
@@ -1042,23 +1175,24 @@ export default function Dashboard() {
                     boxShadow: 'none',
                   }}
                 >
-                  Filter
+                  Search Date
                 </Button>
               </Box>
             </Box>
             
-            {loadingAttendance ? (
+            {/* Faculty Attendance Logs Table */}
+            {loadingFacultyLogs ? (
               <TableContainer>
                 <Table>
                   <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>User ID</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1066,34 +1200,41 @@ export default function Dashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
-            ) : attendanceLogs.length === 0 ? (
+            ) : facultyLogs.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography>No attendance logs found</Typography>
+                <Typography>No faculty attendance logs found</Typography>
               </Box>
             ) : (
               <TableContainer>
                 <Table>
                   <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>User ID</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {attendanceLogs.map((log) => (
+                    {facultyLogs.map((log) => (
                       <TableRow key={log.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                        <TableCell>{log.userId}</TableCell>
-                        <TableCell>{`${log.firstName} ${log.lastName}`}</TableCell>
-                        <TableCell>{log.eventName}</TableCell>
-                        <TableCell>{log.departmentName}</TableCell>
+                        <TableCell>{log.name}</TableCell>
+                        <TableCell>{log.date}</TableCell>
+                        <TableCell>{log.department}</TableCell>
                         <TableCell>{log.timeIn}</TableCell>
                         <TableCell>{log.timeOut || 'N/A'}</TableCell>
-                        <TableCell>{log.duration || 'N/A'}</TableCell>
+                        <TableCell>{log.timeOut ? calculateDuration(log.timeIn, log.timeOut) : 'N/A'}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={log.status === 'in' ? 'Timed In' : 'Timed Out'} 
+                            color={log.status === 'in' ? 'success' : 'default'}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
