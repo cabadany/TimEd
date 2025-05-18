@@ -432,8 +432,10 @@ export default function EventPage() {
       // If status changed, we need to make an API call and update state
       if (statusChanged) {
         needsUpdate = true;
-        // Make API call in the background - don't await
-        axios.put(`http://localhost:8080/api/events/update/${updatedEvent.eventId}`, updatedEvent)
+        // Make API call with minimal data using dedicated status endpoint
+        axios.put(`http://localhost:8080/api/events/updateStatus/${updatedEvent.eventId}`, {
+          status: updatedEvent.status
+        })
           .catch(error => console.error('Error updating event status:', error));
       }
       
@@ -449,8 +451,8 @@ export default function EventPage() {
         event.status === 'Ongoing'
       );
       
-      setOngoingEvents(ongoing);
-    }
+        setOngoingEvents(ongoing);
+      }
     
     // Using a stable dependency that won't change on each render
     // We'll use a JSON string of event IDs and their statuses
@@ -630,15 +632,15 @@ export default function EventPage() {
       // Only update if status actually changed
       if (eventToUpdate.status === newStatus) return;
       
-      // Create updatedEvent object for API call
-      const updatedEvent = {
-        ...eventToUpdate,
+      // Create minimal update object - don't include full event to avoid date issues
+      const statusUpdate = {
+        eventId: eventId,
         status: newStatus
       };
       
       // Update local state immediately for responsiveness
       setEvents(prev => prev.map(event => 
-        event.eventId === eventId ? updatedEvent : event
+        event.eventId === eventId ? { ...event, status: newStatus } : event
       ));
       
       // Also update ongoingEvents state if needed
@@ -646,7 +648,7 @@ export default function EventPage() {
         setOngoingEvents(prev => {
           // Check if already in the array to avoid duplicates
           if (!prev.some(e => e.eventId === eventId)) {
-            return [...prev, updatedEvent];
+            return [...prev, { ...eventToUpdate, status: newStatus }];
           }
           return prev;
         });
@@ -654,8 +656,10 @@ export default function EventPage() {
         setOngoingEvents(prev => prev.filter(event => event.eventId !== eventId));
       }
       
-      // Make API call to persist changes
-      await axios.put(`http://localhost:8080/api/events/update/${eventId}`, updatedEvent);
+      // Make API call to persist changes - use the dedicated status endpoint
+      await axios.put(`http://localhost:8080/api/events/updateStatus/${eventId}`, {
+        status: newStatus
+      });
       
       showSnackbar(`Event status updated to ${newStatus}`, 'success');
     } catch (error) {
@@ -674,13 +678,14 @@ export default function EventPage() {
       // Format duration from the separate edit components
       const formattedDuration = `${editDurationHours}:${editDurationMinutes}:${editDurationSeconds}`;
       
-      const updatedEvent = {
-        ...eventToEdit,
+      // Only send the fields that are being updated
+      const updatePayload = {
+        eventId: eventToEdit.eventId,
         status: editedStatus,
         duration: formattedDuration
       };
       
-      await axios.put(`http://localhost:8080/api/events/update/${eventToEdit.eventId}`, updatedEvent);
+      await axios.put(`http://localhost:8080/api/events/update/${eventToEdit.eventId}`, updatePayload);
       
       // Update local state
       setEvents(events.map(event => 

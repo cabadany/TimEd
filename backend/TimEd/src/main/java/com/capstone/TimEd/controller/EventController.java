@@ -153,4 +153,22 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+
+    @PutMapping("/updateStatus/{eventId}")
+    public ResponseEntity<?> updateEventStatus(
+            @PathVariable String eventId,
+            @RequestBody Map<String, String> statusUpdate
+    ) {
+        try {
+            String status = statusUpdate.get("status");
+            if (status == null) {
+                return ResponseEntity.status(400).body("Status is required");
+            }
+            
+            String result = eventService.updateEventStatus(eventId, status);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to update event status: " + e.getMessage());
+        }
+    }
 }

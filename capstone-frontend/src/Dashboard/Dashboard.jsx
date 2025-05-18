@@ -209,10 +209,8 @@ export default function Dashboard() {
         if (isNowBetweenStartAndEnd && event.status !== 'Ongoing') {
           processedEvent.status = 'Ongoing';
           
-          // Optionally update the backend about this status correction
-          // Using a background call to not block the UI
-          axios.put(`http://localhost:8080/api/events/update/${event.eventId}`, {
-            ...event,
+          // Update the backend about this status correction using the dedicated endpoint
+          axios.put(`http://localhost:8080/api/events/updateStatus/${event.eventId}`, {
             status: 'Ongoing'
           }).catch(error => {
             console.error('Failed to update event status:', error);
@@ -225,9 +223,8 @@ export default function Dashboard() {
            (event.status === 'Ongoing' || event.status === 'Upcoming')) {
           processedEvent.status = 'Ended';
           
-          // Optionally update the backend about this status correction
-          axios.put(`http://localhost:8080/api/events/update/${event.eventId}`, {
-            ...event,
+          // Update the backend about this status correction using the dedicated endpoint
+          axios.put(`http://localhost:8080/api/events/updateStatus/${event.eventId}`, {
             status: 'Ended'
           }).catch(error => {
             console.error('Failed to update event status:', error);
