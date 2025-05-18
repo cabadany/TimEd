@@ -283,12 +283,13 @@ class HomeActivity : AppCompatActivity() {
                             if (!imageUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
                                     .load(imageUrl)
+                                    .circleCrop()  // ✅ This line applies the circular transformation
                                     .into(profileImageView)
                                 return
                             }
                         }
                     }
-                    // No match or missing image
+                    // No matching TimeIn photo
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
 
