@@ -39,9 +39,103 @@ public class ExcuseLetterService {
         excuseLettersRef = dbRef.child("excuseLetters");
     }
 
+    // Helper method to validate excuse letter data
+    private ValidationResult validateExcuseLetter(ExcuseLetter letter) {
+        ValidationResult result = new ValidationResult();
+        
+        if (letter == null) {
+            result.addError("Excuse letter data cannot be null");
+            return result;
+        }
+        
+        // Check ID Number
+        if (letter.getIdNumber() == null || letter.getIdNumber().trim().isEmpty()) {
+            result.addError("ID Number is required");
+        } else if (letter.getIdNumber().trim().equalsIgnoreCase("N/A")) {
+            result.addError("ID Number cannot be 'N/A'");
+        }
+        
+        // Check First Name
+        if (letter.getFirstName() == null || letter.getFirstName().trim().isEmpty()) {
+            result.addError("First Name is required");
+        } else if (letter.getFirstName().trim().equalsIgnoreCase("Unknown")) {
+            result.addError("First Name cannot be 'Unknown'");
+        }
+        
+        // Check Date
+        if (letter.getDate() == null || letter.getDate().trim().isEmpty()) {
+            result.addError("Date is required");
+        } else {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                sdf.setLenient(false);
+                sdf.parse(letter.getDate().trim());
+            } catch (Exception e) {
+                result.addError("Invalid date format. Use dd/MM/yyyy");
+            }
+        }
+        
+        // Check Reason
+        if (letter.getReason() == null || letter.getReason().trim().isEmpty()) {
+            result.addError("Reason is required");
+        }
+        
+        // Check Details
+        if (letter.getDetails() == null || letter.getDetails().trim().isEmpty()) {
+            result.addError("Details are required");
+        } else if (letter.getDetails().trim().length() < 10) {
+            result.addError("Details must be at least 10 characters long");
+        }
+        
+        // Check Email
+        if (letter.getEmail() == null || letter.getEmail().trim().isEmpty()) {
+            result.addError("Email is required");
+        } else if (!letter.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            result.addError("Invalid email format");
+        }
+        
+        // Check User ID
+        if (letter.getUserId() == null || letter.getUserId().trim().isEmpty()) {
+            result.addError("User ID is required");
+        }
+        
+        return result;
+    }
+
+    // Helper class for validation results
+    private static class ValidationResult {
+        private final List<String> errors;
+        
+        public ValidationResult() {
+            this.errors = new ArrayList<>();
+        }
+        
+        public void addError(String error) {
+            errors.add(error);
+        }
+        
+        public boolean isValid() {
+            return errors.isEmpty();
+        }
+        
+        public List<String> getErrors() {
+            return errors;
+        }
+        
+        public String getErrorMessage() {
+            return String.join(", ", errors);
+        }
+    }
+
     // Add a new excuse letter
     public String addExcuseLetter(ExcuseLetter excuseLetter) {
         try {
+            // Validate the excuse letter
+            ValidationResult validationResult = validateExcuseLetter(excuseLetter);
+            if (!validationResult.isValid()) {
+                throw new IllegalArgumentException(validationResult.getErrorMessage());
+            }
+            
             // Set default status to "Pending" if not provided
             if (excuseLetter.getStatus() == null || excuseLetter.getStatus().isEmpty()) {
                 excuseLetter.setStatus("Pending");
@@ -52,13 +146,16 @@ public class ExcuseLetterService {
                 excuseLetter.setSubmittedAt(System.currentTimeMillis());
             }
             
-            // Generate a new push key
-            String key = excuseLettersRef.push().getKey();
+            // Get the user's reference
+            DatabaseReference userExcuseLettersRef = excuseLettersRef.child(excuseLetter.getUserId());
+            
+            // Generate a new push key under the user's reference
+            String key = userExcuseLettersRef.push().getKey();
             excuseLetter.setId(key);
             
-            // Save to Realtime Database
+            // Save to Realtime Database under the user's node
             CountDownLatch countDownLatch = new CountDownLatch(1);
-            excuseLettersRef.child(key).setValue(excuseLetter, (error, ref) -> {
+            userExcuseLettersRef.child(key).setValue(excuseLetter, (error, ref) -> {
                 countDownLatch.countDown();
             });
             
@@ -71,6 +168,8 @@ public class ExcuseLetterService {
             } else {
                 throw new RuntimeException("Timeout occurred while saving excuse letter");
             }
+        } catch (IllegalArgumentException e) {
+            return "Failed to add excuse letter: " + e.getMessage();
         } catch (Exception e) {
             System.err.println("Error adding excuse letter: " + e.getMessage());
             e.printStackTrace();
@@ -85,43 +184,51 @@ public class ExcuseLetterService {
         List<ExcuseLetter> allLetters = new ArrayList<>();
 
         try {
-            // Create query based on filters
-            Query query = excuseLettersRef;
-            
-            // Apply status filter if provided
-            if (statusFilter != null && !statusFilter.isEmpty() && !statusFilter.equalsIgnoreCase("All")) {
-                query = query.orderByChild("status").equalTo(statusFilter);
-            }
-            
-            // Fetch data from Realtime Database
             CountDownLatch countDownLatch = new CountDownLatch(1);
-            query.addListenerForSingleValueEvent(new ValueEventListener() {
+            
+            excuseLettersRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                        ExcuseLetter letter = snapshot.getValue(ExcuseLetter.class);
-                        if (letter != null) {
-                            // Make sure ID is set (may not be included in the value)
-                            letter.setId(snapshot.getKey());
-                            
-                            // Apply date filter manually
-                            if (startDateStr != null && !startDateStr.isEmpty() && endDateStr != null && !endDateStr.isEmpty()) {
-                                try {
-                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                                    Date startDate = sdf.parse(startDateStr);
-                                    Date endDate = sdf.parse(endDateStr);
-                                    long startDateMs = startDate.getTime();
-                                    long endDateMs = endDate.getTime() + (24 * 60 * 60 * 1000 - 1); // End of the end date
+                    for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
+                        String userId = userSnapshot.getKey();
+                        
+                        for (DataSnapshot letterSnapshot : userSnapshot.getChildren()) {
+                            ExcuseLetter letter = letterSnapshot.getValue(ExcuseLetter.class);
+                            if (letter != null) {
+                                ValidationResult validationResult = validateExcuseLetter(letter);
+                                if (validationResult.isValid()) {
+                                    letter.setId(letterSnapshot.getKey());
+                                    letter.setUserId(userId);
                                     
-                                    if (letter.getSubmittedAt() >= startDateMs && letter.getSubmittedAt() <= endDateMs) {
-                                        allLetters.add(letter);
+                                    // Apply status filter if provided
+                                    if (statusFilter == null || statusFilter.isEmpty() || 
+                                        statusFilter.equalsIgnoreCase("All") || 
+                                        letter.getStatus().equals(statusFilter)) {
+                                        
+                                        // Apply date filter if provided
+                                        if (startDateStr != null && !startDateStr.isEmpty() && 
+                                            endDateStr != null && !endDateStr.isEmpty()) {
+                                            try {
+                                                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                                                Date startDate = sdf.parse(startDateStr);
+                                                Date endDate = sdf.parse(endDateStr);
+                                                long startDateMs = startDate.getTime();
+                                                long endDateMs = endDate.getTime() + (24 * 60 * 60 * 1000 - 1);
+                                                
+                                                if (letter.getSubmittedAt() >= startDateMs && 
+                                                    letter.getSubmittedAt() <= endDateMs) {
+                                                    allLetters.add(letter);
+                                                }
+                                            } catch (Exception e) {
+                                                System.err.println("Error parsing date filter: " + e.getMessage());
+                                            }
+                                        } else {
+                                            allLetters.add(letter);
+                                        }
                                     }
-                                } catch (Exception e) {
-                                    System.err.println("Error parsing date filter: " + e.getMessage());
-                                    allLetters.add(letter);
+                                } else {
+                                    System.err.println("Invalid excuse letter found: " + validationResult.getErrorMessage());
                                 }
-                            } else {
-                                allLetters.add(letter);
                             }
                         }
                     }
@@ -135,7 +242,6 @@ public class ExcuseLetterService {
                 }
             });
             
-            // Wait for data retrieval
             countDownLatch.await(30, TimeUnit.SECONDS);
             
             // Sort by submission time (newest first)
@@ -146,42 +252,10 @@ public class ExcuseLetterService {
             int startIndex = page * size;
             int endIndex = Math.min(startIndex + size, totalSize);
             
-            System.out.println("Total letters found: " + totalSize);
-            
             if (startIndex < totalSize) {
                 List<ExcuseLetter> paginatedLetters = allLetters.subList(startIndex, endIndex);
                 
                 for (ExcuseLetter letter : paginatedLetters) {
-                    // For letters from Realtime DB, we already have firstName and other user details
-                    String userName = letter.getFirstName() != null ? letter.getFirstName() : "Unknown";
-                    
-                    if (userName.equals("Unknown") && letter.getUserId() != null && !letter.getUserId().isEmpty()) {
-                        try {
-                            // Try to get user from Firestore if needed
-                            DocumentSnapshot userDoc = usersCollection.document(letter.getUserId()).get().get();
-                            if (userDoc.exists()) {
-                                User user = userDoc.toObject(User.class);
-                                userName = user.getFirstName() + " " + user.getLastName();
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Error fetching user: " + e.getMessage());
-                        }
-                    }
-                    
-                    // Get event information if needed
-                    String eventName = "";
-                    if (letter.getEventId() != null && !letter.getEventId().isEmpty()) {
-                        try {
-                            DocumentSnapshot eventDoc = eventsCollection.document(letter.getEventId()).get().get();
-                            if (eventDoc.exists()) {
-                                Event event = eventDoc.toObject(Event.class);
-                                eventName = event.getEventName();
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Error fetching event: " + e.getMessage());
-                        }
-                    }
-                    
                     ExcuseLetterDto dto = new ExcuseLetterDto(
                         letter.getId(),
                         letter.getUserId(),
@@ -191,8 +265,8 @@ public class ExcuseLetterService {
                         letter.getReason(),
                         letter.getStatus(),
                         letter.getSubmittedAt(),
-                        userName,
-                        eventName,
+                        letter.getFirstName(),
+                        "", // eventName is not used in the new structure
                         letter.getRejectionReason(),
                         letter.getAttachmentUrl(),
                         letter.getDepartment(),
@@ -212,66 +286,25 @@ public class ExcuseLetterService {
         return excuseLetterDtos;
     }
 
-    // Get total count of excuse letters (for pagination)
-    public int getTotalExcuseLetterCount(String statusFilter) throws ExecutionException, InterruptedException {
-        try {
-            // Create a latch to wait for the async operation
-            CountDownLatch countDownLatch = new CountDownLatch(1);
-            final int[] count = {0};
-            
-            // Query to get count
-            Query query = excuseLettersRef;
-            if (statusFilter != null && !statusFilter.isEmpty() && !statusFilter.equalsIgnoreCase("All")) {
-                query = query.orderByChild("status").equalTo(statusFilter);
-            }
-            
-            query.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    count[0] = (int) dataSnapshot.getChildrenCount();
-                    countDownLatch.countDown();
-                }
-
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    System.err.println("Error getting count: " + databaseError.getMessage());
-                    countDownLatch.countDown();
-                }
-            });
-            
-            // Wait for data retrieval
-            countDownLatch.await(30, TimeUnit.SECONDS);
-            return count[0];
-        } catch (Exception e) {
-            System.err.println("Error getting total excuse letter count: " + e.getMessage());
-            return 0;
-        }
-    }
-
-    // Get excuse letter by ID
-    public ExcuseLetter getExcuseLetterById(String id) throws ExecutionException, InterruptedException {
-        if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("Excuse letter ID cannot be null or empty");
+    // Get excuse letter by ID and userId
+    public ExcuseLetter getExcuseLetterById(String userId, String letterId) throws ExecutionException, InterruptedException {
+        if (userId == null || userId.trim().isEmpty() || letterId == null || letterId.trim().isEmpty()) {
+            throw new IllegalArgumentException("User ID and Letter ID cannot be null or empty");
         }
         
         try {
             final ExcuseLetter[] letter = {null};
             CountDownLatch countDownLatch = new CountDownLatch(1);
             
-            System.out.println("Fetching excuse letter with ID: " + id);
-            excuseLettersRef.child(id).addListenerForSingleValueEvent(new ValueEventListener() {
+            excuseLettersRef.child(userId).child(letterId).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         letter[0] = dataSnapshot.getValue(ExcuseLetter.class);
                         if (letter[0] != null) {
                             letter[0].setId(dataSnapshot.getKey());
-                            System.out.println("Found letter with status: " + letter[0].getStatus());
-                        } else {
-                            System.err.println("Error mapping data to ExcuseLetter object, dataSnapshot value: " + dataSnapshot.getValue());
+                            letter[0].setUserId(userId);
                         }
-                    } else {
-                        System.err.println("No data found for letter ID: " + id);
                     }
                     countDownLatch.countDown();
                 }
@@ -283,63 +316,32 @@ public class ExcuseLetterService {
                 }
             });
             
-            // Wait for data retrieval
             countDownLatch.await(30, TimeUnit.SECONDS);
-            
-            if (letter[0] == null) {
-                System.err.println("No excuse letter found with ID: " + id);
-            }
-            
             return letter[0];
         } catch (Exception e) {
             System.err.println("Error retrieving excuse letter: " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Failed to retrieve excuse letter: " + e.getMessage(), e);
         }
     }
 
     // Update the status of an excuse letter
-    public ExcuseLetter updateExcuseLetterStatus(String id, String status, String rejectionReason) throws ExecutionException, InterruptedException {
-        // Validate inputs
-        if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("Excuse letter ID cannot be null or empty");
+    public ExcuseLetter updateExcuseLetterStatus(String userId, String letterId, String status, String rejectionReason) 
+            throws ExecutionException, InterruptedException {
+        if (userId == null || userId.trim().isEmpty() || letterId == null || letterId.trim().isEmpty()) {
+            throw new IllegalArgumentException("User ID and Letter ID cannot be null or empty");
         }
         
         if (status == null || status.trim().isEmpty()) {
             throw new IllegalArgumentException("Status cannot be null or empty");
         }
         
-        // Validate status
         if (!status.equals("Pending") && !status.equals("Approved") && !status.equals("Rejected")) {
-            throw new IllegalArgumentException("Invalid status. Status must be Pending, Approved, or Rejected.");
+            throw new IllegalArgumentException("Invalid status. Must be Pending, Approved, or Rejected.");
         }
         
         try {
-            System.out.println("Starting status update for letter ID: " + id + ", new status: " + status);
-            
-            // First get the current letter
-            ExcuseLetter letter = getExcuseLetterById(id);
-            
-            if (letter == null) {
-                throw new IllegalArgumentException("Excuse letter with ID " + id + " not found.");
-            }
-            
-            System.out.println("Current letter status: " + letter.getStatus() + ", updating to: " + status);
-            
-            // Update fields
-            letter.setStatus(status);
-            
-            // Add rejection reason if status is Rejected
-            if ("Rejected".equals(status) && rejectionReason != null && !rejectionReason.trim().isEmpty()) {
-                letter.setRejectionReason(rejectionReason);
-                System.out.println("Setting rejection reason: " + rejectionReason);
-            } else if (!"Rejected".equals(status)) {
-                // Clear any existing rejection reason if not rejected
-                letter.setRejectionReason(null);
-            }
-            
             // Update in Realtime Database
-            CountDownLatch countDownLatch = new CountDownLatch(1);
+            DatabaseReference letterRef = excuseLettersRef.child(userId).child(letterId);
             Map<String, Object> updates = new HashMap<>();
             updates.put("status", status);
             
@@ -349,48 +351,33 @@ public class ExcuseLetterService {
                 updates.put("rejectionReason", null);
             }
             
-            // Track errors in the callback
-            final DatabaseError[] updateError = {null};
-            
-            excuseLettersRef.child(id).updateChildren(updates, (error, ref) -> {
-                if (error != null) {
-                    System.err.println("Error in updateChildren callback: " + error.getMessage());
-                    updateError[0] = error;
-                } else {
-                    System.out.println("Successfully updated status for letter ID: " + id);
-                }
+            CountDownLatch countDownLatch = new CountDownLatch(1);
+            letterRef.updateChildren(updates, (error, ref) -> {
                 countDownLatch.countDown();
             });
             
-            // Wait for operation to complete
             boolean completed = countDownLatch.await(30, TimeUnit.SECONDS);
             
             if (!completed) {
                 throw new RuntimeException("Timeout occurred while updating excuse letter status");
             }
             
-            if (updateError[0] != null) {
-                throw new RuntimeException("Database error: " + updateError[0].getMessage());
-            }
-            
             // Return the updated letter
-            return getExcuseLetterById(id);
+            return getExcuseLetterById(userId, letterId);
         } catch (Exception e) {
             System.err.println("Error updating excuse letter: " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Failed to update excuse letter status: " + e.getMessage(), e);
         }
     }
 
     // Delete an excuse letter
-    public String deleteExcuseLetter(String id) {
+    public String deleteExcuseLetter(String userId, String letterId) {
         try {
             CountDownLatch countDownLatch = new CountDownLatch(1);
-            excuseLettersRef.child(id).removeValue((error, ref) -> {
+            excuseLettersRef.child(userId).child(letterId).removeValue((error, ref) -> {
                 countDownLatch.countDown();
             });
             
-            // Wait for operation to complete
             boolean completed = countDownLatch.await(30, TimeUnit.SECONDS);
             
             if (completed) {
@@ -410,53 +397,41 @@ public class ExcuseLetterService {
         
         try {
             CountDownLatch countDownLatch = new CountDownLatch(1);
-            Query query = excuseLettersRef.orderByChild("userId").equalTo(userId);
             
-            query.addListenerForSingleValueEvent(new ValueEventListener() {
+            excuseLettersRef.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                        ExcuseLetter letter = snapshot.getValue(ExcuseLetter.class);
+                    for (DataSnapshot letterSnapshot : dataSnapshot.getChildren()) {
+                        ExcuseLetter letter = letterSnapshot.getValue(ExcuseLetter.class);
                         if (letter != null) {
-                            letter.setId(snapshot.getKey());
-                            
-                            // For letters from Realtime DB, we already have firstName and other user details
-                            String userName = letter.getFirstName() != null ? letter.getFirstName() : "Unknown";
-                            
-                            // Get event information if needed
-                            String eventName = "";
-                            if (letter.getEventId() != null && !letter.getEventId().isEmpty()) {
-                                try {
-                                    DocumentSnapshot eventDoc = eventsCollection.document(letter.getEventId()).get().get();
-                                    if (eventDoc.exists()) {
-                                        Event event = eventDoc.toObject(Event.class);
-                                        eventName = event.getEventName();
-                                    }
-                                } catch (Exception e) {
-                                    System.err.println("Error fetching event: " + e.getMessage());
-                                }
+                            ValidationResult validationResult = validateExcuseLetter(letter);
+                            if (validationResult.isValid()) {
+                                letter.setId(letterSnapshot.getKey());
+                                letter.setUserId(userId);
+                                
+                                ExcuseLetterDto dto = new ExcuseLetterDto(
+                                    letter.getId(),
+                                    letter.getUserId(),
+                                    letter.getEventId(),
+                                    letter.getDate(),
+                                    letter.getDetails(),
+                                    letter.getReason(),
+                                    letter.getStatus(),
+                                    letter.getSubmittedAt(),
+                                    letter.getFirstName(),
+                                    "", // eventName is not used in the new structure
+                                    letter.getRejectionReason(),
+                                    letter.getAttachmentUrl(),
+                                    letter.getDepartment(),
+                                    letter.getEmail(),
+                                    letter.getFirstName(),
+                                    letter.getIdNumber()
+                                );
+                                
+                                userLetters.add(dto);
+                            } else {
+                                System.err.println("Invalid excuse letter found: " + validationResult.getErrorMessage());
                             }
-                            
-                            ExcuseLetterDto dto = new ExcuseLetterDto(
-                                letter.getId(),
-                                letter.getUserId(),
-                                letter.getEventId(),
-                                letter.getDate(),
-                                letter.getDetails(),
-                                letter.getReason(),
-                                letter.getStatus(),
-                                letter.getSubmittedAt(),
-                                userName,
-                                eventName,
-                                letter.getRejectionReason(),
-                                letter.getAttachmentUrl(),
-                                letter.getDepartment(),
-                                letter.getEmail(),
-                                letter.getFirstName(),
-                                letter.getIdNumber()
-                            );
-                            
-                            userLetters.add(dto);
                         }
                     }
                     countDownLatch.countDown();
@@ -469,7 +444,6 @@ public class ExcuseLetterService {
                 }
             });
             
-            // Wait for data retrieval
             countDownLatch.await(30, TimeUnit.SECONDS);
             
             // Sort by submission time (newest first)

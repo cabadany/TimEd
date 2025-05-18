@@ -24,7 +24,23 @@ public class ExcuseLetterController {
     public ResponseEntity<Map<String, Object>> createExcuseLetter(@RequestBody ExcuseLetter excuseLetter) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // Set required fields if not present in the request
+            // Validate required fields
+            if (excuseLetter.getUserId() == null || excuseLetter.getUserId().trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "User ID is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // Validate ID Number
+            if (excuseLetter.getIdNumber() == null || 
+                excuseLetter.getIdNumber().trim().isEmpty() || 
+                excuseLetter.getIdNumber().trim().equalsIgnoreCase("N/A")) {
+                response.put("success", false);
+                response.put("message", "Valid ID Number is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // Set default values for optional fields
             if (excuseLetter.getAttachmentUrl() == null) {
                 excuseLetter.setAttachmentUrl("");
             }
@@ -63,21 +79,11 @@ public class ExcuseLetterController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            System.out.println("Fetching excuse letters with parameters:");
-            System.out.println("Page: " + page);
-            System.out.println("Size: " + size);
-            System.out.println("Status: " + status);
-            System.out.println("Start Date: " + startDate);
-            System.out.println("End Date: " + endDate);
-            
             List<ExcuseLetterDto> excuseLetters = excuseLetterService.getPaginatedExcuseLetters(page, size, status, startDate, endDate);
-            int totalCount = excuseLetterService.getTotalExcuseLetterCount(status);
-            
-            System.out.println("Found " + excuseLetters.size() + " letters out of total " + totalCount);
             
             response.put("content", excuseLetters);
-            response.put("totalElements", totalCount);
-            response.put("totalPages", (int) Math.ceil((double) totalCount / size));
+            response.put("totalElements", excuseLetters.size());
+            response.put("totalPages", (int) Math.ceil((double) excuseLetters.size() / size));
             response.put("currentPage", page);
             
             return ResponseEntity.ok(response);
@@ -89,10 +95,12 @@ public class ExcuseLetterController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getExcuseLetterById(@PathVariable String id) {
+    @GetMapping("/{userId}/{letterId}")
+    public ResponseEntity<?> getExcuseLetterById(
+            @PathVariable String userId,
+            @PathVariable String letterId) {
         try {
-            ExcuseLetter excuseLetter = excuseLetterService.getExcuseLetterById(id);
+            ExcuseLetter excuseLetter = excuseLetterService.getExcuseLetterById(userId, letterId);
             if (excuseLetter != null) {
                 return ResponseEntity.ok(excuseLetter);
             } else {
@@ -105,22 +113,22 @@ public class ExcuseLetterController {
         }
     }
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/{userId}/{letterId}/status")
     public ResponseEntity<?> updateExcuseLetterStatus(
-            @PathVariable String id,
+            @PathVariable String userId,
+            @PathVariable String letterId,
             @RequestParam String status,
             @RequestParam(required = false) String rejectionReason) {
         try {
-            // Log the request details for troubleshooting
-            System.out.println("Updating excuse letter status - ID: " + id + ", New Status: " + status);
-            if (rejectionReason != null && !rejectionReason.isEmpty()) {
-                System.out.println("Rejection reason provided: " + rejectionReason);
+            // Validate inputs
+            if (userId == null || userId.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "User ID cannot be empty"));
             }
             
-            // Validate inputs
-            if (id == null || id.trim().isEmpty()) {
+            if (letterId == null || letterId.trim().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("message", "Excuse letter ID cannot be empty"));
+                        .body(Map.of("message", "Letter ID cannot be empty"));
             }
             
             if (status == null || status.trim().isEmpty()) {
@@ -136,31 +144,16 @@ public class ExcuseLetterController {
             
             // Check if rejection reason is provided for rejected status
             if ("Rejected".equals(status) && (rejectionReason == null || rejectionReason.trim().isEmpty())) {
-                System.out.println("Warning: Rejection reason not provided for rejected letter");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "Rejection reason is required when status is Rejected"));
             }
             
-            // First verify the excuse letter exists
-            ExcuseLetter existingLetter = excuseLetterService.getExcuseLetterById(id);
-            if (existingLetter == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("message", "Excuse letter with ID " + id + " not found"));
-            }
-            
-            // Try to update
-            ExcuseLetter updatedLetter = excuseLetterService.updateExcuseLetterStatus(id, status, rejectionReason);
+            // Update the status
+            ExcuseLetter updatedLetter = excuseLetterService.updateExcuseLetterStatus(userId, letterId, status, rejectionReason);
             
             if (updatedLetter == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("message", "Failed to update excuse letter - null result returned"));
-            }
-            
-            // Check if status was actually updated
-            if (!updatedLetter.getStatus().equals(status)) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of(
-                            "message", "Status update may have failed - expected: " + status + ", actual: " + updatedLetter.getStatus(),
-                            "letter", updatedLetter
-                        ));
             }
             
             // Return the updated letter
@@ -170,25 +163,21 @@ public class ExcuseLetterController {
             response.put("letter", updatedLetter);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            // For validation errors
-            System.err.println("Validation error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            // Log the full stack trace for server-side debugging
-            System.err.println("Error updating excuse letter status: " + e.getMessage());
-            e.printStackTrace();
-            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Error updating excuse letter status: " + e.getMessage()));
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteExcuseLetter(@PathVariable String id) {
+    @DeleteMapping("/{userId}/{letterId}")
+    public ResponseEntity<Map<String, Object>> deleteExcuseLetter(
+            @PathVariable String userId,
+            @PathVariable String letterId) {
         Map<String, Object> response = new HashMap<>();
         try {
-            String result = excuseLetterService.deleteExcuseLetter(id);
+            String result = excuseLetterService.deleteExcuseLetter(userId, letterId);
             if (result.contains("successfully")) {
                 response.put("success", true);
                 response.put("message", result);

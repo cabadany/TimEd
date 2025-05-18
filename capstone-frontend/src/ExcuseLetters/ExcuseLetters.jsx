@@ -27,7 +27,8 @@ import {
   DialogTitle,
   Alert,
   Snackbar,
-  Stack
+  Stack,
+  FormHelperText
 } from '@mui/material';
 import { 
   MoreVert, 
@@ -38,7 +39,7 @@ import {
   AccessTime,
   Add
 } from '@mui/icons-material';
-import axios from 'axios';
+import { getDatabase, ref, onValue, query, orderByChild, get, update, push, child } from 'firebase/database';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -76,76 +77,98 @@ const ExcuseLetters = () => {
     reason: "Illness/Medical"
   });
 
+  // Function to validate letter data for display
+  const isValidLetterForDisplay = (letter) => {
+    return (
+      letter &&
+      letter.firstName && 
+      letter.firstName.trim() !== '' && 
+      letter.firstName.toLowerCase() !== 'unknown' &&
+      letter.idNumber && 
+      letter.idNumber.trim() !== '' && 
+      letter.idNumber.toLowerCase() !== 'n/a' &&
+      letter.date && 
+      letter.date.trim() !== '' &&
+      letter.reason && 
+      letter.reason.trim() !== '' &&
+      letter.details && 
+      letter.details.trim() !== '' &&
+      letter.submittedAt &&
+      letter.status
+    );
+  };
+
   // Fetch excuse letters
   const fetchExcuseLetters = async (pageNumber = page, pageSize = rowsPerPage) => {
     try {
       setLoading(true);
-      let url = `http://localhost:8080/api/excuse-letters/getAll?page=${pageNumber}&size=${pageSize}`;
+      const db = getDatabase();
+      const excuseLettersRef = ref(db, 'excuseLetters');
       
-      if (statusFilter && statusFilter !== 'All') {
-        url += `&status=${statusFilter}`;
-      }
+      // Get all excuse letters
+      const snapshot = await get(excuseLettersRef);
       
-      if (startDate && endDate) {
-        const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-        const formattedEndDate = format(endDate, 'yyyy-MM-dd');
-        url += `&startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
-      }
-      
-      console.log(`Fetching excuse letters from: ${url}`);
-      
-      try {
-        const response = await axios.get(url);
-        console.log('API Response:', response.data);
+      if (snapshot.exists()) {
+        const allLetters = [];
         
-        // Make sure content exists and is an array
-        const letterContent = Array.isArray(response.data.content) ? response.data.content : [];
-        setLetters(letterContent);
-        setTotalElements(response.data.totalElements || 0);
-      } catch (apiError) {
-        console.error("API Error:", apiError);
-        
-        // If API fails, check if we should display a mock placeholder
-        if (apiError.code === 'ERR_NETWORK' || apiError.response?.status === 504) {
-          // Mock data for testing UI
-          const mockLetters = [
-            {
-              id: "mock-1",
-              userId: "G1o0sCIanMSxIg9I5s4WfAxd9yD2",
-              userName: "Test User",
-              eventId: "0KP7a1qNMuFZ9jbYArXl",
-              eventName: "Sample Event",
-              date: "5/18/2025",
-              details: "This is a mock excuse letter for testing",
-              reason: "Family Emergency",
-              status: "Pending",
-              submittedAt: Date.now()
-            }
-          ];
-          setLetters(mockLetters);
-          setTotalElements(1);
+        // Convert the nested structure into a flat array
+        snapshot.forEach((userSnapshot) => {
+          const userId = userSnapshot.key;
           
-          setSnackbar({
-            open: true,
-            message: "Backend unavailable - showing mock data",
-            severity: 'warning'
+          userSnapshot.forEach((letterSnapshot) => {
+            const letter = letterSnapshot.val();
+            // Only add valid letters
+            if (isValidLetterForDisplay(letter)) {
+              allLetters.push({
+                id: letterSnapshot.key,
+                userId: userId,
+                ...letter
+              });
+            }
           });
-        } else {
-          // For other errors, show error message and empty the letters
-          setLetters([]);
-          setSnackbar({
-            open: true,
-            message: `Failed to load excuse letters: ${apiError.response?.data?.message || apiError.message}`,
-            severity: 'error'
+        });
+        
+        // Sort letters by submittedAt in descending order
+        allLetters.sort((a, b) => b.submittedAt - a.submittedAt);
+        
+        // Filter by status if needed
+        let filteredLetters = allLetters;
+        if (statusFilter && statusFilter !== 'All') {
+          filteredLetters = allLetters.filter(letter => letter.status === statusFilter);
+        }
+        
+        // Filter by date if needed
+        if (startDate && endDate) {
+          const startTimestamp = startDate.getTime();
+          const endTimestamp = endDate.getTime();
+          filteredLetters = filteredLetters.filter(letter => {
+            const letterTimestamp = letter.submittedAt;
+            return letterTimestamp >= startTimestamp && letterTimestamp <= endTimestamp;
           });
         }
+        
+        // Handle pagination
+        const start = pageNumber * pageSize;
+        const paginatedLetters = filteredLetters.slice(start, start + pageSize);
+        
+        setLetters(paginatedLetters);
+        setTotalElements(filteredLetters.length);
+      } else {
+        setLetters([]);
+        setTotalElements(0);
       }
       
       setLoading(false);
     } catch (error) {
-      console.error("Error in fetchExcuseLetters:", error);
+      console.error("Error fetching excuse letters:", error);
       setLoading(false);
+      setSnackbar({
+        open: true,
+        message: `Failed to load excuse letters: ${error.message}`,
+        severity: 'error'
+      });
       setLetters([]);
+      setTotalElements(0);
     }
   };
 
@@ -159,10 +182,13 @@ const ExcuseLetters = () => {
     fetchExcuseLetters();
   }, [page, rowsPerPage, statusFilter, startDate, endDate]);
 
-  // Format date for display
+  // Update the formatDate function to handle invalid dates better
   const formatDate = (timestamp) => {
+    if (!timestamp) return 'No date';
     try {
-      return format(new Date(timestamp), 'MMM dd, yyyy hh:mm a');
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      return format(date, 'MMM dd, yyyy hh:mm a');
     } catch (error) {
       return 'Invalid date';
     }
@@ -230,10 +256,8 @@ const ExcuseLetters = () => {
 
   // Update letter status
   const handleUpdateStatus = async () => {
-    console.log(`Starting status update with letter ID: ${currentLetterId}, status: ${newStatus}`);
-    
-    if (!currentLetterId) {
-      console.error("No letter ID selected for status update");
+    if (!currentLetterId || !selectedLetter) {
+      console.error("No letter selected for status update");
       setSnackbar({
         open: true,
         message: "Error: No letter selected",
@@ -244,74 +268,40 @@ const ExcuseLetters = () => {
     }
 
     try {
-      console.log(`Updating excuse letter ${currentLetterId} to status: ${newStatus}`);
+      const db = getDatabase();
+      const letterRef = ref(db, `excuseLetters/${selectedLetter.userId}/${currentLetterId}`);
       
-      // Include rejection reason if status is 'Rejected'
-      const url = `http://localhost:8080/api/excuse-letters/${currentLetterId}/status?status=${newStatus}${newStatus === 'Rejected' && rejectionReason ? '&rejectionReason=' + encodeURIComponent(rejectionReason) : ''}`;
+      // Update the status
+      const updates = {
+        status: newStatus
+      };
       
-      const response = await axios.put(
-        url,
-        null,  // No body needed for this request
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        }
-      );
-      
-      console.log("Status update response:", response.data);
-      
-      // Check if the response has the expected success property
-      if (response.data && response.data.success === true) {
-        // Refresh the data
-        fetchExcuseLetters();
-        
-        // Close the dialog
-        setOpenStatusDialog(false);
-        
-        // Show success message
-        setSnackbar({
-          open: true,
-          message: response.data.message || `Status updated to ${newStatus}`,
-          severity: 'success'
-        });
-      } else {
-        // Handle unexpected success response format
-        console.warn("Unexpected response format:", response.data);
-        
-        // Still treat as success if we got a 200 OK
-        fetchExcuseLetters();
-        setOpenStatusDialog(false);
-        setSnackbar({
-          open: true,
-          message: `Status updated to ${newStatus}`,
-          severity: 'success'
-        });
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      
-      // Show more detailed error information
-      let errorMessage = 'Failed to update status';
-      if (error.response) {
-        // The server responded with a status code outside the 2xx range
-        errorMessage = `Error ${error.response.status}: ${error.response.data?.message || error.message}`;
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      } else if (error.request) {
-        // The request was made but no response was received
-        errorMessage = 'No response received from server';
-        console.error('Request:', error.request);
+      // Add rejection reason if status is 'Rejected'
+      if (newStatus === 'Rejected' && rejectionReason) {
+        updates.rejectionReason = rejectionReason;
       }
       
+      await update(letterRef, updates);
+      
+      // Refresh the data
+      fetchExcuseLetters();
+      
+      // Close the dialog
+      setOpenStatusDialog(false);
+      
+      // Show success message
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: `Status updated to ${newStatus}`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      setSnackbar({
+        open: true,
+        message: `Failed to update status: ${error.message}`,
         severity: 'error'
       });
-      
-      // Still close the dialog
       setOpenStatusDialog(false);
     }
   };
@@ -370,42 +360,130 @@ const ExcuseLetters = () => {
     }));
   };
 
+  // Function to validate excuse letter data
+  const validateExcuseLetter = (letter) => {
+    const errors = [];
+    
+    // Check User ID
+    if (!letter.userId || letter.userId.trim() === '') {
+      errors.push('User ID is required');
+    }
+    
+    // Check ID Number
+    if (!letter.idNumber || letter.idNumber.trim() === '') {
+      errors.push('ID Number is required');
+    } else if (letter.idNumber.trim().toLowerCase() === 'n/a') {
+      errors.push('ID Number cannot be "N/A"');
+    }
+    
+    // Check First Name
+    if (!letter.firstName || letter.firstName.trim() === '') {
+      errors.push('First Name is required');
+    } else if (letter.firstName.trim().toLowerCase() === 'unknown') {
+      errors.push('First Name cannot be "Unknown"');
+    }
+    
+    // Check Date
+    if (!letter.date || letter.date.trim() === '') {
+      errors.push('Date is required');
+    } else {
+      // Validate date format (dd/MM/yyyy)
+      const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      if (!dateRegex.test(letter.date.trim())) {
+        errors.push('Invalid date format. Use dd/MM/yyyy');
+      } else {
+        const [, day, month, year] = letter.date.match(dateRegex);
+        const date = new Date(year, month - 1, day);
+        if (isNaN(date.getTime()) || date.getDate() !== parseInt(day) || 
+            date.getMonth() !== parseInt(month) - 1 || date.getFullYear() !== parseInt(year)) {
+          errors.push('Invalid date');
+        }
+      }
+    }
+    
+    // Check Reason
+    if (!letter.reason || letter.reason.trim() === '') {
+      errors.push('Reason is required');
+    }
+    
+    // Check Details
+    if (!letter.details || letter.details.trim() === '') {
+      errors.push('Details are required');
+    } else if (letter.details.trim().length < 10) {
+      errors.push('Details must be at least 10 characters long');
+    }
+    
+    // Check Email
+    if (!letter.email || letter.email.trim() === '') {
+      errors.push('Email is required');
+    } else {
+      const emailRegex = /^[A-Za-z0-9+_.-]+@(.+)$/;
+      if (!emailRegex.test(letter.email.trim())) {
+        errors.push('Invalid email format');
+      }
+    }
+    
+    return errors;
+  };
+
   // Function to create a new excuse letter
   const handleCreateLetter = async () => {
     try {
       setLoading(true);
       
-      const payload = {
-        ...newLetter,
-        submittedAt: Date.now()
-      };
-      
-      const response = await axios.post('http://localhost:8080/api/excuse-letters/create', payload);
-      
-      if (response.data.success) {
+      // Validate the letter data
+      const validationErrors = validateExcuseLetter(newLetter);
+      if (validationErrors.length > 0) {
         setSnackbar({
           open: true,
-          message: 'Excuse letter created successfully',
-          severity: 'success'
+          message: validationErrors.join(', '),
+          severity: 'error'
         });
-        
-        // Refresh the list
-        fetchExcuseLetters();
-        
-        // Close the dialog
-        setOpenCreateDialog(false);
-        
-        // Reset the form
-        setNewLetter({
-          userId: "G1o0sCIanMSxIg9I5s4WfAxd9yD2",
-          eventId: "",
-          date: new Date().toLocaleDateString(),
-          details: "",
-          reason: "Illness/Medical"
-        });
-      } else {
-        throw new Error(response.data.message || 'Failed to create excuse letter');
+        setLoading(false);
+        return;
       }
+      
+      const db = getDatabase();
+      const letterRef = ref(db, `excuseLetters/${newLetter.userId}`);
+      
+      // Create new letter data
+      const letterData = {
+        ...newLetter,
+        status: 'Pending',
+        submittedAt: Date.now(),
+        attachmentUrl: newLetter.attachmentUrl || '',
+        department: newLetter.department || 'N/A'
+      };
+      
+      // Push the new letter to generate a unique key
+      const newLetterRef = push(letterRef);
+      await update(newLetterRef, letterData);
+      
+      setSnackbar({
+        open: true,
+        message: 'Excuse letter created successfully',
+        severity: 'success'
+      });
+      
+      // Refresh the list
+      fetchExcuseLetters();
+      
+      // Close the dialog
+      setOpenCreateDialog(false);
+      
+      // Reset the form
+      setNewLetter({
+        userId: "G1o0sCIanMSxIg9I5s4WfAxd9yD2",
+        eventId: "",
+        date: new Date().toLocaleDateString(),
+        details: "",
+        reason: "Illness/Medical",
+        firstName: "",
+        idNumber: "",
+        email: "",
+        department: "N/A",
+        attachmentUrl: ""
+      });
     } catch (error) {
       console.error('Error creating excuse letter:', error);
       setSnackbar({
@@ -488,7 +566,6 @@ const ExcuseLetters = () => {
                     <TableCell>Submitted by</TableCell>
                     <TableCell>ID Number</TableCell>
                     <TableCell>Date</TableCell>
-                 {/*   <TableCell>Event</TableCell>*/}
                     <TableCell>Reason</TableCell>
                     <TableCell>Submitted on</TableCell>
                     <TableCell>Status</TableCell>
@@ -498,15 +575,14 @@ const ExcuseLetters = () => {
                 <TableBody>
                   {letters.map((letter) => (
                     <TableRow key={letter.id} hover>
-                      <TableCell>{letter.userName || letter.firstName || 'Unknown'}</TableCell>
+                      <TableCell>{letter.firstName || 'N/A'}</TableCell>
                       <TableCell>{letter.idNumber || 'N/A'}</TableCell>
-                      <TableCell>{letter.date}</TableCell>
-                {/*      <TableCell>{letter.eventName || 'N/A'}</TableCell>*/}
-                      <TableCell>{letter.reason}</TableCell>
+                      <TableCell>{letter.date || 'N/A'}</TableCell>
+                      <TableCell>{letter.reason || 'N/A'}</TableCell>
                       <TableCell>{formatDate(letter.submittedAt)}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={letter.status} 
+                          label={letter.status || 'Unknown'} 
                           size="small" 
                           sx={{
                             ...getStatusChipColor(letter.status),
@@ -603,11 +679,6 @@ const ExcuseLetters = () => {
                 <Typography variant="subtitle2" color="textSecondary">Date</Typography>
                 <Typography variant="body1">{selectedLetter.date}</Typography>
               </Box>
-              {/*
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Event</Typography>
-                <Typography variant="body1">{selectedLetter.eventName || 'N/A'}</Typography>
-              </Box>*/}
               
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">Reason</Typography>
@@ -789,26 +860,60 @@ const ExcuseLetters = () => {
               onChange={handleInputChange}
               fullWidth
               required
+              error={!newLetter.userId}
+              helperText={!newLetter.userId ? "User ID is required" : ""}
             />
-            {/*
+            
             <TextField
-              name="eventId"
-              label="Event ID (optional)"
-              value={newLetter.eventId}
+              name="firstName"
+              label="First Name"
+              value={newLetter.firstName}
               onChange={handleInputChange}
               fullWidth
-            />*/}
+              required
+              error={!newLetter.firstName || newLetter.firstName.toLowerCase() === 'unknown'}
+              helperText={!newLetter.firstName ? "First Name is required" : 
+                         newLetter.firstName.toLowerCase() === 'unknown' ? "First Name cannot be 'Unknown'" : ""}
+            />
+            
+            <TextField
+              name="idNumber"
+              label="ID Number"
+              value={newLetter.idNumber}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              error={!newLetter.idNumber || newLetter.idNumber.toLowerCase() === 'n/a'}
+              helperText={!newLetter.idNumber ? "ID Number is required" : 
+                         newLetter.idNumber.toLowerCase() === 'n/a' ? "ID Number cannot be 'N/A'" : ""}
+            />
+            
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              value={newLetter.email}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              error={!newLetter.email || !/^[A-Za-z0-9+_.-]+@(.+)$/.test(newLetter.email)}
+              helperText={!newLetter.email ? "Email is required" : 
+                         !/^[A-Za-z0-9+_.-]+@(.+)$/.test(newLetter.email) ? "Invalid email format" : ""}
+            />
             
             <TextField
               name="date"
-              label="Date"
+              label="Date (dd/MM/yyyy)"
               value={newLetter.date}
               onChange={handleInputChange}
               fullWidth
               required
+              error={!newLetter.date || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newLetter.date)}
+              helperText={!newLetter.date ? "Date is required" : 
+                         !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newLetter.date) ? "Use format: dd/MM/yyyy" : ""}
             />
             
-            <FormControl fullWidth required>
+            <FormControl fullWidth required error={!newLetter.reason}>
               <InputLabel>Reason</InputLabel>
               <Select
                 name="reason"
@@ -833,6 +938,17 @@ const ExcuseLetters = () => {
               multiline
               rows={4}
               required
+              error={!newLetter.details || newLetter.details.length < 10}
+              helperText={!newLetter.details ? "Details are required" : 
+                         newLetter.details.length < 10 ? "Details must be at least 10 characters long" : ""}
+            />
+            
+            <TextField
+              name="department"
+              label="Department"
+              value={newLetter.department}
+              onChange={handleInputChange}
+              fullWidth
             />
           </Stack>
         </DialogContent>
@@ -842,9 +958,10 @@ const ExcuseLetters = () => {
             onClick={handleCreateLetter}
             variant="contained"
             color="primary"
-            disabled={!newLetter.userId || !newLetter.date || !newLetter.reason || !newLetter.details}
+            disabled={loading || !newLetter.userId || !newLetter.firstName || !newLetter.idNumber || 
+                      !newLetter.email || !newLetter.date || !newLetter.reason || !newLetter.details}
           >
-            Submit
+            {loading ? <CircularProgress size={24} /> : "Submit"}
           </Button>
         </DialogActions>
       </Dialog>
