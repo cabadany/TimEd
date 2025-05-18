@@ -181,81 +181,89 @@ export default function Dashboard() {
       const responseData = response.data.content || response.data;
       const totalCount = response.data.totalElements || responseData.length;
       setTotalEvents(totalCount);
-
-      const formattedEvents = responseData.map(event => {
-        // Handle Firebase timestamp - improved parser that checks various timestamp formats
-        let formattedDate = 'Invalid Date';
+      
+      // Calculate correct event statuses based on current time
+      const currentDate = new Date();
+      const processedEvents = responseData.map(event => {
+        // Create a copy to avoid mutating the original
+        const processedEvent = { ...event };
         
-        if (event.date) {
-          // Handle different potential timestamp formats
-          if (typeof event.date === 'string') {
-            // If date is already a string, try to parse it directly
-            const dateObj = new Date(event.date);
-            if (!isNaN(dateObj.getTime())) {
-              formattedDate = dateObj.toLocaleString('en-PH', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-              });
-            }
-          } else if (typeof event.date === 'object') {
-            // Check for Firestore timestamp object format
-            if (event.date.seconds && event.date.nanoseconds) {
-              // Classic Firestore timestamp
-              const dateObj = new Date(event.date.seconds * 1000 + event.date.nanoseconds / 1000000);
-              formattedDate = dateObj.toLocaleString('en-PH', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-              });
-            } else if (event.date.toDate && typeof event.date.toDate === 'function') {
-              // Firestore timestamp with toDate method
-              const dateObj = event.date.toDate();
-              formattedDate = dateObj.toLocaleString('en-PH', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-              });
-            } else if (event.date._seconds && event.date._nanoseconds) {
-              // Serialized Firestore timestamp
-              const dateObj = new Date(event.date._seconds * 1000 + event.date._nanoseconds / 1000000);
-              formattedDate = dateObj.toLocaleString('en-PH', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-              });
-            }
-          }
+        // Parse event date
+        const eventDate = new Date(event.date);
+        
+        // Calculate event end time
+        const [hours, minutes, seconds] = (event.duration || '0:00:00').split(':').map(Number);
+        const eventEndTime = new Date(eventDate);
+        eventEndTime.setHours(eventEndTime.getHours() + hours);
+        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+        
+        // Check if the event is actually ongoing right now
+        const isNowBetweenStartAndEnd = currentDate >= eventDate && 
+                                       currentDate <= eventEndTime && 
+                                       event.status !== 'Cancelled' && 
+                                       event.status !== 'Ended';
+        
+        // If the event should be ongoing (current time is between start and end time),
+        // but it's not marked as such, correct the status
+        if (isNowBetweenStartAndEnd && event.status !== 'Ongoing') {
+          processedEvent.status = 'Ongoing';
+          
+          // Optionally update the backend about this status correction
+          // Using a background call to not block the UI
+          axios.put(`http://localhost:8080/api/events/update/${event.eventId}`, {
+            ...event,
+            status: 'Ongoing'
+          }).catch(error => {
+            console.error('Failed to update event status:', error);
+          });
         }
-
+        
+        // If the event should be ended (current time is after end time),
+        // but it's not marked as such, correct the status
+        if (currentDate > eventEndTime && 
+           (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+          processedEvent.status = 'Ended';
+          
+          // Optionally update the backend about this status correction
+          axios.put(`http://localhost:8080/api/events/update/${event.eventId}`, {
+            ...event,
+            status: 'Ended'
+          }).catch(error => {
+            console.error('Failed to update event status:', error);
+          });
+        }
+        
+        // Format the date for display
+        let formattedDate = 'Unknown Date';
+        try {
+          const date = new Date(event.date);
+          formattedDate = date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        } catch (error) {
+          console.error('Error formatting date:', error);
+        }
+        
         return {
           id: event.eventId || `#${Math.floor(Math.random() * 90000000) + 10000000}`,
           name: event.eventName || 'Unnamed Event',
           duration: event.duration || '0 mins',
           date: formattedDate,
-          status: event.status || 'Unknown',
+          status: processedEvent.status || 'Unknown',
           createdBy: event.createdBy || 'Unknown',
-          departmentId: event.departmentId || null // Added departmentId here
+          departmentId: event.departmentId || null, // Added departmentId here
+          _rawDate: event.date, // Keep the raw date for sorting
+          _endTime: eventEndTime // Store end time for later use
         };
       });
 
-      setEvents(formattedEvents);
+      setEvents(processedEvents);
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch events:', error);
@@ -752,7 +760,7 @@ export default function Dashboard() {
                         </Box>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Ongoing Events</Typography>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: 'teal', mb: 0, mt: 'auto' }}>
-                          {events.filter(event => event.status.toLowerCase().includes('ongoing')).length}
+                          {events.filter(event => event.status === 'Ongoing').length}
                         </Typography>
                       </CardContent>
                     </Card>

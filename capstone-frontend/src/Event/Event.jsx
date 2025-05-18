@@ -389,54 +389,72 @@ export default function EventPage() {
   // Check event status based on current date
   
   useEffect(() => {
+    // Skip processing if events array is empty
+    if (!events.length) return;
+    
+    // Create a flag to track if we need to update state
+    let needsUpdate = false;
     const currentDate = new Date();
     
-    // Update event statuses based on current date
-    if (events.length > 0) {
-      // Identify ongoing events
-      const ongoing = events.filter(event => {
-        // Create date from the string
-        const eventDate = new Date(event.date);
-        
-        // Calculate event end time based on duration
-        const [hours, minutes, seconds] = event.duration.split(':').map(Number);
-        const eventEndTime = new Date(eventDate);
-        eventEndTime.setHours(eventEndTime.getHours() + hours);
-        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
-        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-        
-        // Event is ongoing if current time is between start and end time
-        return eventDate <= currentDate && currentDate <= eventEndTime && event.status !== 'Cancelled';
-      });
+    // Create copies for modifications to avoid direct state mutation
+    const eventsCopy = [...events];
+    const updatedEvents = eventsCopy.map(event => {
+      // Make a copy to avoid direct mutation
+      const updatedEvent = {...event};
+      let statusChanged = false;
+      
+      // Parse the event date
+      const eventDate = new Date(updatedEvent.date);
+      
+      // Calculate event end time
+      const [hours, minutes, seconds] = updatedEvent.duration.split(':').map(Number);
+      const eventEndTime = new Date(eventDate);
+      eventEndTime.setHours(eventEndTime.getHours() + hours);
+      eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+      eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+      
+      // Determine if status should change
+      if (currentDate > eventEndTime && (updatedEvent.status === 'Ongoing' || updatedEvent.status === 'Upcoming')) {
+        // Should be Ended
+        if (updatedEvent.status !== 'Ended') {
+          updatedEvent.status = 'Ended';
+          statusChanged = true;
+        }
+      } else if (currentDate >= eventDate && currentDate <= eventEndTime && 
+          updatedEvent.status === 'Upcoming' && updatedEvent.status !== 'Cancelled') {
+        // Should be Ongoing
+        if (updatedEvent.status !== 'Ongoing') {
+          updatedEvent.status = 'Ongoing';
+          statusChanged = true;
+        }
+      }
+      
+      // If status changed, we need to make an API call and update state
+      if (statusChanged) {
+        needsUpdate = true;
+        // Make API call in the background - don't await
+        axios.put(`http://localhost:8080/api/events/update/${updatedEvent.eventId}`, updatedEvent)
+          .catch(error => console.error('Error updating event status:', error));
+      }
+      
+      return updatedEvent;
+    });
+    
+    // Only update state if needed to avoid infinite loops
+    if (needsUpdate) {
+      setEvents(updatedEvents);
+      
+      // Update ongoingEvents separately
+      const ongoing = updatedEvents.filter(event => 
+        event.status === 'Ongoing'
+      );
       
       setOngoingEvents(ongoing);
-      
-      // Check for events that should be marked as ended or ongoing
-      events.forEach(event => {
-        // Parse the event date
-        const eventDate = new Date(event.date);
-        
-        // Calculate event end time
-        const [hours, minutes, seconds] = event.duration.split(':').map(Number);
-        const eventEndTime = new Date(eventDate);
-        eventEndTime.setHours(eventEndTime.getHours() + hours);
-        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
-        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-        
-        // If event has passed end time but still marked as ongoing or upcoming
-        if (currentDate > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
-          // Update event status to Ended
-          updateEventStatus(event.eventId, 'Ended');
-        }
-        
-        // If event has started but is still marked as upcoming
-        if (currentDate >= eventDate && currentDate <= eventEndTime && event.status === 'Upcoming') {
-          // Update event status to Ongoing
-          updateEventStatus(event.eventId, 'Ongoing');
-        }
-      });
     }
-  }, [events]);
+    
+    // Using a stable dependency that won't change on each render
+    // We'll use a JSON string of event IDs and their statuses
+  }, [JSON.stringify(events.map(e => ({ id: e.eventId, status: e.status })))]);
 
   // API calls - optimize fetchEvents to include loading state
   const fetchEvents = async (pageNum = page, pageSize = rowsPerPage) => {
@@ -456,17 +474,47 @@ export default function EventPage() {
         }
       });
       
-      // Optimize by pre-parsing dates for events
+      // Get current date for status validation
+      const currentDate = new Date();
+      
+      // Process events and validate their status before setting state
       const processedEvents = response.data.content.map(event => {
-        if (event.date) {
-          // Pre-calculate date object and store it
-          event._parsedDate = new Date(event.date);
+        // Parse dates and calculate end time for each event
+        const eventDate = new Date(event.date);
+        const [hours, minutes, seconds] = event.duration.split(':').map(Number);
+        const eventEndTime = new Date(eventDate);
+        eventEndTime.setHours(eventEndTime.getHours() + hours);
+        eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+        eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+        
+        // Validate and correct status if needed
+        let correctedStatus = event.status;
+        
+        // If event is in the past, it should be Ended
+        if (currentDate > eventEndTime && (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+          correctedStatus = 'Ended';
         }
-        return event;
+        // If event is happening now, it should be Ongoing
+        else if (currentDate >= eventDate && currentDate <= eventEndTime && 
+                 event.status === 'Upcoming' && event.status !== 'Cancelled') {
+          correctedStatus = 'Ongoing';
+        }
+        
+        // Return event with corrected status
+        return {
+          ...event,
+          status: correctedStatus,
+          _parsedDate: eventDate,
+          _endTime: eventEndTime
+        };
       });
       
       setTotalEvents(response.data.totalElements);
       setEvents(processedEvents);
+      
+      // Set ongoing events
+      const ongoing = processedEvents.filter(event => event.status === 'Ongoing');
+      setOngoingEvents(ongoing);
       
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -573,27 +621,49 @@ export default function EventPage() {
     }
   };
 
+  // Modify updateEventStatus function to avoid triggering the effect unnecessarily
   const updateEventStatus = async (eventId, newStatus) => {
     try {
       const eventToUpdate = events.find(e => e.eventId === eventId);
       if (!eventToUpdate) return;
       
+      // Only update if status actually changed
+      if (eventToUpdate.status === newStatus) return;
+      
+      // Create updatedEvent object for API call
       const updatedEvent = {
         ...eventToUpdate,
         status: newStatus
       };
       
-      await axios.put(`http://localhost:8080/api/events/update/${eventId}`, updatedEvent);
-      
-      // Update local state
-      setEvents(events.map(event => 
-        event.eventId === eventId ? { ...event, status: newStatus } : event
+      // Update local state immediately for responsiveness
+      setEvents(prev => prev.map(event => 
+        event.eventId === eventId ? updatedEvent : event
       ));
+      
+      // Also update ongoingEvents state if needed
+      if (newStatus === 'Ongoing') {
+        setOngoingEvents(prev => {
+          // Check if already in the array to avoid duplicates
+          if (!prev.some(e => e.eventId === eventId)) {
+            return [...prev, updatedEvent];
+          }
+          return prev;
+        });
+      } else {
+        setOngoingEvents(prev => prev.filter(event => event.eventId !== eventId));
+      }
+      
+      // Make API call to persist changes
+      await axios.put(`http://localhost:8080/api/events/update/${eventId}`, updatedEvent);
       
       showSnackbar(`Event status updated to ${newStatus}`, 'success');
     } catch (error) {
       console.error('Error updating event status:', error);
       showSnackbar('Failed to update event status', 'error');
+      
+      // Revert local state in case of error
+      fetchEvents();
     }
   };
 
