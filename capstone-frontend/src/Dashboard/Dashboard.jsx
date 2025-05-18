@@ -35,10 +35,14 @@ import {
   Close,
   CalendarToday,
   AccessTime,
-  Group
+  Group,
+  ViewList,
+  Event
 } from '@mui/icons-material';
 import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
+import EventCalendar from '../components/EventCalendar';
+import CertificateEditor from '../components/CertificateEditor';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -98,6 +102,30 @@ export default function Dashboard() {
   const [departments, setDepartments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('');
   const [totalEvents, setTotalEvents] = useState(0);
+  const [showCertificateEditor, setShowCertificateEditor] = useState(false);
+  const [certificateEvent, setCertificateEvent] = useState(null);
+  const [certificateTemplate, setCertificateTemplate] = useState(null);
+
+  // Default certificate template
+  const defaultCertificate = {
+    title: 'CERTIFICATE',
+    subtitle: 'OF ACHIEVEMENT',
+    recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
+    recipientName: '{Recipient Name}',
+    description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
+    signatories: [
+      { name: 'John Doe', title: 'REPRESENTATIVE' },
+      { name: 'Jane Smith', title: 'REPRESENTATIVE' }
+    ],
+    eventName: '{Event Name}',
+    eventDate: '{Event Date}',
+    certificateNumber: '{Certificate Number}',
+    backgroundColor: '#ffffff',
+    borderColor: '#0047AB',
+    headerColor: '#0047AB',
+    textColor: '#000000',
+    fontFamily: 'Times New Roman'
+  };
 
   useEffect(() => {
     fetchDepartments();
@@ -325,6 +353,78 @@ export default function Dashboard() {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
+  // Handle event click in calendar
+  const handleCalendarEventClick = (event) => {
+    setSelectedEvent(event);
+    setShowModal(true);
+  };
+  
+  // Handle adding a new event from the calendar
+  const handleAddEvent = async (newEvent) => {
+    try {
+      setLoading(true);
+      
+      const eventData = {
+        eventName: newEvent.eventName,
+        departmentId: newEvent.departmentId,
+        date: newEvent.date,
+        duration: newEvent.duration,
+        location: newEvent.location || '',
+        description: newEvent.description || '',
+        status: 'Scheduled',
+        createdBy: 'Dashboard'
+      };
+      
+      const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
+      
+      if (response.data && response.data.eventId) {
+        // Add the new event to the events state
+        fetchEvents();
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error creating event:', error);
+      setLoading(false);
+    }
+  };
+  
+  // Open certificate editor
+  const handleOpenCertificateEditor = (event) => {
+    // Create a template using the event details
+    const template = {
+      ...defaultCertificate,
+      eventName: event.eventName || '{Event Name}',
+      eventDate: event.date ? new Date(event.date).toLocaleDateString() : '{Event Date}'
+    };
+    
+    setCertificateEvent(event);
+    setCertificateTemplate(template);
+    setShowCertificateEditor(true);
+  };
+  
+  // Close certificate editor
+  const handleCloseCertificateEditor = () => {
+    setShowCertificateEditor(false);
+    setCertificateEvent(null);
+  };
+  
+  // Save certificate template
+  const handleSaveCertificate = async (certificateData) => {
+    try {
+      if (!certificateEvent || !certificateEvent.eventId) {
+        console.error('No event ID available for saving certificate template');
+        return;
+      }
+      
+      // Save certificate template to the event
+      await axios.post(`http://localhost:8080/api/events/${certificateEvent.eventId}/certificate`, certificateData);
+      setShowCertificateEditor(false);
+    } catch (error) {
+      console.error('Error saving certificate template:', error);
+    }
+  };
+
   return (
     <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`} sx={{ 
       padding: '20px 24px', 
@@ -540,6 +640,7 @@ export default function Dashboard() {
               <Tab label="Upcoming" />
               <Tab label="Ongoing" />
               <Tab label="Past Events" />
+              <Tab label="Calendar" />
             </Tabs>
             
             <Box sx={{ 
@@ -643,6 +744,17 @@ export default function Dashboard() {
             <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
               <Typography>{error}</Typography>
             </Box>
+          ) : activeTab === 4 ? (
+            /* Calendar View */
+            <Box sx={{ p: 2 }}>
+              <EventCalendar
+                events={getFilteredEvents()}
+                departments={departments}
+                onEventClick={handleCalendarEventClick}
+                onAddEvent={handleAddEvent}
+                onOpenCertificateEditor={handleOpenCertificateEditor}
+              />
+            </Box>
           ) : currentEvents.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
               <Typography>No events found</Typography>
@@ -698,78 +810,80 @@ export default function Dashboard() {
           )}
           
           {/* Pagination Controls */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            p: { xs: 2, md: 3 }, 
-            borderTop: '1px solid', 
-            borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
-            bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
-          }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
-            </Typography>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
-                Page {currentPage} of {totalPages || 1}
+          {activeTab !== 4 && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              p: { xs: 2, md: 3 }, 
+              borderTop: '1px solid', 
+              borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
+              bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
+            }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ChevronLeft />}
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1 || totalPages === 0}
-                sx={{ 
-                  minWidth: { xs: 40, md: 100 }, 
-                  textTransform: 'none', 
-                  mr: 1,
-                  borderRadius: '8px',
-                  borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                  color: 'text.secondary',
-                  px: { xs: 1, md: 2 },
-                  '&:hover': {
-                    borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
-                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
-                  },
-                  '&.Mui-disabled': {
-                    borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
-                  }
-                }}
-              >
-                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-                  Previous
-                </Box>
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                endIcon={<ChevronRight />}
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages || totalPages === 0}
-                sx={{ 
-                  minWidth: { xs: 40, md: 100 }, 
-                  textTransform: 'none',
-                  borderRadius: '8px',
-                  borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                  color: 'text.secondary',
-                  px: { xs: 1, md: 2 },
-                  '&:hover': {
-                    borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
-                    backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
-                  },
-                  '&.Mui-disabled': {
-                    borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
-                  }
-                }}
-              >
-                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-                  Next
-                </Box>
-              </Button>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
+                  Page {currentPage} of {totalPages || 1}
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ChevronLeft />}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1 || totalPages === 0}
+                  sx={{ 
+                    minWidth: { xs: 40, md: 100 }, 
+                    textTransform: 'none', 
+                    mr: 1,
+                    borderRadius: '8px',
+                    borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                    color: 'text.secondary',
+                    px: { xs: 1, md: 2 },
+                    '&:hover': {
+                      borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                      backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                    Previous
+                  </Box>
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<ChevronRight />}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  sx={{ 
+                    minWidth: { xs: 40, md: 100 }, 
+                    textTransform: 'none',
+                    borderRadius: '8px',
+                    borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                    color: 'text.secondary',
+                    px: { xs: 1, md: 2 },
+                    '&:hover': {
+                      borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                      backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                    Next
+                  </Box>
+                </Button>
+              </Box>
             </Box>
-          </Box>
+          )}
         </Box>
       </Box>
       
@@ -891,6 +1005,17 @@ export default function Dashboard() {
           </Box>
         </Box>
       </Modal>
+      
+      {/* Certificate Editor */}
+      {showCertificateEditor && (
+        <CertificateEditor
+          open={showCertificateEditor}
+          onClose={handleCloseCertificateEditor}
+          initialData={certificateTemplate}
+          onSave={handleSaveCertificate}
+          eventData={certificateEvent}
+        />
+      )}
     </Box>
   );
 }
