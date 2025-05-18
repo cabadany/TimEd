@@ -1,44 +1,64 @@
-import React, { useState } from 'react';
-import { Box, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, FormControl, InputLabel, Select, MenuItem, Paper } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  useTheme,
+  alpha,
+  CircularProgress
+} from '@mui/material';
+import './EventCalendar.css';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import PlaceIcon from '@mui/icons-material/Place';
 
 const EventCalendar = ({ 
   events, 
-  departments = [], 
-  onEventClick, 
-  onAddEvent, 
-  onOpenCertificateEditor 
+  onEventClick
 }) => {
-  // State for the event creation dialog
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [newEvent, setNewEvent] = useState({
-    eventName: '',
-    departmentId: '',
-    date: '',
-    time: '08:00',
-    duration: '01:00:00', // HH:MM:SS format
-    location: '',
-    description: ''
-  });
+  const theme = useTheme();
+  
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Simulate loading effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   // Get color based on event status
   const getStatusColor = (status) => {
     switch (status) {
       case 'Scheduled':
-        return '#3788d8';
+        return theme.palette.primary.main;
       case 'Ongoing':
-        return '#2ca02c';
+        return theme.palette.success.main;
       case 'Ended':
-        return '#d62728';
+        return theme.palette.error.main;
       case 'Canceled':
-        return '#ff9800';
+        return theme.palette.warning.main;
       default:
-        return '#7F7F7F';
+        return theme.palette.grey[500];
     }
+  };
+  
+  // Get event priority class based on event type or importance
+  const getEventPriorityClass = (event) => {
+    // This can be customized based on your event properties
+    if (event.priority === 'high' || event.status === 'Ongoing') {
+      return 'event-priority-high';
+    } else if (event.priority === 'medium' || event.status === 'Scheduled') {
+      return 'event-priority-medium';
+    } else if (event.priority === 'low') {
+      return 'event-priority-low';
+    }
+    return '';
   };
   
   // Format events for FullCalendar
@@ -78,25 +98,15 @@ const EventCalendar = ({
       title: event.eventName || event.name,
       start: eventDate,
       end: endDate,
-      backgroundColor: getStatusColor(event.status),
+      backgroundColor: alpha(getStatusColor(event.status), 0.8),
       borderColor: getStatusColor(event.status),
-      textColor: '#ffffff',
+      textColor: theme.palette.getContrastText(getStatusColor(event.status)),
+      classNames: [getEventPriorityClass(event)],
       extendedProps: {
         ...event
       }
     };
   });
-  
-  // Handler for date click (to add a new event)
-  const handleDateClick = (info) => {
-    setSelectedDate(info.date);
-    const formattedDate = info.date.toISOString().split('T')[0];
-    setNewEvent({
-      ...newEvent,
-      date: formattedDate
-    });
-    setIsDialogOpen(true);
-  };
   
   // Handler for event click
   const handleEventClick = (info) => {
@@ -105,75 +115,100 @@ const EventCalendar = ({
     }
   };
   
-  // Handle input changes for new event
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewEvent({
-      ...newEvent,
-      [name]: value
-    });
-  };
-  
-  // Handle form submission for new event
-  const handleSubmit = () => {
-    // Combine date and time for the event
-    const dateTime = new Date(newEvent.date);
-    const [hours, minutes] = newEvent.time.split(':').map(Number);
-    dateTime.setHours(hours, minutes, 0);
-    
-    // Format the event object for submission
-    const formattedEvent = {
-      ...newEvent,
-      date: dateTime.toISOString(),
+  // Custom render for calendar header
+  const renderCalendarHeader = () => {
+    return {
+      start: 'prev,next today',
+      center: 'title',
+      end: 'dayGridMonth,timeGridWeek,timeGridDay'
     };
-    
-    // Call the parent component's handler
-    if (onAddEvent) {
-      onAddEvent(formattedEvent);
-    }
-    
-    // Close the dialog and reset form
-    setIsDialogOpen(false);
-    setSelectedDate(null);
-    setNewEvent({
-      eventName: '',
-      departmentId: '',
-      date: '',
-      time: '08:00',
-      duration: '01:00:00',
-      location: '',
-      description: ''
-    });
-  };
-  
-  // Handle dialog close
-  const handleClose = () => {
-    setIsDialogOpen(false);
-    setSelectedDate(null);
-  };
-  
-  // Handle the option to create a certificate template
-  const handleCreateCertificate = () => {
-    // Create certificate template for the new event
-    if (onOpenCertificateEditor) {
-      onOpenCertificateEditor(newEvent);
-    }
-    handleClose();
   };
   
   return (
-    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-      <Box sx={{ height: '650px' }}>
+    <Paper 
+      elevation={2} 
+      className="calendar-container"
+      sx={{ 
+        p: 3, 
+        borderRadius: 2, 
+        boxShadow: theme => `0 4px 20px 0 ${alpha(theme.palette.grey[500], 0.2)}`,
+        overflow: 'hidden',
+        position: 'relative'
+      }}
+    >
+      {isLoading && (
+        <Box className="fc-loading">
+          <CircularProgress size={40} color="primary" />
+        </Box>
+      )}
+    
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h5" fontWeight="600" color="primary">Event Calendar</Typography>
+      </Box>
+      
+      <Box sx={{ 
+        height: '650px',
+        '& .fc-header-toolbar': {
+          mb: 2,
+          '& .fc-button': {
+            textTransform: 'capitalize',
+            boxShadow: 'none',
+            borderRadius: 1.5,
+            fontSize: '0.85rem',
+            py: 1,
+            '&:focus': {
+              boxShadow: 'none'
+            }
+          },
+          '& .fc-button-primary': {
+            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+            color: 'primary.main',
+            borderColor: 'transparent',
+            '&:hover': {
+              bgcolor: theme => alpha(theme.palette.primary.main, 0.2),
+              borderColor: 'transparent'
+            },
+            '&.fc-button-active': {
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': {
+                bgcolor: 'primary.dark'
+              }
+            }
+          }
+        },
+        '& .fc-day-today': {
+          bgcolor: theme => alpha(theme.palette.primary.main, 0.05),
+        },
+        '& .fc-event': {
+          borderRadius: 1,
+          cursor: 'pointer',
+          transition: 'transform 0.15s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: theme => `0 4px 8px 0 ${alpha(theme.palette.common.black, 0.1)}`
+          }
+        },
+        '& .fc-cell-shaded': {
+          bgcolor: theme => alpha(theme.palette.grey[100], 0.3)
+        },
+        '& .fc-daygrid-day-number, & .fc-col-header-cell-cushion': {
+          color: 'text.primary',
+          textDecoration: 'none',
+          fontWeight: '500',
+          padding: '4px 8px',
+          borderRadius: 1
+        },
+        '& .fc-toolbar-title': {
+          fontSize: '1.5rem',
+          fontWeight: 600
+        }
+      }}>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-          }}
+          headerToolbar={renderCalendarHeader()}
           events={calendarEvents}
-          dateClick={handleDateClick}
           eventClick={handleEventClick}
           height="100%"
           eventTimeFormat={{
@@ -181,112 +216,41 @@ const EventCalendar = ({
             minute: '2-digit',
             meridiem: 'short'
           }}
+          dayMaxEvents={3}
+          eventContent={(info) => {
+            const timeText = info.timeText;
+            const title = info.event.title;
+            
+            return (
+              <Box sx={{ 
+                p: 0.5, 
+                width: '100%', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5
+              }}>
+                {timeText && (
+                  <Typography variant="caption" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <AccessTimeIcon fontSize="inherit" />
+                    {timeText}
+                  </Typography>
+                )}
+                <Typography variant="body2" fontWeight="medium" noWrap>
+                  {title}
+                </Typography>
+                {info.event.extendedProps.location && (
+                  <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} noWrap>
+                    <PlaceIcon fontSize="inherit" />
+                    {info.event.extendedProps.location}
+                  </Typography>
+                )}
+              </Box>
+            );
+          }}
         />
       </Box>
-      
-      {/* Dialog for adding new events */}
-      <Dialog open={isDialogOpen} onClose={handleClose} fullWidth maxWidth="sm">
-        <DialogTitle>Create New Event</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              name="eventName"
-              label="Event Name"
-              fullWidth
-              value={newEvent.eventName}
-              onChange={handleInputChange}
-              required
-            />
-            
-            <FormControl fullWidth required>
-              <InputLabel>Department</InputLabel>
-              <Select
-                name="departmentId"
-                value={newEvent.departmentId}
-                onChange={handleInputChange}
-                label="Department"
-              >
-                {departments.map((dept) => (
-                  <MenuItem key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                name="date"
-                label="Date"
-                type="date"
-                fullWidth
-                value={newEvent.date}
-                onChange={handleInputChange}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                required
-              />
-              
-              <TextField
-                name="time"
-                label="Time"
-                type="time"
-                fullWidth
-                value={newEvent.time}
-                onChange={handleInputChange}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                required
-              />
-            </Box>
-            
-            <TextField
-              name="duration"
-              label="Duration (HH:MM:SS)"
-              fullWidth
-              value={newEvent.duration}
-              onChange={handleInputChange}
-              placeholder="01:00:00"
-              required
-            />
-            
-            <TextField
-              name="location"
-              label="Location"
-              fullWidth
-              value={newEvent.location}
-              onChange={handleInputChange}
-            />
-            
-            <TextField
-              name="description"
-              label="Description"
-              fullWidth
-              multiline
-              rows={3}
-              value={newEvent.description}
-              onChange={handleInputChange}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, display: 'flex', justifyContent: 'space-between' }}>
-          <Button onClick={handleCreateCertificate} color="info" variant="outlined">
-            Create Certificate Template
-          </Button>
-          <Box>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button 
-              onClick={handleSubmit} 
-              variant="contained" 
-              disabled={!newEvent.eventName || !newEvent.departmentId || !newEvent.date || !newEvent.time || !newEvent.duration}
-            >
-              Create Event
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
     </Paper>
   );
 };
