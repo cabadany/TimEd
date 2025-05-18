@@ -4,22 +4,20 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
+import android.util.Log
+import android.widget.*
 import android.app.Dialog
+import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.view.Window
-import android.widget.Toast
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import android.graphics.Color
-import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ProfileActivity : AppCompatActivity() {
     private lateinit var editButton: Button
@@ -77,50 +75,38 @@ class ProfileActivity : AppCompatActivity() {
         loadUserProfile()
     }
 
-    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
-        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
-        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
-        scaleDownX.duration = 150
-        scaleDownY.duration = 150
-        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
-        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
-        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
-        scaleUpX.duration = 150
-        scaleUpY.duration = 150
-        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
-        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleDown = AnimatorSet()
-        scaleDown.play(scaleDownX).with(scaleDownY)
-
-        val scaleUp = AnimatorSet()
-        scaleUp.play(scaleUpX).with(scaleUpY)
-
-        view.setOnClickListener {
-            scaleDown.start()
-            view.postDelayed({
-                scaleUp.start()
-                onClickAction()
-            }, 150)
-        }
-    }
-
     private fun loadUserProfile() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val database = FirebaseDatabase.getInstance().getReference("users").child(userId)
-
-        database.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
-                val department = snapshot.child("department").getValue(String::class.java) ?: "N/A"
-                teacherName.text = name
-                teacherId.text = department
-            }
-        }.addOnFailureListener {
-            Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val currentUserId = currentUser.uid
+        Log.d("FIREBASE_UID", "Logged-in UID: $currentUserId")
+
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("users")
+            .whereEqualTo("userId", currentUserId)
+            .get()
+            .addOnSuccessListener { result ->
+                if (!result.isEmpty) {
+                    val document = result.documents[0]
+                    val firstName = document.getString("firstName") ?: ""
+                    val lastName = document.getString("lastName") ?: ""
+                    val department = document.getString("department") ?: "N/A"
+
+                    teacherName.text = "$firstName $lastName"
+                    teacherId.text = department
+                } else {
+                    Log.e("FIRESTORE", "No user matched UID: $currentUserId")
+                    Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                Log.e("FIRESTORE", "Failed to retrieve profile", it)
+                Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showAttendanceDownloadDialog() {

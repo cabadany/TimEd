@@ -133,6 +133,11 @@
             android:label="Event Details"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".ExcuseLetterHistoryActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

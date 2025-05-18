@@ -9,14 +9,16 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.util.Log
 import android.view.View
 import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.util.*
+import android.app.ProgressDialog
+import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 
 class ExcuseLetterActivity : AppCompatActivity() {
 
@@ -39,7 +41,19 @@ class ExcuseLetterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.excuse_letter_page)
 
-        userId = intent.getStringExtra("userId")
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            FirebaseAuth.getInstance().signInAnonymously()
+                .addOnSuccessListener { setupViews() }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Firebase Auth failed", Toast.LENGTH_SHORT).show()
+                }
+        } else {
+            setupViews()
+        }
+    }
+
+    private fun setupViews() {
+        userId = FirebaseAuth.getInstance().currentUser?.uid
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
         idNumber = intent.getStringExtra("idNumber")
@@ -71,7 +85,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
         }
 
         uploadButton.setOnClickListener { selectFile() }
-        submitButton.setOnClickListener { submitExcuseLetter() }
+        submitButton.setOnClickListener { checkAndSubmit() }
     }
 
     private fun showDatePickerDialog() {
@@ -102,7 +116,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
         }
     }
 
-    private fun submitExcuseLetter() {
+    private fun checkAndSubmit() {
         val date = datePicker.text.toString()
         val reason = reasonSpinner.selectedItem.toString()
         val details = detailsInput.text.toString().trim()
@@ -112,24 +126,48 @@ class ExcuseLetterActivity : AppCompatActivity() {
             return
         }
 
-        if (userId.isNullOrBlank()) {
-            Toast.makeText(this, "Missing User ID", Toast.LENGTH_SHORT).show()
+        if (reason == "Others" && details.isBlank()) {
+            Toast.makeText(this, "Please specify the reason in details.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (department.isNullOrBlank()) {
-            Toast.makeText(this, "Missing Department ID", Toast.LENGTH_SHORT).show()
+        if (userId.isNullOrBlank() || department.isNullOrBlank()) {
+            Toast.makeText(this, "Missing user information.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (selectedFileUri != null) {
-            uploadFileToFirebase(date, reason, details)
-        } else {
-            saveExcuseToFirestore(date, reason, details, null)
+        val progress = ProgressDialog(this).apply {
+            setMessage("Submitting, please wait...")
+            setCancelable(false)
+            show()
         }
+
+        val dbRef = FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId!!)
+
+        dbRef.orderByChild("date").equalTo(date)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        progress.dismiss()
+                        Toast.makeText(this@ExcuseLetterActivity, "You’ve already submitted for this date.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        if (selectedFileUri != null) {
+                            uploadFileToFirebase(date, reason, details, progress)
+                        } else {
+                            saveExcuseToRealtimeDB(date, reason, details, null, progress)
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    progress.dismiss()
+                    Log.e("ExcuseLetter", "Firebase DB error: ${error.message}", error.toException())
+                    Toast.makeText(this@ExcuseLetterActivity, "Error checking previous submissions.", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
-    private fun uploadFileToFirebase(date: String, reason: String, details: String) {
+    private fun uploadFileToFirebase(date: String, reason: String, details: String, progress: ProgressDialog) {
         val filename = UUID.randomUUID().toString()
         val storageRef = FirebaseStorage.getInstance().reference.child("excuse_documents/$filename")
 
@@ -140,17 +178,17 @@ class ExcuseLetterActivity : AppCompatActivity() {
                     storageRef.downloadUrl
                 }
                 .addOnSuccessListener { downloadUri ->
-                    saveExcuseToFirestore(date, reason, details, downloadUri.toString())
+                    saveExcuseToRealtimeDB(date, reason, details, downloadUri.toString(), progress)
                 }
                 .addOnFailureListener {
-                    Log.e("ExcuseLetter", "Upload failed", it)
+                    progress.dismiss()
                     Toast.makeText(this, "File upload failed: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
         }
     }
 
-    private fun saveExcuseToFirestore(date: String, reason: String, details: String, fileUrl: String?) {
-        val excuse = hashMapOf(
+    private fun saveExcuseToRealtimeDB(date: String, reason: String, details: String, fileUrl: String?, progress: ProgressDialog) {
+        val excuse = mapOf(
             "userId" to userId,
             "email" to userEmail,
             "firstName" to userFirstName,
@@ -164,16 +202,16 @@ class ExcuseLetterActivity : AppCompatActivity() {
             "submittedAt" to System.currentTimeMillis()
         )
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userId!!)
-            .collection("excuseLetters")
-            .add(excuse)
+        FirebaseDatabase.getInstance().getReference("excuseLetters")
+            .child(userId!!)
+            .push()
+            .setValue(excuse)
             .addOnSuccessListener {
+                progress.dismiss()
                 showSuccessDialog()
             }
             .addOnFailureListener {
-                Log.e("ExcuseLetter", "Submit failed", it)
+                progress.dismiss()
                 Toast.makeText(this, "Failed to submit: ${it.message}", Toast.LENGTH_LONG).show()
             }
     }

@@ -18,6 +18,10 @@
         android:title="Excuse Letter" />
 
     <item
+        android:id="@+id/nav_excuse_letter_history"
+        android:title="Excuse Letter History" />
+
+    <item
         android:id="@+id/nav_logout"
         android:title="Logout" />
 </menu>

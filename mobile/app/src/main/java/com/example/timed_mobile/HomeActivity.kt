@@ -155,27 +155,44 @@ class HomeActivity : AppCompatActivity() {
 
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.nav_home -> {
+                    startActivity(Intent(this, HomeActivity::class.java))
+                }
+
                 R.id.nav_profile -> {
-                    val intent = Intent(this, ProfileActivity::class.java).apply {
+                    Intent(this, ProfileActivity::class.java).apply {
                         putExtra("userId", userId)
                         putExtra("email", userEmail)
                         putExtra("firstName", userFirstName)
                         putExtra("idNumber", idNumber)
                         putExtra("department", department)
-                    }
-                    startActivity(intent)
+                    }.also { startActivity(it) }
                 }
 
                 R.id.nav_schedule -> {
-                    val intent = Intent(this, ScheduleActivity::class.java).apply {
+                    Intent(this, ScheduleActivity::class.java).apply {
                         putExtra("userId", userId)
-                    }
-                    startActivity(intent)
+                    }.also { startActivity(it) }
+                }
+
+                R.id.nav_excuse_letter -> {
+                    Intent(this, ExcuseLetterActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                        putExtra("idNumber", idNumber)
+                        putExtra("department", department)
+                    }.also { startActivity(it) }
+                }
+
+                R.id.nav_excuse_letter_history -> {
+                    Intent(this, ExcuseLetterHistoryActivity::class.java).apply {
+                        putExtra("userId", userId)
+                    }.also { startActivity(it) }
                 }
 
                 R.id.nav_logout -> {
-                    val sharedPreferences =
-                        getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                    val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
                     with(sharedPreferences.edit()) {
                         putBoolean(LoginActivity.KEY_IS_LOGGED_IN, false)
                         remove(LoginActivity.KEY_USER_ID)
@@ -187,9 +204,9 @@ class HomeActivity : AppCompatActivity() {
                     }
                     FirebaseAuth.getInstance().signOut()
                     Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
-                    val intent = Intent(this, LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
+                    Intent(this, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }.also { startActivity(it) }
                     finish()
                 }
             }
