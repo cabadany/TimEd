@@ -531,9 +531,39 @@ export default function Certificate() {
   // Fetch all certificates
   const fetchCertificates = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/certificates');
-      // Filter to only include certificates that have an eventId
-      const filteredCertificates = response.data.filter(cert => cert.eventId);
+      // Add debug counter for monitoring
+      console.log("[DEBUG] Starting certificate fetch");
+      
+      // First, fetch all events to get valid event IDs
+      const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
+      const validEventIds = eventsResponse.data.map(event => event.eventId);
+      console.log(`[DEBUG] Found ${validEventIds.length} valid events`);
+      
+      // Fetch all certificates
+      const certificatesResponse = await axios.get('http://localhost:8080/api/certificates');
+      const allCertificates = certificatesResponse.data;
+      console.log(`[DEBUG] Fetched ${allCertificates.length} total certificates`);
+      
+      // Filter to only include certificates that have an event ID AND the event still exists
+      const filteredCertificates = allCertificates.filter(cert => 
+        cert.eventId && validEventIds.includes(cert.eventId)
+      );
+      
+      console.log(`[DEBUG] Filtered to ${filteredCertificates.length} certificates with valid events`);
+      console.log(`[DEBUG] Removed ${allCertificates.length - filteredCertificates.length} certificates with missing events`);
+      
+      // Add debugging display for orphaned certificates
+      const orphanedCertificates = allCertificates.filter(cert => 
+        cert.eventId && !validEventIds.includes(cert.eventId)
+      );
+      
+      if (orphanedCertificates.length > 0) {
+        console.log("[DEBUG] Orphaned certificates detected (certificates with non-existent events):");
+        orphanedCertificates.forEach(cert => {
+          console.log(`[DEBUG] Certificate ID: ${cert.id}, Event ID: ${cert.eventId}, Title: ${cert.title}`);
+        });
+      }
+      
       setCertificates(filteredCertificates);
     } catch (error) {
       console.error('Error fetching certificates:', error);

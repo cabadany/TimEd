@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
-import { QrCode2,Download, BrandingWatermark } from '@mui/icons-material';
+import { QrCode2, Download, BrandingWatermark } from '@mui/icons-material';
 import axios from 'axios';
 import {
   Box,
@@ -44,7 +44,9 @@ import {
   CardActions,
   Divider,
   TablePagination,
-  Skeleton
+  Skeleton,
+  Checkbox,
+  Tooltip
 } from '@mui/material';
 import {
   Search,
@@ -58,7 +60,6 @@ import {
   CalendarToday,
   AccessTime,
   Group,
-  Upload,
   Close,
   Logout,
   Delete,
@@ -67,7 +68,8 @@ import {
   Edit,
   CheckCircle,
   Cancel,
-  MoreVert
+  MoreVert,
+  DeleteSweep
 } from '@mui/icons-material';
 import './Event.css';
 import NotificationSystem from '../components/NotificationSystem';
@@ -308,10 +310,6 @@ export default function EventPage() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // State for upload modal
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  
   // State for department selection modal
   const [showDepartmentModal, setShowDepartmentModal] = useState(false);
   const [departmentFilter, setDepartmentFilter] = useState('');
@@ -357,6 +355,11 @@ export default function EventPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalEvents, setTotalEvents] = useState(0);
+  
+  // Add new state variables for bulk delete functionality
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   
   const openQrModal = (eventId) => {
     setCurrentQrEventId(eventId);
@@ -813,19 +816,19 @@ export default function EventPage() {
   };
 
   // File upload handlers
-  const handleUploadClick = () => {
-    setShowUploadModal(true);
-  };
+  // const handleUploadClick = () => {
+  //   setShowUploadModal(true);
+  // };
 
-  const handleFileChange = (event) => {
-    setUploadedFile(event.target.files[0]);
-  };
+  // const handleFileChange = (event) => {
+  //   setUploadedFile(event.target.files[0]);
+  // };
 
-  const handleUploadSubmit = () => {
-    // Handle the file upload logic here
-    console.log('File uploaded:', uploadedFile);
-    setShowUploadModal(false);
-  };
+  // const handleUploadSubmit = () => {
+  //   // Handle the file upload logic here
+  //   console.log('File uploaded:', uploadedFile);
+  //   setShowUploadModal(false);
+  // };
 
   // Form submit handler
   const handleAddEvent = () => {
@@ -1290,6 +1293,78 @@ export default function EventPage() {
     };
   }, []);
 
+  // Handle bulk delete button click
+  const toggleBulkDeleteMode = () => {
+    // Reset selections when toggling the mode
+    setSelectedEvents([]);
+    setBulkDeleteMode(!bulkDeleteMode);
+  };
+  
+  // Handle selection of individual event
+  const handleSelectEvent = (eventId) => {
+    setSelectedEvents(prev => {
+      if (prev.includes(eventId)) {
+        return prev.filter(id => id !== eventId);
+      } else {
+        return [...prev, eventId];
+      }
+    });
+  };
+  
+  // Handle select all events
+  const handleSelectAllEvents = (event) => {
+    if (event.target.checked) {
+      // Select all events on the current page
+      setSelectedEvents(events.map(event => event.eventId));
+    } else {
+      // Deselect all
+      setSelectedEvents([]);
+    }
+  };
+  
+  // Open bulk delete confirmation dialog
+  const openBulkDeleteDialog = () => {
+    if (selectedEvents.length > 0) {
+      setBulkDeleteDialogOpen(true);
+    } else {
+      showSnackbar('Please select at least one event to delete', 'warning');
+    }
+  };
+  
+  // Close bulk delete confirmation dialog
+  const closeBulkDeleteDialog = () => {
+    setBulkDeleteDialogOpen(false);
+  };
+  
+  // Execute bulk delete operation
+  const confirmBulkDelete = async () => {
+    setLoading(true);
+    try {
+      // Delete each selected event
+      const deletePromises = selectedEvents.map(eventId => 
+        axios.delete(`http://localhost:8080/api/events/deleteEvent/${eventId}`)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Remove deleted events from state
+      setEvents(events.filter(event => !selectedEvents.includes(event.eventId)));
+      setOngoingEvents(ongoingEvents.filter(event => !selectedEvents.includes(event.eventId)));
+      
+      showSnackbar(`Successfully deleted ${selectedEvents.length} events`, 'success');
+      
+      // Clear selections and exit bulk delete mode
+      setSelectedEvents([]);
+      setBulkDeleteMode(false);
+    } catch (error) {
+      console.error('Error deleting events:', error);
+      showSnackbar('Failed to delete some events', 'error');
+    } finally {
+      setLoading(false);
+      setBulkDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <Box className="event-container">
       {/* Event Content */}
@@ -1410,7 +1485,8 @@ export default function EventPage() {
           sx={{ 
             p: 4, 
             borderRadius: '8px', 
-            border: '1px solid #E2E8F0'
+            border: '1px solid #E2E8F0',
+            mb: 5  // Add margin bottom to create space between this section and "All Events"
           }}
         >
           <Typography variant="body2" color="#64748B" sx={{ mb: 4 }}>
@@ -1834,23 +1910,25 @@ export default function EventPage() {
           <Typography variant="h6" fontWeight="600" color="#1E293B">
             All Events
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<Upload />}
-            onClick={handleUploadClick}
-            sx={{
-              borderColor: '#CBD5E1',
-              color: '#64748B',
-              fontWeight: 500,
-              textTransform: 'none',
-              '&:hover': {
-                borderColor: '#94A3B8',
-                bgcolor: 'rgba(148, 163, 184, 0.04)',
-              },
-            }}
-          >
-            Import CSV
-          </Button>
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={bulkDeleteMode ? <Close /> : <DeleteSweep />}
+              onClick={toggleBulkDeleteMode}
+              sx={{
+                borderColor: bulkDeleteMode ? '#EF4444' : '#CBD5E1',
+                color: bulkDeleteMode ? '#EF4444' : '#64748B',
+                fontWeight: 500,
+                textTransform: 'none',
+                '&:hover': {
+                  borderColor: bulkDeleteMode ? '#DC2626' : '#94A3B8',
+                  bgcolor: bulkDeleteMode ? 'rgba(239, 68, 68, 0.04)' : 'rgba(148, 163, 184, 0.04)',
+                },
+              }}
+            >
+              {bulkDeleteMode ? 'Cancel' : 'Bulk Delete'}
+            </Button>
+          </Box>
         </Box>
 
         <Paper
@@ -1865,6 +1943,23 @@ export default function EventPage() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  {bulkDeleteMode && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        indeterminate={selectedEvents.length > 0 && selectedEvents.length < events.length}
+                        checked={events.length > 0 && selectedEvents.length === events.length}
+                        onChange={handleSelectAllEvents}
+                        sx={{
+                          '&.Mui-checked': {
+                            color: '#0288d1',
+                          },
+                          '&.MuiCheckbox-indeterminate': {
+                            color: '#0288d1',
+                          },
+                        }}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Event Name</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Department</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
@@ -1878,7 +1973,7 @@ export default function EventPage() {
                   <EventTableSkeleton />
                 ) : events.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={bulkDeleteMode ? 7 : 6} align="center" sx={{ py: 3 }}>
                       <Typography variant="body1" color="#64748B">
                         No events found
                       </Typography>
@@ -1890,9 +1985,23 @@ export default function EventPage() {
                       key={event.eventId}
                       sx={{ 
                         '&:hover': { bgcolor: '#F8FAFC' },
-                        borderBottom: '1px solid #E2E8F0'
+                        borderBottom: '1px solid #E2E8F0',
+                        ...(selectedEvents.includes(event.eventId) ? { bgcolor: '#EFF6FF' } : {})
                       }}
                     >
+                      {bulkDeleteMode && (
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedEvents.includes(event.eventId)}
+                            onChange={() => handleSelectEvent(event.eventId)}
+                            sx={{
+                              '&.Mui-checked': {
+                                color: '#0288d1',
+                              },
+                            }}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell sx={{ py: 2 }}>{event.eventName}</TableCell>
                       <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
                       <TableCell>{formatDate(event.date)}</TableCell>
@@ -1917,32 +2026,32 @@ export default function EventPage() {
                           }}
                         />
                       </TableCell>
-                    <TableCell>
-  <Box sx={{ display: 'flex', gap: 1 }}>
-    <IconButton 
-      size="small" 
-      onClick={() => openQrModal(event.eventId)}
-      sx={{ color: '#64748B' }}
-      title="Show QR Code"
-    >
-      <QrCode2 fontSize="small" />
-    </IconButton>
-    <IconButton 
-      size="small" 
-      onClick={() => openCertificateEditor(event)}
-      sx={{ color: '#64748B' }}
-    >
-      <BrandingWatermark />
-    </IconButton>
-    <IconButton 
-      size="small" 
-      onClick={() => openDeleteDialog(event)} 
-      sx={{ color: '#64748B' }}
-    >
-      <Delete fontSize="small" />
-    </IconButton>
-  </Box>
-</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openQrModal(event.eventId)}
+                            sx={{ color: '#64748B' }}
+                            title="Show QR Code"
+                          >
+                            <QrCode2 fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openCertificateEditor(event)}
+                            sx={{ color: '#64748B' }}
+                          >
+                            <BrandingWatermark />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => openDeleteDialog(event)} 
+                            sx={{ color: '#64748B' }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -1950,26 +2059,58 @@ export default function EventPage() {
             </Table>
           </TableContainer>
           
-          {/* Add TablePagination component */}
-          <TablePagination
-            component="div"
-            count={totalEvents}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            sx={{
-              borderTop: '1px solid #E2E8F0',
-              '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                fontSize: '0.875rem',
-                color: '#64748B'
-              }
-            }}
-          />
+          {/* Bulk Delete Button - shown when in bulk delete mode and events are selected */}
+          {bulkDeleteMode && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              p: 2, 
+              borderTop: '1px solid #E2E8F0'
+            }}>
+              <Typography variant="body2" color="#64748B">
+                {selectedEvents.length > 0 
+                  ? `${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''} selected` 
+                  : 'Select events to delete'}
+              </Typography>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<Delete />}
+                disabled={selectedEvents.length === 0}
+                onClick={openBulkDeleteDialog}
+                sx={{ 
+                  textTransform: 'none',
+                  fontWeight: 500
+                }}
+              >
+                Delete Selected
+              </Button>
+            </Box>
+          )}
+          
+          {/* Standard TablePagination component */}
+          {!bulkDeleteMode && (
+            <TablePagination
+              component="div"
+              count={totalEvents}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              sx={{
+                borderTop: '1px solid #E2E8F0',
+                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                  fontSize: '0.875rem',
+                  color: '#64748B'
+                }
+              }}
+            />
+          )}
         </Paper>
       </Box>
-
+      
       {/* Department Selection Modal */}
       <Dialog
         open={showDepartmentModal}
@@ -2424,7 +2565,7 @@ export default function EventPage() {
   </DialogActions>
 </Dialog>
       {/* Upload CSV Modal */}
-      <Modal
+      {/* <Modal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         aria-labelledby="upload-csv-modal"
@@ -2500,7 +2641,7 @@ export default function EventPage() {
             </Button>
           </Box>
         </Box>
-      </Modal>
+      </Modal> */}
 
       {/* Certificate Editor Modal */}
       <Modal
@@ -2530,6 +2671,42 @@ export default function EventPage() {
           />
         </Box>
       </Modal>
+      
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog
+        open={bulkDeleteDialogOpen}
+        onClose={closeBulkDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '8px' }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          Delete Multiple Events
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete {selectedEvents.length} selected event{selectedEvents.length > 1 ? 's' : ''}? This action cannot be undone and will also delete any certificates associated with these events.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={closeBulkDeleteDialog}
+            sx={{ color: '#64748B' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmBulkDelete} 
+            variant="contained" 
+            color="error"
+            startIcon={<Delete />}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

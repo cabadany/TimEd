@@ -3,10 +3,12 @@ package com.capstone.TimEd.service;
 import com.capstone.TimEd.dto.Eventdto;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.Event;
+import com.capstone.TimEd.model.Certificate;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
@@ -22,8 +24,13 @@ public class EventService {
     private final FirebaseApp firebaseApp;
     private final CollectionReference eventsCollection = firestore.collection("events"); // Correct reference to 'events' collection
     private final CollectionReference departmentsCollection = firestore.collection("departments"); // Correct reference to 'departments' collection
-    public EventService(FirebaseApp firebaseApp) {
+    
+    private final CertificateService certificateService;
+    
+    @Autowired
+    public EventService(FirebaseApp firebaseApp, CertificateService certificateService) {
         this.firebaseApp = firebaseApp;
+        this.certificateService = certificateService;
         // Initialize FirebaseApp before using Firestore
     }
 
@@ -101,17 +108,87 @@ public class EventService {
     }
     public String deleteEvent(String eventId) {
         try {
+            // First, try to find and delete the associated certificate
+            System.out.println("[DEBUG] Starting event deletion for eventId: " + eventId);
+            int certificatesDeleted = 0;
+            
+            try {
+                // Query all certificates to find any with this eventId
+                // Sometimes certificates might not be properly linked
+                List<QueryDocumentSnapshot> certificates = firestore.collection("certificates")
+                    .whereEqualTo("eventId", eventId)
+                    .get()
+                    .get()
+                    .getDocuments();
+                
+                System.out.println("[DEBUG] Found " + certificates.size() + " certificates with eventId: " + eventId);
+                
+                // Delete each certificate found
+                for (QueryDocumentSnapshot cert : certificates) {
+                    Certificate certificate = cert.toObject(Certificate.class);
+                    // Delete the certificate document
+                    certificateService.deleteCertificate(certificate.getId());
+                    System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                    certificatesDeleted++;
+                }
+                
+                // Also try standard certificate lookup if none found above
+                if (certificatesDeleted == 0) {
+                    Certificate certificate = certificateService.getCertificateByEventId(eventId);
+                    if (certificate != null) {
+                        // If a certificate exists for this event, delete it
+                        certificateService.deleteCertificate(certificate.getId());
+                        System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                        certificatesDeleted++;
+                    } else {
+                        System.out.println("[DEBUG] No certificates found for event: " + eventId);
+                    }
+                }
+                
+                // Check for legacy format with the prefix "Event added successfully with ID: "
+                if (certificatesDeleted == 0) {
+                    String legacyEventId = "Event added successfully with ID: " + eventId;
+                    List<QueryDocumentSnapshot> legacyDocs = firestore.collection("certificates")
+                        .whereEqualTo("eventId", legacyEventId)
+                        .get()
+                        .get()
+                        .getDocuments();
+                    
+                    for (QueryDocumentSnapshot cert : legacyDocs) {
+                        Certificate certificate = cert.toObject(Certificate.class);
+                        certificateService.deleteCertificate(certificate.getId());
+                        System.out.println("[DEBUG] Deleted legacy certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                        certificatesDeleted++;
+                    }
+                }
+            } catch (Exception e) {
+                // Log the exception but continue deleting the event
+                System.err.println("[ERROR] Error deleting associated certificate: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             // Delete the event from Firestore using the eventId
-            firestore.collection("events")
+            System.out.println("[DEBUG] Deleting event document: " + eventId);
+            ApiFuture<WriteResult> result = firestore.collection("events")
                     .document(eventId)
                     .delete();
+                    
+            // Wait for the delete operation to complete
+            WriteResult writeResult = result.get();
+            System.out.println("[DEBUG] Event deleted at: " + writeResult.getUpdateTime());
 
-            return "Event deleted successfully";
+            if (certificatesDeleted > 0) {
+                return "Event and " + certificatesDeleted + " associated certificate(s) deleted successfully";
+            } else {
+                return "Event deleted successfully (no certificates found)";
+            }
             
         } catch (Exception e) {
+            System.err.println("[ERROR] Failed to delete event: " + e.getMessage());
+            e.printStackTrace();
             return "Failed to delete event: " + e.getMessage();
         }
-    }// Method to update an event's details
+    }
 
     // Method to update an event's certificateId
     public void updateEventCertificateId(String eventId, String certificateId) throws ExecutionException, InterruptedException {

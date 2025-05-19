@@ -32,8 +32,8 @@ public class EventController {
 	        this.certificateService = certificateService;
 	    }
     @Autowired private final Firestore firestore = FirestoreClient.getFirestore();
-    private EventService eventService;
-    private CertificateService certificateService;
+    private final EventService eventService;
+    private final CertificateService certificateService;
 
     @PostMapping("/createEvent")
     public String saveEvent(@RequestBody Event event) throws ExecutionException, InterruptedException {

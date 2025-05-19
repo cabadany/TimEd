@@ -36,6 +36,7 @@ import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 
 import com.itextpdf.layout.element.Text;
+import java.util.stream.Collectors;
 
 @Service
 public class CertificateService {
@@ -1235,6 +1236,62 @@ public class CertificateService {
         } catch (Exception e) {
             System.err.println("[DEBUG] isValidImageData: Error checking image data: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Clean up orphaned certificates - certificates with non-existent events
+     * This can be called manually or periodically to ensure database consistency
+     */
+    public String cleanupOrphanedCertificates() throws ExecutionException, InterruptedException {
+        System.out.println("[DEBUG] Starting cleanup of orphaned certificates");
+        int orphanCount = 0;
+        
+        try {
+            // 1. Get all certificates with eventId
+            List<Certificate> certificates = getAllCertificates();
+            List<Certificate> certificatesWithEventId = certificates.stream()
+                .filter(cert -> cert.getEventId() != null && !cert.getEventId().isEmpty())
+                .collect(Collectors.toList());
+            
+            System.out.println("[DEBUG] Found " + certificatesWithEventId.size() + " certificates with eventId out of " + certificates.size() + " total");
+            
+            // 2. Get all event IDs
+            CollectionReference eventsCollection = firestore.collection("events");
+            ApiFuture<QuerySnapshot> eventsFuture = eventsCollection.get();
+            List<String> validEventIds = new ArrayList<>();
+            for (DocumentSnapshot doc : eventsFuture.get().getDocuments()) {
+                validEventIds.add(doc.getId());
+            }
+            
+            System.out.println("[DEBUG] Found " + validEventIds.size() + " valid event IDs");
+            
+            // 3. Find and delete orphaned certificates
+            List<Certificate> orphanedCerts = certificatesWithEventId.stream()
+                .filter(cert -> !validEventIds.contains(cert.getEventId()))
+                .collect(Collectors.toList());
+            
+            System.out.println("[DEBUG] Found " + orphanedCerts.size() + " orphaned certificates to delete");
+            
+            // 4. Delete each orphaned certificate
+            for (Certificate orphan : orphanedCerts) {
+                try {
+                    System.out.println("[DEBUG] Deleting orphaned certificate: " + orphan.getId() + 
+                                      " for event ID: " + orphan.getEventId() +
+                                      " (Event name: " + orphan.getEventName() + ")");
+                    deleteCertificate(orphan.getId());
+                    orphanCount++;
+                } catch (Exception e) {
+                    System.err.println("[ERROR] Failed to delete orphaned certificate " + orphan.getId() + ": " + e.getMessage());
+                }
+            }
+            
+            return "Successfully cleaned up " + orphanCount + " orphaned certificates";
+            
+        } catch (Exception e) {
+            System.err.println("[ERROR] Error cleaning up orphaned certificates: " + e.getMessage());
+            e.printStackTrace();
+            return "Failed to clean up orphaned certificates: " + e.getMessage();
         }
     }
 } 
