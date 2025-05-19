@@ -472,75 +472,67 @@ export default function Dashboard() {
   const fetchFacultyLogs = (timeFilter) => {
     setLoadingFacultyLogs(true);
     const db = getDatabase();
-    let logsRef;
     
-    // Apply time filter
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (timeFilter === 'today') {
-      const todayStr = today.toISOString().split('T')[0];
-      logsRef = query(
-        ref(db, 'timeLogs'),
-        orderByChild('date'),
-        startAt(todayStr),
-        endAt(todayStr + '\uf8ff')
-      );
-    } else if (timeFilter === 'week') {
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
-      const weekStartStr = weekStart.toISOString().split('T')[0];
-      logsRef = query(
-        ref(db, 'timeLogs'),
-        orderByChild('date'),
-        startAt(weekStartStr),
-        endAt(today.toISOString().split('T')[0] + '\uf8ff')
-      );
-    } else if (timeFilter === 'month') {
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthStartStr = monthStart.toISOString().split('T')[0];
-      logsRef = query(
-        ref(db, 'timeLogs'),
-        orderByChild('date'),
-        startAt(monthStartStr),
-        endAt(today.toISOString().split('T')[0] + '\uf8ff')
-      );
-    } else if (timeFilter === 'custom' && facultySearchDate) {
-      logsRef = query(
-        ref(db, 'timeLogs'),
-        orderByChild('date'),
-        startAt(facultySearchDate),
-        endAt(facultySearchDate + '\uf8ff')
-      );
-    } else {
-      // Default to last 30 entries
-      logsRef = query(
-        ref(db, 'timeLogs'),
-        orderByChild('timestamp'),
-        limitToLast(30)
-      );
-    }
+    // Reference to timeLogs
+    const logsRef = ref(db, 'timeLogs');
     
     onValue(logsRef, (snapshot) => {
       const logs = [];
-      snapshot.forEach((childSnapshot) => {
-        const log = childSnapshot.val();
+      
+      // First level: user IDs
+      snapshot.forEach((userSnapshot) => {
+        const userId = userSnapshot.key;
         
-        // Only include faculty who have timed in (has a timeIn value)
-        if (log.timeIn) {
-          log.id = childSnapshot.key;
-          logs.push(log);
-        }
+        // Second level: individual log entries
+        userSnapshot.forEach((logSnapshot) => {
+          const log = logSnapshot.val();
+          
+          // Add log only if it has the required fields
+          if (log.email && log.firstName && log.timestamp && log.type) {
+            const logEntry = {
+              id: logSnapshot.key,
+              userId: userId,
+              ...log,
+              date: new Date(log.timestamp).toLocaleDateString(),
+              time: new Date(log.timestamp).toLocaleTimeString()
+            };
+            logs.push(logEntry);
+          }
+        });
       });
       
-      // Sort logs by date and time (newest first)
-      logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      // Filter logs based on timeFilter
+      const filteredLogs = logs.filter(log => {
+        const logDate = new Date(log.timestamp);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (timeFilter === 'today') {
+          return logDate.toDateString() === today.toDateString();
+        } else if (timeFilter === 'week') {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          return logDate >= weekStart;
+        } else if (timeFilter === 'month') {
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          return logDate >= monthStart;
+        } else if (timeFilter === 'custom' && facultySearchDate) {
+          const searchDate = new Date(facultySearchDate);
+          return logDate.toDateString() === searchDate.toDateString();
+        }
+        return true; // Default: show all logs
+      });
       
-      setFacultyLogs(logs);
+      // Sort logs by timestamp (newest first)
+      filteredLogs.sort((a, b) => b.timestamp - a.timestamp);
+      
+      setFacultyLogs(filteredLogs);
       setLoadingFacultyLogs(false);
     }, (error) => {
       console.error('Error fetching faculty logs:', error);
+      setFacultyLogs([]);
       setLoadingFacultyLogs(false);
+      setError('Failed to load faculty logs. Please check your permissions or try again later.');
     });
   };
 
@@ -1191,13 +1183,12 @@ export default function Dashboard() {
                 <Table>
                   <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                     <TableRow>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Type</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1205,6 +1196,10 @@ export default function Dashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
+            ) : error ? (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography color="error">{error}</Typography>
+              </Box>
             ) : facultyLogs.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 <Typography>No faculty attendance logs found</Typography>
@@ -1214,28 +1209,56 @@ export default function Dashboard() {
                 <Table>
                   <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
                     <TableRow>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Type</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {facultyLogs.map((log) => (
                       <TableRow key={log.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                        <TableCell>{log.name}</TableCell>
+                        <TableCell>
+                          {log.imageUrl ? (
+                            <Box
+                              component="img"
+                              src={log.imageUrl}
+                              alt={`${log.firstName}'s verification photo`}
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                bgcolor: 'grey.300',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                {log.firstName?.charAt(0) || 'N/A'}
+                              </Typography>
+                            </Box>
+                          )}
+                        </TableCell>
+                        <TableCell>{log.firstName}</TableCell>
                         <TableCell>{log.date}</TableCell>
-                        <TableCell>{log.department}</TableCell>
-                        <TableCell>{log.timeIn}</TableCell>
-                        <TableCell>{log.timeOut || 'N/A'}</TableCell>
-                        <TableCell>{log.timeOut ? calculateDuration(log.timeIn, log.timeOut) : 'N/A'}</TableCell>
+                        <TableCell>{log.time}</TableCell>
+                        <TableCell>{log.email}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={log.status === 'in' ? 'Timed In' : 'Timed Out'} 
-                            color={log.status === 'in' ? 'success' : 'default'}
+                            label={log.type} 
+                            color={log.type === 'TimeIn' ? 'success' : 'error'}
                             size="small"
                             variant="outlined"
                           />

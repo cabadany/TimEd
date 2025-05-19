@@ -241,6 +241,13 @@ const ExcuseLetters = () => {
     console.log(`Opening status dialog with letter ID: ${currentLetterId}, status: ${status}`);
     setNewStatus(status);
     setRejectionReason(''); // Reset rejection reason when dialog opens
+    
+    // Find and set the selected letter
+    const letter = letters.find(l => l.id === currentLetterId);
+    if (letter) {
+      setSelectedLetter(letter);
+    }
+    
     setOpenStatusDialog(true);
     
     // Don't call handleMenuClose() here as it clears currentLetterId
@@ -252,12 +259,16 @@ const ExcuseLetters = () => {
   const handleCloseStatusDialog = () => {
     setOpenStatusDialog(false);
     setRejectionReason(''); // Clear rejection reason when dialog closes
+    setCurrentLetterId(null); // Clear the current letter ID
+    setSelectedLetter(null); // Clear the selected letter
   };
 
   // Update letter status
   const handleUpdateStatus = async () => {
     if (!currentLetterId || !selectedLetter) {
       console.error("No letter selected for status update");
+      console.log(currentLetterId);
+      console.log(selectedLetter);
       setSnackbar({
         open: true,
         message: "Error: No letter selected",
