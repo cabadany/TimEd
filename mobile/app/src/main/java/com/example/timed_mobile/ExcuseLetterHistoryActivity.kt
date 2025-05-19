@@ -40,6 +40,8 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
 
+        backButton = findViewById(R.id.icon_back_button)
+
         backButton.setOnClickListener { view ->
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
@@ -56,6 +58,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progress_bar)
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
 
+
         recyclerView.layoutManager = LinearLayoutManager(this)
         excuseList = mutableListOf()
         adapter = ExcuseLetterAdapter(excuseList) // Make sure ExcuseLetterAdapter exists and is correctly implemented
@@ -66,9 +69,10 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
+
             view.postDelayed({
                 finish()
-            }, 50)
+            }, 150) // Adjusted delay
         }
 
         // Setup SwipeRefreshLayout
