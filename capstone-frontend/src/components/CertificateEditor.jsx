@@ -780,7 +780,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   <Typography variant="subtitle2" gutterBottom>Colors</Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
-                      <Typography variant="body2">Background</Typography>
+                   {/*   <Typography variant="body2">Background</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <input
                           type="color"
@@ -796,10 +796,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           placeholder="#FFFFFF"
                           inputProps={{ pattern: '^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' }}
                         />
-                      </Box>
+                      </Box>*/}
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <Typography variant="body2">Border</Typography>
+                     {/* <Typography variant="body2">Border</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <input
                           type="color"
@@ -815,8 +815,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           placeholder="#000000"
                           inputProps={{ pattern: '^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$' }}
                         />
-                      </Box>
-                    </Grid>
+                      </Box>*/}
+                    </Grid> 
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2">Text</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>

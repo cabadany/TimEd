@@ -88,8 +88,7 @@ const defaultCertificate = {
   eventDate: '{Event Date}',
   certificateNumber: '{Certificate Number}',
   backgroundColor: '#ffffff',
-  borderColor: '#0047AB',
-  headerColor: '#0047AB',
+  headerColor: '#000000',
   textColor: '#000000',
   fontFamily: 'Times New Roman'
 };
