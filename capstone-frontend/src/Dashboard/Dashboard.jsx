@@ -475,58 +475,88 @@ export default function Dashboard() {
     setAttendanceTab(newValue);
   };
 
+  // Add useEffect back for date changes
+  useEffect(() => {
+    if (mainTab === 2) {
+      fetchFacultyLogs();
+    }
+  }, [selectedDate, mainTab]);
+
   const fetchFacultyLogs = () => {
     setLoadingFacultyLogs(true);
     const db = getDatabase();
     const logsRef = ref(db, 'timeLogs');
     
     onValue(logsRef, (snapshot) => {
-      const logs = [];
-      const userLogs = {};
+      const dailyLogs = [];
       
       // First level: user IDs
       snapshot.forEach((userSnapshot) => {
         const userId = userSnapshot.key;
+        const userEntries = [];
         
         // Second level: individual log entries
         userSnapshot.forEach((logSnapshot) => {
           const log = logSnapshot.val();
+          const logDate = new Date(log.timestamp);
           
-          // Add log only if it has the required fields and is from the selected date
-          if (log.email && log.firstName && log.timestamp && log.type) {
-            const logDate = new Date(log.timestamp);
-            
-            if (isSameDay(logDate, selectedDate)) {
-              const logEntry = {
-                id: logSnapshot.key,
-                userId: userId,
-                ...log,
-                time: format(logDate, 'hh:mm:ss a')
-              };
-              
-              // Group logs by user
-              if (!userLogs[userId]) {
-                userLogs[userId] = {
-                  firstName: log.firstName,
-                  email: log.email,
-                  imageUrl: log.imageUrl,
-                  userId: userId,
-                  logs: []
-                };
-              }
-              userLogs[userId].logs.push(logEntry);
-            }
+          // Only process logs from the selected date
+          if (isSameDay(logDate, selectedDate)) {
+            userEntries.push({
+              id: logSnapshot.key,
+              userId,
+              ...log,
+              time: format(logDate, 'hh:mm:ss a')
+            });
           }
         });
+        
+        // If we have entries for this user on this day
+        if (userEntries.length > 0) {
+          // Sort entries by timestamp
+          userEntries.sort((a, b) => a.timestamp - b.timestamp);
+          
+          // Group TimeIn and TimeOut entries
+          const timeInOuts = [];
+          let currentTimeIn = null;
+          
+          userEntries.forEach(entry => {
+            if (entry.type === 'TimeIn') {
+              currentTimeIn = entry;
+            } else if (entry.type === 'TimeOut' && currentTimeIn) {
+              timeInOuts.push({
+                timeIn: currentTimeIn,
+                timeOut: entry
+              });
+              currentTimeIn = null;
+            }
+          });
+          
+          // If there's a TimeIn without TimeOut, add it too
+          if (currentTimeIn) {
+            timeInOuts.push({
+              timeIn: currentTimeIn,
+              timeOut: null
+            });
+          }
+          
+          // Add each TimeIn-TimeOut pair as a separate row
+          timeInOuts.forEach((pair, index) => {
+            dailyLogs.push({
+              id: `${pair.timeIn.id}-${index}`,
+              userId: userId,
+              firstName: pair.timeIn.firstName,
+              email: pair.timeIn.email,
+              imageUrl: pair.timeIn.imageUrl,
+              timeIn: pair.timeIn,
+              timeOut: pair.timeOut,
+              entryNumber: index + 1
+            });
+          });
+        }
       });
       
-      // Convert userLogs object to array and sort logs by timestamp
-      const organizedLogs = Object.values(userLogs).map(user => {
-        user.logs.sort((a, b) => a.timestamp - b.timestamp);
-        return user;
-      });
-      
-      setFacultyLogs(organizedLogs);
+      setFacultyLogs(dailyLogs);
       setLoadingFacultyLogs(false);
     }, (error) => {
       console.error('Error fetching faculty logs:', error);
@@ -536,40 +566,12 @@ export default function Dashboard() {
     });
   };
 
-  // Add useEffect to refetch when date changes
-  useEffect(() => {
-    if (mainTab === 2) { // Only fetch if we're on the attendance tab
-      fetchFacultyLogs();
-    }
-  }, [selectedDate, mainTab]);
-
-  // Calculate duration between timeIn and timeOut
+  // Add a helper function to calculate duration
   const calculateDuration = (timeIn, timeOut) => {
-    if (!timeIn || !timeOut) return 'N/A';
-    
-    const [timeInHours, timeInMinutes] = timeIn.replace(/\s?[AP]M/, '').split(':').map(Number);
-    const [timeOutHours, timeOutMinutes] = timeOut.replace(/\s?[AP]M/, '').split(':').map(Number);
-    
-    const timeInPeriod = timeIn.includes('PM') ? 'PM' : 'AM';
-    const timeOutPeriod = timeOut.includes('PM') ? 'PM' : 'AM';
-    
-    let startHours = timeInHours;
-    if (timeInPeriod === 'PM' && timeInHours !== 12) startHours += 12;
-    if (timeInPeriod === 'AM' && timeInHours === 12) startHours = 0;
-    
-    let endHours = timeOutHours;
-    if (timeOutPeriod === 'PM' && timeOutHours !== 12) endHours += 12;
-    if (timeOutPeriod === 'AM' && timeOutHours === 12) endHours = 0;
-    
-    const startMinutes = startHours * 60 + timeInMinutes;
-    const endMinutes = endHours * 60 + timeOutMinutes;
-    
-    if (endMinutes < startMinutes) return 'Invalid time';
-    
-    const durationMinutes = endMinutes - startMinutes;
-    const hours = Math.floor(durationMinutes / 60);
-    const minutes = durationMinutes % 60;
-    
+    if (!timeIn || !timeOut) return null;
+    const duration = (timeOut.timestamp - timeIn.timestamp) / 1000; // Convert to seconds
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
 
@@ -1169,8 +1171,11 @@ export default function Dashboard() {
                 <DatePicker
                   label="Select Date"
                   value={selectedDate}
-                  onChange={(newValue) => setSelectedDate(newValue)}
-                  renderInput={(params) => <TextField {...params} />}
+                  onChange={(newValue) => {
+                    if (newValue && !isNaN(newValue.getTime())) {
+                      setSelectedDate(newValue);
+                    }
+                  }}
                   sx={{ width: 200 }}
                 />
               </LocalizationProvider>
@@ -1184,8 +1189,10 @@ export default function Dashboard() {
                       <TableCell>Photo</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Email</TableCell>
+                      <TableCell>Entry #</TableCell>
                       <TableCell>Time In</TableCell>
                       <TableCell>Time Out</TableCell>
+                      <TableCell>Duration</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1205,23 +1212,24 @@ export default function Dashboard() {
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {facultyLogs.map((faculty) => {
-                      const timeInLog = faculty.logs.find(log => log.type === 'TimeIn');
-                      const timeOutLog = faculty.logs.find(log => log.type === 'TimeOut');
+                    {facultyLogs.map((entry) => {
+                      const duration = calculateDuration(entry.timeIn, entry.timeOut);
                       
                       return (
-                        <TableRow key={faculty.userId}>
+                        <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
                           <TableCell>
-                            {faculty.imageUrl ? (
+                            {entry.imageUrl ? (
                               <Box
                                 component="img"
-                                src={faculty.imageUrl}
-                                alt={`${faculty.firstName}'s verification photo`}
+                                src={entry.imageUrl}
+                                alt={`${entry.firstName}'s verification photo`}
                                 sx={{
                                   width: 40,
                                   height: 40,
@@ -1229,10 +1237,12 @@ export default function Dashboard() {
                                   objectFit: 'cover',
                                   cursor: 'pointer',
                                   '&:hover': {
-                                    opacity: 0.8
+                                    opacity: 0.8,
+                                    transform: 'scale(1.1)',
+                                    transition: 'all 0.2s ease-in-out'
                                   }
                                 }}
-                                onClick={() => setZoomImage(faculty.imageUrl)}
+                                onClick={() => setZoomImage(entry.imageUrl)}
                               />
                             ) : (
                               <Box
@@ -1247,28 +1257,50 @@ export default function Dashboard() {
                                 }}
                               >
                                 <Typography variant="body2" color="text.secondary">
-                                  {faculty.firstName?.charAt(0) || 'N/A'}
+                                  {entry.firstName?.charAt(0) || 'N/A'}
                                 </Typography>
                               </Box>
                             )}
                           </TableCell>
-                          <TableCell>{faculty.firstName}</TableCell>
-                          <TableCell>{faculty.email}</TableCell>
+                          <TableCell>{entry.firstName}</TableCell>
+                          <TableCell>{entry.email}</TableCell>
                           <TableCell>
                             <Chip 
-                              label={timeInLog ? timeInLog.time : 'Not Timed In'}
-                              color={timeInLog ? 'success' : 'default'}
+                              label={`Entry ${entry.entryNumber}`}
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={entry.timeIn.time}
+                              color="success"
                               size="small"
                               variant="outlined"
                             />
                           </TableCell>
                           <TableCell>
                             <Chip 
-                              label={timeOutLog ? timeOutLog.time : 'Not Timed Out'}
-                              color={timeOutLog ? 'error' : 'default'}
+                              label={entry.timeOut ? entry.timeOut.time : 'Not Timed Out'}
+                              color={entry.timeOut ? "error" : "default"}
                               size="small"
                               variant="outlined"
                             />
+                          </TableCell>
+                          <TableCell>
+                            {duration ? (
+                              <Chip 
+                                label={duration}
+                                color="primary"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                --
+                              </Typography>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
