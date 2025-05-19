@@ -16,7 +16,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Email
+  Email,
+  Person
 } from '@mui/icons-material';
 import AppHeader from '../components/AppHeader';
 import { useTheme } from '../contexts/ThemeContext';
@@ -99,7 +100,7 @@ const MainLayout = ({ children, title }) => {
     navigate('/certificates');
   };
   const handleNavigateToSettings = () => {
-    navigate('/settings');
+    navigate('/profile');
   };
   
   const handleNavigateToAccounts = () => {
@@ -128,6 +129,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToDashboard, 
       path: '/dashboard',
       tooltip: 'Dashboard',
+      badge: null,
       group: 'main'
     },
     { 
@@ -136,6 +138,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToEvent, 
       path: '/event',
       tooltip: 'Events',
+      badge: null,
       group: 'main'
     },
     { 
@@ -154,6 +157,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToCertificate, 
       path: '/certificates',
       tooltip: 'Certificates',
+      badge: null,
       group: 'resources'
     },
     { 
@@ -174,13 +178,14 @@ const MainLayout = ({ children, title }) => {
       badge: excuseLetterCount > 0 ? excuseLetterCount : null,
       group: 'resources'
     },
-    // Settings group
+    // Profile group
     { 
-      icon: <Settings />, 
-      text: 'SETTING', 
+      icon: <Person />, 
+      text: 'PROFILE', 
       onClick: handleNavigateToSettings, 
-      path: '/settings',
-      tooltip: 'Settings',
+      path: '/profile',
+      tooltip: 'Profile',
+      badge: null,
       group: 'settings'
     }
   ];
@@ -339,41 +344,39 @@ const MainLayout = ({ children, title }) => {
                   // Only show icon when collapsed
                   <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
                     {item.icon}
-                    {item.badge && (
-                      <Badge 
-                        badgeContent={item.badge} 
-                        color="error"
-                        sx={{
-                          position: 'absolute',
-                          top: -8,
-                          right: -8,
-                          '& .MuiBadge-badge': {
-                            fontSize: '0.5rem',
-                            height: 14,
-                            minWidth: 14,
-                            padding: '0 2px'
-                          }
-                        }}
-                      />
-                    )}
+                    <Badge 
+                      badgeContent={item.badge} 
+                      color="error"
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        visibility: item.badge ? 'visible' : 'hidden',
+                        '& .MuiBadge-badge': {
+                          fontSize: '0.5rem',
+                          height: 14,
+                          minWidth: 14,
+                          padding: '0 2px'
+                        }
+                      }}
+                    />
                   </Box>
                 ) : (
                   // Show text when expanded
                   <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{item.text}</span>
-                    {item.badge && (
-                      <Badge 
-                        badgeContent={item.badge} 
-                        color="error"
-                        sx={{
-                          '& .MuiBadge-badge': {
-                            fontSize: '0.6rem',
-                            height: 16,
-                            minWidth: 16
-                          }
-                        }}
-                      />
-                    )}
+                    <Badge 
+                      badgeContent={item.badge} 
+                      color="error"
+                      sx={{
+                        visibility: item.badge ? 'visible' : 'hidden',
+                        '& .MuiBadge-badge': {
+                          fontSize: '0.6rem',
+                          height: 16,
+                          minWidth: 16
+                        }
+                      }}
+                    />
                   </Box>
                 )}
               </Button>

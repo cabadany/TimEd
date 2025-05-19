@@ -8,7 +8,8 @@ import {
 } from '@mui/material';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
-  Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline,Email
+  Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
+  Person
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
@@ -398,7 +399,7 @@ export default function AccountPage() {
   };
 
   const handleNavigateToSettings = () => {
-    navigate('/settings');
+    navigate('/profile');
   };
   
   const handleDeleteProfessor = async (professorId) => {

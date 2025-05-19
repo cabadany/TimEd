@@ -303,7 +303,7 @@ export default function SettingPage() {
       
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }} className={darkMode ? 'dark-mode' : ''}>
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="settings tabs">
+        <Tabs value={tabValue} onChange={handleTabChange} aria-label="profile tabs">
           <Tab label="Edit Profile" sx={{ 
             textTransform: 'none', 
             fontWeight: 600,
@@ -906,7 +906,7 @@ export default function SettingPage() {
       <TabPanel value={tabValue} index={2}>
         <Box sx={{ maxWidth: 600 }}>
           <Typography variant="h6" fontWeight="600" color="text.primary" mb={3}>
-            Security Settings
+            Security
           </Typography>
           
           <Box sx={{ mb: 4 }}>

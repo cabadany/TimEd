@@ -239,11 +239,6 @@
   outline-offset: -2px;
 }
 
-/* Enhanced animations for Accounts menu item */
-.group-main:nth-of-type(3) {
-  position: relative;
-  overflow: visible !important;
-}
 
 .group-main:nth-of-type(3)::before {
   background: linear-gradient(
@@ -252,12 +247,6 @@
     rgba(25, 118, 210, 0.06) 50%,
     rgba(25, 118, 210, 0) 100%
   );
-}
-
-/* Enhanced animations for Departments menu item */
-.group-resources:nth-of-type(5) {
-  position: relative;
-  overflow: visible !important;
 }
 
 .group-resources:nth-of-type(5)::before {
