@@ -1,6 +1,7 @@
 package com.example.timed_mobile
 
 import android.content.Intent
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageView
@@ -9,9 +10,33 @@ import androidx.appcompat.app.AppCompatActivity
 
 class EventDetailActivity : AppCompatActivity() {
 
+    private lateinit var backButton: ImageView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_event_detail)
+        setContentView(R.layout.event_detail)
+
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        val topDrawable = topWave.drawable
+        if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
+
+        // Initialize the class member 'backButton'
+        backButton = findViewById<ImageView>(R.id.icon_back_button)
+
+        // Set the OnClickListener on the initialized class member 'backButton'
+        backButton.setOnClickListener { view ->
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+                // Delay finish until animation can play
+                view.postDelayed({
+                    finish()
+                }, 150) // Adjusted delay for animation
+            } else {
+                finish() // If not AVD, finish immediately
+            }
+        }
+
 
         // Get references to views
         val titleView = findViewById<TextView>(R.id.detail_event_title)

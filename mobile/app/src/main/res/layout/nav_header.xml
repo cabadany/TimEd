@@ -2,17 +2,33 @@
         android:orientation="vertical"
         android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_height="160dp"
-        android:background="@color/maroon">
+        android:layout_height="wrap_content"
+        android:minHeight="176dp"
+        android:background="@color/maroon"
+        android:gravity="bottom">
 
     <ImageView
+            android:id="@+id/nav_header_user_avatar"
             android:src="@drawable/ic_user_avatar"
             android:layout_width="64dp"
-            android:layout_height="64dp" />
+            android:layout_height="64dp"
+            android:layout_marginBottom="8dp"
+            android:contentDescription="User Avatar" />
 
     <TextView
+            android:id="@+id/nav_header_user_name"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:text="Welcome!"
-            android:textColor="@android:color/white" />
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"/>
+
+    <TextView
+            android:id="@+id/nav_header_user_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="user@example.com"
+            android:textColor="@android:color/white"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
 </LinearLayout>

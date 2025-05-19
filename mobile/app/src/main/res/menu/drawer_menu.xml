@@ -2,26 +2,32 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/nav_home"
-        android:title="Home" />
+            android:id="@+id/nav_home"
+            android:icon="@drawable/ic_home"
+            android:title="Home" />
 
     <item
-        android:id="@+id/nav_profile"
-        android:title="Profile" />
+            android:id="@+id/nav_profile"
+            android:icon="@drawable/ic_profile"
+            android:title="Profile" />
 
     <item
-        android:id="@+id/nav_excuse_letter"
-        android:title="Excuse Letter" />
+            android:id="@+id/nav_excuse_letter"
+            android:icon="@drawable/ic_excuse_letter"
+            android:title="Excuse Letter" />
 
     <item
-        android:id="@+id/nav_excuse_letter_history"
-        android:title="Excuse Letter History" />
+            android:id="@+id/nav_excuse_letter_history"
+            android:icon="@drawable/ic_excuse_letter_history"
+            android:title="Excuse Letter History" />
 
     <item
-        android:id="@+id/nav_event_log"
-        android:title="Event Log" />
+            android:id="@+id/nav_event_log"
+            android:icon="@drawable/ic_event_log"
+            android:title="Event Log" />
 
     <item
-        android:id="@+id/nav_logout"
-        android:title="Logout" />
+            android:id="@+id/nav_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="Logout" />
 </menu>

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+        xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Features -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature
-        android:name="android.hardware.camera.autofocus"
-        android:required="false" />
+            android:name="android.hardware.camera.autofocus"
+            android:required="false" />
     <uses-feature
-        android:name="android.hardware.camera.front"
-        android:required="false" />
+            android:name="android.hardware.camera.front"
+            android:required="false" />
     <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="true" />
+            android:name="android.hardware.camera.any"
+            android:required="true" />
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -27,125 +27,154 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Material3.Light.NoActionBar"
-        tools:targetApi="26">
+            android:allowBackup="true"
+            android:dataExtractionRules="@xml/data_extraction_rules"
+            android:fullBackupContent="@xml/backup_rules"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:supportsRtl="true"
+            android:theme="@style/Theme.TimEd"
+            tools:targetApi="26">
 
-        <!-- Splash Screen -->
+        <!-- SPLASH SCREEN PAGE -->
         <activity
-            android:name=".SplashActivity"
-            android:exported="true"
-            android:theme="@style/Theme.TimEdMobile.NoActionBar">
+                android:name=".SplashActivity"
+                android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!--LOGIN PAGE-->
         <activity
-            android:name=".LoginActivity"
-            android:exported="true"
-            android:label="@string/login_page"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustPan" />
+                android:name=".LoginActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="true"
+                android:label="@string/login_page"
+                android:screenOrientation="portrait"
+                android:windowSoftInputMode="adjustPan" />
+
 
         <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:label="@string/app_name"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".MainActivity"
+                android:exported="false"
+                android:label="@string/app_name"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--HOME PAGE-->
         <activity
-            android:name=".HomeActivity"
-            android:hardwareAccelerated="true"
-            android:exported="false"
-            android:label="@string/home_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".HomeActivity"
+                android:theme="@style/Theme.TimEd"
+                android:hardwareAccelerated="true"
+                android:exported="false"
+                android:label="@string/home_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--TIME IN PAGE-->
         <activity
-            android:name=".TimeInActivity"
-            android:exported="false"
-            android:label="@string/time_in_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".TimeInActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/time_in_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--PROFILE PAGE-->
         <activity
-            android:name=".ProfileActivity"
-            android:exported="false"
-            android:label="@string/profile_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ProfileActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/profile_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--SCHEDULE PAGE-->
         <activity
-            android:name=".ScheduleActivity"
-            android:exported="false"
-            android:label="@string/schedule_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ScheduleActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/schedule_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--CHANGE PASSWORD PAGE-->
         <activity
-            android:name=".ChangePasswordActivity"
-            android:exported="false"
-            android:label="@string/change_password_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ChangePasswordActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/change_password_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--EDIT PROFILE PAGE-->
         <activity
-            android:name=".EditProfileActivity"
-            android:exported="false"
-            android:label="@string/edit_profile_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".EditProfileActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/edit_profile_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--EXCUSE LETTER PAGE-->
         <activity
-            android:name=".ExcuseLetterActivity"
-            android:exported="false"
-            android:label="@string/excuse_letter_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ExcuseLetterActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/excuse_letter_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--TIME IN EVENT PAGE-->
         <activity
-            android:name=".TimeInEventActivity"
-            android:exported="false"
-            android:label="@string/time_in_event_page"
-            android:windowSoftInputMode="adjustResize"
-            android:hardwareAccelerated="true"
-            android:screenOrientation="portrait" />
+                android:name=".TimeInEventActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/time_in_event_page"
+                android:windowSoftInputMode="adjustResize"
+                android:hardwareAccelerated="true"
+                android:screenOrientation="portrait" />
 
+        <!--TIME IN EVENT MANUAL PAGE-->
         <activity
-            android:name=".TimeInEventManualActivity"
-            android:exported="false"
-            android:label="@string/time_in_manual_event_page"
-            android:windowSoftInputMode="adjustResize"
-            android:hardwareAccelerated="true"
-            android:screenOrientation="portrait" />
+                android:name=".TimeInEventManualActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/time_in_manual_event_page"
+                android:windowSoftInputMode="adjustResize"
+                android:hardwareAccelerated="true"
+                android:screenOrientation="portrait" />
 
-        <!-- ✅ Time Out Activity (ADDED) -->
+        <!-- TIME OUT PAGE -->
         <activity
-            android:name=".TimeOutActivity"
-            android:exported="false"
-            android:label="@string/time_out_page"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".TimeOutActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="@string/time_out_page"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--EVENT DETAIL PAGE-->
         <activity
-            android:name=".EventDetailActivity"
-            android:exported="false"
-            android:label="Event Details"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".EventDetailActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:label="Event Details"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--EXCUSE LETTER HISTORY PAGE-->
         <activity
-            android:name=".ExcuseLetterHistoryActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ExcuseLetterHistoryActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--EVENT LOG PAGE-->
         <activity
-            android:name=".EventLogActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".EventLogActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:windowSoftInputMode="adjustResize" />
 
+        <!--MANUAL TIME OUT PAGE-->
         <activity
-            android:name=".ManualTimeOutActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+                android:name=".ManualTimeOutActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="false"
+                android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

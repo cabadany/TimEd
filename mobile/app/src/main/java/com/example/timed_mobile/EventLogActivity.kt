@@ -1,8 +1,10 @@
 package com.example.timed_mobile
 
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,10 +19,12 @@ class EventLogActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
     private lateinit var adapter: EventLogAdapter
+    private lateinit var backButton: ImageView
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_event_log)
+        setContentView(R.layout.event_log)
 
         recyclerView = findViewById(R.id.recycler_event_logs)
         emptyText = findViewById(R.id.text_empty)
