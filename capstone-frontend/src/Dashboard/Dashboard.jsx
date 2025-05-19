@@ -47,6 +47,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { format, isSameDay } from 'date-fns';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -119,6 +123,8 @@ export default function Dashboard() {
   const [loadingFacultyLogs, setLoadingFacultyLogs] = useState(false);
   const [facultySearchDate, setFacultySearchDate] = useState(new Date().toISOString().split('T')[0]);
   const [facultyTimeFilter, setFacultyTimeFilter] = useState('today');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [zoomImage, setZoomImage] = useState(null);
 
   // Default certificate template
   const defaultCertificate = {
@@ -469,15 +475,14 @@ export default function Dashboard() {
     setAttendanceTab(newValue);
   };
 
-  const fetchFacultyLogs = (timeFilter) => {
+  const fetchFacultyLogs = () => {
     setLoadingFacultyLogs(true);
     const db = getDatabase();
-    
-    // Reference to timeLogs
     const logsRef = ref(db, 'timeLogs');
     
     onValue(logsRef, (snapshot) => {
       const logs = [];
+      const userLogs = {};
       
       // First level: user IDs
       snapshot.forEach((userSnapshot) => {
@@ -487,46 +492,41 @@ export default function Dashboard() {
         userSnapshot.forEach((logSnapshot) => {
           const log = logSnapshot.val();
           
-          // Add log only if it has the required fields
+          // Add log only if it has the required fields and is from the selected date
           if (log.email && log.firstName && log.timestamp && log.type) {
-            const logEntry = {
-              id: logSnapshot.key,
-              userId: userId,
-              ...log,
-              date: new Date(log.timestamp).toLocaleDateString(),
-              time: new Date(log.timestamp).toLocaleTimeString()
-            };
-            logs.push(logEntry);
+            const logDate = new Date(log.timestamp);
+            
+            if (isSameDay(logDate, selectedDate)) {
+              const logEntry = {
+                id: logSnapshot.key,
+                userId: userId,
+                ...log,
+                time: format(logDate, 'hh:mm:ss a')
+              };
+              
+              // Group logs by user
+              if (!userLogs[userId]) {
+                userLogs[userId] = {
+                  firstName: log.firstName,
+                  email: log.email,
+                  imageUrl: log.imageUrl,
+                  userId: userId,
+                  logs: []
+                };
+              }
+              userLogs[userId].logs.push(logEntry);
+            }
           }
         });
       });
       
-      // Filter logs based on timeFilter
-      const filteredLogs = logs.filter(log => {
-        const logDate = new Date(log.timestamp);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (timeFilter === 'today') {
-          return logDate.toDateString() === today.toDateString();
-        } else if (timeFilter === 'week') {
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          return logDate >= weekStart;
-        } else if (timeFilter === 'month') {
-          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          return logDate >= monthStart;
-        } else if (timeFilter === 'custom' && facultySearchDate) {
-          const searchDate = new Date(facultySearchDate);
-          return logDate.toDateString() === searchDate.toDateString();
-        }
-        return true; // Default: show all logs
+      // Convert userLogs object to array and sort logs by timestamp
+      const organizedLogs = Object.values(userLogs).map(user => {
+        user.logs.sort((a, b) => a.timestamp - b.timestamp);
+        return user;
       });
       
-      // Sort logs by timestamp (newest first)
-      filteredLogs.sort((a, b) => b.timestamp - a.timestamp);
-      
-      setFacultyLogs(filteredLogs);
+      setFacultyLogs(organizedLogs);
       setLoadingFacultyLogs(false);
     }, (error) => {
       console.error('Error fetching faculty logs:', error);
@@ -536,10 +536,12 @@ export default function Dashboard() {
     });
   };
 
-  const handleFacultyTimeFilterChange = (filter) => {
-    setFacultyTimeFilter(filter);
-    fetchFacultyLogs(filter);
-  };
+  // Add useEffect to refetch when date changes
+  useEffect(() => {
+    if (mainTab === 2) { // Only fetch if we're on the attendance tab
+      fetchFacultyLogs();
+    }
+  }, [selectedDate, mainTab]);
 
   // Calculate duration between timeIn and timeOut
   const calculateDuration = (timeIn, timeOut) => {
@@ -579,9 +581,57 @@ export default function Dashboard() {
     
     // Load attendance data if switching to attendance tab
     if (newValue === 2) {
-      fetchFacultyLogs(facultyTimeFilter);
+      fetchFacultyLogs();
     }
   };
+
+  // Add the Image Zoom Modal component
+  const ImageZoomModal = ({ imageUrl, onClose }) => (
+    <Modal
+      open={Boolean(imageUrl)}
+      onClose={onClose}
+      aria-labelledby="zoom-image"
+    >
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        maxWidth: '90vw',
+        maxHeight: '90vh',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 1,
+        borderRadius: 2,
+        outline: 'none'
+      }}>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            color: 'white',
+            '&:hover': {
+              bgcolor: 'rgba(0, 0, 0, 0.7)'
+            }
+          }}
+        >
+          <Close />
+        </IconButton>
+        <img
+          src={imageUrl}
+          alt="Zoomed verification"
+          style={{
+            maxWidth: '100%',
+            maxHeight: '85vh',
+            objectFit: 'contain'
+          }}
+        />
+      </Box>
+    </Modal>
+  );
 
   return (
     <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
@@ -1110,85 +1160,32 @@ export default function Dashboard() {
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
             p: 3
           }}>
-            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Faculty Day-to-Day Attendance</Typography>
-            
-            {/* Faculty Logs Filter and Search Section */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Filter by:
-                </Typography>
-                <Button
-                  variant={facultyTimeFilter === 'today' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => handleFacultyTimeFilterChange('today')}
-                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
-                >
-                  Today
-                </Button>
-                <Button
-                  variant={facultyTimeFilter === 'week' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => handleFacultyTimeFilterChange('week')}
-                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
-                >
-                  This Week
-                </Button>
-                <Button
-                  variant={facultyTimeFilter === 'month' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => handleFacultyTimeFilterChange('month')}
-                  sx={{ textTransform: 'none', borderRadius: '20px', minWidth: '80px' }}
-                >
-                  This Month
-                </Button>
-              </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" fontWeight="600" color="#1E293B">
+                Faculty Day-to-Day Attendance
+              </Typography>
               
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  type="date"
-                  size="small"
-                  value={facultySearchDate}
-                  onChange={(e) => setFacultySearchDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '8px',
-                    },
-                  }}
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Select Date"
+                  value={selectedDate}
+                  onChange={(newValue) => setSelectedDate(newValue)}
+                  renderInput={(params) => <TextField {...params} />}
+                  sx={{ width: 200 }}
                 />
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  size="small"
-                  onClick={() => {
-                    setFacultyTimeFilter('custom');
-                    fetchFacultyLogs('custom');
-                  }}
-                  sx={{ 
-                    textTransform: 'none', 
-                    borderRadius: '8px',
-                    backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
-                    boxShadow: 'none',
-                  }}
-                >
-                  Search Date
-                </Button>
-              </Box>
+              </LocalizationProvider>
             </Box>
-            
-            {/* Faculty Attendance Logs Table */}
+
             {loadingFacultyLogs ? (
               <TableContainer>
                 <Table>
-                  <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
+                  <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Type</TableCell>
+                      <TableCell>Photo</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Time In</TableCell>
+                      <TableCell>Time Out</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1196,13 +1193,9 @@ export default function Dashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
-            ) : error ? (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography color="error">{error}</Typography>
-              </Box>
             ) : facultyLogs.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography>No faculty attendance logs found</Typography>
+                <Typography>No attendance records found for this date</Typography>
               </Box>
             ) : (
               <TableContainer>
@@ -1211,64 +1204,85 @@ export default function Dashboard() {
                     <TableRow>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Type</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {facultyLogs.map((log) => (
-                      <TableRow key={log.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                        <TableCell>
-                          {log.imageUrl ? (
-                            <Box
-                              component="img"
-                              src={log.imageUrl}
-                              alt={`${log.firstName}'s verification photo`}
-                              sx={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: '50%',
-                                objectFit: 'cover'
-                              }}
+                    {facultyLogs.map((faculty) => {
+                      const timeInLog = faculty.logs.find(log => log.type === 'TimeIn');
+                      const timeOutLog = faculty.logs.find(log => log.type === 'TimeOut');
+                      
+                      return (
+                        <TableRow key={faculty.userId}>
+                          <TableCell>
+                            {faculty.imageUrl ? (
+                              <Box
+                                component="img"
+                                src={faculty.imageUrl}
+                                alt={`${faculty.firstName}'s verification photo`}
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    opacity: 0.8
+                                  }
+                                }}
+                                onClick={() => setZoomImage(faculty.imageUrl)}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: '50%',
+                                  bgcolor: 'grey.300',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                <Typography variant="body2" color="text.secondary">
+                                  {faculty.firstName?.charAt(0) || 'N/A'}
+                                </Typography>
+                              </Box>
+                            )}
+                          </TableCell>
+                          <TableCell>{faculty.firstName}</TableCell>
+                          <TableCell>{faculty.email}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={timeInLog ? timeInLog.time : 'Not Timed In'}
+                              color={timeInLog ? 'success' : 'default'}
+                              size="small"
+                              variant="outlined"
                             />
-                          ) : (
-                            <Box
-                              sx={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: '50%',
-                                bgcolor: 'grey.300',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                            >
-                              <Typography variant="body2" color="text.secondary">
-                                {log.firstName?.charAt(0) || 'N/A'}
-                              </Typography>
-                            </Box>
-                          )}
-                        </TableCell>
-                        <TableCell>{log.firstName}</TableCell>
-                        <TableCell>{log.date}</TableCell>
-                        <TableCell>{log.time}</TableCell>
-                        <TableCell>{log.email}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={log.type} 
-                            color={log.type === 'TimeIn' ? 'success' : 'error'}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={timeOutLog ? timeOutLog.time : 'Not Timed Out'}
+                              color={timeOutLog ? 'error' : 'default'}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
             )}
+            
+            {/* Image Zoom Modal */}
+            <ImageZoomModal 
+              imageUrl={zoomImage}
+              onClose={() => setZoomImage(null)}
+            />
           </Box>
         )}
       </Box>
