@@ -14,6 +14,7 @@ body, html, #root {
   position: relative;
   transition: opacity 0.8s ease, transform 0.8s ease, background-color 0.3s ease, color 0.3s ease;
   background: linear-gradient(135deg, #f0f2f6 0%, #e8ecf2 100%);
+  padding-top: 64px; /* Add padding for the fixed header */
 }
 
 /* Animation for page transition */
@@ -80,7 +81,7 @@ body, html, #root {
 
 .login-right {
   width: 70%;
-  background-color: #e8ecf2;
+  background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1312,4 +1313,255 @@ body, html, #root {
   } 40% { 
     transform: scale(1.0);
   }
+}
+
+/* About Us section styling */
+.about-us-section {
+  animation: fadeIn 0.5s ease-in-out;
+  padding-bottom: 2rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.about-title, .team-title {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 2rem;
+  color: #304FFF;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 70px;
+  height: 4px;
+  background: linear-gradient(90deg, #304FFF 0%, #8C9EFF 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.section-title:hover::after {
+  width: 100%;
+}
+
+.dark-mode .section-title::after {
+  background: linear-gradient(90deg, #90caf9 0%, #64b5f6 100%);
+}
+
+.mission-paper {
+  transform-origin: center;
+  transition: all 0.3s ease;
+}
+
+.mission-paper:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.dark-mode .mission-paper {
+  background: linear-gradient(145deg, #1e1e1e 0%, #262626 100%) !important;
+}
+
+.dark-mode .mission-paper:hover {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+}
+
+.mission-statement {
+  position: relative;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background-color: rgba(48, 79, 255, 0.03);
+  border-left: 4px solid #304FFF;
+  transition: all 0.3s ease;
+}
+
+.mission-statement:hover {
+  background-color: rgba(48, 79, 255, 0.05);
+  transform: translateX(5px);
+}
+
+.dark-mode .mission-statement {
+  background-color: rgba(144, 202, 249, 0.05);
+  border-left-color: #90caf9;
+}
+
+.dark-mode .mission-statement:hover {
+  background-color: rgba(144, 202, 249, 0.08);
+}
+
+.contact-section {
+  transition: all 0.3s ease;
+}
+
+.contact-section:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(48, 79, 255, 0.05);
+}
+
+.dark-mode .contact-section {
+  background: rgba(144, 202, 249, 0.05);
+}
+
+/* Pulse animation for the "Our Mission" title */
+.pulse-animation {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .about-us-section {
+    padding: 0 1rem 2rem;
+  }
+  
+  .mission-paper {
+    padding: 1.5rem !important;
+  }
+  
+  .mission-statement {
+    padding: 1rem;
+  }
+}
+
+/* Dark mode enhancements */
+.dark-mode .about-us-section {
+  color: #f5f5f5;
+}
+
+.dark-mode .about-title, 
+.dark-mode .team-title {
+  color: #90caf9;
+}
+
+/* Container adjustments */
+.login-container {
+  min-height: 100vh;
+  background-color: var(--background-color);
+  transition: background-color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f0f2f6 0%, #e8ecf2 100%);
+}
+
+.dark-mode.login-container {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+.login-content {
+  display: flex;
+  min-height: 100vh;
+}
+
+.login-form-container {
+  width: 30%;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 3rem;
+  position: relative;
+  z-index: 2;
+  background-color: #f8f9fb;
+  box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dark-mode .login-form-container {
+  background-color: #2d2d2d;
+  box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.login-right {
+  width: 70%;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 0;
+}
+
+/* About Us section positioning */
+.about-us-section {
+  width: 100%;
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+  .login-content {
+    flex-direction: column;
+  }
+  
+  .login-form-container {
+    width: 100%;
+    min-height: auto;
+    padding: 1.5rem;
+    align-items: center;
+  }
+  
+  .login-right {
+    width: 100%;
+    min-height: auto;
+    padding: 1.5rem;
+  }
+  
+  .about-us-section {
+    padding: 0 1rem;
+  }
+}
+
+/* Team Showcase Design */
+.team-showcase {
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.team-member-banner {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.team-member-banner img {
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.team-member-banner:hover img {
+  transform: scale(1.05);
+}
+
+.member-info {
+  pointer-events: none;
+}
+
+.red-overlay {
+  transition: opacity 0.5s ease;
+}
+
+.team-member-banner:hover .red-overlay {
+  opacity: 0.8;
 }

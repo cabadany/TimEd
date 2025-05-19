@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import axios from 'axios';
-import { Modal, Box, Typography, Button, TextField, CircularProgress } from '@mui/material';
+import { Modal, Box, Typography, Button, TextField, CircularProgress, Paper, Fade, Zoom, Grid, Avatar, IconButton, AppBar, Toolbar, Popover, Chip } from '@mui/material';
 import { getAuth, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
+import { Email, GitHub, LinkedIn, Language, Info, Close } from '@mui/icons-material';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -351,8 +352,343 @@ function LoginPage() {
     return emailRegex.test(email);
   };
 
+  // Add new state for About Us modal
+  const [openAboutModal, setOpenAboutModal] = useState(false);
+  // Add state for team member details modal
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [openMemberModal, setOpenMemberModal] = useState(false);
+
+  const handleOpenAboutModal = () => {
+    setOpenAboutModal(true);
+  };
+
+  const handleCloseAboutModal = () => {
+    setOpenAboutModal(false);
+  };
+
+  const handleOpenMemberModal = (member) => {
+    setSelectedMember(member);
+    setOpenMemberModal(true);
+  };
+
+  const handleCloseMemberModal = () => {
+    setOpenMemberModal(false);
+    setSelectedMember(null);
+  };
+
   return (
-    <div className={`login-page ${isAnimating ? 'fade-out' : ''} ${isDarkMode ? 'dark-mode' : ''}`}>
+    <div className={`login-page ${isDarkMode ? 'dark-mode' : ''}`}>
+      {/* Header with About Us button */}
+      <AppBar position="fixed" sx={{ 
+        backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+      }}>
+        <Toolbar sx={{ justifyContent: 'flex-end' }}>
+          <Button
+            onClick={handleOpenAboutModal}
+      
+            sx={{
+              color: isDarkMode ? '#fff' : '#3538CD',
+              '&:hover': {
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(53,56,205,0.1)',
+              }
+            }}
+          >
+            About Us
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      {/* About Us Modal */}
+      <Modal
+        open={openAboutModal}
+        onClose={handleCloseAboutModal}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '& .MuiBackdrop-root': {
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.01)' : 'rgba(255, 255, 255, 0.01)',
+            backdropFilter: 'blur(4px)'
+          }
+        }}
+        onClick={(e) => {
+          // Close modal when clicking the backdrop
+          if (e.target === e.currentTarget) {
+            handleCloseAboutModal();
+          }
+        }}
+      >
+        <Box sx={{
+          width: '100%',
+          height: '100%',
+          bgcolor: isDarkMode ? 'rgba(18, 18, 18, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          overflow: 'auto',
+          position: 'relative'
+        }}>
+          <IconButton
+            onClick={handleCloseAboutModal}
+            sx={{
+              position: 'fixed',
+              top: 20,
+              right: 20,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              color: isDarkMode ? '#fff' : '#000',
+              '&:hover': {
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+              }
+            }}
+          >
+            <Close />
+          </IconButton>
+
+          <Box sx={{ maxWidth: '1200px', margin: '0 auto', p: 4, pt: 8 }}>
+            <Fade in={true} timeout={800}>
+              <Typography variant="h3" fontWeight="700" color="primary" mb={4} className="section-title about-title">
+                About TimeED
+              </Typography>
+            </Fade>
+            
+            <Zoom in={true} style={{ transitionDelay: '300ms' }}>
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  mb: 5, 
+                  borderRadius: 3, 
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                  background: isDarkMode ? 'linear-gradient(145deg, #1e1e1e 0%, #262626 100%)' : 'linear-gradient(145deg, #ffffff 0%, #f9fafc 100%)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '5px',
+                    background: 'linear-gradient(90deg, #304FFF 0%, #8C9EFF 100%)',
+                  }
+                }}
+                className="mission-paper"
+              >
+                <Typography variant="h5" fontWeight="600" color="text.primary" mb={3} className="pulse-animation">
+                  Our Mission
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph className="mission-statement" sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
+                  TimeED is a comprehensive time management and educational platform designed to help educational institutions 
+                  streamline their operations. Our system provides tools for event management, attendance tracking, 
+                  certificate generation, and department organization to enhance productivity and efficiency in educational settings.
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.05rem' }}>
+                  We are committed to creating intuitive, user-friendly solutions that address the unique challenges faced by schools, 
+                  colleges, and universities in managing their day-to-day activities.
+                </Typography>
+              </Paper>
+            </Zoom>
+            
+            <Fade in={true} timeout={1000} style={{ transitionDelay: '600ms' }}>
+              <Typography variant="h4" fontWeight="700" color="primary" mb={4} className="section-title team-title">
+                Development Team
+              </Typography>
+            </Fade>
+            
+            <Box 
+              sx={{ 
+                mb: 5, 
+                position: 'relative',
+                background: '#0d0d0d',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                p: 0
+              }}
+              className="team-showcase"
+            >
+              <Box 
+                sx={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0, 
+                  background: 'url(/wavy-pattern.svg), linear-gradient(to right, rgba(30,30,30,0.7), rgba(30,30,30,0.7))',
+                  opacity: 0.1,
+                  zIndex: 0
+                }} 
+                className="background-pattern"
+              />
+              
+              <Box 
+                sx={{ 
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  alignItems: 'stretch',
+                  position: 'relative',
+                  zIndex: 1
+                }}
+              >
+                {[
+               
+                  {
+                    name: 'Cabana, Danisse',
+                    firstName: 'Danisse',
+                    lastName: 'Cabana',
+                    role: 'Mobile Backend Developer',
+                    image: 'https://randomuser.me/api/portraits/women/44.jpg',
+                    description: 'Backend developer focusing on mobile app integration, database connectivity, and secure API development for seamless mobile experiences.',
+                    skills: ['Firebase', 'Spring Boot', 'RESTful APIs', 'Mobile Integration', 'Authentication', 'Database Management']
+                  },
+                  {
+                    name: 'Tumungha, Alexa',
+                    firstName: 'Alexa',
+                    lastName: 'Tumungha',
+                    role: 'Project Manager',
+                    image: 'https://randomuser.me/api/portraits/women/68.jpg',
+                    description: 'Organized and goal-driven manager with expertise in managing project timelines, coordinating teams, and ensuring successful project delivery.',
+                    skills: ['Project Management', 'Scrum', 'Agile Methodologies', 'Team Leadership', 'Jira', 'Communication']
+                  },
+                  {
+                    name: 'Navaroo, Mikhail James',
+                    firstName: 'Mikhail James',
+                    lastName: 'Navaroo',
+                    role: 'Mobile Frontend Developer',
+                    image: 'https://randomuser.me/api/portraits/men/32.jpg',
+                    description: 'Frontend developer focused on building intuitive, responsive mobile applications with attention to detail and performance.',
+                    skills: ['React Native', 'JavaScript', 'UI Components', 'Mobile Design Patterns', 'Expo', 'CSS-in-JS']
+                  },
+                  {
+                    name: 'Largo, John Wayne',
+                    firstName: 'John Wayne',
+                    lastName: 'Largo',
+                    role: 'Web Backend Developer',
+                    image: 'https://cdn.discordapp.com/attachments/971921612448337940/1374043453444587591/434168392_2189176254770061_5356900714852223221_n.jpg?ex=682c9d2f&is=682b4baf&hm=f12576f78cb5f688e07d4b6f6d843661e0dfe02ee8dd39b31e5b104baf4ff6bf&format=webp&width=565&height=569',
+                    description: 'Backend specialist for web systems, focused on building scalable infrastructure and secure APIs with modern tech stack.',
+                    skills: ['Spring Boot', 'Firebase', 'PostgreSQL', 'JWT Authentication', 'Docker', 'API Security']
+                  },
+                  {
+                    name: 'Gemongala, Clark',
+                    firstName: 'Clark',
+                    lastName: 'Gemongala',
+                    role: 'Web Frontend Developer',
+                    image: 'https://cdn.discordapp.com/attachments/971921612448337940/1374044412211892274/126269967.jfif?ex=682c9e14&is=682b4c94&hm=721112074827d9e60222feff3605fe693f7c6f897d0cc27ea48c542f782e1e3d&',
+                    description: 'Frontend developer with strong attention to responsive design, user experience, and clean code implementation for web platforms.',
+                    skills: ['React.js', 'HTML5', 'CSS3', 'Tailwind CSS', 'JavaScript', 'Version Control']
+                  }
+                ].map((member, index) => (
+                  <Box 
+                    key={index}
+                    onClick={() => handleOpenMemberModal(member)}
+                    sx={{
+                      flex: 1,
+                      position: 'relative',
+                      height: { xs: '60vw', sm: '50vw', md: '400px' },
+                      maxHeight: { xs: '350px', sm: '400px', md: '500px' },
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      filter: 'grayscale(100%)',
+                      '&:hover': {
+                        filter: 'grayscale(0%)',
+                        flex: { md: 1.2 },
+                      },
+                      '&:hover .member-info': {
+                        opacity: 1,
+                        transform: 'translateY(0)'
+                      },
+                      '&:before': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: '70%',
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))',
+                        zIndex: 1
+                      }
+                    }}
+                    className="team-member-banner"
+                  >
+                    <Box
+                      component="img"
+                      src={member.image}
+                      alt={member.name}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transition: 'all 0.3s ease'
+                      }}
+                    />
+                    <Box
+                      className="member-info"
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        p: 3,
+                        color: 'white',
+                        zIndex: 2,
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      <Typography variant="h6" fontWeight="600" sx={{ mb: 1 }}>
+                        {member.firstName} {member.lastName}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>
+                        {member.role}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                        {member.description}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            <Fade in={true} timeout={1000} style={{ transitionDelay: '900ms' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 4,
+                  mt: 3,
+                  mb: 4,
+                  borderRadius: 3,
+                  background: isDarkMode ? 'rgba(144, 202, 249, 0.05)' : 'rgba(48, 79, 255, 0.03)',
+                  textAlign: 'center'
+                }}
+                className="contact-section"
+              >
+                <Typography variant="h5" fontWeight="600" color="primary.main" mb={2}>
+                  Want to connect with our team?
+                </Typography>
+                <Typography variant="body1" color="text.secondary" mb={3} sx={{ maxWidth: '800px' }}>
+                  We're always looking to improve TimeED. If you have suggestions, questions, or would like to learn more about our platform, please reach out!
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                <IconButton 
+  color="primary" 
+  component="a" 
+  href="https://github.com/cabadany/TimEd" 
+  target="_blank" 
+  rel="noopener noreferrer"
+>
+  <GitHub />
+</IconButton>
+             
+            
+                </Box>
+              </Box>
+            </Fade>
+          </Box>
+        </Box>
+      </Modal>
+
       {notification.visible && (
         <div className={`notification ${notification.type}`}>
           <div className="notification-icon">
@@ -626,6 +962,8 @@ function LoginPage() {
             <p>Version 1.0 • TimEd System</p>
           </div>
         </div>
+
+    
       </div>
 
       {/* Password Reset Modal */}
@@ -1028,6 +1366,112 @@ function LoginPage() {
             </Button>
           </Box>
         </Box>
+      </Modal>
+
+      {/* Team Member Details Modal */}
+      <Modal
+        open={openMemberModal}
+        onClose={handleCloseMemberModal}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '& .MuiBackdrop-root': {
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(8px)'
+          }
+        }}
+      >
+        <Fade in={openMemberModal}>
+          <Box
+            sx={{
+              position: 'relative',
+              width: '90%',
+              maxWidth: '600px',
+              bgcolor: isDarkMode ? 'rgba(18, 18, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 3,
+              boxShadow: 24,
+              p: 4,
+              outline: 'none',
+              overflow: 'hidden'
+            }}
+          >
+            <IconButton
+              onClick={handleCloseMemberModal}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'text.secondary'
+              }}
+            >
+              <Close />
+            </IconButton>
+
+            {selectedMember && (
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={4} sx={{ textAlign: 'center' }}>
+                  <Avatar
+                    src={selectedMember.image}
+                    alt={selectedMember.name}
+                    sx={{
+                      width: 120,
+                      height: 120,
+                      margin: '0 auto',
+                      border: '4px solid',
+                      borderColor: 'primary.main'
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={8}>
+                  <Typography variant="h4" component="h2" gutterBottom>
+                    {selectedMember.firstName} {selectedMember.lastName}
+                  </Typography>
+                  <Typography variant="h6" color="primary.main" gutterBottom>
+                    {selectedMember.role}
+                  </Typography>
+                  <Typography variant="body1" paragraph>
+                    {selectedMember.description}
+                  </Typography>
+                  
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Contact & Social Media
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <IconButton color="primary" size="large">
+                        <GitHub />
+                      </IconButton>
+                      <IconButton color="primary" size="large">
+                        <LinkedIn />
+                      </IconButton>
+                      <IconButton color="primary" size="large">
+                        <Email />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Skills & Expertise
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedMember.skills?.map((skill, index) => (
+                        <Chip
+                          key={index}
+                          label={skill}
+                          color="primary"
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            )}
+          </Box>
+        </Fade>
       </Modal>
     </div>
     
