@@ -41,6 +41,18 @@ class ExcuseLetterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.excuse_letter_page)
 
+        backButton = findViewById(R.id.icon_back_button)
+
+        backButton.setOnClickListener { view ->
+            val drawable = (view as ImageView).drawable
+            if (drawable is AnimatedVectorDrawable) {
+                drawable.start()
+            }
+            view.postDelayed({
+                finish()
+            }, 50)
+        }
+
         if (FirebaseAuth.getInstance().currentUser == null) {
             FirebaseAuth.getInstance().signInAnonymously()
                 .addOnSuccessListener { setupViews() }
