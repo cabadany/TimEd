@@ -34,17 +34,21 @@ const EventCalendar = ({
   
   // Get color based on event status
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Scheduled':
-        return theme.palette.primary.main;
-      case 'Ongoing':
-        return theme.palette.success.main;
-      case 'Ended':
-        return theme.palette.error.main;
-      case 'Canceled':
-        return theme.palette.warning.main;
-      default:
-        return theme.palette.grey[500];
+    if (!status) return theme.palette.grey[500];
+    
+    // Normalize status to lowercase for case-insensitive comparison
+    const normalizedStatus = status.toLowerCase();
+    
+    if (normalizedStatus.includes('schedul') || normalizedStatus.includes('upcoming')) {
+      return theme.palette.primary.main;
+    } else if (normalizedStatus.includes('ongoing') || normalizedStatus.includes('active')) {
+      return theme.palette.success.main;
+    } else if (normalizedStatus.includes('end') || normalizedStatus.includes('complet')) {
+      return theme.palette.error.main;
+    } else if (normalizedStatus.includes('cancel')) {
+      return theme.palette.warning.main;
+    } else {
+      return theme.palette.grey[500];
     }
   };
   
@@ -63,47 +67,91 @@ const EventCalendar = ({
   
   // Format events for FullCalendar
   const calendarEvents = events.map(event => {
+    // Debug logging
+    console.log('Processing event for calendar:', event);
+    
     // Parse date from event
     let eventDate;
-    if (typeof event.date === 'string') {
-      // Try to extract date from formatted string like "May 5, 2023 10:30 AM"
-      const dateMatch = event.date.match(/([A-Za-z]+\s\d+,\s\d{4})/);
-      const timeMatch = event.date.match(/(\d{1,2}:\d{2}\s[AP]M)/);
-      
-      if (dateMatch && timeMatch) {
-        const dateStr = dateMatch[0];
-        const timeStr = timeMatch[0];
-        eventDate = new Date(`${dateStr} ${timeStr}`);
+    try {
+      if (typeof event.date === 'string') {
+        // Handle different date formats
+        if (event.date.includes('at')) {
+          // Format like "May 20, 2025 at 12:18:00 AM"
+          const [datePart, timePart] = event.date.split(' at ');
+          eventDate = new Date(`${datePart} ${timePart}`);
+        } else if (event.date.match(/([A-Za-z]+\s\d+,\s\d{4})/)) {
+          // Format like "May 5, 2023 10:30 AM"
+          const dateMatch = event.date.match(/([A-Za-z]+\s\d+,\s\d{4})/);
+          const timeMatch = event.date.match(/(\d{1,2}:\d{2}(?::\d{2})?\s[AP]M)/);
+          
+          if (dateMatch && timeMatch) {
+            const dateStr = dateMatch[0];
+            const timeStr = timeMatch[0];
+            eventDate = new Date(`${dateStr} ${timeStr}`);
+          } else {
+            // Fallback to original date string
+            eventDate = new Date(event.date);
+          }
+        } else {
+          // Standard date formats (ISO, etc.)
+          eventDate = new Date(event.date);
+        }
       } else {
-        // Fallback to original date string
+        // If it's already a Date object or timestamp
         eventDate = new Date(event.date);
       }
-    } else {
-      // If it's already a Date object or timestamp
-      eventDate = new Date(event.date);
+      
+      // Validate the parsed date
+      if (isNaN(eventDate.getTime())) {
+        console.warn('Invalid date parsed for event:', event);
+        eventDate = new Date(); // Fallback to current date
+      }
+    } catch (error) {
+      console.error('Error parsing event date:', error, event);
+      eventDate = new Date(); // Fallback to current date
     }
     
     // Calculate end time using duration
     let endDate = new Date(eventDate);
-    if (event.duration) {
-      const [hours, minutes, seconds] = event.duration.split(':').map(Number);
-      endDate.setHours(endDate.getHours() + (hours || 0));
-      endDate.setMinutes(endDate.getMinutes() + (minutes || 0));
-      endDate.setSeconds(endDate.getSeconds() + (seconds || 0));
+    try {
+      if (event.duration) {
+        const durationParts = event.duration.split(':').map(Number);
+        const hours = durationParts[0] || 0;
+        const minutes = durationParts[1] || 0;
+        const seconds = durationParts[2] || 0;
+        
+        endDate.setHours(endDate.getHours() + hours);
+        endDate.setMinutes(endDate.getMinutes() + minutes);
+        endDate.setSeconds(endDate.getSeconds() + seconds);
+      } else {
+        // Default 1 hour duration if not specified
+        endDate.setHours(endDate.getHours() + 1);
+      }
+    } catch (error) {
+      console.error('Error calculating end date:', error, event);
+      endDate.setHours(endDate.getHours() + 1); // Default 1 hour
     }
+    
+    // Ensure we have a valid title and ID
+    const title = event.eventName || event.name || 'Unnamed Event';
+    const id = event.eventId || event.id || `event-${Math.random().toString(36).substr(2, 9)}`;
+    const status = event.status || 'Unknown';
+    
+    console.log(`Calendar event processed: "${title}" (${id}), Start: ${eventDate.toLocaleString()}, Status: ${status}`);
     
     // Return formatted event for calendar
     return {
-      id: event.eventId || event.id,
-      title: event.eventName || event.name,
+      id: id,
+      title: title,
       start: eventDate,
       end: endDate,
-      backgroundColor: alpha(getStatusColor(event.status), 0.8),
-      borderColor: getStatusColor(event.status),
-      textColor: theme.palette.getContrastText(getStatusColor(event.status)),
+      backgroundColor: alpha(getStatusColor(status), 0.8),
+      borderColor: getStatusColor(status),
+      textColor: theme.palette.getContrastText(getStatusColor(status)),
       classNames: [getEventPriorityClass(event)],
       extendedProps: {
-        ...event
+        ...event,
+        formattedDate: eventDate.toLocaleString()
       }
     };
   });
