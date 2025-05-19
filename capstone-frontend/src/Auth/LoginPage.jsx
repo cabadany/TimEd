@@ -378,27 +378,6 @@ function LoginPage() {
 
   return (
     <div className={`login-page ${isDarkMode ? 'dark-mode' : ''}`}>
-      {/* Header with About Us button */}
-      <AppBar position="fixed" sx={{ 
-        backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-      }}>
-        <Toolbar sx={{ justifyContent: 'flex-end' }}>
-          <Button
-            onClick={handleOpenAboutModal}
-      
-            sx={{
-              color: isDarkMode ? '#fff' : '#3538CD',
-              '&:hover': {
-                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(53,56,205,0.1)',
-              }
-            }}
-          >
-            About Us
-          </Button>
-        </Toolbar>
-      </AppBar>
-
       {/* About Us Modal */}
       <Modal
         open={openAboutModal}
@@ -840,6 +819,25 @@ function LoginPage() {
       
       <div className="login-right">
         <div className="right-content">
+          {/* Add Info icon button for About Us in the top-right */}
+          <IconButton
+            onClick={handleOpenAboutModal}
+            sx={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              color: isDarkMode ? '#fff' : '#3538CD',
+              background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(53,56,205,0.08)',
+              '&:hover': {
+                background: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(53,56,205,0.15)',
+              },
+              zIndex: 20 // Add higher z-index to make it clickable
+            }}
+            aria-label="About Us"
+          >
+            <Info />
+          </IconButton>
+          
           <div className="welcome-header">
             <h2 className="welcome-title">Welcome to TimeEd</h2>
             <p className="welcome-subtitle">Your Modern Event & Attendance System</p>

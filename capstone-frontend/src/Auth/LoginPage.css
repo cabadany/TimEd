@@ -14,7 +14,6 @@ body, html, #root {
   position: relative;
   transition: opacity 0.8s ease, transform 0.8s ease, background-color 0.3s ease, color 0.3s ease;
   background: linear-gradient(135deg, #f0f2f6 0%, #e8ecf2 100%);
-  padding-top: 64px; /* Add padding for the fixed header */
 }
 
 /* Animation for page transition */
