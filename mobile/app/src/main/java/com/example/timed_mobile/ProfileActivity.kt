@@ -14,7 +14,6 @@ import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import de.hdodenhof.circleimageview.CircleImageView
 
@@ -82,31 +81,34 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun loadUserProfile() {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser == null) {
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
+
+        if (userId.isNullOrEmpty()) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val currentUserId = currentUser.uid
-        Log.d("FIREBASE_UID", "Logged-in UID: $currentUserId")
+        Log.d("FIREBASE_UID", "Current userId from SharedPrefs: $userId")
 
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("users")
-            .document(currentUserId)
+            .document(userId)
             .get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
                     val firstName = document.getString("firstName") ?: ""
                     val lastName = document.getString("lastName") ?: ""
-                    val department = document.getString("department") ?: "N/A"
+                    val departmentMap = document.get("department")
+                    val departmentName = if (departmentMap is Map<*, *>) departmentMap["name"].toString() else "N/A"
+                    val idNumber = document.getString("schoolId") ?: "N/A"
                     val email = document.getString("email") ?: "No email"
                     val profilePhotoUrl = document.getString("profileImageUrl")
 
                     teacherName.text = "$firstName $lastName"
-                    teacherId.text = department
+                    teacherId.text = idNumber
                     profileEmail.text = email
-                    profileDepartment.text = department
+                    profileDepartment.text = departmentName
 
                     if (!profilePhotoUrl.isNullOrEmpty()) {
                         Glide.with(this)
@@ -117,7 +119,7 @@ class ProfileActivity : AppCompatActivity() {
                         profileImage.setImageResource(R.drawable.profile_placeholder)
                     }
                 } else {
-                    Log.e("FIRESTORE", "No profile found for UID: $currentUserId")
+                    Log.e("FIRESTORE", "No profile found for UID: $userId")
                     Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -174,7 +176,7 @@ class ProfileActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener { dialog.dismiss() }
         logoutButton.setOnClickListener {
-            FirebaseAuth.getInstance().signOut()
+            getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).edit().clear().apply()
             Toast.makeText(this, "Successfully logged out", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
             val intent = Intent(this, LoginActivity::class.java)

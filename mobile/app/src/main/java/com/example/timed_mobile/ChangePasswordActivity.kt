@@ -6,9 +6,12 @@ import android.os.Bundle
 import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import de.hdodenhof.circleimageview.CircleImageView
 
 class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var newPasswordInput: TextInputEditText
@@ -17,6 +20,11 @@ class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var newPasswordLayout: TextInputLayout
     private lateinit var reenterPasswordLayout: TextInputLayout
     private lateinit var backButton: ImageView
+    private lateinit var profileImage: CircleImageView
+    private lateinit var teacherName: TextView
+    private lateinit var teacherId: TextView
+
+    private var userId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +42,9 @@ class ChangePasswordActivity : AppCompatActivity() {
         newPasswordLayout = findViewById(R.id.new_password_layout)
         reenterPasswordLayout = findViewById(R.id.reenter_password_layout)
         backButton = findViewById(R.id.icon_back_button)
+        profileImage = findViewById(R.id.profile_image)
+        teacherName = findViewById(R.id.teacher_name)
+        teacherId = findViewById(R.id.teacher_id)
 
         updatePasswordButton.setOnClickListener {
             updatePassword()
@@ -48,6 +59,46 @@ class ChangePasswordActivity : AppCompatActivity() {
                 finish()
             }, 50)
         }
+
+        loadCurrentUserInfo()
+    }
+
+    private fun loadCurrentUserInfo() {
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
+
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("users")
+            .document(userId!!)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val firstName = document.getString("firstName") ?: ""
+                    val lastName = document.getString("lastName") ?: ""
+                    val schoolId = document.getString("schoolId") ?: ""
+                    val profilePhotoUrl = document.getString("profileImageUrl")
+
+                    teacherName.text = "$firstName $lastName"
+                    teacherId.text = schoolId
+
+                    if (!profilePhotoUrl.isNullOrEmpty()) {
+                        Glide.with(this)
+                            .load(profilePhotoUrl)
+                            .placeholder(R.drawable.profile_placeholder)
+                            .into(profileImage)
+                    } else {
+                        profileImage.setImageResource(R.drawable.profile_placeholder)
+                    }
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to load user info", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun updatePassword() {
@@ -72,12 +123,27 @@ class ChangePasswordActivity : AppCompatActivity() {
             return
         }
 
-        FirebaseAuth.getInstance().currentUser?.updatePassword(newPassword)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                showSuccessDialog()
-            } else {
-                Toast.makeText(this, "Failed to update password", Toast.LENGTH_SHORT).show()
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null && userId != null) {
+            currentUser.updatePassword(newPassword).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Update Firestore 'users' document password only if document exists and we have permission
+                    FirebaseFirestore.getInstance().collection("users")
+                        .document(userId!!)
+                        .update(mapOf("password" to newPassword))
+                        .addOnSuccessListener {
+                            showSuccessDialog()
+                        }
+                        .addOnFailureListener { e ->
+                            e.printStackTrace()
+                            Toast.makeText(this, "Password updated but failed to save in Firestore", Toast.LENGTH_SHORT).show()
+                        }
+                } else {
+                    Toast.makeText(this, "Failed to update password", Toast.LENGTH_SHORT).show()
+                }
             }
+        } else {
+            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
         }
     }
 
