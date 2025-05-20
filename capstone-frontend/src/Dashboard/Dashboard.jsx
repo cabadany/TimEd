@@ -109,6 +109,7 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [eventError, setEventError] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('');
   const [totalEvents, setTotalEvents] = useState(0);
@@ -165,6 +166,7 @@ export default function Dashboard() {
   const fetchEvents = async (startDate = '', endDate = '') => {
     try {
       setLoading(true);
+      setEventError(null); // Clear any previous event-specific errors
       
       // Use the paginated endpoint but with a large size to get all events
       // Use cache buster to prevent caching issues
@@ -270,7 +272,7 @@ export default function Dashboard() {
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch events:', error);
-      setError('Failed to load events. Please try again later.');
+      setEventError('Failed to load events. Please try again later.');
       setLoading(false);
     }
   };
@@ -280,7 +282,7 @@ export default function Dashboard() {
     try {
       // Validate date range
       if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-        setError('Start date cannot be after end date');
+        setEventError('Start date cannot be after end date');
         return;
       }
       
@@ -288,6 +290,7 @@ export default function Dashboard() {
       setCurrentPage(1); // Reset to first page after filtering
     } catch (error) {
       console.error('Error applying date filter:', error);
+      setEventError('Failed to apply date filter. Please try again.');
     }
   };
 
@@ -477,13 +480,14 @@ export default function Dashboard() {
 
   // Add useEffect back for date changes
   useEffect(() => {
-    if (mainTab === 2) {
+    if (mainTab === 0) {
       fetchFacultyLogs();
     }
   }, [selectedDate, mainTab]);
 
   const fetchFacultyLogs = () => {
     setLoadingFacultyLogs(true);
+    setError(null); // Clear any previous errors
     const db = getDatabase();
     const logsRef = ref(db, 'timeLogs');
     
@@ -581,8 +585,8 @@ export default function Dashboard() {
     // Reset the inner tab when changing main tab
     setActiveTab(0);
     
-    // Load attendance data if switching to attendance tab
-    if (newValue === 2) {
+    // Load attendance data if switching to attendance tab (now index 0)
+    if (newValue === 0) {
       fetchFacultyLogs();
     }
   };
@@ -664,6 +668,11 @@ export default function Dashboard() {
             }}
           >
             <Tab 
+              label="Day to Day Attendance Record" 
+              icon={<Group />} 
+              iconPosition="start"
+            />
+            <Tab 
               label="Event Summary" 
               icon={<EventNote />} 
               iconPosition="start"
@@ -673,16 +682,181 @@ export default function Dashboard() {
               icon={<CalendarToday />} 
               iconPosition="start"
             />
-            <Tab 
-              label="Attendance Logs" 
-              icon={<Group />} 
-              iconPosition="start"
-            />
           </Tabs>
         </Box>
 
-        {/* Event Summary */}
+        {/* Attendance Logs Tab (now Day to Day Attendance Record) */}
         {mainTab === 0 && (
+          <Box sx={{ 
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+            borderRadius: '16px', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            overflow: 'hidden',
+            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            p: 3
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" fontWeight="600" color="#1E293B">
+                Faculty Day-to-Day Attendance
+              </Typography>
+              
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Select Date"
+                  value={selectedDate}
+                  onChange={(newValue) => {
+                    if (newValue && !isNaN(newValue.getTime())) {
+                      setSelectedDate(newValue);
+                    }
+                  }}
+                  sx={{ width: 200 }}
+                />
+              </LocalizationProvider>
+            </Box>
+
+            {loadingFacultyLogs ? (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Photo</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Entry #</TableCell>
+                      <TableCell>Time In</TableCell>
+                      <TableCell>Time Out</TableCell>
+                      <TableCell>Duration</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRowsSkeleton />
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : error && error.includes("faculty logs") ? (
+              <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
+                <Typography>{error}</Typography>
+              </Box>
+            ) : facultyLogs.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography>No attendance records found for this date</Typography>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {facultyLogs.map((entry) => {
+                      const duration = calculateDuration(entry.timeIn, entry.timeOut);
+                      
+                      return (
+                        <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
+                          <TableCell>
+                            {entry.imageUrl ? (
+                              <Box
+                                component="img"
+                                src={entry.imageUrl}
+                                alt={`${entry.firstName}'s verification photo`}
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    opacity: 0.8,
+                                    transform: 'scale(1.1)',
+                                    transition: 'all 0.2s ease-in-out'
+                                  }
+                                }}
+                                onClick={() => setZoomImage(entry.imageUrl)}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: '50%',
+                                  bgcolor: 'grey.300',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                <Typography variant="body2" color="text.secondary">
+                                  {entry.firstName?.charAt(0) || 'N/A'}
+                                </Typography>
+                              </Box>
+                            )}
+                          </TableCell>
+                          <TableCell>{entry.firstName}</TableCell>
+                          <TableCell>{entry.email}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={`Entry ${entry.entryNumber}`}
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={entry.timeIn.time}
+                              color="success"
+                              size="small"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={entry.timeOut ? entry.timeOut.time : 'Not Timed Out'}
+                              color={entry.timeOut ? "error" : "default"}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {duration ? (
+                              <Chip 
+                                label={duration}
+                                color="primary"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                --
+                              </Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+            
+            {/* Image Zoom Modal */}
+            <ImageZoomModal 
+              imageUrl={zoomImage}
+              onClose={() => setZoomImage(null)}
+            />
+          </Box>
+        )}
+        
+        {/* Event Summary */}
+        {mainTab === 1 && (
           <>
             {/* Event Summary Cards */}
             <Box sx={{ mb: 3 }}>
@@ -987,9 +1161,9 @@ export default function Dashboard() {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              ) : error ? (
+              ) : eventError ? (
                 <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
-                  <Typography>{error}</Typography>
+                  <Typography>{eventError}</Typography>
                 </Box>
               ) : currentEvents.length === 0 ? (
                 <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
@@ -1125,7 +1299,7 @@ export default function Dashboard() {
         )}
 
         {/* Calendar Tab */}
-        {mainTab === 1 && (
+        {mainTab === 2 && (
           <Box sx={{ 
             bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
             borderRadius: '16px', 
@@ -1149,172 +1323,6 @@ export default function Dashboard() {
                 onOpenCertificateEditor={handleOpenCertificateEditor}
               />
             )}
-          </Box>
-        )}
-
-        {/* Attendance Logs Tab */}
-        {mainTab === 2 && (
-          <Box sx={{ 
-            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-            borderRadius: '16px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
-            overflow: 'hidden',
-            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
-            p: 3
-          }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h6" fontWeight="600" color="#1E293B">
-                Faculty Day-to-Day Attendance
-              </Typography>
-              
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Select Date"
-                  value={selectedDate}
-                  onChange={(newValue) => {
-                    if (newValue && !isNaN(newValue.getTime())) {
-                      setSelectedDate(newValue);
-                    }
-                  }}
-                  sx={{ width: 200 }}
-                />
-              </LocalizationProvider>
-            </Box>
-
-            {loadingFacultyLogs ? (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Photo</TableCell>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Entry #</TableCell>
-                      <TableCell>Time In</TableCell>
-                      <TableCell>Time Out</TableCell>
-                      <TableCell>Duration</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRowsSkeleton />
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : facultyLogs.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography>No attendance records found for this date</Typography>
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {facultyLogs.map((entry) => {
-                      const duration = calculateDuration(entry.timeIn, entry.timeOut);
-                      
-                      return (
-                        <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                          <TableCell>
-                            {entry.imageUrl ? (
-                              <Box
-                                component="img"
-                                src={entry.imageUrl}
-                                alt={`${entry.firstName}'s verification photo`}
-                                sx={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    opacity: 0.8,
-                                    transform: 'scale(1.1)',
-                                    transition: 'all 0.2s ease-in-out'
-                                  }
-                                }}
-                                onClick={() => setZoomImage(entry.imageUrl)}
-                              />
-                            ) : (
-                              <Box
-                                sx={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  bgcolor: 'grey.300',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}
-                              >
-                                <Typography variant="body2" color="text.secondary">
-                                  {entry.firstName?.charAt(0) || 'N/A'}
-                                </Typography>
-                              </Box>
-                            )}
-                          </TableCell>
-                          <TableCell>{entry.firstName}</TableCell>
-                          <TableCell>{entry.email}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={`Entry ${entry.entryNumber}`}
-                              size="small"
-                              color="info"
-                              variant="outlined"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={entry.timeIn.time}
-                              color="success"
-                              size="small"
-                              variant="outlined"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={entry.timeOut ? entry.timeOut.time : 'Not Timed Out'}
-                              color={entry.timeOut ? "error" : "default"}
-                              size="small"
-                              variant="outlined"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {duration ? (
-                              <Chip 
-                                label={duration}
-                                color="primary"
-                                size="small"
-                                variant="outlined"
-                              />
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                --
-                              </Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            
-            {/* Image Zoom Modal */}
-            <ImageZoomModal 
-              imageUrl={zoomImage}
-              onClose={() => setZoomImage(null)}
-            />
           </Box>
         )}
       </Box>

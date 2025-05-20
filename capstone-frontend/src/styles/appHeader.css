@@ -18,9 +18,7 @@
   z-index: 10;
 }
 
-.app-header:hover::after {
-  transform: scaleX(1);
-}
+
 
 /* Header avatar styling */
 .header-avatar {

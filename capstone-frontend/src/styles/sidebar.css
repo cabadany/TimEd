@@ -258,11 +258,6 @@
   );
 }
 
-/* Enhanced animations for Excuse Letters menu item */
-.group-resources:nth-of-type(6) {
-  position: relative;
-  overflow: visible !important;
-}
 
 .group-resources:nth-of-type(6)::before {
   background: linear-gradient(
