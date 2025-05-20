@@ -622,7 +622,12 @@ class TimeInEventActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "onDestroy called, shutting down cameraExecutor.")
-        cameraExecutor.shutdownNow() // Use shutdownNow for quicker termination
+        Log.d(TAG, "onDestroy called.")
+        if (::cameraExecutor.isInitialized) {
+            Log.d(TAG, "Shutting down cameraExecutor.")
+            cameraExecutor.shutdownNow()
+        } else {
+            Log.w(TAG, "cameraExecutor was not initialized.")
+        }
     }
 }

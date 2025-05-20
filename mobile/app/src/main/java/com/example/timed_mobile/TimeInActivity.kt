@@ -459,7 +459,6 @@ class TimeInActivity : AppCompatActivity() {
     }
 
     private fun logTimeIn(imageUrl: String, uid: String) {
-        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(uid)
         val log = mapOf(
             "timestamp" to System.currentTimeMillis(),
             "type" to "TimeIn",
@@ -468,7 +467,15 @@ class TimeInActivity : AppCompatActivity() {
             "firstName" to userFirstName
         )
 
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(uid)
         ref.push().setValue(log)
+            .addOnSuccessListener {
+                Log.d(TAG, "Time-In log successfully written to Realtime Database")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to write Time-In log", e)
+                Toast.makeText(this, "Failed to record time-in: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showSuccessDialog() {

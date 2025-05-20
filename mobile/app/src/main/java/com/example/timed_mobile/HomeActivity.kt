@@ -1,25 +1,26 @@
 package com.example.timed_mobile
 
 import android.annotation.SuppressLint
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
+import android.view.animation.AnimationSet
+import android.view.animation.AlphaAnimation
 import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.animation.TranslateAnimation
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
-import android.view.animation.AlphaAnimation
-import android.view.animation.Animation
-import android.view.animation.AnimationSet
-import android.view.animation.AnimationUtils
-import android.view.animation.TranslateAnimation
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -37,8 +38,10 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import java.text.SimpleDateFormat
 import java.util.*
+import android.util.Log
 
 class HomeActivity : AppCompatActivity() {
 
@@ -281,12 +284,13 @@ class HomeActivity : AppCompatActivity() {
                             if (!imageUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
                                     .load(imageUrl)
-                                    .circleCrop()
+                                    .circleCrop()  // ✅ This line applies the circular transformation
                                     .into(profileImageView)
                                 return
                             }
                         }
                     }
+                    // No match or missing image
                     // No matching TimeIn photo
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
@@ -300,15 +304,15 @@ class HomeActivity : AppCompatActivity() {
     private fun setupFilterButtons() {
         btnUpcoming.setOnClickListener {
             updateFilterButtonStates(btnUpcoming)
-            showEventsByStatus("Upcoming")
+            showEventsByStatus("upcoming")
         }
         btnOngoing.setOnClickListener {
             updateFilterButtonStates(btnOngoing)
-            showEventsByStatus("Ongoing")
+            showEventsByStatus("ongoing")
         }
         btnEnded.setOnClickListener {
             updateFilterButtonStates(btnEnded)
-            showEventsByStatus("Ended")
+            showEventsByStatus("ended")
         }
         btnCancelled.setOnClickListener {
             updateFilterButtonStates(btnCancelled)
@@ -372,19 +376,30 @@ class HomeActivity : AppCompatActivity() {
                 val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
                 allEvents.clear()
 
-                for (doc in result) {
-                    val title = doc.getString("eventName") ?: continue
-                    val status = doc.getString("status") ?: "unknown"
-                    val date = doc.getTimestamp("date")?.toDate() ?: continue
-                    val formattedDate = formatter.format(date)
+                Log.d("FirestoreEvents", "Fetched ${result.size()} event documents")
 
-                    allEvents.add(EventModel(title, status, formattedDate))
+                for (doc in result) {
+                    try {
+                        val title = doc.getString("eventName") ?: continue
+                        val statusRaw = doc.getString("status") ?: "unknown"
+                        val status = statusRaw.lowercase(Locale.ROOT)
+                        val date = doc.getTimestamp("date")?.toDate() ?: continue
+                        val formattedDate = formatter.format(date)
+
+                        Log.d("FirestoreEvents", "Loaded event: $title | Status: $status | Date: $formattedDate")
+
+                        allEvents.add(EventModel(title, status, formattedDate))
+                    } catch (e: Exception) {
+                        Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                    }
                 }
 
+                // Default display = upcoming events
                 showEventsByStatus("upcoming")
                 updateFilterButtonStates(btnUpcoming)
             }
             .addOnFailureListener {
+                Log.e("FirestoreEvents", "Failed to load events: ${it.message}", it)
                 Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
                 updateFilterButtonStates(btnUpcoming)
             }
@@ -682,5 +697,4 @@ class HomeActivity : AppCompatActivity() {
             // previousTargetLocation will be reset by the dismiss logic if it's the last step
         }
     }
-
 }
