@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -26,7 +25,6 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var logo: ImageView
     private lateinit var appName: TextView
     private lateinit var progressBar: ProgressBar
-    private lateinit var wifiManager: WifiManager
 
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
     private val TAG = "SplashActivity"
@@ -38,8 +36,6 @@ class SplashActivity : AppCompatActivity() {
         logo = findViewById(R.id.splash_logo)
         appName = findViewById(R.id.splash_app_name)
         progressBar = findViewById(R.id.splash_progress)
-
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
         if (hasLocationPermission()) {
             startAnimations()
@@ -72,16 +68,6 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun checkUserSessionAndProceed() {
-        if (!isConnectedToTargetWifi()) {
-            Toast.makeText(
-                this,
-                "Please connect to the authorized Wi-Fi network to proceed.",
-                Toast.LENGTH_LONG
-            ).show()
-            Log.w(TAG, "Access blocked: Not connected to required Wi-Fi.")
-            return
-        }
-
         val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean(LoginActivity.KEY_IS_LOGGED_IN, false)
 
@@ -113,14 +99,6 @@ class SplashActivity : AppCompatActivity() {
         }
     }
 
-    private fun isConnectedToTargetWifi(): Boolean {
-        val wifiInfo = wifiManager.connectionInfo
-        val currentSSID = wifiInfo.ssid?.replace("\"", "") ?: ""
-        val targetSSID = "GlobeAtHome_b4338_2.4"
-        Log.d(TAG, "Current SSID: $currentSSID")
-        return currentSSID == targetSSID
-    }
-
     private fun clearLoginDataAndNavigateToLogin() {
         val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
@@ -146,12 +124,6 @@ class SplashActivity : AppCompatActivity() {
             this,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun isLocationEnabled(): Boolean {
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
     private fun requestLocationPermission() {
@@ -182,16 +154,6 @@ class SplashActivity : AppCompatActivity() {
                 }, 500)
             }
         }
-    }
-
-    @Suppress("unused")
-    private fun showWifiErrorDialog(message: String) {
-        AlertDialog.Builder(this)
-            .setTitle("WiFi Information")
-            .setMessage(message)
-            .setCancelable(true)
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     @Suppress("unused")

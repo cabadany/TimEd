@@ -19,6 +19,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.result.contract.ActivityResultContracts
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import androidx.appcompat.app.AlertDialog
@@ -80,7 +82,11 @@ class HomeActivity : AppCompatActivity() {
                 val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
                 if (isTimedIn) {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
-                    loadTodayTimeInPhoto()
+
+                    // Delay to allow Firebase to finish uploading the image
+                    Handler(mainLooper).postDelayed({
+                        loadTodayTimeInPhoto()
+                    }, 2000) // 2-second delay to wait for upload to complete
                 }
             }
         }

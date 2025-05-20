@@ -68,6 +68,7 @@ class TimeInEventActivity : AppCompatActivity() {
     private var currentScannedEventId: String? = null
     private var currentScannedEventName: String? = null
 
+    private lateinit var manualCodeButton: Button
 
     companion object {
         private const val TAG = "TimeInEventActivity" // Ensure this TAG is used for Logcat filtering
@@ -133,32 +134,42 @@ class TimeInEventActivity : AppCompatActivity() {
         scanButton = findViewById(R.id.scan_qr_code)
         shutterButton = findViewById(R.id.icon_shutter_camera) // Initialize shutter button
         selfieReminder = findViewById(R.id.qr_scanner_click_reminder)
-        scannerOverlay = findViewById(R.id.qr_scan_box_overlay) // Use the View from XML
+        scannerOverlay = findViewById(R.id.qr_scan_box_overlay)
+        manualCodeButton = findViewById(R.id.manual_code_time_in)
     }
 
     private fun setupClickListeners() {
         backButton.setOnClickListener {
-            // StateListAnimator on XML handles press feedback.
-            val intent = Intent(this@TimeInEventActivity, TimeInActivity::class.java).apply {
-                putExtra("userId", userId)
-                putExtra("email", userEmail)
-                putExtra("firstName", userFirstName)
-                // Consider flags if you want to go to an existing instance and clear stack above it
-                // flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            val intent = if (currentScannedEventId != null && currentScannedEventName != null) {
+                // Redirect to event details screen if QR already scanned
+                Intent(this@TimeInEventActivity, EventDetailActivity::class.java).apply {
+                    putExtra("eventId", currentScannedEventId)
+                    putExtra("eventName", currentScannedEventName)
+                    putExtra("userId", userId)
+                    putExtra("email", userEmail)
+                    putExtra("firstName", userFirstName)
+                }
+            } else {
+                // Fallback to home if no event scanned yet
+                Intent(this@TimeInEventActivity, HomeActivity::class.java).apply {
+                    putExtra("userId", userId)
+                    putExtra("email", userEmail)
+                    putExtra("firstName", userFirstName)
+                }
             }
-            startActivity(intent) // Start the activity
-            finish() // Finish current activity
+
+            startActivity(intent)
+            finish()
         }
 
         scanButton.setOnClickListener {
-            if (isQrScanned) { // If QR already scanned, button might be for "Take Selfie" or "Scan Different"
+            if (isQrScanned) {
                 if (scanButton.text.toString().equals("Take Selfie", ignoreCase = true) && isFrontCamera) {
                     takeSelfie()
                 } else if (scanButton.text.toString().equals("Take Selfie", ignoreCase = true) && !isFrontCamera) {
                     Toast.makeText(this, "Please wait, switching to selfie camera.", Toast.LENGTH_SHORT).show()
                     switchToSelfieMode()
-                }
-                else { // If button is not "Take Selfie" (e.g. "Scan Different Event")
+                } else {
                     resetForNewScan()
                 }
             } else {
@@ -167,14 +178,23 @@ class TimeInEventActivity : AppCompatActivity() {
         }
 
         shutterButton.setOnClickListener {
-            if (isFrontCamera && isQrScanned) { // Only allow selfie if QR scanned and in selfie mode
+            if (isFrontCamera && isQrScanned) {
                 takeSelfie()
             } else if (!isQrScanned) {
                 Toast.makeText(this, "Please scan a QR code first.", Toast.LENGTH_SHORT).show()
             } else if (!isFrontCamera) {
                 Toast.makeText(this, "Switching to selfie mode...", Toast.LENGTH_SHORT).show()
-                switchToSelfieMode() // Or just enable selfie mode if QR is already scanned
+                switchToSelfieMode()
             }
+        }
+
+        manualCodeButton.setOnClickListener {
+            val intent = Intent(this@TimeInEventActivity, TimeInEventManualActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+            }
+            startActivity(intent)
         }
     }
 
