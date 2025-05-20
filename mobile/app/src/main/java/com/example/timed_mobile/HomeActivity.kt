@@ -275,6 +275,72 @@ class HomeActivity : AppCompatActivity() {
         sidebarName.text = userFirstName ?: "User"
         sidebarDetails.text = "$idNumber • $department"
         sidebarEmail.text = userEmail ?: ""
+
+        navigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_home -> {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_event_log -> {
+                    val intent = Intent(this, EventLogActivity::class.java)
+                    intent.putExtra("userId", userId)
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_excuse_letter -> {
+                    val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                        putExtra("idNumber", idNumber)
+                        putExtra("department", department)
+                    }
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_excuse_letter_history -> {
+                    val intent = Intent(this, ExcuseLetterHistoryActivity::class.java)
+                    intent.putExtra("userId", userId)
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_profile -> {
+                    val intent = Intent(this, ProfileActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                        putExtra("idNumber", idNumber)
+                        putExtra("department", department)
+                    }
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_logout -> {
+                    showLogoutDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun showLogoutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Log Out")
+            .setMessage("Are you sure you want to log out?")
+            .setPositiveButton("Yes") { _, _ ->
+                val prefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().clear().apply()
+                startActivity(Intent(this, LoginActivity::class.java))
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupFilterButtons() {

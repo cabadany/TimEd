@@ -32,11 +32,16 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
-import java.io.File
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import java.io.File
+import java.io.FileOutputStream
 
 class TimeInActivity : AppCompatActivity() {
 
@@ -99,15 +104,12 @@ class TimeInActivity : AppCompatActivity() {
         if (currentUser != null) {
             Log.d(TAG, "Firebase Auth: User IS authenticated. UID: ${currentUser.uid}")
             isAuthenticated = true
-            userId = currentUser.uid
+            // ❌ Do NOT override userId
         } else {
             Log.e(TAG, "Firebase Auth: User is NOT authenticated")
-
             signInAnonymouslyForStorage { success ->
                 if (success) {
-                    val firebaseUser = FirebaseAuth.getInstance().currentUser
                     isAuthenticated = true
-                    userId = firebaseUser?.uid
                 } else {
                     isAuthenticated = false
                     Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show()
@@ -352,10 +354,31 @@ class TimeInActivity : AppCompatActivity() {
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
 
         imageCapture.takePicture(
-            outputOptions, ContextCompat.getMainExecutor(this),
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    uploadImageToFirebase(Uri.fromFile(file), uid)
+                    try {
+                        val photoFile = File(output.savedUri?.path ?: file.path)
+
+                        // Flip the image horizontally (mirror fix)
+                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                        val matrix = Matrix().apply { preScale(-1f, 1f) } // Horizontal flip
+                        val flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+
+                        // Overwrite original file
+                        FileOutputStream(photoFile).use { out ->
+                            flippedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                        }
+
+                        // Upload the flipped image
+                        uploadImageToFirebase(Uri.fromFile(photoFile), uid)
+                    } catch (e: Exception) {
+                        Log.e("TimeInActivity", "Failed to flip image: ${e.message}", e)
+                        Toast.makeText(this@TimeInActivity, "Image flip failed.", Toast.LENGTH_SHORT).show()
+                        timeInButton.isEnabled = true
+                        timeInButton.text = "Time - In"
+                    }
                 }
 
                 override fun onError(exc: ImageCaptureException) {
@@ -363,7 +386,8 @@ class TimeInActivity : AppCompatActivity() {
                     timeInButton.isEnabled = true
                     timeInButton.text = "Time - In"
                 }
-            })
+            }
+        )
     }
 
     private fun uploadImageToFirebase(uri: Uri, uid: String) {
@@ -464,7 +488,8 @@ class TimeInActivity : AppCompatActivity() {
             "type" to "TimeIn",
             "imageUrl" to imageUrl,
             "email" to userEmail,
-            "firstName" to userFirstName
+            "firstName" to userFirstName,
+            "userId" to uid
         )
 
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(uid)
