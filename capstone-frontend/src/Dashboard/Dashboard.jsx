@@ -668,7 +668,7 @@ export default function Dashboard() {
             }}
           >
             <Tab 
-              label="Day to Day Attendance Record" 
+              label="Daily Attendance Record" 
               icon={<Group />} 
               iconPosition="start"
             />

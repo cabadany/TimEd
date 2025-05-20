@@ -4,18 +4,40 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
-  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton
+  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
+  Tabs, Tab
 } from '@mui/material';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
-  Person
+  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
 
 // Base API URL
 const API_BASE_URL = 'http://localhost:8080/api';
+
+// TabPanel component for tab content
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 // Date formatting helper function
 const formatDate = (dateObj) => {
@@ -85,6 +107,24 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Tab state
+  const [tabValue, setTabValue] = useState(0);
+
+  // Status counters state
+  const [statusCounts, setStatusCounts] = useState({
+    onDuty: 0,
+    onBreak: 0,
+    offDuty: 0
+  });
+
+  // Faculty timeline data
+  const [todayTimeline, setTodayTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  // Status reports data
+  const [statusReports, setStatusReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  
   // Professors state
   const [professors, setProfessors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -448,231 +488,729 @@ export default function AccountPage() {
     }
   });
 
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    if (newValue === 1) {
+      // When switching to Current Status tab, fetch the relevant data
+      fetchStatusCounts();
+      fetchTodayTimeline();
+      fetchStatusReports();
+    }
+  };
+
+  // Fetch faculty status counts
+  const fetchStatusCounts = async () => {
+    try {
+      // This would be replaced with actual API calls in a real implementation
+      // Mock data for demonstration
+      setStatusCounts({
+        onDuty: 12,
+        onBreak: 5,
+        offDuty: 8
+      });
+    } catch (err) {
+      console.error('Error fetching status counts:', err);
+      showSnackbar('Failed to load status counts', 'error');
+    }
+  };
+
+  // Fetch today's faculty timeline
+  const fetchTodayTimeline = async () => {
+    setTimelineLoading(true);
+    try {
+      // This would be replaced with actual API calls in a real implementation
+      // Mock data for demonstration
+      const today = new Date();
+      setTodayTimeline([
+        { id: 1, name: "John Wayne Largo", status: "Started shift", time: "9:00 AM" },
+        { id: 2, name: "Alexa Tumungha", status: "Break (30min)", time: "10:30 AM" },
+        { id: 3, name: "John Wayne Largo", status: "Resumed work", time: "11:00 AM" },
+        { id: 4, name: "Mikhail Navarro", status: "Started shift", time: "12:00 PM" },
+        { id: 5, name: "Danisse Cabana", status: "Off Duty", time: "2:00 PM" }
+      ]);
+    } catch (err) {
+      console.error('Error fetching timeline data:', err);
+      showSnackbar('Failed to load timeline data', 'error');
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  // Fetch faculty status reports
+  const fetchStatusReports = async () => {
+    setReportsLoading(true);
+    try {
+      // This would be replaced with actual API calls in a real implementation
+      // Mock data for demonstration
+      setStatusReports([
+        { id: 1, facultyName: "John Wayne Largo", date: "Jan 15, 2025", status: "On Duty", duration: "8h 30m", notes: "Regular shift" },
+        { id: 2, facultyName: "Alexa Tumungha", date: "Jan 14, 2025", status: "Break", duration: "1h 00m", notes: "Lunch break" },
+        { id: 3, facultyName: "Mikhail Navarro", date: "Jan 14, 2025", status: "On Duty", duration: "4h 15m", notes: "Afternoon shift" },
+        { id: 4, facultyName: "Danisse Cabana", date: "Jan 13, 2025", status: "Off Duty", duration: "0h 00m", notes: "Sick leave" }
+      ]);
+    } catch (err) {
+      console.error('Error fetching status reports:', err);
+      showSnackbar('Failed to load status reports', 'error');
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  // Export status report function
+  const handleExportReport = () => {
+    // In a real implementation, this would generate and download a report
+    showSnackbar('Report exported successfully', 'success');
+  };
+
   return (
     <Box>
       <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 1 
+      }}>
+      </Box>
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={tabValue} onChange={handleTabChange} aria-label="account tabs">
+          <Tab 
+            icon={<Person sx={{ mr: 1 }} />}
+            iconPosition="start"
+            label="Faculty Accounts" 
+            sx={{ 
+              textTransform: 'none', 
+              fontWeight: 600,
+              fontSize: '1rem',
+              color: tabValue === 0 ? 'primary.main' : 'text.secondary',
+              '&.Mui-selected': { color: 'primary.main' }
+            }} 
+          />
+          <Tab 
+            icon={<AccessTime sx={{ mr: 1 }} />}
+            iconPosition="start"
+            label="Faculty Status" 
+            sx={{ 
+              textTransform: 'none', 
+              fontWeight: 600,
+              fontSize: '1rem',
+              color: tabValue === 1 ? 'primary.main' : 'text.secondary',
+              '&.Mui-selected': { color: 'primary.main' }
+            }} 
+          />
+        </Tabs>
+      </Box>
+
+      {/* Faculty Accounts Tab */}
+      <TabPanel value={tabValue} index={0}>
+        <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          mb: 3 
-      }}>
-        <Typography variant="h6" fontWeight="600" color="#1E293B">
-          Faculty Accounts
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Paper
-            elevation={0}
-            sx={{ 
-              p: '2px 4px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              width: 300, 
-              bgcolor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '4px'
-            }}
-          >
-            <IconButton sx={{ p: '10px' }} aria-label="search">
-              <Search sx={{ color: '#64748B' }} />
-            </IconButton>
-            <InputBase
-              sx={{ ml: 1, flex: 1, fontSize: 14 }}
-              placeholder="Search Faculty..."
-              value={searchTerm}
-              onChange={handleSearch}
-            />
-          </Paper>
-          <Button 
-            variant="outlined" 
-            startIcon={<FilterList />}
-            size="small"
-            onClick={handleFilterClick}
-            sx={{
-              borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
-              color: activeFilter ? '#0288d1' : '#64748B',
-              textTransform: 'none',
-              fontWeight: 500,
-              mr: 0.6,
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              py: 0.5,
-              px: 2
-            }}
-          >
-            {activeFilter || 'FILTER'}
-          </Button>
-          <Menu
-            anchorEl={filterAnchorEl}
-            open={filterMenuOpen}
-            onClose={handleFilterClose}
-            PaperProps={{
-              elevation: 3,
-              sx: { 
-                width: 180,
-                mt: 1,
-                '& .MuiMenuItem-root': {
-                  fontSize: 14,
-                  py: 1
+          mb: 3
+        }}>
+          <Typography variant="h5" fontWeight="600" color="#1E293B">
+            Faculty Accounts
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Paper
+              elevation={0}
+              sx={{ 
+                p: '2px 4px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                width: 300, 
+                bgcolor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '4px'
+              }}
+            >
+              <IconButton sx={{ p: '10px' }} aria-label="search">
+                <Search sx={{ color: '#64748B' }} />
+              </IconButton>
+              <InputBase
+                sx={{ ml: 1, flex: 1, fontSize: 14 }}
+                placeholder="Search Faculty..."
+                value={searchTerm}
+                onChange={handleSearch}
+              />
+            </Paper>
+            <Button 
+              variant="outlined" 
+              startIcon={<FilterList />}
+              size="small"
+              onClick={handleFilterClick}
+              sx={{
+                borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
+                color: activeFilter ? '#0288d1' : '#64748B',
+                textTransform: 'none',
+                fontWeight: 500,
+                mr: 0.6,
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                py: 0.5,
+                px: 2
+              }}
+            >
+              {activeFilter || 'FILTER'}
+            </Button>
+            <Menu
+              anchorEl={filterAnchorEl}
+              open={filterMenuOpen}
+              onClose={handleFilterClose}
+              PaperProps={{
+                elevation: 3,
+                sx: { 
+                  width: 180,
+                  mt: 1,
+                  '& .MuiMenuItem-root': {
+                    fontSize: 14,
+                    py: 1
+                  }
                 }
-              }
-            }}
-          >
-            <MenuItem onClick={() => handleFilterSelect('Department')}>
-              <ListItemIcon>
-                <Group fontSize="small" sx={{ color: '#64748B' }} />
-              </ListItemIcon>
-              <ListItemText>Department</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleFilterSelect('ID')}>
-              <ListItemIcon>
-                <CalendarToday fontSize="small" sx={{ color: '#64748B' }} />
-              </ListItemIcon>
-              <ListItemText>ID</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleFilterSelect('Name')}>
-              <ListItemIcon>
-                <People fontSize="small" sx={{ color: '#64748B' }} />
-              </ListItemIcon>
-              <ListItemText>Name</ListItemText>
-            </MenuItem>
-          </Menu>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAddClick}
-            sx={{
-              bgcolor: '#0288d1',
-              '&:hover': {
-                bgcolor: '#0277bd',
-              },
-              textTransform: 'none',
-              borderRadius: '4px',
-              fontWeight: 500
-            }}
-          >
-            Add Faculty
-          </Button>
+              }}
+            >
+              <MenuItem onClick={() => handleFilterSelect('Department')}>
+                <ListItemIcon>
+                  <Group fontSize="small" sx={{ color: '#64748B' }} />
+                </ListItemIcon>
+                <ListItemText>Department</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleFilterSelect('ID')}>
+                <ListItemIcon>
+                  <CalendarToday fontSize="small" sx={{ color: '#64748B' }} />
+                </ListItemIcon>
+                <ListItemText>ID</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleFilterSelect('Name')}>
+                <ListItemIcon>
+                  <People fontSize="small" sx={{ color: '#64748B' }} />
+                </ListItemIcon>
+                <ListItemText>Name</ListItemText>
+              </MenuItem>
+            </Menu>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleAddClick}
+              sx={{
+                bgcolor: '#0288d1',
+                '&:hover': {
+                  bgcolor: '#0277bd',
+                },
+                textTransform: 'none',
+                borderRadius: '4px',
+                fontWeight: 500
+              }}
+            >
+              Add Faculty
+            </Button>
+          </Box>
         </Box>
-      </Box>
 
-      {/* Faculty Table */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          mb: 3,
-          border: '1px solid #E2E8F0',
-          borderRadius: '8px',
-          overflow: 'hidden'
-        }}
-      >
-        <TableContainer sx={{ maxHeight: 'calc(100vh - 240px)' }}>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>School ID</TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 180 }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <AccountTableSkeleton />
-              ) : error ? (
+        {/* Faculty Table */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            mb: 3,
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}
+        >
+          <TableContainer sx={{ maxHeight: 'calc(100vh - 240px)' }}>
+            <Table stickyHeader>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>
-                    {error}
-                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>School ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 180 }}>Actions</TableCell>
                 </TableRow>
-              ) : filteredProfessors.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    No faculty members found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredProfessors.map((professor) => (
-                  <TableRow 
-                    key={professor.userId}
-                    sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
-                  >
-                    <TableCell>{professor.schoolId}</TableCell>
-                    <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
-                    <TableCell>{professor.email}</TableCell>
-                    <TableCell>
-                      {(() => {
-                        try {
-                          if (professor.role === 'ADMIN') {
-                            return (
-                              <>
-                                ADMIN
-                                <Typography variant="caption" color="#64748B" display="block">
-                                  AD
-                                </Typography>
-                              </>
-                            );
-                          } else if (professor.department && professor.department.departmentId) {
-                            return (
-                              <>
-                                {getDepartmentName(professor.department.departmentId)}
-                                <Typography variant="caption" color="#64748B" display="block">
-                                  {getDepartmentAbbreviation(professor.department.departmentId)}
-                                </Typography>
-                              </>
-                            );
-                          } else {
-                            return 'Not assigned';
-                          }
-                        } catch (error) {
-                          console.error("Error rendering department for", professor.firstName, professor.lastName, error);
-                          return 'Not assigned';
-                        }
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleViewClick(professor)}
-                          sx={{ color: '#64748B' }}
-                          title="View Details"
-                        >
-                          <VisibilityOutlined fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleEditClick(professor)}
-                          sx={{ color: '#0288d1' }}
-                          title="Edit"
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleViewAttendedEvents(professor)}
-                          sx={{ color: '#10B981' }}
-                          title="View Attended Events"
-                        >
-                          <EventAvailable fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleDeleteProfessor(professor.userId)}
-                          sx={{ color: '#EF4444' }}
-                          title="Delete"
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
+                  <AccountTableSkeleton />
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>
+                      {error}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                ) : filteredProfessors.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No faculty members found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredProfessors.map((professor) => (
+                    <TableRow 
+                      key={professor.userId}
+                      sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
+                    >
+                      <TableCell>{professor.schoolId}</TableCell>
+                      <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
+                      <TableCell>{professor.email}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          try {
+                            if (professor.role === 'ADMIN') {
+                              return (
+                                <>
+                                  ADMIN
+                                  <Typography variant="caption" color="#64748B" display="block">
+                                    AD
+                                  </Typography>
+                                </>
+                              );
+                            } else if (professor.department && professor.department.departmentId) {
+                              return (
+                                <>
+                                  {getDepartmentName(professor.department.departmentId)}
+                                  <Typography variant="caption" color="#64748B" display="block">
+                                    {getDepartmentAbbreviation(professor.department.departmentId)}
+                                  </Typography>
+                                </>
+                              );
+                            } else {
+                              return 'Not assigned';
+                            }
+                          } catch (error) {
+                            console.error("Error rendering department for", professor.firstName, professor.lastName, error);
+                            return 'Not assigned';
+                          }
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleViewClick(professor)}
+                            sx={{ color: '#64748B' }}
+                            title="View Details"
+                          >
+                            <VisibilityOutlined fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleEditClick(professor)}
+                            sx={{ color: '#0288d1' }}
+                            title="Edit"
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleViewAttendedEvents(professor)}
+                            sx={{ color: '#10B981' }}
+                            title="View Attended Events"
+                          >
+                            <EventAvailable fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleDeleteProfessor(professor.userId)}
+                            sx={{ color: '#EF4444' }}
+                            title="Delete"
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </TabPanel>
+
+      {/* Current Status Tab */}
+      <TabPanel value={tabValue} index={1}>
+        {/* Current Status Section */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ 
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2
+          }}>
+            <Typography variant="h5" fontWeight="600" color="#1E293B">
+              Faculty Status
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Last updated: Just now
+            </Typography>
+          </Box>
+
+          {/* Status Cards */}
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2,
+            mb: 4
+          }}>
+            {/* On Duty Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                flex: 1,
+                p: 2,
+                borderRadius: 2,
+                bgcolor: '#1E293B',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <Box sx={{ 
+                height: 10, 
+                width: 10, 
+                borderRadius: '50%', 
+                bgcolor: '#4CAF50', 
+                position: 'absolute',
+                top: 15,
+                left: 15 
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+                On Duty
+              </Typography>
+              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
+                {statusCounts.onDuty}
+              </Typography>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                mt: 'auto'
+              }}>
+                <AccessTime sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                  Faculty count
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* On Break Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                flex: 1,
+                p: 2,
+                borderRadius: 2,
+                bgcolor: '#1E293B',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <Box sx={{ 
+                height: 10, 
+                width: 10, 
+                borderRadius: '50%', 
+                bgcolor: '#FF9800', 
+                position: 'absolute',
+                top: 15,
+                left: 15 
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+                On Break
+              </Typography>
+              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
+                {statusCounts.onBreak}
+              </Typography>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                mt: 'auto'
+              }}>
+                <RemoveFromQueue sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                  Faculty count
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* Off Duty Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                flex: 1,
+                p: 2,
+                borderRadius: 2,
+                bgcolor: '#1E293B',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <Box sx={{ 
+                height: 10, 
+                width: 10, 
+                borderRadius: '50%', 
+                bgcolor: '#F44336', 
+                position: 'absolute',
+                top: 15,
+                left: 15 
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+                Off Duty
+              </Typography>
+              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
+                {statusCounts.offDuty}
+              </Typography>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                mt: 'auto'
+              }}>
+                <DirectionsWalk sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                  Faculty count
+                </Typography>
+              </Box>
+            </Paper>
+          </Box>
+        </Box>
+
+        {/* Today's Timeline Section */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ 
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2
+          }}>
+            <Typography variant="h5" fontWeight="600" color="#1E293B">
+              Today's Timeline
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                startIcon={<CalendarToday fontSize="small" />}
+                sx={{
+                  textTransform: 'none',
+                  borderColor: '#E2E8F0',
+                  color: '#64748B',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Select Date
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<FilterList fontSize="small" />}
+                sx={{
+                  textTransform: 'none',
+                  borderColor: '#E2E8F0',
+                  color: '#64748B',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Filter
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Timeline Content */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: 2,
+              bgcolor: '#fff',
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            {timelineLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : todayTimeline.length === 0 ? (
+              <Typography variant="body1" textAlign="center" color="text.secondary" py={4}>
+                No timeline data available for today
+              </Typography>
+            ) : (
+              <>
+                {todayTimeline.map((item, index) => (
+                  <Box key={item.id} sx={{ display: 'flex', mb: 2 }}>
+                    <Box sx={{ width: '80px', textAlign: 'right', pr: 2, color: '#64748B' }}>
+                      <Typography variant="body2">{item.time}</Typography>
+                    </Box>
+                    <Box sx={{ 
+                      position: 'relative',
+                      borderLeft: '2px solid',
+                      borderColor: item.status.includes('Started') ? '#4CAF50' : 
+                                item.status.includes('Break') ? '#FF9800' : 
+                                item.status.includes('Resumed') ? '#2196F3' : 
+                                '#9E9E9E',
+                      pl: 3,
+                      pb: index < todayTimeline.length - 1 ? 4 : 0
+                    }}>
+                      <Box sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: item.status.includes('Started') ? '#4CAF50' : 
+                                item.status.includes('Break') ? '#FF9800' : 
+                                item.status.includes('Resumed') ? '#2196F3' : 
+                                '#9E9E9E',
+                        position: 'absolute',
+                        left: -6,
+                        top: 5
+                      }} />
+                      <Typography variant="body2" fontWeight="600">
+                        {item.status}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.name}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </>
+            )}
+          </Paper>
+        </Box>
+
+        {/* Status Reports Section */}
+        <Box>
+          <Box sx={{ 
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2
+          }}>
+            <Typography variant="h5" fontWeight="600" color="#1E293B">
+              Status Reports
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<FilterList fontSize="small" />}
+                sx={{
+                  textTransform: 'none',
+                  borderColor: '#E2E8F0',
+                  color: '#64748B',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Filter
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleExportReport}
+                sx={{
+                  textTransform: 'none',
+                  bgcolor: '#0288d1',
+                  '&:hover': {
+                    bgcolor: '#0277bd',
+                  },
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Export Report
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Reports Table */}
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              bgcolor: '#fff',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden'
+            }}
+          >
+            <TableContainer sx={{ maxHeight: 'calc(100vh - 600px)' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Notes</TableCell>
+                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 100 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {reportsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                        <CircularProgress size={30} />
+                      </TableCell>
+                    </TableRow>
+                  ) : statusReports.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                        No status reports available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    statusReports.map((report) => (
+                      <TableRow key={report.id} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
+                        <TableCell>{report.date}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ 
+                              width: 8, 
+                              height: 8, 
+                              borderRadius: '50%', 
+                              bgcolor: report.status === 'On Duty' ? '#4CAF50' : 
+                                        report.status === 'Break' ? '#FF9800' : 
+                                        '#9E9E9E', 
+                              mr: 1 
+                            }} />
+                            {report.status}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{report.duration}</TableCell>
+                        <TableCell>{report.notes}</TableCell>
+                        <TableCell>
+                          <IconButton size="small" sx={{ color: '#64748B' }}>
+                            <MoreVert fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Box>
+      </TabPanel>
 
       {/* Add Professor Modal */}
       <Modal
