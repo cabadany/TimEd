@@ -1039,15 +1039,21 @@ export default function EventPage() {
   const createDefaultTemplate = (eventId) => {
     const defaultTemplate = { ...defaultCertificate };
     
-    // Add event details if available
+    // Add event details if available from eventForCertificate
     if (eventForCertificate?.eventName) {
       defaultTemplate.eventName = eventForCertificate.eventName;
+    } 
+    // Or use the event name from the form if available
+    else if (eventName) {
+      defaultTemplate.eventName = eventName;
     }
     
     // Add event ID if provided
     if (eventId) {
       defaultTemplate.eventId = eventId;
     }
+    
+    console.log('Created default template with eventName:', defaultTemplate.eventName);
     
     return defaultTemplate;
   };
@@ -1176,7 +1182,8 @@ export default function EventPage() {
           const payload = {
             ...templateToApply,
             eventId: eventForCertificate.eventId,
-            eventName: eventForCertificate.eventName || templateToApply.eventName
+            // Ensure the event name is always updated correctly
+            eventName: eventName || eventForCertificate.eventName || templateToApply.eventName
           };
           
           console.log('Apply: Final certificate payload:', payload);

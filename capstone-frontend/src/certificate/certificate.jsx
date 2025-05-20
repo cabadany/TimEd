@@ -33,7 +33,11 @@ import {
   DialogContent,
   DialogActions,
   Tabs,
-  Tab
+  Tab,
+  Pagination,
+  Stack,
+  Divider,
+  Container
 } from '@mui/material';
 import {
   ArrowBack,
@@ -53,7 +57,8 @@ import {
   Add,
   Download,
   Email,
-  Home
+  Home,
+  QrCode2
 } from '@mui/icons-material';
 import './certificate.css';
 import CertificateEditor from '../components/CertificateEditor';
@@ -473,6 +478,12 @@ export default function Certificate() {
   const [activeTab, setActiveTab] = useState(0);
   const [events, setEvents] = useState([]);
 
+  // Add pagination state
+  const [page, setPage] = useState(1);
+  const [certificatesPerPage] = useState(6);
+  const [searchCertQuery, setSearchCertQuery] = useState('');
+  const [filteredCertificates, setFilteredCertificates] = useState([]);
+
   useEffect(() => {
     // Remove admin role check since this is already an admin dashboard
     setIsAdmin(true);
@@ -521,12 +532,40 @@ export default function Certificate() {
     }
   }, [eventId]);
 
-  // Filter attendees when search query changes
+  // Filter certificates when search query changes
   useEffect(() => {
-    if (attendees.length > 0) {
-      filterAttendees();
+    if (certificates.length > 0) {
+      filterCertificates();
     }
-  }, [searchQuery, attendees]);
+  }, [searchCertQuery, certificates]);
+
+  // Filter certificates based on search query
+  const filterCertificates = () => {
+    if (searchCertQuery.trim() === '') {
+      setFilteredCertificates(certificates);
+    } else {
+      const query = searchCertQuery.toLowerCase();
+      const filtered = certificates.filter(
+        cert => 
+          (cert.title && cert.title.toLowerCase().includes(query)) ||
+          (cert.eventName && cert.eventName.toLowerCase().includes(query)) ||
+          (events.find(e => e.eventId === cert.eventId)?.eventName.toLowerCase().includes(query))
+      );
+      setFilteredCertificates(filtered);
+    }
+  };
+
+  // Handle pagination change
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Handle search input change for certificates
+  const handleCertSearchChange = (event) => {
+    const query = event.target.value.toLowerCase();
+    setSearchCertQuery(query);
+  };
 
   // Fetch all certificates
   const fetchCertificates = async () => {
@@ -540,7 +579,11 @@ export default function Certificate() {
       console.log(`[DEBUG] Found ${validEventIds.length} valid events`);
       
       // Fetch all certificates
-      const certificatesResponse = await axios.get('http://localhost:8080/api/certificates');
+      const certificatesResponse = await axios.get('http://localhost:8080/api/certificates', {
+        params: {
+          includeImages: true // Request server to include all image data
+        }
+      });
       const allCertificates = certificatesResponse.data;
       console.log(`[DEBUG] Fetched ${allCertificates.length} total certificates`);
       
@@ -562,6 +605,25 @@ export default function Certificate() {
         orphanedCertificates.forEach(cert => {
           console.log(`[DEBUG] Certificate ID: ${cert.id}, Event ID: ${cert.eventId}, Title: ${cert.title}`);
         });
+      }
+      
+      // Make sure we have all certificate images
+      for (const cert of filteredCertificates) {
+        // If we have an eventId but images are missing, try to fetch them separately
+        if (cert.eventId && (!cert.backgroundImage || !cert.logoImage || !cert.watermarkImage)) {
+          try {
+            const detailResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${cert.eventId}`);
+            if (detailResponse.data) {
+              // Merge any image data that might be available in the detailed response
+              if (detailResponse.data.backgroundImage) cert.backgroundImage = detailResponse.data.backgroundImage;
+              if (detailResponse.data.logoImage) cert.logoImage = detailResponse.data.logoImage;
+              if (detailResponse.data.watermarkImage) cert.watermarkImage = detailResponse.data.watermarkImage;
+              if (detailResponse.data.signatureImages) cert.signatureImages = detailResponse.data.signatureImages;
+            }
+          } catch (detailError) {
+            console.log(`[DEBUG] Could not fetch detailed certificate for event ID ${cert.eventId}`);
+          }
+        }
       }
       
       setCertificates(filteredCertificates);
@@ -608,6 +670,16 @@ export default function Certificate() {
       // Edit existing certificate
       setCurrentCertificateData(certificate);
       const relatedEvent = events.find(e => e.eventId === certificate.eventId);
+      
+      // Make sure event name is properly set
+      if (relatedEvent && certificate.eventName === '{Event Name}') {
+        console.log('Updating certificate event name from related event:', relatedEvent.eventName);
+        setCurrentCertificateData({
+          ...certificate,
+          eventName: relatedEvent.eventName
+        });
+      }
+      
       setEventForCertificate(relatedEvent);
     } else if (event) {
       // Create new certificate for specific event
@@ -1134,40 +1206,79 @@ export default function Certificate() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px',
-          border: `5px solid ${certificate.borderColor || '#0047AB'}`,
+          border: certificate.showBorder !== false ? `${certificate.borderWidth || 5}px solid ${certificate.borderColor || '#000000'}` : 'none',
           color: certificate.textColor || '#000000',
           fontFamily: certificate.fontFamily || 'Arial'
         }}
       >
-        {/* Blue curved header background */}
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            top: -60, 
-            left: -60, 
-            width: 200, 
-            height: 120, 
-            backgroundColor: certificate.headerColor || '#0047AB',
-            borderRadius: '50%',
-            transform: 'rotate(-45deg)',
-            zIndex: 0
-          }} 
-        />
+        {/* Background Image */}
+        {certificate.backgroundImage && (
+          <Box
+            component="img"
+            src={`data:image/png;base64,${certificate.backgroundImage}`}
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: certificate.backgroundImageOpacity || 0.3,
+              zIndex: 0
+            }}
+          />
+        )}
         
-        {/* Blue curved footer background */}
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            bottom: -60, 
-            right: -60, 
-            width: 200, 
-            height: 120, 
-            backgroundColor: certificate.headerColor || '#0047AB',
-            borderRadius: '50%',
-            transform: 'rotate(135deg)',
-            zIndex: 0
-          }} 
-        />
+        {/* Logo */}
+        {certificate.logoImage && (
+          <Box
+            component="img"
+            src={`data:image/png;base64,${certificate.logoImage}`}
+            sx={{
+              position: 'absolute',
+              width: certificate.logoWidth || 60,
+              height: certificate.logoHeight || 60,
+              objectFit: 'contain',
+              zIndex: 2,
+              ...(certificate.logoPosition === 'top-left' && {
+                top: 10,
+                left: 10
+              }),
+              ...(certificate.logoPosition === 'top-center' && {
+                top: 10,
+                left: '50%',
+                transform: 'translateX(-50%)'
+              }),
+              ...(certificate.logoPosition === 'top-right' && {
+                top: 10,
+                right: 10
+              }),
+              ...((!certificate.logoPosition || certificate.logoPosition === '') && {
+                top: 10,
+                left: '50%',
+                transform: 'translateX(-50%)'
+              })
+            }}
+          />
+        )}
+
+        {/* Watermark */}
+        {certificate.watermarkImage && (
+          <Box
+            component="img"
+            src={`data:image/png;base64,${certificate.watermarkImage}`}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '50%',
+              height: 'auto',
+              opacity: certificate.watermarkImageOpacity || 0.1,
+              zIndex: 1
+            }}
+          />
+        )}
         
         <Box sx={{ zIndex: 1, textAlign: 'center' }}>
           <Typography 
@@ -1236,10 +1347,70 @@ export default function Certificate() {
           >
             {certificate.description || 'For outstanding participation...'}
           </Typography>
+          
+          {/* Added event name to be displayed in the thumbnail */}
+          <Typography 
+            sx={{ 
+              fontSize: '8px',
+              fontWeight: 'bold',
+              mb: 0.5,
+              lineHeight: 1
+            }}
+          >
+            {(certificate.eventName && certificate.eventName !== '{Event Name}') 
+              ? certificate.eventName 
+              : events.find(e => e.eventId === certificate.eventId)?.eventName 
+              || 'Event'}
+          </Typography>
         </Box>
+        
+        {/* QR Code (if enabled) */}
+        {certificate.showQRCode && (
+          <Box
+            sx={{
+              position: 'absolute',
+              ...(certificate.qrCodePosition === 'bottom-right' && {
+                bottom: 5,
+                right: 5
+              }),
+              ...(certificate.qrCodePosition === 'bottom-left' && {
+                bottom: 5,
+                left: 5
+              }),
+              ...(certificate.qrCodePosition === 'top-right' && {
+                top: 5,
+                right: 5
+              }),
+              ...(certificate.qrCodePosition === 'top-left' && {
+                top: 5,
+                left: 5
+              }),
+              ...((!certificate.qrCodePosition || certificate.qrCodePosition === '') && {
+                bottom: 5,
+                right: 5
+              }),
+              zIndex: 2,
+              width: 20,
+              height: 20,
+              border: '1px solid #000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#fff'
+            }}
+          >
+            <QrCode2 sx={{ fontSize: 14 }} />
+          </Box>
+        )}
       </Box>
     );
   };
+
+  // Get paginated certificates
+  const indexOfLastCertificate = page * certificatesPerPage;
+  const indexOfFirstCertificate = indexOfLastCertificate - certificatesPerPage;
+  const currentCertificates = filteredCertificates.slice(indexOfFirstCertificate, indexOfLastCertificate);
+  const totalPages = Math.ceil(filteredCertificates.length / certificatesPerPage);
 
   // If we're on the event attendance page
   if (eventId) {
@@ -1296,47 +1467,75 @@ export default function Certificate() {
 
   // If we're on the certificates page
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Certificate Templates
-        </Typography>
-      </Box>
-
-      {/* Certificate templates section */}
-      <Box sx={{ mt: 1 }}>
-        <Paper elevation={0} sx={{ p: 3, borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            mb: 3 
-          }}>
-            <Typography variant="body2" color="text.secondary">
-              Only showing templates associated with events
-            </Typography>
-          </Box>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Paper elevation={1} sx={{ p: 3, borderRadius: '12px' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 2
+        }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#1E293B' }}>
+            Certificate Templates
+          </Typography>
           
+          <TextField
+            placeholder="Search templates..."
+            variant="outlined"
+            size="small"
+            value={searchCertQuery}
+            onChange={handleCertSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ color: '#64748B', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              width: { xs: '100%', sm: '250px' },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '8px',
+                backgroundColor: '#F8FAFC',
+              }
+            }}
+          />
+        </Box>
+        
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Certificate templates section */}
+        <Box sx={{ mt: 1 }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={40} />
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={40} sx={{ color: '#0288d1' }} />
             </Box>
-          ) : certificates.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4, border: '1px dashed #CBD5E1', borderRadius: '8px' }}>
-              <Typography variant="body1" color="#64748B" gutterBottom>
-                No certificate templates found for events
+          ) : filteredCertificates.length === 0 ? (
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 6, 
+              border: '1px dashed #CBD5E1', 
+              borderRadius: '8px',
+              bgcolor: '#F8FAFC'
+            }}>
+              <Typography variant="h6" color="#64748B" gutterBottom>
+                No certificate templates found
               </Typography>
-              <Typography variant="body2" color="#94A3B8" sx={{ mb: 2 }}>
-                Create templates by selecting an event in the Events page
+              <Typography variant="body2" color="#94A3B8" sx={{ mb: 3 }}>
+                {searchCertQuery ? 'Try a different search term or' : 'Create templates by selecting an event in the Events page'}
               </Typography>
               <Button 
-                variant="outlined" 
+                variant="contained" 
                 startIcon={<Event />}
                 onClick={() => navigate('/event')}
                 sx={{
-                  borderColor: '#0288d1',
-                  color: '#0288d1',
+                  bgcolor: '#0288d1',
+                  fontWeight: 500,
+                  boxShadow: '0 4px 6px rgba(2,136,209,0.15)',
                   '&:hover': {
-                    bgcolor: 'rgba(2, 136, 209, 0.04)',
+                    bgcolor: '#0277BD',
                   }
                 }}
               >
@@ -1344,99 +1543,124 @@ export default function Certificate() {
               </Button>
             </Box>
           ) : (
-            <Grid container spacing={3}>
-              {certificates.map((certificate) => (
-                <Grid item xs={12} sm={6} md={4} key={certificate.id}>
-                  <Card 
-                    elevation={2} 
-                    sx={{ 
-                      borderRadius: '8px', 
-                      overflow: 'visible',
-                      transition: 'transform 0.2s',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: 6
-                      }
-                    }}
-                  >
-                    {renderCertificateThumbnail(certificate)}
-                    
-                    <CardContent sx={{ pt: 2, pb: 0 }}>
-                      <Typography 
-                        variant="h6" 
-                        gutterBottom
-                        sx={{ 
-                          fontSize: '16px', 
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
-                        {certificate.title || 'Certificate Template'}
-                      </Typography>
+            <>
+              <Grid container spacing={3}>
+                {currentCertificates.map((certificate) => (
+                  <Grid item xs={12} sm={6} md={4} key={certificate.id}>
+                    <Card 
+                      elevation={2} 
+                      sx={{ 
+                        borderRadius: '12px', 
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-8px)',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.08)'
+                        }
+                      }}
+                    >
+                      {renderCertificateThumbnail(certificate)}
                       
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          mb: 1
-                        }}
-                      >
-                        <Event fontSize="small" sx={{ mr: 0.5, fontSize: '16px' }} />
-                        {certificate.eventName || events.find(e => e.eventId === certificate.eventId)?.eventName || 'Unknown Event'}
-                      </Typography>
-                      
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        pt: 1,
-                        pb: 1,
-                        borderTop: '1px solid #E2E8F0',
-                        mt: 1
-                      }}>
-                        <Button 
-                          size="small" 
-                          startIcon={<Edit />}
-                          onClick={() => openCertificateEditor(certificate)}
+                      <CardContent sx={{ pt: 2.5, pb: 2.5 }}>
+                        <Typography 
+                          variant="h6" 
+                          gutterBottom
+                          sx={{ 
+                            fontSize: '18px', 
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            color: '#1E293B'
+                          }}
                         >
-                          Edit
-                        </Button>
+                          {certificate.title || 'Certificate Template'}
+                        </Typography>
                         
-                        <Box>
-                          <IconButton 
-                            size="small" 
-                            color="primary" 
-                            onClick={() => sendCertificates(certificate.id, certificate.eventId)}
-                            disabled={actionLoading}
-                            title="Send certificates to attendees"
-                          >
-                            <Email fontSize="small" />
-                          </IconButton>
-                          
-                          <IconButton 
-                            size="small" 
-                            color="error" 
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to delete this certificate template?')) {
-                                deleteCertificate(certificate.id);
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            mb: 2
+                          }}
+                        >
+                          <Event fontSize="small" sx={{ mr: 0.5, fontSize: '16px', color: '#0288d1' }} />
+                          {(certificate.eventName && certificate.eventName !== '{Event Name}')
+                            ? certificate.eventName 
+                            : events.find(e => e.eventId === certificate.eventId)?.eventName 
+                            || 'Unknown Event'}
+                        </Typography>
+                        
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          pt: 1,
+                          mt: 1,
+                          borderTop: '1px solid #E2E8F0',
+                        }}>
+                          <Button 
+                            fullWidth
+                            variant="contained"
+                            size="medium" 
+                            startIcon={<Edit />}
+                            onClick={() => openCertificateEditor(certificate)}
+                            sx={{
+                              borderRadius: '8px',
+                              bgcolor: '#0288d1',
+                              color: 'white',
+                              fontWeight: 500,
+                              textTransform: 'none',
+                              '&:hover': {
+                                bgcolor: '#0277BD',
                               }
                             }}
                           >
-                            <Delete fontSize="small" />
-                          </IconButton>
+                            Edit Template
+                          </Button>
                         </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  mt: 4,
+                  pt: 2,
+                  borderTop: '1px solid #E2E8F0'
+                }}>
+                  <Stack spacing={2}>
+                    <Pagination 
+                      count={totalPages} 
+                      page={page} 
+                      onChange={handlePageChange}
+                      color="primary"
+                      size="large"
+                      showFirstButton
+                      showLastButton
+                      sx={{
+                        '& .MuiPaginationItem-root': {
+                          fontWeight: 500,
+                        },
+                        '& .Mui-selected': {
+                          bgcolor: '#0288d1 !important',
+                          color: 'white',
+                        }
+                      }}
+                    />
+                  </Stack>
+                </Box>
+              )}
+            </>
           )}
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
       
       {/* Certificate Editor Modal */}
       <Modal
@@ -1453,7 +1677,7 @@ export default function Certificate() {
           maxWidth: 1200,
           height: '90vh',
           bgcolor: 'background.paper',
-          boxShadow: 24,
+          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
           p: 0,
           borderRadius: 2,
           overflow: 'auto'
@@ -1482,6 +1706,6 @@ export default function Certificate() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
 }

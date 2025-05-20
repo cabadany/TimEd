@@ -103,6 +103,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
   useEffect(() => {
     if (initialData) {
+      console.log('CertificateEditor initialData:', initialData);
       setCertificate(initialData);
     }
   }, [initialData]);
@@ -170,24 +171,17 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         return;
       }
       
-      // If eventName is provided in the form, use it for the certificate
-      if (certificate.eventName === '{Event Name}' && document.querySelector('input[name="eventName"]')) {
-        const eventNameInput = document.querySelector('input[name="eventName"]');
-        if (eventNameInput && eventNameInput.value) {
-          setCertificate(prev => ({
-            ...prev,
-            eventName: eventNameInput.value
-          }));
-        }
-      }
-      
       // Ensure all the data is properly set before saving
       const finalCertificate = {
         ...certificate,
         // Make sure the title is set
         title: certificate.title.trim() ? certificate.title : 'CERTIFICATE',
         // Ensure we have a subtitle
-        subtitle: certificate.subtitle || 'OF ACHIEVEMENT'
+        subtitle: certificate.subtitle || 'OF ACHIEVEMENT',
+        // Make sure eventName is not the placeholder if we're in an event context
+        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName 
+          ? initialData.eventName 
+          : certificate.eventName
       };
       
       // Call the parent component's save function with the complete data
@@ -211,7 +205,11 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       const finalCertificate = {
         ...certificate,
         title: certificate.title.trim() ? certificate.title : 'CERTIFICATE',
-        subtitle: certificate.subtitle || 'OF ACHIEVEMENT'
+        subtitle: certificate.subtitle || 'OF ACHIEVEMENT',
+        // Make sure eventName is not the placeholder if we're in an event context
+        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName 
+          ? initialData.eventName 
+          : certificate.eventName
       };
       
       // Call the onApply function to apply the template to current event form
