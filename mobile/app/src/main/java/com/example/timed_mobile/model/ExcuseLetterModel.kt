@@ -11,5 +11,5 @@ data class ExcuseLetterModel(
     val department: String? = null,
     val idNumber: String? = null,
     val attachmentUrl: String? = null,
-    val submittedAt: Long? = null
+    val submittedAt: Long? = null,
 )
