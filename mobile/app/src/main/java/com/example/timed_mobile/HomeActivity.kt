@@ -1,28 +1,23 @@
 package com.example.timed_mobile
 
 import android.annotation.SuppressLint
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
-import android.view.animation.AnimationSet
-import android.view.animation.AlphaAnimation
-import android.app.Dialog
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
-import android.view.animation.TranslateAnimation
+import android.util.Log
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
+import android.view.animation.AnimationSet
+import android.view.animation.AnimationUtils
+import android.view.animation.TranslateAnimation
 import android.widget.*
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.result.contract.ActivityResultContracts
-import com.bumptech.glide.load.engine.DiskCacheStrategy
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -31,21 +26,26 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.timed_mobile.adapter.EventAdapter
 import com.example.timed_mobile.model.EventModel
 import com.google.android.material.navigation.NavigationView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import java.text.SimpleDateFormat
 import java.util.*
-import android.util.Log
+
+import android.graphics.drawable.ColorDrawable
+import android.app.Dialog
+import kotlin.math.abs
 
 class HomeActivity : AppCompatActivity() {
+
+    companion object {
+        const val TOTAL_QUICK_TOUR_STEPS = 4
+    }
+
+    private var previousTargetLocation: IntArray? = null
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
@@ -66,10 +66,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var greetingCardNavIcon: ImageView
     private lateinit var tutorialOverlay: FrameLayout
 
-    private val TOTAL_QUICK_TOUR_STEPS = 4
-    private var previousTargetLocation: IntArray? = null
     private val allEvents = mutableListOf<EventModel>()
-
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
@@ -82,11 +79,8 @@ class HomeActivity : AppCompatActivity() {
                 val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
                 if (isTimedIn) {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
-
-                    // Delay to allow Firebase to finish uploading the image
-                    Handler(mainLooper).postDelayed({
-                        loadTodayTimeInPhoto()
-                    }, 2000) // 2-second delay to wait for upload to complete
+                    loadTodayTimeInPhoto()
+                    updateSidebarProfileImage()
                 }
             }
         }
@@ -98,20 +92,8 @@ class HomeActivity : AppCompatActivity() {
 
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
         tutorialOverlay.setOnTouchListener { v, event ->
-            if (event?.action == MotionEvent.ACTION_UP) {
-                v?.performClick()
-            }
+            if (event?.action == MotionEvent.ACTION_UP) v?.performClick()
             true
-        }
-
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
-
-        val helpButton = findViewById<ImageView>(R.id.btn_help)
-        helpButton.setOnClickListener {
-            previousTargetLocation = null
-            showTutorialDialog()
         }
 
         drawerLayout = findViewById(R.id.drawer_layout)
@@ -119,11 +101,8 @@ class HomeActivity : AppCompatActivity() {
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
         greetingCardNavIcon.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.closeDrawer(GravityCompat.START)
-            } else {
-                drawerLayout.openDrawer(GravityCompat.START)
-            }
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+            else drawerLayout.openDrawer(GravityCompat.START)
         }
 
         greetingName = findViewById(R.id.greeting_name)
@@ -137,90 +116,22 @@ class HomeActivity : AppCompatActivity() {
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
-
         recyclerEvents.layoutManager = LinearLayoutManager(this)
         firestore = FirebaseFirestore.getInstance()
 
-        userId = intent.getStringExtra("userId")
-        userEmail = intent.getStringExtra("email")
-        userFirstName = intent.getStringExtra("firstName")
-        idNumber = intent.getStringExtra("idNumber") ?: "N/A"
-        department = intent.getStringExtra("department") ?: "N/A"
-
-        if (userId == null) {
-            Toast.makeText(this, "User session error. Please log in again.", Toast.LENGTH_LONG).show()
-            val intent = Intent(this, LoginActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-            finish()
-            return
-        }
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
+        userEmail = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
+        userFirstName = sharedPrefs.getString(LoginActivity.KEY_FIRST_NAME, null)
+        idNumber = sharedPrefs.getString(LoginActivity.KEY_ID_NUMBER, "N/A")
+        department = sharedPrefs.getString(LoginActivity.KEY_DEPARTMENT, "N/A")
 
         greetingName.text = "Hi, $userFirstName 👋"
         greetingDetails.text = "ID: $idNumber • $department"
 
-        loadTodayTimeInPhoto() // Load photo on launch
-
-        navigationView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_home -> {
-                    startActivity(Intent(this, HomeActivity::class.java))
-                }
-
-                R.id.nav_profile -> {
-                    Intent(this, ProfileActivity::class.java).apply {
-                        putExtra("userId", userId)
-                        putExtra("email", userEmail)
-                        putExtra("firstName", userFirstName)
-                        putExtra("idNumber", idNumber)
-                        putExtra("department", department)
-                    }.also { startActivity(it) }
-                }
-
-                R.id.nav_excuse_letter -> {
-                    Intent(this, ExcuseLetterActivity::class.java).apply {
-                        putExtra("userId", userId)
-                        putExtra("email", userEmail)
-                        putExtra("firstName", userFirstName)
-                        putExtra("idNumber", idNumber)
-                        putExtra("department", department)
-                    }.also { startActivity(it) }
-                }
-
-                R.id.nav_excuse_letter_history -> {
-                    Intent(this, ExcuseLetterHistoryActivity::class.java).apply {
-                        putExtra("userId", userId)
-                    }.also { startActivity(it) }
-                }
-
-                R.id.nav_event_log -> {
-                    startActivity(Intent(this, EventLogActivity::class.java))
-                    true
-                }
-
-                R.id.nav_logout -> {
-                    val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
-                    with(sharedPreferences.edit()) {
-                        putBoolean(LoginActivity.KEY_IS_LOGGED_IN, false)
-                        remove(LoginActivity.KEY_USER_ID)
-                        remove(LoginActivity.KEY_EMAIL)
-                        remove(LoginActivity.KEY_FIRST_NAME)
-                        remove(LoginActivity.KEY_ID_NUMBER)
-                        remove(LoginActivity.KEY_DEPARTMENT)
-                        apply()
-                    }
-                    FirebaseAuth.getInstance().signOut()
-                    Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
-                    Intent(this, LoginActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }.also { startActivity(it) }
-                    finish()
-                }
-            }
-            drawerLayout.closeDrawer(GravityCompat.START)
-            true
-        }
-
+        loadTodayTimeInPhoto()
+        updateSidebarProfileImage()
+        setupNavigationDrawer()
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
@@ -261,14 +172,18 @@ class HomeActivity : AppCompatActivity() {
 
         if (hasTimedOutToday()) {
             profileImageView.setImageResource(R.drawable.ic_profile)
+            val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+            sidebarImage.setImageResource(R.drawable.ic_profile)
         } else {
             loadTodayTimeInPhoto()
+            updateSidebarProfileImage()
         }
     }
 
     private fun loadTodayTimeInPhoto() {
         val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
         ref.orderByChild("timestamp").limitToLast(1)
@@ -290,14 +205,14 @@ class HomeActivity : AppCompatActivity() {
                             if (!imageUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
                                     .load(imageUrl)
-                                    .circleCrop()  // ✅ This line applies the circular transformation
+                                    .circleCrop()
+                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                    .skipMemoryCache(true)
                                     .into(profileImageView)
                                 return
                             }
                         }
                     }
-                    // No match or missing image
-                    // No matching TimeIn photo
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
 
@@ -305,6 +220,61 @@ class HomeActivity : AppCompatActivity() {
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
             })
+    }
+
+    private fun updateSidebarProfileImage() {
+        val headerView = navigationView.getHeaderView(0)
+        val sidebarImage = headerView.findViewById<ImageView>(R.id.sidebar_profile_image)
+
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                            if (!imageUrl.isNullOrEmpty()) {
+                                Glide.with(this@HomeActivity)
+                                    .load(imageUrl)
+                                    .circleCrop()
+                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                    .skipMemoryCache(true)
+                                    .into(sidebarImage)
+                                return
+                            }
+                        }
+                    }
+                    sidebarImage.setImageResource(R.drawable.ic_profile)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    sidebarImage.setImageResource(R.drawable.ic_profile)
+                }
+            })
+    }
+
+    private fun setupNavigationDrawer() {
+        val headerView = navigationView.getHeaderView(0)
+        val sidebarName = headerView.findViewById<TextView>(R.id.sidebar_user_name)
+        val sidebarDetails = headerView.findViewById<TextView>(R.id.sidebar_user_details)
+        val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
+
+        sidebarName.text = userFirstName ?: "User"
+        sidebarDetails.text = "ID: $idNumber • $department"
+        sidebarEmail.text = userEmail ?: ""
     }
 
     private fun setupFilterButtons() {
@@ -349,6 +319,8 @@ class HomeActivity : AppCompatActivity() {
                 .setPositiveButton("Yes") { _, _ ->
                     val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
                     profileImageView.setImageResource(R.drawable.ic_profile)
+                    val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+                    sidebarImage.setImageResource(R.drawable.ic_profile)
                     setTimedOutToday()
 
                     val intent = Intent(this, TimeOutActivity::class.java).apply {
@@ -483,7 +455,7 @@ class HomeActivity : AppCompatActivity() {
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_tutorial_options)
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        ContextCompat.getColor(this, android.R.color.transparent)
 
         // Adjust dialog width to be responsive
         val window = dialog.window
@@ -595,7 +567,7 @@ class HomeActivity : AppCompatActivity() {
             val prevTargetCenterY = previousTargetLocation!![1] + targetView.height / 2
             val deltaX = (prevTargetCenterX - (finalDialogX + dialogWidth / 2)).toFloat()
             val deltaY = (prevTargetCenterY - (finalDialogY + dialogHeight / 2)).toFloat()
-            if (kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY)) {
+            if (abs(deltaX) > abs(deltaY)) {
                 startTranslateX = deltaX; startTranslateY = 0f
             } else {
                 startTranslateX = 0f; startTranslateY = deltaY
@@ -697,10 +669,10 @@ class HomeActivity : AppCompatActivity() {
             message = "Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.",
             targetView = attendanceButton,
             currentStep = 4,
-            totalSteps = TOTAL_QUICK_TOUR_STEPS
-        ) {
-            Toast.makeText(this, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
-            // previousTargetLocation will be reset by the dismiss logic if it's the last step
-        }
+            totalSteps = TOTAL_QUICK_TOUR_STEPS,
+            onNext = {
+                Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
+            }
+        )
     }
 }

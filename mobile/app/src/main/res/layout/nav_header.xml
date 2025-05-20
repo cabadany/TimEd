@@ -1,34 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="176dp"
-        android:background="@color/maroon"
-        android:gravity="bottom">
+    android:layout_width="match_parent"
+    android:layout_height="200dp"
+    android:background="@color/maroon"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="bottom">
 
     <ImageView
-            android:id="@+id/nav_header_user_avatar"
-            android:src="@drawable/ic_user_avatar"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginBottom="8dp"
-            android:contentDescription="User Avatar" />
+        android:id="@+id/sidebar_profile_image"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:src="@drawable/ic_profile"
+        android:scaleType="centerCrop"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/circle_background"
+        android:padding="4dp" />
 
     <TextView
-            android:id="@+id/nav_header_user_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Welcome!"
-            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-            android:textColor="@android:color/white"
-            android:textStyle="bold"/>
+        android:id="@+id/sidebar_user_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="User Name"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:paddingTop="8dp" />
 
     <TextView
-            android:id="@+id/nav_header_user_email"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="user@example.com"
-            android:textColor="@android:color/white"
-            android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
+        android:id="@+id/sidebar_user_details"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ID • Department"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/sidebar_user_email"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="email@example.com"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
 </LinearLayout>
