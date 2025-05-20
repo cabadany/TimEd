@@ -88,6 +88,7 @@ dependencies {
 
     implementation ("com.google.mlkit:barcode-scanning:17.2.0")
 
+    implementation ("at.favre.lib:bcrypt:0.9.0")
 
     // Testing dependencies
     testImplementation(libs.junit)

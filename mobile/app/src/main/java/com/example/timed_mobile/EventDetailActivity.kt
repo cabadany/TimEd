@@ -31,12 +31,11 @@ class EventDetailActivity : AppCompatActivity() {
                 // Delay finish until animation can play
                 view.postDelayed({
                     finish()
-                }, 150) // Adjusted delay for animation
+                }, 150)
             } else {
-                finish() // If not AVD, finish immediately
+                finish()
             }
         }
-
 
         // Get references to views
         val titleView = findViewById<TextView>(R.id.detail_event_title)
@@ -62,8 +61,18 @@ class EventDetailActivity : AppCompatActivity() {
         if (status.lowercase() == "ongoing") {
             timeInButton.visibility = Button.VISIBLE
             timeInButton.setOnClickListener {
-                val intent = Intent(this, TimeInActivity::class.java)
-                intent.putExtra("eventTitle", title)
+                // 🛠️ Fix: Fetch user session from SharedPreferences
+                val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+                val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
+                val email = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
+                val firstName = sharedPrefs.getString(LoginActivity.KEY_FIRST_NAME, null)
+
+                val intent = Intent(this, TimeInEventActivity::class.java).apply {
+                    putExtra("userId", userId)
+                    putExtra("email", email)
+                    putExtra("firstName", firstName)
+                    putExtra("eventTitle", title)
+                }
                 startActivity(intent)
             }
         } else {

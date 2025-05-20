@@ -1,6 +1,6 @@
 package com.example.timed_mobile
 
-import android.content.Context // Added import
+import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import at.favre.lib.crypto.bcrypt.BCrypt
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
@@ -34,17 +35,10 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.login_page)
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        // Start bottom wave animation
         val bottomWave = findViewById<ImageView>(R.id.bottom_wave_animation)
-        val bottomDrawable = bottomWave.drawable
-        if (bottomDrawable is AnimatedVectorDrawable) {
-            bottomDrawable.start()
-        }
+        (bottomWave.drawable as? AnimatedVectorDrawable)?.start()
 
         inputIdNumber = findViewById(R.id.input_idnumber)
         inputPassword = findViewById(R.id.input_Password)
@@ -60,77 +54,72 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            loginWithSchoolId(idNumber, password)
+            loginUser(idNumber, password)
         }
     }
 
-
-
-    private fun loginWithSchoolId(idNumber: String, password: String) {
+    private fun loginUser(idNumber: String, password: String) {
         firestore.collection("users")
             .whereEqualTo("schoolId", idNumber)
             .get()
-            .addOnSuccessListener { querySnapshot ->
-                if (!querySnapshot.isEmpty) {
-                    val document = querySnapshot.documents.firstOrNull()
-                    if (document != null) {
-                        val dbPassword = document.getString("password") ?: ""
-                        val role = document.getString("role") ?: "USER"
-
-                        if (role.uppercase() != "USER") {
-                            Toast.makeText(this, "Only USER accounts can log in on mobile.", Toast.LENGTH_SHORT).show()
-                            return@addOnSuccessListener
-                        }
-
-                        if (dbPassword == password) {
-                            val userId = document.id
-                            val firstName = document.getString("firstName") ?: ""
-                            val lastName = document.getString("lastName") ?: ""
-                            val name = "$firstName $lastName"
-                            val email = document.getString("email") ?: ""
-                            val department = when (val dep = document.get("department")) {
-                                is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
-                                is String -> dep
-                                else -> "N/A"
-                            }
-
-                            // Save login state and user details
-                            val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                            with(sharedPreferences.edit()) {
-                                putBoolean(KEY_IS_LOGGED_IN, true)
-                                putString(KEY_USER_ID, userId)
-                                putString(KEY_EMAIL, email)
-                                putString(KEY_FIRST_NAME, firstName)
-                                putString(KEY_ID_NUMBER, idNumber)
-                                putString(KEY_DEPARTMENT, department)
-                                apply()
-                            }
-
-                            Toast.makeText(this, "Welcome $name!", Toast.LENGTH_SHORT).show()
-
-                            val intent = Intent(this, HomeActivity::class.java).apply {
-                                putExtra("userId", userId)
-                                putExtra("email", email)
-                                putExtra("firstName", firstName)
-                                putExtra("idNumber", idNumber)
-                                putExtra("department", department)
-                            }
-
-                            startActivity(intent)
-                            finish()
-                        } else {
-                            Toast.makeText(this, "Incorrect password", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(this, "Unexpected error: user record is missing.", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Toast.makeText(this, "User not found.", Toast.LENGTH_SHORT).show()
+            .addOnSuccessListener { documents ->
+                if (documents.isEmpty) {
+                    Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
+
+                val userDoc = documents.first()
+                val dbPassword = userDoc.getString("password") ?: ""
+                val role = userDoc.getString("role")?.uppercase() ?: ""
+
+                if (role != "USER") {
+                    Toast.makeText(this, "Only USER accounts can log in on mobile.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                val result = BCrypt.verifyer().verify(password.toCharArray(), dbPassword)
+                if (!result.verified) {
+                    Toast.makeText(this, "Incorrect password", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                val userId = userDoc.id
+                val firstName = userDoc.getString("firstName") ?: ""
+                val lastName = userDoc.getString("lastName") ?: ""
+                val email = userDoc.getString("email") ?: ""
+                val department = when (val dep = userDoc.get("department")) {
+                    is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
+                    else -> "N/A"
+                }
+
+                // Save login session
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                with(prefs.edit()) {
+                    putBoolean(KEY_IS_LOGGED_IN, true)
+                    putString(KEY_USER_ID, userId)
+                    putString(KEY_FIRST_NAME, firstName)
+                    putString(KEY_EMAIL, email)
+                    putString(KEY_ID_NUMBER, idNumber)
+                    putString(KEY_DEPARTMENT, department)
+                    apply()
+                }
+
+                Toast.makeText(this, "Welcome $firstName!", Toast.LENGTH_SHORT).show()
+
+                val intent = Intent(this, HomeActivity::class.java).apply {
+                    putExtra("userId", userId)
+                    putExtra("email", email)
+                    putExtra("firstName", firstName)
+                    putExtra("idNumber", idNumber)
+                    putExtra("department", department)
+                }
+
+                startActivity(intent)
+                finish()
             }
-            .addOnFailureListener {
-                Log.e("LOGIN", "Firestore error", it)
-                Toast.makeText(this, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { e ->
+                Log.e("LOGIN", "Firestore error", e)
+                Toast.makeText(this, "Login failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 }
