@@ -25,6 +25,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.timed_mobile.adapter.EventAdapter
@@ -53,6 +54,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var greetingName: TextView
     private lateinit var greetingDetails: TextView
     private lateinit var recyclerEvents: RecyclerView
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var firestore: FirebaseFirestore
 
     private lateinit var btnCancelled: Button
@@ -108,6 +110,7 @@ class HomeActivity : AppCompatActivity() {
         greetingName = findViewById(R.id.greeting_name)
         greetingDetails = findViewById(R.id.home_greeting)
         recyclerEvents = findViewById(R.id.recycler_events)
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
         btnCancelled = findViewById(R.id.btn_filter_cancelled)
         btnUpcoming = findViewById(R.id.btn_filter_upcoming)
         btnOngoing = findViewById(R.id.btn_filter_ongoing)
@@ -135,6 +138,16 @@ class HomeActivity : AppCompatActivity() {
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
+
+        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+        swipeRefreshLayout.setOnRefreshListener {
+            Log.d("HomeActivity", "Pull-to-refresh triggered")
+            loadTodayTimeInPhoto()
+            updateSidebarProfileImage()
+            loadAndStoreEvents()
+            swipeRefreshLayout.isRefreshing = false
+        }
+
         loadAndStoreEvents()
     }
 
