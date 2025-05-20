@@ -44,6 +44,8 @@ class HomeActivity : AppCompatActivity() {
 
     companion object {
         const val TOTAL_QUICK_TOUR_STEPS = 4
+        const val PREFS_TUTORIAL = "TutorialPrefs"
+        const val KEY_TUTORIAL_COMPLETED = "tutorialCompleted"
     }
 
     private var previousTargetLocation: IntArray? = null
@@ -146,6 +148,12 @@ class HomeActivity : AppCompatActivity() {
             updateSidebarProfileImage()
             loadAndStoreEvents()
             swipeRefreshLayout.isRefreshing = false
+        }
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false)) {
+            showTutorialDialog()
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
         }
 
         loadAndStoreEvents()
