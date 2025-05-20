@@ -356,7 +356,8 @@ const MainLayout = ({ children, title }) => {
                           fontSize: '0.5rem',
                           height: 14,
                           minWidth: 14,
-                          padding: '0 2px'
+                          padding: '0 2px',
+                          transform: 'scale(1) translate(25%, -25%)'
                         }
                       }}
                     />

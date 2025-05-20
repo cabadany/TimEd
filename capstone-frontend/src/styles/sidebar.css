@@ -273,6 +273,12 @@
   transition: none !important;
 }
 
+/* Ensure badge visibility in collapsed mode */
+.sidebar-collapsed .MuiBadge-badge {
+  z-index: 2;
+  transform: scale(1) translate(25%, -25%) !important;
+}
+
 /* Clean badge styling for notification items */
 .group-main:nth-of-type(3) .MuiBadge-badge,
 .group-resources:nth-of-type(5) .MuiBadge-badge,
