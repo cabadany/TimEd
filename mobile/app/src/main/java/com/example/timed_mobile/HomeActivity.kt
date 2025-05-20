@@ -126,8 +126,8 @@ class HomeActivity : AppCompatActivity() {
         idNumber = sharedPrefs.getString(LoginActivity.KEY_ID_NUMBER, "N/A")
         department = sharedPrefs.getString(LoginActivity.KEY_DEPARTMENT, "N/A")
 
-        greetingName.text = "Hi, $userFirstName 👋"
-        greetingDetails.text = "ID: $idNumber • $department"
+        greetingName.text = "Hi, $userFirstName"
+        greetingDetails.text = "$idNumber • $department"
 
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
@@ -273,7 +273,7 @@ class HomeActivity : AppCompatActivity() {
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
 
         sidebarName.text = userFirstName ?: "User"
-        sidebarDetails.text = "ID: $idNumber • $department"
+        sidebarDetails.text = "$idNumber • $department"
         sidebarEmail.text = userEmail ?: ""
     }
 
@@ -340,6 +340,7 @@ class HomeActivity : AppCompatActivity() {
             val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
+                putExtra("email", userEmail)
                 putExtra("firstName", userFirstName)
                 putExtra("idNumber", idNumber)
                 putExtra("department", department)
@@ -349,12 +350,72 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun loadAndStoreEvents() {
-        firestore.collection("events").get()
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        // Step 1: Get the user's departmentId from nested "department" object
+        FirebaseFirestore.getInstance().collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { userDoc ->
+                val department = userDoc.get("department")
+                Log.d("DEBUG", "Raw department field: $department")
+                Log.d("DEBUG", "Full user document: ${userDoc.data}")
+
+                val departmentId = if (department is Map<*, *>) {
+                    department["departmentId"].toString()
+                } else null
+
+                if (departmentId.isNullOrEmpty()) {
+                    Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                Log.d("HomeActivity", "User's departmentId: $departmentId")
+
+                // Step 2: Now load events for this departmentId
+                firestore.collection("events")
+                    .whereEqualTo("departmentId", departmentId)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                        allEvents.clear()
+
+                        for (doc in result) {
+                            try {
+                                val title = doc.getString("eventName") ?: continue
+                                val statusRaw = doc.getString("status") ?: "unknown"
+                                val status = statusRaw.lowercase(Locale.ROOT)
+                                val date = doc.getTimestamp("date")?.toDate() ?: continue
+                                val formattedDate = formatter.format(date)
+
+                                allEvents.add(EventModel(title, status, formattedDate))
+                            } catch (e: Exception) {
+                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                            }
+                        }
+
+                        showEventsByStatus("upcoming")
+                        updateFilterButtonStates(btnUpcoming)
+                    }
+                    .addOnFailureListener {
+                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
+                        Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
+                Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun fetchEventsByDepartmentId(departmentId: String) {
+        firestore.collection("events")
+            .whereEqualTo("departmentId", departmentId)
+            .get()
             .addOnSuccessListener { result ->
                 val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
                 allEvents.clear()
-
-                Log.d("FirestoreEvents", "Fetched ${result.size()} event documents")
 
                 for (doc in result) {
                     try {
@@ -364,22 +425,17 @@ class HomeActivity : AppCompatActivity() {
                         val date = doc.getTimestamp("date")?.toDate() ?: continue
                         val formattedDate = formatter.format(date)
 
-                        Log.d("FirestoreEvents", "Loaded event: $title | Status: $status | Date: $formattedDate")
-
                         allEvents.add(EventModel(title, status, formattedDate))
                     } catch (e: Exception) {
-                        Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                        Log.e("EventParse", "Skipping bad event: ${e.message}", e)
                     }
                 }
 
-                // Default display = upcoming events
                 showEventsByStatus("upcoming")
                 updateFilterButtonStates(btnUpcoming)
             }
             .addOnFailureListener {
-                Log.e("FirestoreEvents", "Failed to load events: ${it.message}", it)
                 Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
-                updateFilterButtonStates(btnUpcoming)
             }
     }
 
