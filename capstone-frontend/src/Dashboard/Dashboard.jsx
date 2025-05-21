@@ -1203,7 +1203,7 @@ export default function Dashboard() {
                       <TableCell>Photo</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Email</TableCell>
-                 {/*     <TableCell>Entry #</TableCell>*/}
+                      <TableCell>Entry #</TableCell>
                       <TableCell>Time In</TableCell>
                       <TableCell>Time Out</TableCell>
                       <TableCell>Duration</TableCell>
@@ -1230,7 +1230,7 @@ export default function Dashboard() {
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                  {/*    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>*/}
+                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
@@ -1348,7 +1348,7 @@ export default function Dashboard() {
                               />
                             </Tooltip>
                           </TableCell>
-                        {/*  <TableCell>
+                          <TableCell>
                             <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
                               <Chip 
                                 label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
@@ -1358,7 +1358,7 @@ export default function Dashboard() {
                                 icon={<AccessTime sx={{ fontSize: 16 }} />}
                               />
                             </Tooltip>
-                          </TableCell>*/}
+                          </TableCell>
                           <TableCell>
                             {duration ? (
                               <Tooltip title="Total Duration" arrow>
