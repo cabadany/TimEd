@@ -40,7 +40,8 @@ import {
   ViewList,
   Event,
   EventNote,
-  Search
+  Search,
+  InfoOutlined
 } from '@mui/icons-material';
 import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
@@ -126,6 +127,15 @@ export default function Dashboard() {
   const [facultyTimeFilter, setFacultyTimeFilter] = useState('today');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [zoomImage, setZoomImage] = useState(null);
+
+  // Add these new states after the existing useState declarations
+  const [attendanceStats, setAttendanceStats] = useState({
+    present: 0,
+    late: 0,
+    absent: 0
+  });
+  const [lateThreshold, setLateThreshold] = useState('09:00');
+  const [showLateThresholdModal, setShowLateThresholdModal] = useState(false);
 
   // Default certificate template
   const defaultCertificate = {
@@ -639,6 +649,95 @@ export default function Dashboard() {
     </Modal>
   );
 
+  // Update the calculateAttendanceStats function
+  const calculateAttendanceStats = async () => {
+    try {
+      // Get all faculty (excluding admins)
+      const response = await axios.get('http://localhost:8080/api/user/getAll');
+      const facultyList = response.data.filter(user => user.role !== 'ADMIN');
+      const totalFaculty = facultyList.length;
+      
+      // Get unique faculty who have timed in today
+      const todayTimeIns = new Set();
+      const lateTimeIns = new Set();
+      
+      facultyLogs.forEach(entry => {
+        if (entry.timeIn) {
+          const timeInDate = new Date(entry.timeIn.timestamp);
+          const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
+          const thresholdDate = new Date(selectedDate);
+          thresholdDate.setHours(thresholdHour, thresholdMinute, 0);
+
+          if (isSameDay(timeInDate, selectedDate)) {
+            if (timeInDate > thresholdDate) {
+              lateTimeIns.add(entry.userId);
+            } else {
+              todayTimeIns.add(entry.userId);
+            }
+          }
+        }
+      });
+
+      setAttendanceStats({
+        present: todayTimeIns.size,
+        late: lateTimeIns.size,
+        absent: Math.max(0, totalFaculty - (todayTimeIns.size + lateTimeIns.size))
+      });
+    } catch (error) {
+      console.error('Error calculating attendance stats:', error);
+    }
+  };
+
+  // Update useEffect to include attendance stats calculation
+  useEffect(() => {
+    if (mainTab === 0) {
+      fetchFacultyLogs();
+      calculateAttendanceStats();
+    }
+  }, [selectedDate, mainTab, lateThreshold]);
+
+  // Add the Late Threshold Modal component
+  const LateThresholdModal = () => (
+    <Modal
+      open={showLateThresholdModal}
+      onClose={() => setShowLateThresholdModal(false)}
+      aria-labelledby="late-threshold-modal"
+    >
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 400,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 2,
+        p: 3
+      }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>Set Late Threshold</Typography>
+        <TextField
+          type="time"
+          value={lateThreshold}
+          onChange={(e) => setLateThreshold(e.target.value)}
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button onClick={() => setShowLateThresholdModal(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              // Save the threshold and close modal
+              setShowLateThresholdModal(false);
+            }}
+          >
+            Save
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+
   return (
     <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
       {/* Dashboard Content */}
@@ -714,6 +813,111 @@ export default function Dashboard() {
               </LocalizationProvider>
             </Box>
 
+            {/* Today's Attendance Summary */}
+            <Box sx={{ mb: 4 }}>
+              <Box sx={{ 
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2
+              }}>
+                <Typography variant="h6" fontWeight="600" color="#1E293B">
+                  Today's Attendance Summary
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Late after: {lateThreshold}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AccessTime />}
+                    onClick={() => setShowLateThresholdModal(true)}
+                    sx={{
+                      textTransform: 'none',
+                      borderColor: '#E2E8F0',
+                      color: '#64748B'
+                    }}
+                  >
+                    Change Time
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2,
+                mb: 4
+              }}>
+                {/* Present Card */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: '#F0FDF4',
+                    border: '1px solid #BBF7D0'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" color="#15803D">On Time</Typography>
+                    <Tooltip title="Faculty who timed in before the late threshold" arrow>
+                      <InfoOutlined sx={{ color: '#15803D', fontSize: 16 }} />
+                    </Tooltip>
+                  </Box>
+                  <Typography variant="h4" color="#166534" fontWeight="bold">
+                    {attendanceStats.present}
+                  </Typography>
+                </Paper>
+
+                {/* Late Card */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: '#FEF3C7',
+                    border: '1px solid #FDE68A'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" color="#B45309">Late</Typography>
+                    <Tooltip title={`Faculty who timed in after ${lateThreshold}`} arrow>
+                      <InfoOutlined sx={{ color: '#B45309', fontSize: 16 }} />
+                    </Tooltip>
+                  </Box>
+                  <Typography variant="h4" color="#92400E" fontWeight="bold">
+                    {attendanceStats.late}
+                  </Typography>
+                </Paper>
+
+                {/* No Time-in Card */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: '#FEE2E2',
+                    border: '1px solid #FECACA'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" color="#B91C1C">No Time-in</Typography>
+                    <Tooltip title="Faculty who haven't timed in today" arrow>
+                      <InfoOutlined sx={{ color: '#B91C1C', fontSize: 16 }} />
+                    </Tooltip>
+                  </Box>
+                  <Typography variant="h4" color="#991B1B" fontWeight="bold">
+                    {attendanceStats.absent}
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+
+            {/* Time-in/out Table */}
             {loadingFacultyLogs ? (
               <TableContainer>
                 <Table>
@@ -1512,6 +1716,9 @@ export default function Dashboard() {
           eventData={certificateEvent}
         />
       )}
+
+      {/* Add the Late Threshold Modal */}
+      <LateThresholdModal />
     </Box>
   );
 }
