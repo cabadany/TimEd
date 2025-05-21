@@ -27,7 +27,8 @@ import {
   ListItem,
   Tooltip,
   Skeleton,
-  InputAdornment
+  InputAdornment,
+  Avatar
 } from '@mui/material';
 import {
   Visibility,
@@ -41,7 +42,8 @@ import {
   Event,
   EventNote,
   Search,
-  InfoOutlined
+  InfoOutlined,
+  CheckCircleOutline
 } from '@mui/icons-material';
 import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
@@ -136,6 +138,10 @@ export default function Dashboard() {
   });
   const [lateThreshold, setLateThreshold] = useState('09:00');
   const [showLateThresholdModal, setShowLateThresholdModal] = useState(false);
+  const [showLateFacultyModal, setShowLateFacultyModal] = useState(false);
+  const [lateFacultyList, setLateFacultyList] = useState([]);
+  const [showNoTimeInModal, setShowNoTimeInModal] = useState(false);
+  const [noTimeInList, setNoTimeInList] = useState([]);
 
   // Default certificate template
   const defaultCertificate = {
@@ -669,7 +675,10 @@ export default function Dashboard() {
           thresholdDate.setHours(thresholdHour, thresholdMinute, 0);
 
           if (isSameDay(timeInDate, selectedDate)) {
-            if (timeInDate > thresholdDate) {
+            const timeInMinutes = timeInDate.getHours() * 60 + timeInDate.getMinutes();
+            const thresholdMinutes = thresholdHour * 60 + thresholdMinute;
+
+            if (timeInMinutes > thresholdMinutes) {
               lateTimeIns.add(entry.userId);
             } else {
               todayTimeIns.add(entry.userId);
@@ -678,11 +687,20 @@ export default function Dashboard() {
         }
       });
 
+      // Create a set of all faculty who have timed in
+      const allTimeIns = new Set([...todayTimeIns, ...lateTimeIns]);
+      
+      // Find faculty who haven't timed in
+      const noTimeInFaculty = facultyList.filter(faculty => !allTimeIns.has(faculty.userId));
+
       setAttendanceStats({
         present: todayTimeIns.size,
         late: lateTimeIns.size,
-        absent: Math.max(0, totalFaculty - (todayTimeIns.size + lateTimeIns.size))
+        absent: noTimeInFaculty.length
       });
+
+      // Store no time-in faculty list for the modal
+      setNoTimeInList(noTimeInFaculty);
     } catch (error) {
       console.error('Error calculating attendance stats:', error);
     }
@@ -733,6 +751,251 @@ export default function Dashboard() {
           >
             Save
           </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+
+  // Add this function after calculateAttendanceStats
+  const getLateAttendanceDetails = () => {
+    try {
+      const lateList = facultyLogs
+        .filter(log => {
+          if (log.timeIn) {
+            const timeInDate = new Date(log.timeIn.timestamp);
+            const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
+            const thresholdDate = new Date(selectedDate);
+            thresholdDate.setHours(thresholdHour, thresholdMinute, 0);
+            
+            return isSameDay(timeInDate, selectedDate) && timeInDate > thresholdDate;
+          }
+          return false;
+        })
+        .map(log => ({
+          name: log.firstName,
+          timeIn: new Date(log.timeIn.timestamp).toLocaleTimeString(),
+          imageUrl: log.timeIn.imageUrl,
+          email: log.email
+        }));
+
+      setLateFacultyList(lateList);
+      setShowLateFacultyModal(true);
+    } catch (error) {
+      console.error('Error getting late attendance details:', error);
+    }
+  };
+
+  // Add this function after getLateAttendanceDetails
+  const getNoTimeInDetails = () => {
+    setShowNoTimeInModal(true);
+  };
+
+  // Add the Late Faculty Modal component before the return statement
+  const LateFacultyModal = () => (
+    <Modal
+      open={showLateFacultyModal}
+      onClose={() => setShowLateFacultyModal(false)}
+      aria-labelledby="late-faculty-modal"
+    >
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 600,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 2,
+        p: 0,
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <Box sx={{ 
+          p: 2, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          borderBottom: '1px solid #E2E8F0',
+          bgcolor: '#F8FAFC'
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight="600" color="#1E293B">
+              Late Faculty Members
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {format(selectedDate, 'MMMM d, yyyy')} - After {lateThreshold}
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setShowLateFacultyModal(false)}>
+            <Close />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ overflow: 'auto', flex: 1, p: 2 }}>
+          {lateFacultyList.length === 0 ? (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              p: 4
+            }}>
+              <AccessTime sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
+              <Typography variant="body1" fontWeight="500">
+                No late faculty members
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Everyone arrived before {lateThreshold}
+              </Typography>
+            </Box>
+          ) : (
+            <List sx={{ width: '100%' }}>
+              {lateFacultyList.map((faculty, index) => (
+                <ListItem
+                  key={index}
+                  sx={{
+                    py: 2,
+                    borderBottom: index < lateFacultyList.length - 1 ? '1px solid #E2E8F0' : 'none'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    {faculty.imageUrl ? (
+                      <Avatar
+                        src={faculty.imageUrl}
+                        alt={faculty.name}
+                        sx={{ width: 40, height: 40, mr: 2 }}
+                      />
+                    ) : (
+                      <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: '#0288d1' }}>
+                        {faculty.name.charAt(0)}
+                      </Avatar>
+                    )}
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle2" fontWeight="600">
+                        {faculty.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {faculty.email}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={faculty.timeIn}
+                      color="warning"
+                      variant="outlined"
+                      size="small"
+                      icon={<AccessTime sx={{ fontSize: 16 }} />}
+                    />
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
+      </Box>
+    </Modal>
+  );
+
+  // Add the No Time-in Faculty Modal component before the return statement
+  const NoTimeInModal = () => (
+    <Modal
+      open={showNoTimeInModal}
+      onClose={() => setShowNoTimeInModal(false)}
+      aria-labelledby="no-time-in-modal"
+    >
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 600,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 2,
+        p: 0,
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <Box sx={{ 
+          p: 2, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          borderBottom: '1px solid #E2E8F0',
+          bgcolor: '#F8FAFC'
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight="600" color="#1E293B">
+              Faculty Without Time-in
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {format(selectedDate, 'MMMM d, yyyy')}
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setShowNoTimeInModal(false)}>
+            <Close />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ overflow: 'auto', flex: 1, p: 2 }}>
+          {noTimeInList.length === 0 ? (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              p: 4
+            }}>
+              <CheckCircleOutline sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
+              <Typography variant="body1" fontWeight="500">
+                Everyone has timed in today
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                No missing time-ins for {format(selectedDate, 'MMMM d, yyyy')}
+              </Typography>
+            </Box>
+          ) : (
+            <List sx={{ width: '100%' }}>
+              {noTimeInList.map((faculty, index) => (
+                <ListItem
+                  key={faculty.userId}
+                  sx={{
+                    py: 2,
+                    borderBottom: index < noTimeInList.length - 1 ? '1px solid #E2E8F0' : 'none'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    {faculty.profilePictureUrl ? (
+                      <Avatar
+                        src={faculty.profilePictureUrl}
+                        alt={`${faculty.firstName} ${faculty.lastName}`}
+                        sx={{ width: 40, height: 40, mr: 2 }}
+                      />
+                    ) : (
+                      <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: '#EF4444' }}>
+                        {faculty.firstName?.charAt(0)}
+                      </Avatar>
+                    )}
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle2" fontWeight="600">
+                        {`${faculty.firstName} ${faculty.lastName}`}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {faculty.email}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label="No Time-in"
+                      color="error"
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+          )}
         </Box>
       </Box>
     </Modal>
@@ -879,12 +1142,19 @@ export default function Dashboard() {
                     p: 2,
                     borderRadius: 2,
                     bgcolor: '#FEF3C7',
-                    border: '1px solid #FDE68A'
+                    border: '1px solid #FDE68A',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.2)'
+                    }
                   }}
+                  onClick={getLateAttendanceDetails}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Typography variant="subtitle2" color="#B45309">Late</Typography>
-                    <Tooltip title={`Faculty who timed in after ${lateThreshold}`} arrow>
+                    <Tooltip title={`Click to view late faculty members`} arrow>
                       <InfoOutlined sx={{ color: '#B45309', fontSize: 16 }} />
                     </Tooltip>
                   </Box>
@@ -901,12 +1171,19 @@ export default function Dashboard() {
                     p: 2,
                     borderRadius: 2,
                     bgcolor: '#FEE2E2',
-                    border: '1px solid #FECACA'
+                    border: '1px solid #FECACA',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                    }
                   }}
+                  onClick={getNoTimeInDetails}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Typography variant="subtitle2" color="#B91C1C">No Time-in</Typography>
-                    <Tooltip title="Faculty who haven't timed in today" arrow>
+                    <Tooltip title="Click to view faculty without time-in" arrow>
                       <InfoOutlined sx={{ color: '#B91C1C', fontSize: 16 }} />
                     </Tooltip>
                   </Box>
@@ -926,7 +1203,7 @@ export default function Dashboard() {
                       <TableCell>Photo</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Email</TableCell>
-                      <TableCell>Entry #</TableCell>
+                 {/*     <TableCell>Entry #</TableCell>*/}
                       <TableCell>Time In</TableCell>
                       <TableCell>Time Out</TableCell>
                       <TableCell>Duration</TableCell>
@@ -953,7 +1230,7 @@ export default function Dashboard() {
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
+                  {/*    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>*/}
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
@@ -1071,7 +1348,7 @@ export default function Dashboard() {
                               />
                             </Tooltip>
                           </TableCell>
-                          <TableCell>
+                        {/*  <TableCell>
                             <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
                               <Chip 
                                 label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
@@ -1081,7 +1358,7 @@ export default function Dashboard() {
                                 icon={<AccessTime sx={{ fontSize: 16 }} />}
                               />
                             </Tooltip>
-                          </TableCell>
+                          </TableCell>*/}
                           <TableCell>
                             {duration ? (
                               <Tooltip title="Total Duration" arrow>
@@ -1719,6 +1996,12 @@ export default function Dashboard() {
 
       {/* Add the Late Threshold Modal */}
       <LateThresholdModal />
+
+      {/* Add the Late Faculty Modal */}
+      <LateFacultyModal />
+
+      {/* Add the No Time-in Faculty Modal */}
+      <NoTimeInModal />
     </Box>
   );
 }
