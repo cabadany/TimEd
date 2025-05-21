@@ -471,9 +471,16 @@ class HomeActivity : AppCompatActivity() {
                 Log.d("DEBUG", "Raw department field: $department")
                 Log.d("DEBUG", "Full user document: ${userDoc.data}")
 
-                val departmentId = if (department is Map<*, *>) {
-                    department["departmentId"].toString()
-                } else null
+                val departmentId: String?
+                val departmentName: String?
+
+                if (department is Map<*, *>) {
+                    departmentId = department["departmentId"]?.toString()
+                    departmentName = department["name"]?.toString()
+                } else {
+                    departmentId = null
+                    departmentName = null
+                }
 
                 if (departmentId.isNullOrEmpty()) {
                     Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
@@ -493,12 +500,12 @@ class HomeActivity : AppCompatActivity() {
                         for (doc in result) {
                             try {
                                 val title = doc.getString("eventName") ?: continue
-                                val statusRaw = doc.getString("status") ?: "unknown"
-                                val status = statusRaw.lowercase(Locale.ROOT)
+                                val duration = doc.getString("duration") ?: "1:00:00"
                                 val date = doc.getTimestamp("date")?.toDate() ?: continue
-                                val formattedDate = formatter.format(date)
+                                val dateFormatted = formatter.format(date)
+                                val status = doc.getString("status") ?: "upcoming" // <-- Add this line
 
-                                allEvents.add(EventModel(title, status, formattedDate))
+                                allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
                             } catch (e: Exception) {
                                 Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
                             }
@@ -529,12 +536,11 @@ class HomeActivity : AppCompatActivity() {
                 for (doc in result) {
                     try {
                         val title = doc.getString("eventName") ?: continue
-                        val statusRaw = doc.getString("status") ?: "unknown"
-                        val status = statusRaw.lowercase(Locale.ROOT)
+                        val duration = doc.getString("duration") ?: "1:00:00"
                         val date = doc.getTimestamp("date")?.toDate() ?: continue
-                        val formattedDate = formatter.format(date)
+                        val dateFormatted = formatter.format(date)
 
-                        allEvents.add(EventModel(title, status, formattedDate))
+                        allEvents.add(EventModel(title, duration, dateFormatted))
                     } catch (e: Exception) {
                         Log.e("EventParse", "Skipping bad event: ${e.message}", e)
                     }
@@ -549,32 +555,41 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showEventsByStatus(statusFilter: String?) {
-        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
         val currentDate = Date()
 
         val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = try {
-                formatter.parse(event.dateFormatted)
-            } catch (e: Exception) {
-                null
+            val eventDate = event.rawDate
+
+            val durationParts = event.duration.split(":")
+            val durationMillis = when (durationParts.size) {
+                3 -> {
+                    val hours = durationParts[0].toIntOrNull() ?: 0
+                    val minutes = durationParts[1].toIntOrNull() ?: 0
+                    val seconds = durationParts[2].toIntOrNull() ?: 0
+                    (hours * 3600 + minutes * 60 + seconds) * 1000L
+                }
+                2 -> {
+                    val hours = durationParts[0].toIntOrNull() ?: 0
+                    val minutes = durationParts[1].toIntOrNull() ?: 0
+                    (hours * 3600 + minutes * 60) * 1000L
+                }
+                1 -> {
+                    val minutes = durationParts[0].toIntOrNull() ?: 0
+                    (minutes * 60) * 1000L
+                }
+                else -> 3600000L
             }
+
+            val eventEndDate = eventDate?.time?.plus(durationMillis)
+
             val dynamicStatus = when {
-                eventDate == null -> "unknown"
-                // For "upcoming", check if eventDate is strictly after current time
-                eventDate.after(currentDate) && !event.status.equals(
-                    "ongoing",
-                    ignoreCase = true
-                ) -> "upcoming"
-                // For "ongoing", explicitly trust the status if it's "ongoing"
-                event.status.equals("ongoing", ignoreCase = true) -> "ongoing"
-                // For "ended", check if eventDate is before current time and not "ongoing"
-                eventDate.before(currentDate) && !event.status.equals(
-                    "ongoing",
-                    ignoreCase = true
-                ) -> "ended"
-                // Fallback to original status if none of the above
-                else -> event.status
+                event.status.equals("cancelled", ignoreCase = true) -> "cancelled"
+                eventDate == null || eventEndDate == null -> "unknown"
+                currentDate.time < eventDate.time -> "upcoming"
+                currentDate.time in eventDate.time until eventEndDate -> "ongoing"
+                else -> "ended"
             }
+
             event.copy(status = dynamicStatus)
         }
 
@@ -587,14 +602,9 @@ class HomeActivity : AppCompatActivity() {
         val sorted = filtered.sortedWith(
             compareBy(
                 { statusOrder(it.status) },
-                {
-                    try {
-                        formatter.parse(it.dateFormatted)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            ))
+                { it.rawDate }
+            )
+        )
 
         recyclerEvents.adapter = EventAdapter(sorted)
     }

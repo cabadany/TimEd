@@ -122,13 +122,21 @@
 
         <!--TIME IN EVENT PAGE-->
         <activity
-                android:name=".TimeInEventActivity"
-                android:theme="@style/Theme.TimEd"
-                android:exported="false"
-                android:label="@string/time_in_event_page"
-                android:windowSoftInputMode="adjustResize"
-                android:hardwareAccelerated="true"
-                android:screenOrientation="portrait" />
+            android:name=".TimeInEventActivity"
+            android:theme="@style/Theme.TimEd"
+            android:exported="true"
+            android:label="@string/time_in_event_page"
+            android:windowSoftInputMode="adjustResize"
+            android:hardwareAccelerated="true"
+            android:screenOrientation="portrait">
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="timed" android:host="join" />
+            </intent-filter>
+        </activity>
 
         <!--TIME IN EVENT MANUAL PAGE-->
         <activity
