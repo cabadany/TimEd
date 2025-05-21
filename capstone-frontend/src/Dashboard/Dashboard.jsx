@@ -762,42 +762,89 @@ export default function Dashboard() {
                       return (
                         <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
                           <TableCell>
-                            {entry.imageUrl ? (
-                              <Box
-                                component="img"
-                                src={entry.imageUrl}
-                                alt={`${entry.firstName}'s verification photo`}
-                                sx={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    opacity: 0.8,
-                                    transform: 'scale(1.1)',
-                                    transition: 'all 0.2s ease-in-out'
-                                  }
-                                }}
-                                onClick={() => setZoomImage(entry.imageUrl)}
-                              />
-                            ) : (
-                              <Box
-                                sx={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  bgcolor: 'grey.300',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}
-                              >
-                                <Typography variant="body2" color="text.secondary">
-                                  {entry.firstName?.charAt(0) || 'N/A'}
-                                </Typography>
-                              </Box>
-                            )}
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              {/* Time In Photo */}
+                              {entry.timeIn?.imageUrl ? (
+                                <Box
+                                  component="img"
+                                  src={entry.timeIn.imageUrl}
+                                  alt={`${entry.firstName}'s time-in photo`}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                    border: '2px solid #4caf50',
+                                    '&:hover': {
+                                      opacity: 0.8,
+                                      transform: 'scale(1.1)',
+                                      transition: 'all 0.2s ease-in-out'
+                                    }
+                                  }}
+                                  onClick={() => setZoomImage(entry.timeIn.imageUrl)}
+                                />
+                              ) : (
+                                <Box
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    bgcolor: 'grey.300',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '2px solid #4caf50'
+                                  }}
+                                >
+                                  <Typography variant="body2" color="text.secondary">
+                                    IN
+                                  </Typography>
+                                </Box>
+                              )}
+                              
+                              {/* Time Out Photo */}
+                              {entry.timeOut?.imageUrl ? (
+                                <Box
+                                  component="img"
+                                  src={entry.timeOut.imageUrl}
+                                  alt={`${entry.firstName}'s time-out photo`}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                    border: '2px solid #f44336',
+                                    '&:hover': {
+                                      opacity: 0.8,
+                                      transform: 'scale(1.1)',
+                                      transition: 'all 0.2s ease-in-out'
+                                    }
+                                  }}
+                                  onClick={() => setZoomImage(entry.timeOut.imageUrl)}
+                                />
+                              ) : (
+                                entry.timeOut && (
+                                  <Box
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: '50%',
+                                      bgcolor: 'grey.300',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '2px solid #f44336'
+                                    }}
+                                  >
+                                    <Typography variant="body2" color="text.secondary">
+                                      OUT
+                                    </Typography>
+                                  </Box>
+                                )
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell>{entry.firstName}</TableCell>
                           <TableCell>{entry.email}</TableCell>
@@ -810,32 +857,41 @@ export default function Dashboard() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Chip 
-                              label={entry.timeIn.time}
-                              color="success"
-                              size="small"
-                              variant="outlined"
-                            />
+                            <Tooltip title="Time In" arrow>
+                              <Chip 
+                                label={entry.timeIn.time}
+                                color="success"
+                                size="small"
+                                variant="outlined"
+                                icon={<AccessTime sx={{ fontSize: 16 }} />}
+                              />
+                            </Tooltip>
                           </TableCell>
                           <TableCell>
-                            <Chip 
-                              label={entry.timeOut ? entry.timeOut.time : 'Not Timed Out'}
-                              color={entry.timeOut ? "error" : "default"}
-                              size="small"
-                              variant="outlined"
-                            />
+                            <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
+                              <Chip 
+                                label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
+                                color={entry.timeOut ? "error" : "warning"}
+                                size="small"
+                                variant="outlined"
+                                icon={<AccessTime sx={{ fontSize: 16 }} />}
+                              />
+                            </Tooltip>
                           </TableCell>
                           <TableCell>
                             {duration ? (
-                              <Chip 
-                                label={duration}
-                                color="primary"
-                                size="small"
-                                variant="outlined"
-                              />
+                              <Tooltip title="Total Duration" arrow>
+                                <Chip 
+                                  label={duration}
+                                  color="primary"
+                                  size="small"
+                                  variant="outlined"
+                                  icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                />
+                              </Tooltip>
                             ) : (
                               <Typography variant="body2" color="text.secondary">
-                                --
+                                In Progress
                               </Typography>
                             )}
                           </TableCell>
