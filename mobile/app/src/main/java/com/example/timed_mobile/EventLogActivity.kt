@@ -15,10 +15,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.timed_mobile.adapter.EventLogAdapter
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.example.timed_mobile.model.EventLogModel
-import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.FirebaseFirestore
 
 class EventLogActivity : AppCompatActivity() {
 
@@ -39,115 +37,129 @@ class EventLogActivity : AppCompatActivity() {
         // Initialize views
         recyclerView = findViewById(R.id.recycler_event_logs)
         emptyText = findViewById(R.id.text_empty)
-        backButton = findViewById(R.id.icon_back_button_event_log) // Ensure this ID matches your event_log.xml
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout_event_log) // Ensure this ID matches
-        progressBar = findViewById(R.id.progress_bar_event_log) // Ensure this ID matches
+        backButton = findViewById(R.id.icon_back_button_event_log)
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout_event_log)
+        progressBar = findViewById(R.id.progress_bar_event_log)
 
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation_event_log) // Ensure this ID matches
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation_event_log)
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
         backButton.setOnClickListener {
             finish()
         }
 
-        adapter = EventLogAdapter() // You might want to pass a click listener here if items are interactive
+        adapter = EventLogAdapter()
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
-        // Setup SwipeRefreshLayout
-        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold) // Customize colors
+        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
         swipeRefreshLayout.setOnRefreshListener {
-            Log.d(TAG, "Swipe to refresh triggered.")
             fetchEventLogs(isRefreshing = true)
         }
 
-        // Initial fetch of event logs
         fetchEventLogs(isRefreshing = false)
     }
 
     private fun fetchEventLogs(isRefreshing: Boolean = false) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId == null) {
-            Toast.makeText(this, "User not authenticated.", Toast.LENGTH_SHORT).show()
-            if (isRefreshing) {
-                swipeRefreshLayout.isRefreshing = false
-            } else {
-                progressBar.visibility = View.GONE
-            }
-            showEmptyText("User not authenticated. Please log in.")
+        val userId = intent.getStringExtra("userId")
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_SHORT).show()
+            if (isRefreshing) swipeRefreshLayout.isRefreshing = false else progressBar.visibility = View.GONE
+            showEmptyText("User session not found.")
             return
         }
 
-        Log.d(TAG, "Fetching event logs for UID: $userId")
+        Log.d(TAG, "Fetching CURRENT time-ins for userId: $userId")
 
         if (!isRefreshing) {
             progressBar.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
             emptyText.visibility = View.GONE
-            emptyText.alpha = 0f // Reset alpha for potential fade-in
+            emptyText.alpha = 0f
         }
 
         FirebaseFirestore.getInstance()
-            .collection("attendanceRecords")
-            .whereEqualTo("userId", userId)
-            // Consider if you want to filter by "type" == "event_time_in" or show all types.
-            // If you only want "event_time_in", uncomment the line below.
-            // .whereEqualTo("type", "event_time_in")
-            .orderBy("timestamp", Query.Direction.DESCENDING) // Order by timestamp, newest first
+            .collection("events")
             .get()
-            .addOnSuccessListener { documents ->
-                val logs = documents.mapNotNull { doc ->
-                    // Robust mapping with defaults
-                    val eventId = doc.getString("eventId") ?: doc.id
-                    val eventName = doc.getString("eventName") ?: "Unknown Event"
-                    // Assuming timestamp is stored as a String. If it's a Firestore Timestamp, use doc.getTimestamp("timestamp")
-                    val timestamp = doc.getString("timestamp") ?: "No timestamp"
-                    val type = doc.getString("type") ?: "unknown_type"
-                    val hasTimedOut = doc.getBoolean("hasTimedOut") ?: false
+            .addOnSuccessListener { eventSnapshots ->
+                val logs = mutableListOf<EventLogModel>()
+                val totalEvents = eventSnapshots.size()
+                var processedCount = 0
 
-                    // Determine status based on type and hasTimedOut
-                    val status = when {
-                        type == "event_time_out" -> "Timed-Out" // Explicit time-out record
-                        type == "event_time_in" && hasTimedOut -> "Timed-Out" // Time-in record that has been marked as timed out
-                        type == "event_time_in" && !hasTimedOut -> "Timed-In: Active" // Time-in record, not yet timed out
-                        else -> "Status Unknown"
-                    }
-
-                    EventLogModel(
-                        eventId = eventId,
-                        eventName = eventName,
-                        timeInTimestamp = timestamp, // This field might need renaming if it can hold time-out timestamps too
-                        status = status
-                    )
-                }
-
-                if (logs.isEmpty()) {
-                    showEmptyText("No event logs found.")
-                } else {
-                    emptyText.visibility = View.GONE
-                    emptyText.alpha = 0f
-                    recyclerView.visibility = View.VISIBLE
-                    adapter.submitList(logs)
-                }
-
-                if (isRefreshing) {
+                if (totalEvents == 0) {
+                    showEmptyText("No events found.")
                     swipeRefreshLayout.isRefreshing = false
-                } else {
                     progressBar.visibility = View.GONE
+                    return@addOnSuccessListener
+                }
+
+                for (eventDoc in eventSnapshots) {
+                    val eventId = eventDoc.id
+                    val eventName = eventDoc.getString("eventName") ?: "Unknown Event"
+
+                    FirebaseFirestore.getInstance()
+                        .collection("events")
+                        .document(eventId)
+                        .collection("attendees")
+                        .document(userId)
+                        .get()
+                        .addOnSuccessListener { attendeeDoc ->
+                            Log.d(TAG, "Checked event: $eventId → attendee exists: ${attendeeDoc.exists()}")
+
+                            if (attendeeDoc.exists()) {
+                                val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
+                                val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
+
+                                if (!hasTimedOut) { // ✅ Only include if still timed-in
+                                    logs.add(
+                                        EventLogModel(
+                                            eventId = eventId,
+                                            eventName = eventName,
+                                            timeInTimestamp = timestamp,
+                                            status = "Timed-In: Haven’t Timed-Out"
+                                        )
+                                    )
+                                }
+                            }
+
+                            processedCount++
+                            if (processedCount == totalEvents) {
+                                if (logs.isEmpty()) {
+                                    showEmptyText("You are not currently timed-in to any event.")
+                                } else {
+                                    emptyText.visibility = View.GONE
+                                    recyclerView.visibility = View.VISIBLE
+                                    adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
+                                }
+
+                                if (isRefreshing) swipeRefreshLayout.isRefreshing = false
+                                else progressBar.visibility = View.GONE
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Failed checking attendees in $eventId", e)
+                            processedCount++
+                            if (processedCount == totalEvents) {
+                                if (logs.isEmpty()) {
+                                    showEmptyText("You are not currently timed-in to any event.")
+                                } else {
+                                    emptyText.visibility = View.GONE
+                                    recyclerView.visibility = View.VISIBLE
+                                    adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
+                                }
+
+                                if (isRefreshing) swipeRefreshLayout.isRefreshing = false
+                                else progressBar.visibility = View.GONE
+                            }
+                        }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to fetch event logs", e)
-                Toast.makeText(this, "Failed to load logs: ${e.message}", Toast.LENGTH_LONG).show()
-                if (isRefreshing) {
-                    swipeRefreshLayout.isRefreshing = false
-                } else {
-                    progressBar.visibility = View.GONE
-                }
-                showEmptyText("Error loading logs. Swipe to try again.")
+                Log.e(TAG, "Failed to fetch events", e)
+                Toast.makeText(this, "Error loading events: ${e.message}", Toast.LENGTH_LONG).show()
+                swipeRefreshLayout.isRefreshing = false
+                progressBar.visibility = View.GONE
+                showEmptyText("Error loading logs.")
             }
     }
 

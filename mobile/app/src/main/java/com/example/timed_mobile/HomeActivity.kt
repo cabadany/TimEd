@@ -59,6 +59,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var recyclerEvents: RecyclerView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var statusSpinner: Spinner
 
     private lateinit var btnCancelled: Button
     private lateinit var btnUpcoming: Button
@@ -79,6 +80,7 @@ class HomeActivity : AppCompatActivity() {
     private var userFirstName: String? = null
     private var idNumber: String? = null
     private var department: String? = null
+    private val statusOptions = listOf("On Duty", "On Break", "Off Duty")
 
     private lateinit var btnHelp: ImageView // Added for btn_help
 
@@ -143,6 +145,23 @@ class HomeActivity : AppCompatActivity() {
             showTutorialDialog()
         }
 
+        firestore = FirebaseFirestore.getInstance()
+
+        statusSpinner = findViewById(R.id.status_spinner)
+        val statusAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, statusOptions)
+        statusSpinner.adapter = statusAdapter
+
+        loadUserStatus()
+
+        statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedStatus = statusOptions[position]
+                showStatusConfirmationDialog(selectedStatus)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
         recyclerEvents.layoutManager = LinearLayoutManager(this)
         firestore = FirebaseFirestore.getInstance()
 
@@ -179,6 +198,123 @@ class HomeActivity : AppCompatActivity() {
         }
 
         loadAndStoreEvents()
+    }
+
+
+    private fun showStatusConfirmationDialog(selectedStatus: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm Status Change")
+            .setMessage("Are you sure you want to set your status to '$selectedStatus'?")
+            .setPositiveButton("Yes") { _, _ ->
+                updateUserStatus(selectedStatus)
+                updateTimeLogsStatus(selectedStatus)
+                if (selectedStatus == "Off Duty") {
+                    handleTimeOutOnOffDuty()
+                }
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                loadUserStatus() // reset to last known value
+            }
+            .show()
+    }
+
+    private fun updateUserStatus(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        firestore.collection("users").document(userId)
+            .update("status", status)
+            .addOnSuccessListener {
+                Log.d("HomeActivity", "Status updated to $status")
+            }
+            .addOnFailureListener {
+                Log.e("HomeActivity", "Failed to update status: ${it.message}")
+            }
+    }
+
+    private fun updateTimeLogsStatus(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        child.ref.child("status").setValue(status)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to update timeLogs status: ${error.message}")
+                }
+            })
+    }
+
+    private fun handleTimeOutOnOffDuty() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userEmail = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_EMAIL, null)
+        val userFirstName = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_FIRST_NAME, "User")
+
+        val intent = Intent(this, TimeOutActivity::class.java).apply {
+            putExtra("userId", userId)
+            putExtra("email", userEmail ?: "")
+            putExtra("firstName", userFirstName ?: "User")
+        }
+        startActivity(intent)
+    }
+
+    private fun loadUserStatus() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+
+        realtimeRef.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var overrideStatus: String? = null
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            overrideStatus = "On Duty"
+                        }
+                    }
+
+                    firestore.collection("users").document(userId)
+                        .get()
+                        .addOnSuccessListener { doc ->
+                            val currentStatus = overrideStatus ?: doc.getString("status") ?: "Off Duty"
+
+                            if (!doc.contains("status")) {
+                                firestore.collection("users").document(userId)
+                                    .update("status", currentStatus)
+                            }
+
+                            val index = statusOptions.indexOf(currentStatus)
+                            if (index != -1) {
+                                statusSpinner.setSelection(index)
+                            }
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to load user status: ${error.message}")
+                }
+            })
     }
 
     private fun updateFilterButtonStates(selectedButton: Button) {
@@ -326,6 +462,9 @@ class HomeActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_event_log -> {
+                    val sharedPref = getSharedPreferences("TimedAppPrefs", Context.MODE_PRIVATE)
+                    val userId = sharedPref.getString("userId", null)
+
                     val intent = Intent(this, EventLogActivity::class.java)
                     intent.putExtra("userId", userId)
                     startActivity(intent)

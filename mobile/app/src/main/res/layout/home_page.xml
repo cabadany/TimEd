@@ -125,6 +125,20 @@
                                     android:textSize="14sp"
                                     android:textColor="#666666"
                                     android:layout_marginTop="4dp" />
+
+                            <Spinner
+                                android:id="@+id/status_spinner"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginStart="20dp"
+                                android:layout_marginBottom="4dp"
+                                android:backgroundTint="@color/maroon"
+                                android:padding="4dp"
+                                android:textAlignment="center"
+                                android:minWidth="0dp"
+                                android:minHeight="0dp"
+                                android:theme="@style/SpinnerTheme.Small" />
                         </LinearLayout>
 
                         <ImageView

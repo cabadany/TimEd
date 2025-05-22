@@ -42,7 +42,7 @@
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
             android:padding="8dp"
-            android:text="Event Log"
+            android:text="Event Records"
             android:textAlignment="center"
             android:textColor="@color/maroon"
             android:textSize="30sp"
