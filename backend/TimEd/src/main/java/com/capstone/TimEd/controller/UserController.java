@@ -61,14 +61,35 @@ public class UserController {
                     .body("Error retrieving user: " + e.getMessage());
         }
     }
+
+    // Modify the updateUser endpoint to handle profile picture updates
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
-            // Just forward entire User object to service — it includes department if present
+            // Get existing user to preserve profile picture if not being updated
+            User existingUser = userService.getUserById(userId);
+            if (existingUser == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "User not found"
+                ));
+            }
+
+            // If profile picture URL is not provided in update, keep existing one
+            if (user.getProfilePictureUrl() == null || user.getProfilePictureUrl().trim().isEmpty()) {
+                user.setProfilePictureUrl(existingUser.getProfilePictureUrl());
+            }
+
             userService.updateUser(userId, user);
-            return ResponseEntity.ok("User updated successfully.");
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "User updated successfully"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error updating user: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error updating user: " + e.getMessage()
+            ));
         }
     }
 
@@ -90,34 +111,40 @@ public class UserController {
     public ResponseEntity<?> updateProfilePicture(
             @PathVariable String userId,
             @RequestBody Map<String, String> request) {
-        
         try {
             String profilePictureUrl = request.get("profilePictureUrl");
             
             if (profilePictureUrl == null || profilePictureUrl.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Profile picture URL is required");
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Profile picture URL is required"
+                ));
             }
             
-            // Get reference to user document
-            DocumentReference userRef = firestore.collection("users").document(userId);
-            ApiFuture<DocumentSnapshot> future = userRef.get();
-            DocumentSnapshot document = future.get();
-            
-            if (!document.exists()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            // Get the user
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "User not found"
+                ));
             }
             
-            // Update only the profile picture URL field
-            userRef.update("profilePictureUrl", profilePictureUrl);
+            // Update the profile picture URL
+            user.setProfilePictureUrl(profilePictureUrl);
+            userService.updateUser(userId, user);
             
             return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Profile picture updated successfully"
+                "success", true,
+                "message", "Profile picture updated successfully",
+                "profilePictureUrl", profilePictureUrl
             ));
             
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error updating profile picture: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error updating profile picture: " + e.getMessage()
+            ));
         }
     }
 }

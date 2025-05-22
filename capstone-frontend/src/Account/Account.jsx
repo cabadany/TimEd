@@ -5,15 +5,17 @@ import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
   CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
-  Tabs, Tab
+  Tabs, Tab, Zoom
 } from '@mui/material';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
-  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert
+  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
+import { storage } from '../firebase/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Base API URL
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -146,7 +148,8 @@ export default function AccountPage() {
     departmentId: "",
     schoolId: "",
     password: "",
-    role: "USER"
+    role: "USER",
+    profilePictureUrl: ""
   });
 
   // Edit professor modal state
@@ -160,6 +163,7 @@ export default function AccountPage() {
     schoolId: "",
     role: "USER",
     password:"",
+    profilePictureUrl: ""
   });
 
   // View professor modal state
@@ -186,6 +190,14 @@ export default function AccountPage() {
     message: '',
     severity: 'info'
   });
+
+  // Add new state for profile picture zoom modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+
+  // Add temporary profile picture states for previews
+  const [newProfilePicture, setNewProfilePicture] = useState(null);
+  const [editProfilePicture, setEditProfilePicture] = useState(null);
 
   // Fetch professors and departments on component mount
   useEffect(() => {
@@ -344,32 +356,47 @@ export default function AccountPage() {
 
   const handleAddProfessor = async () => {
     try {
-      // Create the proper nested structure for department
-      const professorData = {
-        ...newProfessor,
-        department: {
-          departmentId: newProfessor.departmentId
-        }
-      };
-      
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, professorData, {
+      // First register the user to get their Firebase Auth UID
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, newProfessor, {
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      
-      showSnackbar('Faculty added successfully', 'success');
-      setNewProfessor({
-        firstName: "",
-        lastName: "",
-        email: "",
-        departmentId: "",
-        schoolId: "",
-        password: "",
-        role: "USER"
-      });
-      setShowAddModal(false);
-      fetchProfessors(); // Refresh the list
+
+      if (response.data && response.data.userId) {
+        // Now upload the profile picture if one is selected
+        let profilePictureUrl = '';
+        if (newProfilePicture) {
+          const storageRef = ref(storage, `profilePictures/${response.data.userId}/profile.${newProfilePicture.name.split('.').pop()}`);
+          await uploadBytes(storageRef, newProfilePicture);
+          profilePictureUrl = await getDownloadURL(storageRef);
+
+          // Update the user's profile picture URL
+          await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${response.data.userId}`, 
+            { profilePictureUrl },
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+        }
+        
+        showSnackbar('Faculty added successfully', 'success');
+        setNewProfessor({
+          firstName: "",
+          lastName: "",
+          email: "",
+          departmentId: "",
+          schoolId: "",
+          password: "",
+          role: "USER",
+          profilePictureUrl: ""
+        });
+        setNewProfilePicture(null);
+        setShowAddModal(false);
+        fetchProfessors(); // Refresh the list
+      }
     } catch (err) {
       console.error('Error adding professor:', err);
       showSnackbar(`Failed to add professor: ${err.response?.data?.message || err.message}`, 'error');
@@ -386,6 +413,7 @@ export default function AccountPage() {
       schoolId: professor.schoolId,
       role: professor.role || "USER",
       password: professor.password || "",
+      profilePictureUrl: professor.profilePictureUrl || ""
     });
     setShowEditModal(true);
   };
@@ -397,7 +425,14 @@ export default function AccountPage() {
 
   const handleUpdateProfessor = async () => {
     try {
-      // Create a payload that matches the expected structure
+      // First upload the new profile picture if one is selected
+      let profilePictureUrl = editingProfessor.profilePictureUrl;
+      if (editProfilePicture) {
+        const storageRef = ref(storage, `profilePictures/${editingProfessor.userId}/profile.${editProfilePicture.name.split('.').pop()}`);
+        await uploadBytes(storageRef, editProfilePicture);
+        profilePictureUrl = await getDownloadURL(storageRef);
+      }
+
       // Remove password from the payload if it's empty or null
       const { password, ...professorWithoutPassword } = editingProfessor;
       
@@ -405,7 +440,8 @@ export default function AccountPage() {
         ...professorWithoutPassword,
         department: {
           departmentId: professorWithoutPassword.departmentId
-        }
+        },
+        profilePictureUrl
       };
       
       await axios.put(`${API_BASE_URL}/user/updateUser/${editingProfessor.userId}`, updatePayload, {
@@ -415,6 +451,7 @@ export default function AccountPage() {
         }
       });
       showSnackbar('Faculty updated successfully', 'success');
+      setEditProfilePicture(null);
       setShowEditModal(false);
       fetchProfessors(); // Refresh the list
     } catch (err) {
@@ -561,6 +598,40 @@ export default function AccountPage() {
   const handleExportReport = () => {
     // In a real implementation, this would generate and download a report
     showSnackbar('Report exported successfully', 'success');
+  };
+
+  // Add profile picture upload handler
+  const handleProfilePictureUpload = async (userId, file) => {
+    try {
+      const storageRef = ref(storage, `profilePictures/${userId}/profile.${file.name.split('.').pop()}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      // Update the user's profile picture URL in the backend
+      await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${userId}`, {
+        profilePictureUrl: downloadURL
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      // Update the professors list with the new profile picture
+      setProfessors(professors.map(prof => 
+        prof.userId === userId ? { ...prof, profilePictureUrl: downloadURL } : prof
+      ));
+
+      showSnackbar('Profile picture updated successfully', 'success');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      showSnackbar('Failed to update profile picture', 'error');
+    }
+  };
+
+  // Add profile picture click handler
+  const handleProfileClick = (professor) => {
+    setSelectedProfile(professor);
+    setShowProfileModal(true);
   };
 
   return (
@@ -752,7 +823,22 @@ export default function AccountPage() {
                       key={professor.userId}
                       sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
                     >
-                      <TableCell>{professor.schoolId}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar
+                            src={professor.profilePictureUrl}
+                            alt={`${professor.firstName} ${professor.lastName}`}
+                            sx={{ 
+                              width: 40, 
+                              height: 40, 
+                              cursor: 'pointer',
+                              '&:hover': { opacity: 0.8 }
+                            }}
+                            onClick={() => handleProfileClick(professor)}
+                          />
+                          {professor.schoolId}
+                        </Box>
+                      </TableCell>
                       <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
                       <TableCell>{professor.email}</TableCell>
                       <TableCell>
@@ -803,16 +889,6 @@ export default function AccountPage() {
                           >
                             <Edit fontSize="small" />
                           </IconButton>
-                          {/*
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleViewAttendedEvents(professor)}
-                            sx={{ color: '#10B981' }}
-                            title="View Attended Events"
-                          >
-                            <EventAvailable fontSize="small" />
-                          </IconButton>
-                          */}
                           <IconButton 
                             size="small" 
                             onClick={() => handleDeleteProfessor(professor.userId)}
@@ -1242,6 +1318,47 @@ export default function AccountPage() {
           </Box>
           <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={newProfilePicture ? URL.createObjectURL(newProfilePicture) : ''}
+                    alt="New faculty"
+                    sx={{ 
+                      width: 100, 
+                      height: 100,
+                      mb: 1
+                    }}
+                  />
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="new-profile-picture-upload"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        setNewProfilePicture(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <label htmlFor="new-profile-picture-upload">
+                    <IconButton
+                      component="span"
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        bgcolor: '#0288d1',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: '#0277bd',
+                        },
+                      }}
+                    >
+                      <PhotoCamera fontSize="small" />
+                    </IconButton>
+                  </label>
+                </Box>
+              </Box>
               <Box>
                 <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
                   School ID
@@ -1448,417 +1565,543 @@ export default function AccountPage() {
           </Box>
           <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            <Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    School ID
-  </Typography>
-  <TextField
-    fullWidth
-    variant="outlined"
-    name="schoolId"
-    placeholder="Enter school ID (e.g., 22-2220-759)"
-    value={editingProfessor.schoolId}
-    onChange={handleEditInputChange}
-    sx={{
-      '& .MuiOutlinedInput-root': {
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& fieldset': {
-          borderColor: '#E2E8F0',
-        },
-      },
-    }}
-  />
-</Box>
-<Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    First Name
-  </Typography>
-  <TextField
-    fullWidth
-    variant="outlined"
-    name="firstName"
-    placeholder="Enter first name"
-    value={editingProfessor.firstName}
-    onChange={handleEditInputChange}
-    sx={{
-      '& .MuiOutlinedInput-root': {
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& fieldset': {
-          borderColor: '#E2E8F0',
-        },
-      },
-    }}
-  />
-</Box>
-<Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    Last Name
-  </Typography>
-  <TextField
-    fullWidth
-    variant="outlined"
-    name="lastName"
-    placeholder="Enter last name"
-    value={editingProfessor.lastName}
-    onChange={handleEditInputChange}
-    sx={{
-      '& .MuiOutlinedInput-root': {
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& fieldset': {
-          borderColor: '#E2E8F0',
-        },
-      },
-    }}
-  />
-</Box>
-<Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    Email
-  </Typography>
-  <TextField
-    fullWidth
-    variant="outlined"
-    name="email"
-    type="email"
-    placeholder="Enter email address"
-    value={editingProfessor.email}
-    onChange={handleEditInputChange}
-    sx={{
-      '& .MuiOutlinedInput-root': {
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& fieldset': {
-          borderColor: '#E2E8F0',
-        },
-      },
-    }}
-  />
-</Box>
-<Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    Department
-  </Typography>
-  <FormControl fullWidth>
-    <Select
-      value={editingProfessor.departmentId}
-      name="departmentId"
-      onChange={handleEditInputChange}
-      displayEmpty
-      sx={{
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#E2E8F0',
-        },
-      }}
-    >
-      <MenuItem value="" disabled>
-        <em>Select Department</em>
-      </MenuItem>
-      {departments.map((dept) => (
-        <MenuItem key={dept.departmentId} value={dept.departmentId}>
-          {dept.name} ({dept.abbreviation})
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-</Box>
-<Box>
-  <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-    Role
-  </Typography>
-  <FormControl fullWidth>
-    <Select
-      value={editingProfessor.role}
-      name="role"
-      onChange={handleEditInputChange}
-      sx={{
-        borderRadius: '4px',
-        fontSize: '14px',
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#E2E8F0',
-        },
-      }}
-    >
-      <MenuItem value="USER">User</MenuItem>
-      <MenuItem value="ADMIN">Admin</MenuItem>
-    </Select>
-  </FormControl>
-</Box>
-</Box>
-</Box>
-<Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: '1px solid #E2E8F0' }}>
-<Button 
-  variant="outlined" 
-  onClick={() => setShowEditModal(false)}
-  sx={{
-    borderColor: '#E2E8F0',
-    color: '#64748B',
-    '&:hover': {
-      borderColor: '#CBD5E1',
-      bgcolor: 'transparent',
-    },
-    textTransform: 'none',
-    fontWeight: 500
-  }}
->
-  Cancel
-</Button>
-<Button 
-  variant="contained" 
-  onClick={handleUpdateProfessor}
-  sx={{
-    bgcolor: '#0288d1',
-    '&:hover': {
-      bgcolor: '#0277bd',
-    },
-    textTransform: 'none',
-    fontWeight: 500
-  }}
->
-  Update Faculty
-</Button>
-</Box>
-</Box>
-</Modal>
-
-{/* View Professor Modal */}
-<Modal
-open={showViewModal}
-onClose={() => setShowViewModal(false)}
-aria-labelledby="view-professor-modal-title"
->
-<Box sx={{
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 480,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  borderRadius: 1,
-  p: 0,
-  overflow: 'hidden'
-}}>
-  <Box sx={{ 
-    p: 2, 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    borderBottom: '1px solid #E2E8F0',
-    bgcolor: '#F8FAFC'
-  }}>
-    <Typography variant="h6" fontWeight="600">
-      Faculty Details
-    </Typography>
-    <IconButton onClick={() => setShowViewModal(false)}>
-      <Close />
-    </IconButton>
-  </Box>
-  {viewingProfessor && (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar 
-          sx={{ 
-            width: 64, 
-            height: 64,
-            bgcolor: '#0288d1',
-            fontSize: '1.5rem'
-          }}
-        >
-          {viewingProfessor.firstName?.[0]}{viewingProfessor.lastName?.[0]}
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight="600">
-            {`${viewingProfessor.firstName} ${viewingProfessor.lastName}`}
-          </Typography>
-          <Chip 
-            label={viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Faculty'} 
-            size="small"
-            sx={{ 
-              bgcolor: viewingProfessor.role === 'ADMIN' ? '#EFF6FF' : '#ECFDF5',
-              color: viewingProfessor.role === 'ADMIN' ? '#3B82F6' : '#10B981',
-              fontWeight: 500,
-              fontSize: '0.75rem'
-            }}
-          />
-        </Box>
-      </Box>
-      
-      <Divider sx={{ my: 2 }} />
-      
-      <Box sx={{ mb: 3 }}>
-        <List disablePadding>
-          <ListItem disablePadding sx={{ mb: 2 }}>
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Badge fontSize="small" sx={{ color: '#64748B' }} />
-            </ListItemIcon>
-            <ListItemText 
-              primary={
-                <Typography variant="body2" fontWeight="600" color="#1E293B">
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={editProfilePicture ? URL.createObjectURL(editProfilePicture) : editingProfessor.profilePictureUrl}
+                    alt={`${editingProfessor.firstName} ${editingProfessor.lastName}`}
+                    sx={{ 
+                      width: 100, 
+                      height: 100,
+                      mb: 1
+                    }}
+                  />
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="edit-profile-picture-upload"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        setEditProfilePicture(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <label htmlFor="edit-profile-picture-upload">
+                    <IconButton
+                      component="span"
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        bgcolor: '#0288d1',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: '#0277bd',
+                        },
+                      }}
+                    >
+                      <PhotoCamera fontSize="small" />
+                    </IconButton>
+                  </label>
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
                   School ID
                 </Typography>
-              }
-              secondary={viewingProfessor.schoolId || 'Not specified'}
-              secondaryTypographyProps={{ color: '#64748B' }}
-            />
-          </ListItem>
-          
-          <ListItem disablePadding sx={{ mb: 2 }}>
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Group fontSize="small" sx={{ color: '#64748B' }} />
-            </ListItemIcon>
-            <ListItemText 
-              primary={
-                <Typography variant="body2" fontWeight="600" color="#1E293B">
-                  Department
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  name="schoolId"
+                  placeholder="Enter school ID (e.g., 22-2220-759)"
+                  value={editingProfessor.schoolId}
+                  onChange={handleEditInputChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                  First Name
                 </Typography>
-              }
-              secondary={
-                viewingProfessor.department?.departmentId 
-                  ? `${getDepartmentName(viewingProfessor.department.departmentId)} (${getDepartmentAbbreviation(viewingProfessor.department.departmentId)})`
-                  : viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Not assigned'
-              }
-              secondaryTypographyProps={{ color: '#64748B' }}
-            />
-          </ListItem>
-          
-          <ListItem disablePadding sx={{ mb: 2 }}>
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Email fontSize="small" sx={{ color: '#64748B' }} />
-            </ListItemIcon>
-            <ListItemText 
-              primary={
-                <Typography variant="body2" fontWeight="600" color="#1E293B">
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  name="firstName"
+                  placeholder="Enter first name"
+                  value={editingProfessor.firstName}
+                  onChange={handleEditInputChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                  Last Name
+                </Typography>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  name="lastName"
+                  placeholder="Enter last name"
+                  value={editingProfessor.lastName}
+                  onChange={handleEditInputChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
                   Email
                 </Typography>
-              }
-              secondary={viewingProfessor.email || 'Not specified'}
-              secondaryTypographyProps={{ color: '#64748B' }}
-            />
-          </ListItem>
-        </List>
-      </Box>
-    </Box>
-  )}
-</Box>
-</Modal>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  name="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={editingProfessor.email}
+                  onChange={handleEditInputChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                  Department
+                </Typography>
+                <FormControl fullWidth>
+                  <Select
+                    value={editingProfessor.departmentId}
+                    name="departmentId"
+                    onChange={handleEditInputChange}
+                    displayEmpty
+                    sx={{
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#E2E8F0',
+                      },
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select Department</em>
+                    </MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                        {dept.name} ({dept.abbreviation})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                  Role
+                </Typography>
+                <FormControl fullWidth>
+                  <Select
+                    value={editingProfessor.role}
+                    name="role"
+                    onChange={handleEditInputChange}
+                    sx={{
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#E2E8F0',
+                      },
+                    }}
+                  >
+                    <MenuItem value="USER">User</MenuItem>
+                    <MenuItem value="ADMIN">Admin</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
+          </Box>
+          <Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: '1px solid #E2E8F0' }}>
+            <Button 
+              variant="outlined" 
+              onClick={() => setShowEditModal(false)}
+              sx={{
+                borderColor: '#E2E8F0',
+                color: '#64748B',
+                '&:hover': {
+                  borderColor: '#CBD5E1',
+                  bgcolor: 'transparent',
+                },
+                textTransform: 'none',
+                fontWeight: 500
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleUpdateProfessor}
+              sx={{
+                bgcolor: '#0288d1',
+                '&:hover': {
+                  bgcolor: '#0277bd',
+                },
+                textTransform: 'none',
+                fontWeight: 500
+              }}
+            >
+              Update Faculty
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
 
-{/* Attended Events Modal */}
-<Modal
-open={showAttendedEventsModal}
-onClose={() => setShowAttendedEventsModal(false)}
-aria-labelledby="attended-events-modal-title"
->
-<Box sx={{
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 700,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  borderRadius: 1,
-  p: 0,
-  overflow: 'hidden',
-  maxHeight: '80vh',
-  display: 'flex',
-  flexDirection: 'column'
-}}>
-  <Box sx={{ 
-    p: 2, 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    borderBottom: '1px solid #E2E8F0',
-    bgcolor: '#F8FAFC'
-  }}>
-    <Typography variant="h6" fontWeight="600" color="black">
-      {viewingProfessor ? `Events Attended by ${viewingProfessor.firstName} ${viewingProfessor.lastName}` : 'Attended Events'}
-    </Typography>
-    <IconButton onClick={() => setShowAttendedEventsModal(false)}>
-      <Close />
-    </IconButton>
-  </Box>
-  
-  <Box sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
-    {loadingEvents ? (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-        <CircularProgress size={30} />
-      </Box>
-    ) : attendedEvents.length === 0 ? (
-      <Box sx={{ p: 3, textAlign: 'center', color: '#64748B' }}>
-        <EventAvailable sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
-        <Typography variant="body1" fontWeight="500">
-          No events attended yet
-        </Typography>
-        <Typography variant="body2" color="#94A3B8" sx={{ mt: 1 }}>
-          This faculty member hasn't attended any events
-        </Typography>
-      </Box>
-    ) : (
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Event Name</TableCell>
-              <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Date</TableCell>
-              <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Time</TableCell>
-              <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Attendance Status</TableCell>
-              <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Entry Type</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {attendedEvents.map((event) => (
-              <TableRow key={event.eventId} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
-                <TableCell>{event.eventName}</TableCell>
-                <TableCell>{formatDate(event.eventDate)}</TableCell>
-                <TableCell>{`${formatTime(event.timeIn)} - ${formatTime(event.timeOut)}`}</TableCell>
-                <TableCell>
+      {/* View Professor Modal */}
+      <Modal
+        open={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        aria-labelledby="view-professor-modal-title"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 480,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          borderRadius: 1,
+          p: 0,
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderBottom: '1px solid #E2E8F0',
+            bgcolor: '#F8FAFC'
+          }}>
+            <Typography variant="h6" fontWeight="600">
+              Faculty Details
+            </Typography>
+            <IconButton onClick={() => setShowViewModal(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+          {viewingProfessor && (
+            <Box sx={{ p: 3 }}>
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar 
+                  sx={{ 
+                    width: 64, 
+                    height: 64,
+                    bgcolor: '#0288d1',
+                    fontSize: '1.5rem'
+                  }}
+                >
+                  {viewingProfessor.firstName?.[0]}{viewingProfessor.lastName?.[0]}
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight="600">
+                    {`${viewingProfessor.firstName} ${viewingProfessor.lastName}`}
+                  </Typography>
                   <Chip 
-                    icon={<CheckCircleOutline fontSize="small" />}
-                    label="Present" 
+                    label={viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Faculty'} 
                     size="small"
                     sx={{ 
-                      bgcolor: '#ECFDF5',
-                      color: '#10B981',
+                      bgcolor: viewingProfessor.role === 'ADMIN' ? '#EFF6FF' : '#ECFDF5',
+                      color: viewingProfessor.role === 'ADMIN' ? '#3B82F6' : '#10B981',
                       fontWeight: 500,
                       fontSize: '0.75rem'
                     }}
                   />
-                </TableCell>
-                <TableCell sx={{ fontWeight: 200, backgroundColor: '#F8FAFC' }}>
-  {event.manualEntry ?'Manual Entry'  : 'QR'}
-</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )}
-  </Box>
-</Box>
-</Modal>
+                </Box>
+              </Box>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Box sx={{ mb: 3 }}>
+                <List disablePadding>
+                  <ListItem disablePadding sx={{ mb: 2 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Badge fontSize="small" sx={{ color: '#64748B' }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={
+                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                          School ID
+                        </Typography>
+                      }
+                      secondary={viewingProfessor.schoolId || 'Not specified'}
+                      secondaryTypographyProps={{ color: '#64748B' }}
+                    />
+                  </ListItem>
+                  
+                  <ListItem disablePadding sx={{ mb: 2 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Group fontSize="small" sx={{ color: '#64748B' }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={
+                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                          Department
+                        </Typography>
+                      }
+                      secondary={
+                        viewingProfessor.department?.departmentId 
+                          ? `${getDepartmentName(viewingProfessor.department.departmentId)} (${getDepartmentAbbreviation(viewingProfessor.department.departmentId)})`
+                          : viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Not assigned'
+                      }
+                      secondaryTypographyProps={{ color: '#64748B' }}
+                    />
+                  </ListItem>
+                  
+                  <ListItem disablePadding sx={{ mb: 2 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Email fontSize="small" sx={{ color: '#64748B' }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={
+                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                          Email
+                        </Typography>
+                      }
+                      secondary={viewingProfessor.email || 'Not specified'}
+                      secondaryTypographyProps={{ color: '#64748B' }}
+                    />
+                  </ListItem>
+                </List>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Modal>
 
-{/* Notification Snackbar */}
-<Snackbar
-  open={snackbar.open}
-  autoHideDuration={6000}
-  onClose={handleCloseSnackbar}
-  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
->
-  <Alert 
-    onClose={handleCloseSnackbar} 
-    severity={snackbar.severity} 
-    sx={{ width: '100%' }}
-  >
-    {snackbar.message}
-  </Alert>
-</Snackbar>
+      {/* Attended Events Modal */}
+      <Modal
+        open={showAttendedEventsModal}
+        onClose={() => setShowAttendedEventsModal(false)}
+        aria-labelledby="attended-events-modal-title"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 700,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          borderRadius: 1,
+          p: 0,
+          overflow: 'hidden',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderBottom: '1px solid #E2E8F0',
+            bgcolor: '#F8FAFC'
+          }}>
+            <Typography variant="h6" fontWeight="600" color="black">
+              {viewingProfessor ? `Events Attended by ${viewingProfessor.firstName} ${viewingProfessor.lastName}` : 'Attended Events'}
+            </Typography>
+            <IconButton onClick={() => setShowAttendedEventsModal(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+          
+          <Box sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
+            {loadingEvents ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : attendedEvents.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center', color: '#64748B' }}>
+                <EventAvailable sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
+                <Typography variant="body1" fontWeight="500">
+                  No events attended yet
+                </Typography>
+                <Typography variant="body2" color="#94A3B8" sx={{ mt: 1 }}>
+                  This faculty member hasn't attended any events
+                </Typography>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Event Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Time</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Attendance Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Entry Type</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {attendedEvents.map((event) => (
+                      <TableRow key={event.eventId} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
+                        <TableCell>{event.eventName}</TableCell>
+                        <TableCell>{formatDate(event.eventDate)}</TableCell>
+                        <TableCell>{`${formatTime(event.timeIn)} - ${formatTime(event.timeOut)}`}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            icon={<CheckCircleOutline fontSize="small" />}
+                            label="Present" 
+                            size="small"
+                            sx={{ 
+                              bgcolor: '#ECFDF5',
+                              color: '#10B981',
+                              fontWeight: 500,
+                              fontSize: '0.75rem'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 200, backgroundColor: '#F8FAFC' }}>
+                          {event.manualEntry ?'Manual Entry'  : 'QR'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        </Box>
+      </Modal>
 
-</Box>
-);
+      {/* Profile Picture Zoom Modal */}
+      <Modal
+        open={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        aria-labelledby="profile-picture-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 0,
+          borderRadius: 1,
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderBottom: '1px solid #E2E8F0'
+          }}>
+            <Typography variant="h6" fontWeight="600">
+              Profile Picture
+            </Typography>
+            <IconButton onClick={() => setShowProfileModal(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+          
+          {selectedProfile && (
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Avatar
+                src={selectedProfile.profilePictureUrl}
+                alt={`${selectedProfile.firstName} ${selectedProfile.lastName}`}
+                sx={{ 
+                  width: 200, 
+                  height: 200,
+                  boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+                }}
+              />
+              <Typography variant="h6">
+                {`${selectedProfile.firstName} ${selectedProfile.lastName}`}
+              </Typography>
+              
+              <Box>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="profile-picture-upload"
+                  type="file"
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleProfilePictureUpload(selectedProfile.userId, e.target.files[0]);
+                      setShowProfileModal(false);
+                    }
+                  }}
+                />
+                <label htmlFor="profile-picture-upload">
+                  <Button
+                    variant="contained"
+                    component="span"
+                    startIcon={<PhotoCamera />}
+                    sx={{
+                      bgcolor: '#0288d1',
+                      '&:hover': {
+                        bgcolor: '#0277bd',
+                      },
+                      textTransform: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    Change Profile Picture
+                  </Button>
+                </label>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Modal>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+    </Box>
+  );
 }
