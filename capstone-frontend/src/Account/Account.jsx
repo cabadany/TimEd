@@ -1820,6 +1820,7 @@ export default function AccountPage() {
             <Box sx={{ p: 3 }}>
               <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar 
+                  src={viewingProfessor.profilePictureUrl}
                   sx={{ 
                     width: 64, 
                     height: 64,
