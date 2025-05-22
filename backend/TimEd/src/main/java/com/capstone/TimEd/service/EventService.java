@@ -3,12 +3,15 @@ package com.capstone.TimEd.service;
 import com.capstone.TimEd.dto.Eventdto;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.Event;
+import com.capstone.TimEd.model.Certificate;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -21,8 +24,13 @@ public class EventService {
     private final FirebaseApp firebaseApp;
     private final CollectionReference eventsCollection = firestore.collection("events"); // Correct reference to 'events' collection
     private final CollectionReference departmentsCollection = firestore.collection("departments"); // Correct reference to 'departments' collection
-    public EventService(FirebaseApp firebaseApp) {
+    
+    private final CertificateService certificateService;
+    
+    @Autowired
+    public EventService(FirebaseApp firebaseApp, CertificateService certificateService) {
         this.firebaseApp = firebaseApp;
+        this.certificateService = certificateService;
         // Initialize FirebaseApp before using Firestore
     }
 
@@ -61,9 +69,9 @@ public class EventService {
         // Check if events are found
         if (events != null && !events.isEmpty()) {
             // Create a SimpleDateFormat to format the date as a String
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd"); // Adjust date format as needed
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"); // Include time in the format
             for (Event event : events) {
-                String formattedDate = dateFormat.format(event.getDate()); // Convert Date to String (yyyy-MM-dd)
+                String formattedDate = dateFormat.format(event.getDate()); // Convert Date to String (yyyy-MM-dd'T'HH:mm:ss)
                 
                 Eventdto eventDto = new Eventdto(
                         event.getEventId(),        // Event ID
@@ -100,17 +108,112 @@ public class EventService {
     }
     public String deleteEvent(String eventId) {
         try {
+            // First, try to find and delete the associated certificate
+            System.out.println("[DEBUG] Starting event deletion for eventId: " + eventId);
+            int certificatesDeleted = 0;
+            
+            try {
+                // Query all certificates to find any with this eventId
+                // Sometimes certificates might not be properly linked
+                List<QueryDocumentSnapshot> certificates = firestore.collection("certificates")
+                    .whereEqualTo("eventId", eventId)
+                    .get()
+                    .get()
+                    .getDocuments();
+                
+                System.out.println("[DEBUG] Found " + certificates.size() + " certificates with eventId: " + eventId);
+                
+                // Delete each certificate found
+                for (QueryDocumentSnapshot cert : certificates) {
+                    Certificate certificate = cert.toObject(Certificate.class);
+                    // Delete the certificate document
+                    certificateService.deleteCertificate(certificate.getId());
+                    System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                    certificatesDeleted++;
+                }
+                
+                // Also try standard certificate lookup if none found above
+                if (certificatesDeleted == 0) {
+                    Certificate certificate = certificateService.getCertificateByEventId(eventId);
+                    if (certificate != null) {
+                        // If a certificate exists for this event, delete it
+                        certificateService.deleteCertificate(certificate.getId());
+                        System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                        certificatesDeleted++;
+                    } else {
+                        System.out.println("[DEBUG] No certificates found for event: " + eventId);
+                    }
+                }
+                
+                // Check for legacy format with the prefix "Event added successfully with ID: "
+                if (certificatesDeleted == 0) {
+                    String legacyEventId = "Event added successfully with ID: " + eventId;
+                    List<QueryDocumentSnapshot> legacyDocs = firestore.collection("certificates")
+                        .whereEqualTo("eventId", legacyEventId)
+                        .get()
+                        .get()
+                        .getDocuments();
+                    
+                    for (QueryDocumentSnapshot cert : legacyDocs) {
+                        Certificate certificate = cert.toObject(Certificate.class);
+                        certificateService.deleteCertificate(certificate.getId());
+                        System.out.println("[DEBUG] Deleted legacy certificate with ID: " + certificate.getId() + " for event: " + eventId);
+                        certificatesDeleted++;
+                    }
+                }
+            } catch (Exception e) {
+                // Log the exception but continue deleting the event
+                System.err.println("[ERROR] Error deleting associated certificate: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             // Delete the event from Firestore using the eventId
-            firestore.collection("events")
+            System.out.println("[DEBUG] Deleting event document: " + eventId);
+            ApiFuture<WriteResult> result = firestore.collection("events")
                     .document(eventId)
                     .delete();
+                    
+            // Wait for the delete operation to complete
+            WriteResult writeResult = result.get();
+            System.out.println("[DEBUG] Event deleted at: " + writeResult.getUpdateTime());
 
-            return "Event deleted successfully";
+            if (certificatesDeleted > 0) {
+                return "Event and " + certificatesDeleted + " associated certificate(s) deleted successfully";
+            } else {
+                return "Event deleted successfully (no certificates found)";
+            }
             
         } catch (Exception e) {
+            System.err.println("[ERROR] Failed to delete event: " + e.getMessage());
+            e.printStackTrace();
             return "Failed to delete event: " + e.getMessage();
         }
-    }// Method to update an event's details
+    }
+
+    // Method to update an event's certificateId
+    public void updateEventCertificateId(String eventId, String certificateId) throws ExecutionException, InterruptedException {
+        try {
+            // Update only the certificateId field
+            Map<String, Object> updateMap = new HashMap<>();
+            updateMap.put("certificateId", certificateId);
+            
+            // Log the operation for debugging
+            System.out.println("Updating event " + eventId + " with certificateId " + certificateId);
+            
+            // Update the event in Firestore
+            WriteResult result = firestore.collection("events")
+                    .document(eventId)
+                    .update(updateMap)
+                    .get();
+            
+            System.out.println("Event updated at: " + result.getUpdateTime());
+            
+        } catch (Exception e) {
+            System.err.println("Error updating event certificateId: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
 
     // Method to update an event's details and return the updated event
     public Event updateEvent(String eventId, Event updatedEvent) throws ExecutionException, InterruptedException {
@@ -134,6 +237,11 @@ public class EventService {
             updateMap.put("date", updatedEvent.getDate());
             updateMap.put("duration", updatedEvent.getDuration());
             updateMap.put("departmentId", updatedEvent.getDepartmentId());
+            
+            // Also update certificateId if it exists
+            if (updatedEvent.getCertificateId() != null) {
+                updateMap.put("certificateId", updatedEvent.getCertificateId());
+            }
 
             // Apply the update in Firestore
             firestore.collection("events")
@@ -152,18 +260,38 @@ public class EventService {
     // Method to add a new event
     public String addEvent(Event event) {
         try {
+            // Log the received date for debugging
+            System.out.println("Received event date: " + event.getDate());
+
+            // Preserve the time exactly as received from frontend
+            if (event.getDate() != null) {
+                // Get the timezone from the server
+                TimeZone serverTimezone = TimeZone.getDefault();
+                System.out.println("Server timezone: " + serverTimezone.getID());
+                
+                // This will help with debugging time conversion issues
+                SimpleDateFormat debugFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                debugFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                System.out.println("Event date in UTC: " + debugFormat.format(event.getDate()));
+            }
+            
             // Add event to Firestore and let Firestore generate the document ID
             DocumentReference eventRef = firestore.collection("events").add(event).get();
 
             // Get the auto-generated ID and set it to the event object
             event.setEventId(eventRef.getId());
 
-            // Optionally, update the event document with the generated eventId (if you want to persist the eventId)
+            // Update the event document with the generated eventId
             eventRef.set(event);
+            
+            System.out.println("Event added successfully with ID: " + eventRef.getId());
 
-            return "Event added successfully with ID: " + eventRef.getId();
+            // Return just the ID, not a success message
+            return eventRef.getId();
 
         } catch (Exception e) {
+            System.err.println("Error adding event: " + e.getMessage());
+            e.printStackTrace();  // Print full stack trace for debugging
             return "Failed to add event: " + e.getMessage();
         }
     }
@@ -227,7 +355,7 @@ public class EventService {
                 event.setDepartment(department);
 
                 // Format the date
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
                 String formattedDate = dateFormat.format(event.getDate());
 
                 // Create an EventDTO
@@ -249,6 +377,171 @@ public class EventService {
         }
 
         return eventDtos;  // Return the list of EventDTOs
+    }
+
+    public List<Eventdto> getEventsByDateRange(String startDateStr, String endDateStr) throws ExecutionException, InterruptedException {
+        List<Eventdto> eventDtos = new ArrayList<>();
+        
+        try {
+            // Parse input dates
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            Date startDate = null;
+            Date endDate = null;
+            
+            if (startDateStr != null && !startDateStr.isEmpty()) {
+                startDate = dateFormat.parse(startDateStr);
+            }
+            
+            if (endDateStr != null && !endDateStr.isEmpty()) {
+                endDate = dateFormat.parse(endDateStr);
+                // Set time to end of day for the end date
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(endDate);
+                calendar.set(Calendar.HOUR_OF_DAY, 23);
+                calendar.set(Calendar.MINUTE, 59);
+                calendar.set(Calendar.SECOND, 59);
+                calendar.set(Calendar.MILLISECOND, 999);
+                endDate = calendar.getTime();
+            }
+            
+            // Fetch all events if no date filters are provided
+            if (startDate == null && endDate == null) {
+                return getAllEvents();
+            }
+            
+            // Create query based on date range
+            Query query = eventsCollection;
+            
+            if (startDate != null) {
+                query = query.whereGreaterThanOrEqualTo("date", startDate);
+            }
+            
+            if (endDate != null) {
+                query = query.whereLessThanOrEqualTo("date", endDate);
+            }
+            
+            // Execute query
+            ApiFuture<QuerySnapshot> querySnapshot = query.get();
+            List<QueryDocumentSnapshot> documents = querySnapshot.get().getDocuments();
+            
+            // Process results
+            for (QueryDocumentSnapshot doc : documents) {
+                Event event = doc.toObject(Event.class);
+                
+                // Get department for the event
+                Department department = getDepartmentById(event.getDepartmentId());
+                event.setDepartment(department);
+                
+                // Format date for DTO
+                SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                String formattedDate = outputFormat.format(event.getDate());
+                
+                // Create DTO
+                Eventdto eventDto = new Eventdto(
+                    event.getEventId(),
+                    event.getEventName(),
+                    event.getStatus(),
+                    formattedDate,
+                    event.getDuration(),
+                    event.getDepartmentId(),
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"
+                );
+                
+                eventDtos.add(eventDto);
+            }
+            
+        } catch (ParseException e) {
+            System.err.println("Error parsing dates: " + e.getMessage());
+            // Return all events if date parsing fails
+            return getAllEvents();
+        } catch (InterruptedException | ExecutionException e) {
+            System.err.println("Error fetching events by date range: " + e.getMessage());
+        }
+        
+        return eventDtos;
+    }
+
+    public List<Eventdto> getPaginatedEvents(int page, int size) throws ExecutionException, InterruptedException {
+        List<Eventdto> eventDtos = new ArrayList<>();
+        try {
+            // Create query to get events sorted by date (most recent first)
+            Query query = firestore.collection("events").orderBy("date", Query.Direction.DESCENDING);
+            
+            // Execute query to get all document IDs first (lighter operation)
+            ApiFuture<QuerySnapshot> countQuery = query.get();
+            List<QueryDocumentSnapshot> allDocs = countQuery.get().getDocuments();
+            
+            // Calculate pagination details
+            int totalCount = allDocs.size();
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, totalCount);
+            
+            // If requested page is out of bounds, return empty list
+            if (startIndex >= totalCount) {
+                return new ArrayList<>();
+            }
+            
+            // Get only the IDs of documents we need for this page
+            List<String> pageDocIds = new ArrayList<>();
+            for (int i = startIndex; i < endIndex; i++) {
+                pageDocIds.add(allDocs.get(i).getId());
+            }
+            
+            // Batch fetch only the events we need by ID
+            List<ApiFuture<DocumentSnapshot>> futures = new ArrayList<>();
+            for (String docId : pageDocIds) {
+                futures.add(firestore.collection("events").document(docId).get());
+            }
+            
+            // Process only the events for this page
+            for (ApiFuture<DocumentSnapshot> future : futures) {
+                DocumentSnapshot doc = future.get();
+                if (doc.exists()) {
+                    Event event = doc.toObject(Event.class);
+                    
+                    // Set document ID as eventId if not set
+                    if (event.getEventId() == null) {
+                        event.setEventId(doc.getId());
+                    }
+                    
+                    // Format the date
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                    String formattedDate = event.getDate() != null ? dateFormat.format(event.getDate()) : "";
+                    
+                    // Create EventDTO with minimal department info (just department ID)
+                    // Avoid fetching full department details for better performance
+                    Eventdto eventDto = new Eventdto(
+                        event.getEventId(),
+                        event.getEventName(),
+                        event.getStatus(),
+                        formattedDate,
+                        event.getDuration(),
+                        event.getDepartmentId()
+                    );
+                    
+                    eventDtos.add(eventDto);
+                }
+            }
+            
+            return eventDtos;
+        } catch (Exception e) {
+            System.err.println("Error in paginated events: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    public int getTotalEventCount() throws ExecutionException, InterruptedException {
+        try {
+            // Get all events and count them
+            // For Firestore, this is not ideal for large collections, but works for this use case
+            ApiFuture<QuerySnapshot> future = firestore.collection("events").get();
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            return documents.size();
+        } catch (Exception e) {
+            System.err.println("Error counting events: " + e.getMessage());
+            return 0;
+        }
     }
 
 }
