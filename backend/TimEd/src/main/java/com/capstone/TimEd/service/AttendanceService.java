@@ -208,7 +208,7 @@ public class AttendanceService {
         List<Map<String, String>> attendees = new ArrayList<>();
 
         try {
-            // First try to get attendees from the new structure (subcollection under event)
+            // Try to get attendees from both old and new structures
             CollectionReference eventAttendeesRef = firestore.collection("events")
                 .document(eventId)
                 .collection("attendees");
@@ -216,70 +216,63 @@ public class AttendanceService {
             ApiFuture<QuerySnapshot> query = eventAttendeesRef.get();
             List<QueryDocumentSnapshot> docs = query.get().getDocuments();
             
-            // Process new structure attendees
             for (QueryDocumentSnapshot doc : docs) {
                 Map<String, Object> data = doc.getData();
                 Map<String, String> attendee = new HashMap<>();
                 
-                String email = data.getOrDefault("email", "").toString();
-                String userId = data.getOrDefault("userId", "").toString();
-                
-                // Get department information
-                DocumentReference userRef = firestore.collection("users").document(userId);
-                DocumentSnapshot userDoc = userRef.get().get();
-                String departmentId = null;
-                String departmentName = "N/A";
-                
-                if (userDoc.exists()) {
-                    departmentId = userDoc.getString("departmentId");
-                    if (departmentId != null) {
-                        DocumentReference deptRef = firestore.collection("departments").document(departmentId);
-                        DocumentSnapshot deptDoc = deptRef.get().get();
-                        if (deptDoc.exists()) {
-                            departmentName = deptDoc.getString("name");
+                // Check if this is the old structure (has 'attended' field) or new structure
+                if (data.containsKey("attended")) {
+                    // Old structure
+                    String userId = doc.getId(); // UserId is the document ID in old structure
+                    
+                    // Get user details
+                    DocumentReference userRef = firestore.collection("users").document(userId);
+                    DocumentSnapshot userDoc = userRef.get().get();
+                    
+                    if (userDoc.exists()) {
+                        attendee.put("userId", userId);
+                        attendee.put("firstName", userDoc.getString("firstName"));
+                        attendee.put("lastName", userDoc.getString("lastName"));
+                        attendee.put("email", userDoc.getString("email"));
+                        
+                        // Get department
+                        String departmentId = userDoc.getString("departmentId");
+                        if (departmentId != null) {
+                            DocumentReference deptRef = firestore.collection("departments").document(departmentId);
+                            DocumentSnapshot deptDoc = deptRef.get().get();
+                            if (deptDoc.exists()) {
+                                attendee.put("department", deptDoc.getString("name"));
+                            } else {
+                                attendee.put("department", "N/A");
+                            }
+                        } else {
+                            attendee.put("department", "N/A");
                         }
+                        
+                        // Handle time fields
+                        String timeIn = data.get("timeIn") != null ? data.get("timeIn").toString() : "";
+                        if (timeIn.contains("T")) {
+                            // Convert ISO format to the desired format
+                            try {
+                                java.time.Instant instant = java.time.Instant.parse(timeIn);
+                                java.time.ZonedDateTime zdt = instant.atZone(java.time.ZoneId.of("Asia/Manila"));
+                                timeIn = zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            } catch (Exception e) {
+                                System.err.println("Error parsing timeIn: " + e.getMessage());
+                            }
+                        }
+                        attendee.put("timeIn", timeIn);
+                        attendee.put("timeOut", "N/A"); // Old structure doesn't have timeOut
+                        attendee.put("type", "event_time_in");
+                        attendee.put("manualEntry", data.getOrDefault("manualEntry", false).toString());
+                        attendee.put("selfieUrl", null);
                     }
-                }
-                
-                // Map the new data structure to the expected format
-                attendee.put("userId", userId);
-                attendee.put("firstName", data.getOrDefault("firstName", "").toString());
-                attendee.put("lastName", data.getOrDefault("lastName", "").toString());
-                attendee.put("email", email);
-                attendee.put("department", departmentName);
-                attendee.put("timeIn", data.getOrDefault("timestamp", "").toString());
-                
-                // Handle hasTimedOut and timeOut
-                Object hasTimedOutObj = data.get("hasTimedOut");
-                boolean hasTimedOut = hasTimedOutObj instanceof Boolean && (Boolean) hasTimedOutObj;
-                attendee.put("timeOut", hasTimedOut ? data.getOrDefault("timeOutTimestamp", "").toString() : "N/A");
-                
-                attendee.put("type", data.getOrDefault("type", "").toString());
-                Object selfieUrl = data.get("selfieUrl");
-                attendee.put("selfieUrl", selfieUrl != null ? selfieUrl.toString() : null);
-                
-                Object manualEntryObj = data.get("manualEntry");
-                attendee.put("manualEntry", manualEntryObj instanceof Boolean && (Boolean) manualEntryObj ? "true" : "false");
-                
-                attendees.add(attendee);
-            }
-
-            // If no attendees found in new structure, try the old structure
-            if (attendees.isEmpty()) {
-                CollectionReference oldAttendeesRef = firestore.collection("attendees");
-                ApiFuture<QuerySnapshot> oldQuery = oldAttendeesRef
-                    .whereEqualTo("eventId", eventId)
-                    .get();
-                
-                List<QueryDocumentSnapshot> oldDocs = oldQuery.get().getDocuments();
-                
-                for (QueryDocumentSnapshot doc : oldDocs) {
-                    Map<String, Object> data = doc.getData();
-                    Map<String, String> attendee = new HashMap<>();
-                    
+                } else {
+                    // New structure
                     String userId = data.getOrDefault("userId", "").toString();
+                    String email = data.getOrDefault("email", "").toString();
                     
-                    // Get user details including department
+                    // Get user details for department
                     DocumentReference userRef = firestore.collection("users").document(userId);
                     DocumentSnapshot userDoc = userRef.get().get();
                     String departmentName = "N/A";
@@ -298,7 +291,7 @@ public class AttendanceService {
                     attendee.put("userId", userId);
                     attendee.put("firstName", data.getOrDefault("firstName", "").toString());
                     attendee.put("lastName", data.getOrDefault("lastName", "").toString());
-                    attendee.put("email", data.getOrDefault("email", "").toString());
+                    attendee.put("email", email);
                     attendee.put("department", departmentName);
                     attendee.put("timeIn", data.getOrDefault("timestamp", "").toString());
                     
@@ -309,7 +302,9 @@ public class AttendanceService {
                     attendee.put("type", data.getOrDefault("type", "event_time_in").toString());
                     attendee.put("selfieUrl", data.get("selfieUrl") != null ? data.get("selfieUrl").toString() : null);
                     attendee.put("manualEntry", data.getOrDefault("manualEntry", false).toString());
-                    
+                }
+                
+                if (!attendee.isEmpty()) {
                     attendees.add(attendee);
                 }
             }

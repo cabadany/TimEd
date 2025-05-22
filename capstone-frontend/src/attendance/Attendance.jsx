@@ -691,12 +691,46 @@ export default function Attendance() {
     if (!timestamp || timestamp === 'N/A') return 'N/A';
     
     try {
-      // Try parsing the timestamp string directly
-      const dateObj = new Date(timestamp);
+      // Handle ISO format (old structure)
+      if (timestamp.includes('T')) {
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('en-PH', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Manila'
+          });
+        }
+      }
       
-      // Check if the date is valid
-      if (!isNaN(dateObj.getTime())) {
-        return dateObj.toLocaleString('en-PH', {
+      // Handle "yyyy-MM-dd HH:mm:ss" format (new structure)
+      if (timestamp.includes('-') && timestamp.includes(':')) {
+        const [datePart, timePart] = timestamp.split(' ');
+        const [year, month, day] = datePart.split('-');
+        const [hour, minute, second] = timePart.split(':');
+        
+        const date = new Date(year, month - 1, day, hour, minute, second);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('en-PH', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Manila'
+          });
+        }
+      }
+      
+      // Try direct parsing as a fallback
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleString('en-PH', {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
@@ -707,29 +741,10 @@ export default function Attendance() {
         });
       }
       
-      // If direct parsing fails, try parsing the specific format "yyyy-MM-dd HH:mm:ss"
-      const [datePart, timePart] = timestamp.split(' ');
-      const [year, month, day] = datePart.split('-');
-      const [hour, minute, second] = timePart.split(':');
-      
-      const parsedDate = new Date(year, month - 1, day, hour, minute, second);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate.toLocaleString('en-PH', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-          timeZone: 'Asia/Manila'
-        });
-      }
-      
-      return timestamp; // Return original if parsing fails
+      return timestamp; // Return original if all parsing attempts fail
     } catch (e) {
       console.error('Error formatting timestamp:', e);
-      return timestamp; // Return original on error
+      return timestamp;
     }
   };
 
@@ -851,34 +866,31 @@ export default function Attendance() {
   };
 
   const formatAttendanceData = (attendee) => {
-    // Handle new format
-    if (attendee.type === 'event_time_in') {
+    const baseData = {
+      userId: attendee.userId,
+      firstName: attendee.firstName || '',
+      lastName: attendee.lastName || '',
+      email: attendee.email || '',
+      department: attendee.department || 'N/A',
+      selfieUrl: attendee.selfieUrl || null,
+      type: attendee.type || 'event_time_in',
+      manualEntry: String(attendee.manualEntry).toLowerCase() === 'true'
+    };
+
+    // Handle old structure (has timeIn in ISO format)
+    if (attendee.timeIn && attendee.timeIn.includes('T')) {
       return {
-        userId: attendee.userId,
-        firstName: attendee.firstName,
-        lastName: attendee.lastName || '',
-        email: attendee.email,
-        department: attendee.department || 'N/A',
+        ...baseData,
         timeIn: attendee.timeIn,
-        timeOut: attendee.timeOut || 'N/A',
-        manualEntry: attendee.manualEntry === 'true',
-        selfieUrl: attendee.selfieUrl,
-        type: attendee.type
+        timeOut: attendee.timeOut || 'N/A'
       };
     }
-    
-    // Handle old format
+
+    // Handle new structure
     return {
-      userId: attendee.userId,
-      firstName: attendee.firstName,
-      lastName: attendee.lastName || '',
-      email: attendee.email,
-      department: attendee.department || 'N/A',
-      timeIn: attendee.timeIn,
-      timeOut: attendee.timeOut || 'N/A',
-      manualEntry: attendee.manualEntry === 'true',
-      selfieUrl: attendee.selfieUrl,
-      type: 'event_time_in'
+      ...baseData,
+      timeIn: attendee.timeIn || attendee.timestamp || '',
+      timeOut: attendee.hasTimedOut ? attendee.timeOutTimestamp : 'N/A'
     };
   };
 

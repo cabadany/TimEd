@@ -34,7 +34,13 @@ import {
   Select,
   OutlinedInput,
   Tooltip,
-  Skeleton
+  Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Search,
@@ -84,6 +90,17 @@ export default function DepartmentManagement() {
     offeredPrograms: []
   });
   const [newProgram, setNewProgram] = useState('');
+
+  // Add these state variables at the top with other state declarations
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState(null);
+
+  // Add snackbar state if not already present
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Fetch departments from the backend API
   useEffect(() => {
@@ -367,6 +384,46 @@ export default function DepartmentManagement() {
     </Box>
   );
 
+  // Add this function to handle department deletion
+  const handleDeleteDepartment = async () => {
+    try {
+      await axios.delete(`http://localhost:8080/api/departments/${departmentToDelete.departmentId}`);
+      
+      // Update the departments list
+      setDepartments(departments.filter(dept => dept.departmentId !== departmentToDelete.departmentId));
+      
+      // Close the confirmation dialog
+      setDeleteConfirmOpen(false);
+      setDepartmentToDelete(null);
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: 'Department deleted successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete department',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Add this function to open delete confirmation
+  const handleOpenDeleteConfirm = (department) => {
+    setDepartmentToDelete(department);
+    setDeleteConfirmOpen(true);
+  };
+
+  // Add this function to close delete confirmation
+  const handleCloseDeleteConfirm = () => {
+    setDeleteConfirmOpen(false);
+    setDepartmentToDelete(null);
+  };
+
   return (
     <Box className="department-container">
       {/* Department Content */}
@@ -558,6 +615,7 @@ export default function DepartmentManagement() {
                           <Tooltip title="Delete Department">
                             <IconButton 
                               size="small" 
+                              onClick={() => handleOpenDeleteConfirm(department)}
                               sx={{ color: '#EF4444' }}
                             >
                               <Delete fontSize="small" />
@@ -840,6 +898,80 @@ export default function DepartmentManagement() {
           </Box>
         </Box>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCloseDeleteConfirm}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '400px',
+            borderRadius: '8px',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle id="alert-dialog-title" sx={{ pb: 1 }}>
+          {"Confirm Department Deletion"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ color: '#1E293B' }}>
+            Are you sure you want to delete the department "{departmentToDelete?.name}"? This action cannot be undone.
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#EF4444', mt: 2 }}>
+            Note: All faculty members in this department will be unassigned.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button
+            onClick={handleCloseDeleteConfirm}
+            variant="outlined"
+            sx={{
+              color: '#64748B',
+              borderColor: '#CBD5E1',
+              '&:hover': {
+                borderColor: '#94A3B8',
+                bgcolor: '#F8FAFC'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteDepartment}
+            variant="contained"
+            sx={{
+              bgcolor: '#EF4444',
+              color: 'white',
+              '&:hover': {
+                bgcolor: '#DC2626'
+              }
+            }}
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
