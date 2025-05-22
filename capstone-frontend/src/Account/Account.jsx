@@ -803,6 +803,7 @@ export default function AccountPage() {
                           >
                             <Edit fontSize="small" />
                           </IconButton>
+                          {/*
                           <IconButton 
                             size="small" 
                             onClick={() => handleViewAttendedEvents(professor)}
@@ -811,6 +812,7 @@ export default function AccountPage() {
                           >
                             <EventAvailable fontSize="small" />
                           </IconButton>
+                          */}
                           <IconButton 
                             size="small" 
                             onClick={() => handleDeleteProfessor(professor.userId)}
