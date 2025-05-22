@@ -29,7 +29,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Avatar
 } from '@mui/material';
 import {
   ArrowBack,
@@ -434,6 +435,53 @@ const AttendanceModal = memo(({
   );
 });
 
+const ImageZoomModal = ({ imageUrl, onClose }) => (
+  <Modal
+    open={Boolean(imageUrl)}
+    onClose={onClose}
+    aria-labelledby="zoom-image"
+  >
+    <Box sx={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      bgcolor: 'background.paper',
+      boxShadow: 24,
+      p: 1,
+      borderRadius: 2,
+      outline: 'none'
+    }}>
+      <IconButton
+        onClick={onClose}
+        sx={{
+          position: 'absolute',
+          right: 8,
+          top: 8,
+          bgcolor: 'rgba(0, 0, 0, 0.5)',
+          color: 'white',
+          '&:hover': {
+            bgcolor: 'rgba(0, 0, 0, 0.7)'
+          }
+        }}
+      >
+        <Close />
+      </IconButton>
+      <img
+        src={imageUrl}
+        alt="Zoomed verification"
+        style={{
+          maxWidth: '100%',
+          maxHeight: '85vh',
+          objectFit: 'contain'
+        }}
+      />
+    </Box>
+  </Modal>
+);
+
 export default function Attendance() {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -453,6 +501,7 @@ export default function Attendance() {
     message: '',
     severity: 'success'
   });
+  const [zoomImage, setZoomImage] = useState(null);
 
   useEffect(() => {
     // Remove admin role check since this is already an admin dashboard
@@ -639,44 +688,48 @@ export default function Attendance() {
 
   // Format timestamp to readable date and time
   const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
+    if (!timestamp || timestamp === 'N/A') return 'N/A';
     
     try {
-      // Handle different timestamp formats
-      let dateObj;
+      // Try parsing the timestamp string directly
+      const dateObj = new Date(timestamp);
       
-      if (typeof timestamp === 'string') {
-        dateObj = new Date(timestamp);
-      } else if (typeof timestamp === 'object') {
-        if (timestamp.seconds && timestamp.nanoseconds) {
-          dateObj = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
-        } else if (timestamp.toDate && typeof timestamp.toDate === 'function') {
-          dateObj = timestamp.toDate();
-        } else if (timestamp._seconds && timestamp._nanoseconds) {
-          dateObj = new Date(timestamp._seconds * 1000 + timestamp._nanoseconds / 1000000);
-        } else {
-          return 'N/A';
-        }
-      } else {
-        return 'N/A';
+      // Check if the date is valid
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleString('en-PH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Manila'
+        });
       }
       
-      if (isNaN(dateObj.getTime())) {
-        return 'N/A';
+      // If direct parsing fails, try parsing the specific format "yyyy-MM-dd HH:mm:ss"
+      const [datePart, timePart] = timestamp.split(' ');
+      const [year, month, day] = datePart.split('-');
+      const [hour, minute, second] = timePart.split(':');
+      
+      const parsedDate = new Date(year, month - 1, day, hour, minute, second);
+      
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toLocaleString('en-PH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Manila'
+        });
       }
       
-      return dateObj.toLocaleString('en-PH', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Manila'
-      });
+      return timestamp; // Return original if parsing fails
     } catch (e) {
       console.error('Error formatting timestamp:', e);
-      return 'Error';
+      return timestamp; // Return original on error
     }
   };
 
@@ -795,6 +848,38 @@ export default function Attendance() {
 
   const handleNavigateBack = () => {
     navigate('/dashboard');
+  };
+
+  const formatAttendanceData = (attendee) => {
+    // Handle new format
+    if (attendee.type === 'event_time_in') {
+      return {
+        userId: attendee.userId,
+        firstName: attendee.firstName,
+        lastName: attendee.lastName || '',
+        email: attendee.email,
+        department: attendee.department || 'N/A',
+        timeIn: attendee.timeIn,
+        timeOut: attendee.timeOut || 'N/A',
+        manualEntry: attendee.manualEntry === 'true',
+        selfieUrl: attendee.selfieUrl,
+        type: attendee.type
+      };
+    }
+    
+    // Handle old format
+    return {
+      userId: attendee.userId,
+      firstName: attendee.firstName,
+      lastName: attendee.lastName || '',
+      email: attendee.email,
+      department: attendee.department || 'N/A',
+      timeIn: attendee.timeIn,
+      timeOut: attendee.timeOut || 'N/A',
+      manualEntry: attendee.manualEntry === 'true',
+      selfieUrl: attendee.selfieUrl,
+      type: 'event_time_in'
+    };
   };
 
   return (
@@ -1118,46 +1203,94 @@ export default function Attendance() {
                   <Table stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>First Name</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Last Name</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Email</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Time In</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Time Out</TableCell>
+                        <TableCell>Photo/Selfie</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Department</TableCell>
+                        <TableCell>Time In</TableCell>
+                        <TableCell>Time Out</TableCell>
+                        <TableCell>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredAttendees.map((attendee, index) => (
-                        <TableRow 
-                          key={index} 
-                          sx={{ 
-                            '&:hover': { bgcolor: '#F8FAFC' },
-                            bgcolor: index % 2 === 0 ? 'white' : '#F9FAFB'
-                          }}
-                        >
-                          <TableCell sx={{ color: '#1E293B' }}>{attendee.firstName || 'N/A'}</TableCell>
-                          <TableCell sx={{ color: '#1E293B' }}>{attendee.lastName || 'N/A'}</TableCell>
-                          <TableCell sx={{ color: '#64748B' }}>{attendee.email || 'N/A'}</TableCell>
-                          <TableCell sx={{ color: '#1E293B' }}>
-                            {attendee.department !== 'N/A' ? (
+                      {filteredAttendees.map((attendee) => {
+                        const formattedAttendee = formatAttendanceData(attendee);
+                        
+                        return (
+                          <TableRow key={formattedAttendee.userId}>
+                            <TableCell>
+                              {formattedAttendee.selfieUrl ? (
+                                <Box
+                                  component="img"
+                                  src={formattedAttendee.selfieUrl}
+                                  alt="Verification selfie"
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                      opacity: 0.8,
+                                      transform: 'scale(1.1)',
+                                      transition: 'all 0.2s ease-in-out'
+                                    }
+                                  }}
+                                  onClick={() => setZoomImage(formattedAttendee.selfieUrl)}
+                                />
+                              ) : (
+                                <Avatar sx={{ width: 40, height: 40 }}>
+                                  {formattedAttendee.firstName?.charAt(0)}
+                                </Avatar>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {formattedAttendee.firstName} {formattedAttendee.lastName}
+                            </TableCell>
+                            <TableCell>{formattedAttendee.email}</TableCell>
+                            <TableCell>{formattedAttendee.department}</TableCell>
+                            <TableCell>
+                              <Tooltip title="Time In" arrow>
+                                <Chip 
+                                  label={formatTimestamp(formattedAttendee.timeIn)}
+                                  color="success"
+                                  size="small"
+                                  variant="outlined"
+                                  icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                />
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell>
+                              {formattedAttendee.timeOut !== 'N/A' ? (
+                                <Tooltip title="Time Out" arrow>
+                                  <Chip 
+                                    label={formatTimestamp(formattedAttendee.timeOut)}
+                                    color="error"
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                  />
+                                </Tooltip>
+                              ) : (
+                                <Chip 
+                                  label="Not yet timed out"
+                                  color="warning"
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
                               <Chip 
-                                label={attendee.department}
+                                label={formattedAttendee.manualEntry ? "Manual Entry" : "QR Scan"}
+                                color={formattedAttendee.manualEntry ? "warning" : "info"}
                                 size="small"
-                                sx={{
-                                  backgroundColor: '#F0FDF4',
-                                  color: '#16A34A',
-                                  fontWeight: 500,
-                                  fontSize: '0.75rem',
-                                  height: 24,
-                                  borderRadius: '4px'
-                                }}
+                                variant="outlined"
                               />
-                            ) : 'N/A'}
-                          </TableCell>
-                          <TableCell sx={{ color: '#64748B' }}>{formatTimeInStatus(attendee.timeIn, attendee.manualEntry)}</TableCell>
-                          <TableCell sx={{ color: '#64748B' }}>{formatTimeoutStatus(attendee.timeOut, attendee.manualEntry)}</TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -1195,6 +1328,14 @@ export default function Attendance() {
       formatTimeoutStatus={formatTimeoutStatus}
       eventId={eventId} // Pass the eventId to the modal
     />
+
+    {/* Image Zoom Modal */}
+    {zoomImage && (
+      <ImageZoomModal
+        imageUrl={zoomImage}
+        onClose={() => setZoomImage(null)}
+      />
+    )}
     </Box>
   );
 }

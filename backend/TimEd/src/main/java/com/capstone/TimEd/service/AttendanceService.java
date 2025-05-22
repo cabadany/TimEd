@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.stereotype.Service;
 
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -24,160 +25,144 @@ public class AttendanceService {
     public String markAttendance(String eventId, String userId) {
         try {
             // Check if user has already timed in for this event
-            DocumentReference attendeeRef = firestore.collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId);
+            CollectionReference attendeesRef = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees");
             
-            DocumentSnapshot attendeeDoc = attendeeRef.get().get();
-            if (attendeeDoc.exists() && attendeeDoc.getBoolean("attended") != null && attendeeDoc.getBoolean("attended")) {
+            ApiFuture<QuerySnapshot> existingQuery = attendeesRef
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("type", "event_time_in")
+                .get();
+            
+            List<QueryDocumentSnapshot> existingDocs = existingQuery.get().getDocuments();
+            if (!existingDocs.isEmpty()) {
                 return "Already timed in for this event. Certificate has already been generated.";
             }
 
-            String now = Instant.now().toString();
-
-            // Fetch event details
-            DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
+            // Get event details
+            DocumentReference eventRef = firestore.collection("events").document(eventId);
+            ApiFuture<DocumentSnapshot> eventQuery = eventRef.get();
+            DocumentSnapshot eventDoc = eventQuery.get();
 
             if (!eventDoc.exists()) {
-                return "Event does not exist: " + eventId;
+                return "Event not found";
             }
 
-            String eventName = eventDoc.getString("eventName");
-            String eventStatus = eventDoc.getString("status");
-            Object eventDate = eventDoc.get("date"); // Timestamp type
+            // Get user details
+            DocumentReference userRef = firestore.collection("users").document(userId);
+            ApiFuture<DocumentSnapshot> userQuery = userRef.get();
+            DocumentSnapshot userDoc = userQuery.get();
 
-            // Set on event-side
+            if (!userDoc.exists()) {
+                return "User not found";
+            }
+
+            // Create attendance record
             Map<String, Object> attendanceData = new HashMap<>();
-            attendanceData.put("attended", true);
-            attendanceData.put("timeIn", now);
-            attendanceData.put("manualEntry", false);
-            attendanceData.put("eventName", eventName);
-            attendanceData.put("eventStatus", eventStatus);
-            attendanceData.put("eventDate", eventDate);
+            attendanceData.put("userId", userId);
+            attendanceData.put("eventId", eventId);
+            attendanceData.put("eventName", eventDoc.getString("eventName"));
+            attendanceData.put("firstName", userDoc.getString("firstName"));
+            attendanceData.put("email", userDoc.getString("email"));
+            attendanceData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            attendanceData.put("type", "event_time_in");
+            attendanceData.put("hasTimedOut", false);
+            attendanceData.put("selfieUrl", null); // Can be updated later if needed
 
-            firestore.collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId)
-                    .set(attendanceData);
+            // Add the attendance record to the event's attendees subcollection
+            attendeesRef.document(userId).set(attendanceData);
 
-            // Set on user-side
-            Map<String, Object> userSide = new HashMap<>();
-            userSide.put("eventId", eventId);
-            userSide.put("timeIn", now);
-            userSide.put("manualEntry", false);
-            userSide.put("eventName", eventName);
-            userSide.put("eventStatus", eventStatus);
-            userSide.put("eventDate", eventDate);
-
-            firestore.collection("users")
-                    .document(userId)
-                    .collection("attendedEvents")
-                    .document(eventId)
-                    .set(userSide);
-
-            return "Attendance marked (time-in) for user " + userId + " at event " + eventId;
-
+            return "Attendance marked successfully";
         } catch (Exception e) {
-            return "Failed to mark attendance: " + e.getMessage();
+            e.printStackTrace();
+            return "Error marking attendance: " + e.getMessage();
         }
     }
     
     public String markTimeOut(String eventId, String userId) {
         try {
-            String now = Instant.now().toString();
-
-            // Fetch event details
-            DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
-
-            if (!eventDoc.exists()) {
-                return "Event does not exist: " + eventId;
+            // Find the attendance record in the event's attendees subcollection
+            DocumentReference attendeeRef = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .document(userId);
+            
+            DocumentSnapshot attendeeDoc = attendeeRef.get().get();
+            
+            if (!attendeeDoc.exists()) {
+                return "No time-in record found for this event";
             }
-
-            String eventName = eventDoc.getString("eventName");
-            String eventStatus = eventDoc.getString("status");
-            Object eventDate = eventDoc.get("date");
-
-            Map<String, Object> updateMap = new HashMap<>();
-            updateMap.put("timeOut", now);
-            updateMap.put("manualEntry", false);
-            updateMap.put("eventName", eventName);
-            updateMap.put("eventStatus", eventStatus);
-            updateMap.put("eventDate", eventDate);
-
-            firestore.collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId)
-                    .update(updateMap);
-
-            firestore.collection("users")
-                    .document(userId)
-                    .collection("attendedEvents")
-                    .document(eventId)
-                    .update(updateMap);
-
-            return "Time-out recorded for user " + userId + " at event " + eventId;
-
+            
+            // Check if already timed out
+            Boolean hasTimedOut = attendeeDoc.getBoolean("hasTimedOut");
+            if (hasTimedOut != null && hasTimedOut) {
+                return "Already timed out for this event";
+            }
+            
+            // Update the attendance record with timeout information
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("hasTimedOut", true);
+            updates.put("timeOutTimestamp", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            
+            // Apply the updates
+            attendeeRef.update(updates);
+            
+            return "Time-out recorded successfully";
         } catch (Exception e) {
-            return "Failed to mark time-out: " + e.getMessage();
+            e.printStackTrace();
+            return "Error recording time-out: " + e.getMessage();
         }
     }
 
     
     public String manualTimeIn(String eventId, String userId) {
         try {
-            String now = Instant.now().toString();
+            // Check if user has already timed in for this event in the new structure
+            ApiFuture<QuerySnapshot> existingQuery = firestore.collection("attendees")
+                    .whereEqualTo("eventId", eventId)
+                    .whereEqualTo("userId", userId)
+                    .whereEqualTo("type", "event_time_in")
+                    .get();
             
-            // Check if attendee record exists
-            DocumentReference attendeeRef = firestore.collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId);
-            
-            ApiFuture<DocumentSnapshot> future = attendeeRef.get();
-            DocumentSnapshot document = future.get();
-            
-            if (document.exists() && document.getBoolean("attended") != null && document.getBoolean("attended")) {
+            List<QueryDocumentSnapshot> existingDocs = existingQuery.get().getDocuments();
+            if (!existingDocs.isEmpty()) {
                 return "User has already timed in for this event. Certificate has already been generated.";
             }
+
+            // Get event details
+            DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
+            if (!eventDoc.exists()) {
+                return "Event does not exist: " + eventId;
+            }
+
+            String eventName = eventDoc.getString("eventName");
             
+            // Get user details
+            DocumentSnapshot userDoc = firestore.collection("users").document(userId).get().get();
+            if (!userDoc.exists()) {
+                return "User does not exist: " + userId;
+            }
+            
+            String email = userDoc.getString("email");
+            String firstName = userDoc.getString("firstName");
+            
+            // Create new attendance record
             Map<String, Object> attendanceData = new HashMap<>();
-            attendanceData.put("attended", true);
-            attendanceData.put("timeIn", now);
+            attendanceData.put("eventId", eventId);
+            attendanceData.put("eventName", eventName);
+            attendanceData.put("userId", userId);
+            attendanceData.put("email", email);
+            attendanceData.put("firstName", firstName);
+            attendanceData.put("timestamp", Instant.now().toString());
+            attendanceData.put("type", "event_time_in");
+            attendanceData.put("hasTimedOut", false);
+            attendanceData.put("selfieUrl", null);
             attendanceData.put("manualEntry", true);
-            
-            if (document.exists()) {
-                // Update existing record
-                attendeeRef.update(attendanceData);
-            } else {
-                // Create new record
-                attendeeRef.set(attendanceData);
-            }
-            
-            // Update user-side record
-            DocumentReference userEventRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("attendedEvents")
-                    .document(eventId);
-            
-            Map<String, Object> userSide = new HashMap<>();
-            userSide.put("eventId", eventId);
-            userSide.put("timeIn", now);
-            userSide.put("manualEntry", true);
-            
-            ApiFuture<DocumentSnapshot> userFuture = userEventRef.get();
-            DocumentSnapshot userDocument = userFuture.get();
-            
-            if (userDocument.exists()) {
-                userEventRef.update(userSide);
-            } else {
-                userEventRef.set(userSide);
-            }
-            
+
+            // Add to the new 'attendees' collection
+            firestore.collection("attendees").add(attendanceData);
+
             return "Manual time-in recorded for user " + userId + " at event " + eventId;
-            
         } catch (Exception e) {
             return "Failed to mark manual time-in: " + e.getMessage();
         }
@@ -185,42 +170,35 @@ public class AttendanceService {
     
     public String manualTimeOut(String eventId, String userId) {
         try {
-            String now = Instant.now().toString();
+            // Find the attendance record in the new structure
+            ApiFuture<QuerySnapshot> query = firestore.collection("attendees")
+                    .whereEqualTo("eventId", eventId)
+                    .whereEqualTo("userId", userId)
+                    .whereEqualTo("type", "event_time_in")
+                    .get();
             
-            // Check if attendee record exists
-            DocumentReference attendeeRef = firestore.collection("events")
-                    .document(eventId)
-                    .collection("attendees")
-                    .document(userId);
-            
-            ApiFuture<DocumentSnapshot> future = attendeeRef.get();
-            DocumentSnapshot document = future.get();
-            
-            if (!document.exists()) {
+            List<QueryDocumentSnapshot> docs = query.get().getDocuments();
+            if (docs.isEmpty()) {
                 return "Cannot time-out: No attendance record found for user " + userId;
             }
             
-            Map<String, Object> updateMap = new HashMap<>();
-            updateMap.put("timeOut", now);
-            updateMap.put("manualEntry", true);
-            
-            attendeeRef.update(updateMap);
-            
-            // Update user-side record
-            DocumentReference userEventRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("attendedEvents")
-                    .document(eventId);
-            
-            ApiFuture<DocumentSnapshot> userFuture = userEventRef.get();
-            DocumentSnapshot userDocument = userFuture.get();
-            
-            if (userDocument.exists()) {
-                userEventRef.update(updateMap);
+            // Get the first matching record (there should only be one)
+            DocumentSnapshot attendanceDoc = docs.get(0);
+            if (attendanceDoc.getBoolean("hasTimedOut") != null && attendanceDoc.getBoolean("hasTimedOut")) {
+                return "Already timed out for this event";
             }
+
+            String now = Instant.now().toString();
             
+            // Update the attendance record
+            Map<String, Object> updateData = new HashMap<>();
+            updateData.put("hasTimedOut", true);
+            updateData.put("timeOutTimestamp", now);
+            updateData.put("manualEntry", true);
+            
+            firestore.collection("attendees").document(attendanceDoc.getId()).update(updateData);
+
             return "Manual time-out recorded for user " + userId + " at event " + eventId;
-            
         } catch (Exception e) {
             return "Failed to mark manual time-out: " + e.getMessage();
         }
@@ -230,86 +208,117 @@ public class AttendanceService {
         List<Map<String, String>> attendees = new ArrayList<>();
 
         try {
-            CollectionReference attendeesRef = firestore
-                    .collection("events")
-                    .document(eventId)
-                    .collection("attendees");
-
-            ApiFuture<QuerySnapshot> query = attendeesRef.get();
+            // First try to get attendees from the new structure (subcollection under event)
+            CollectionReference eventAttendeesRef = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees");
+            
+            ApiFuture<QuerySnapshot> query = eventAttendeesRef.get();
             List<QueryDocumentSnapshot> docs = query.get().getDocuments();
-
+            
+            // Process new structure attendees
             for (QueryDocumentSnapshot doc : docs) {
-                String userId = doc.getId();
-                String timeIn = doc.getString("timeIn");
-                String timeOut = doc.getString("timeOut");
-                Boolean manualEntry = doc.getBoolean("manualEntry");
-
-                // Fetch user details
+                Map<String, Object> data = doc.getData();
+                Map<String, String> attendee = new HashMap<>();
+                
+                String email = data.getOrDefault("email", "").toString();
+                String userId = data.getOrDefault("userId", "").toString();
+                
+                // Get department information
                 DocumentReference userRef = firestore.collection("users").document(userId);
-                ApiFuture<DocumentSnapshot> userQuery = userRef.get();
-                DocumentSnapshot userDoc = userQuery.get();
-
+                DocumentSnapshot userDoc = userRef.get().get();
+                String departmentId = null;
+                String departmentName = "N/A";
+                
                 if (userDoc.exists()) {
-                    Map<String, String> userDetails = new HashMap<>();
-                    userDetails.put("userId", userId);
-                    userDetails.put("timeIn", timeIn);
-                    userDetails.put("timeOut", timeOut != null ? timeOut : "N/A");
-                    userDetails.put("manualEntry", manualEntry != null && manualEntry ? "true" : "false");
-
-                    // Safely retrieve string fields, add fallback values if they are null
-                    userDetails.put("email", Optional.ofNullable(userDoc.getString("email")).orElse("N/A"));
-                    userDetails.put("firstName", Optional.ofNullable(userDoc.getString("firstName")).orElse("N/A"));
-                    userDetails.put("lastName", Optional.ofNullable(userDoc.getString("lastName")).orElse("N/A"));
-
-                    // Enhanced department handling
-                    String departmentId = userDoc.getString("departmentId");
-                    if (departmentId != null && !departmentId.isEmpty()) {
-                        // Fetch department details
+                    departmentId = userDoc.getString("departmentId");
+                    if (departmentId != null) {
                         DocumentReference deptRef = firestore.collection("departments").document(departmentId);
-                        ApiFuture<DocumentSnapshot> deptQuery = deptRef.get();
-                        DocumentSnapshot deptDoc = deptQuery.get();
-                        
+                        DocumentSnapshot deptDoc = deptRef.get().get();
                         if (deptDoc.exists()) {
-                            String deptName = deptDoc.getString("name");
-                            userDetails.put("department", deptName != null ? deptName : "N/A");
-                        } else {
-                            // Handle department as object directly in user document
-                            Object departmentObj = userDoc.get("department");
-                            if (departmentObj instanceof Map) {
-                                Map<String, Object> department = (Map<String, Object>) departmentObj;
-                                String departmentName = (String) department.get("name");
-                                userDetails.put("department", departmentName != null ? departmentName : "N/A");
-                            } else if (departmentObj instanceof String) {
-                                String departmentName = (String) departmentObj;
-                                userDetails.put("department", !departmentName.isEmpty() ? departmentName : "N/A");
-                            } else {
-                                userDetails.put("department", "N/A");
-                            }
-                        }
-                    } else {
-                        // Handle department as object directly in user document
-                        Object departmentObj = userDoc.get("department");
-                        if (departmentObj instanceof Map) {
-                            Map<String, Object> department = (Map<String, Object>) departmentObj;
-                            String departmentName = (String) department.get("name");
-                            userDetails.put("department", departmentName != null ? departmentName : "N/A");
-                        } else if (departmentObj instanceof String) {
-                            String departmentName = (String) departmentObj;
-                            userDetails.put("department", !departmentName.isEmpty() ? departmentName : "N/A");
-                        } else {
-                            userDetails.put("department", "N/A");
+                            departmentName = deptDoc.getString("name");
                         }
                     }
+                }
+                
+                // Map the new data structure to the expected format
+                attendee.put("userId", userId);
+                attendee.put("firstName", data.getOrDefault("firstName", "").toString());
+                attendee.put("lastName", data.getOrDefault("lastName", "").toString());
+                attendee.put("email", email);
+                attendee.put("department", departmentName);
+                attendee.put("timeIn", data.getOrDefault("timestamp", "").toString());
+                
+                // Handle hasTimedOut and timeOut
+                Object hasTimedOutObj = data.get("hasTimedOut");
+                boolean hasTimedOut = hasTimedOutObj instanceof Boolean && (Boolean) hasTimedOutObj;
+                attendee.put("timeOut", hasTimedOut ? data.getOrDefault("timeOutTimestamp", "").toString() : "N/A");
+                
+                attendee.put("type", data.getOrDefault("type", "").toString());
+                Object selfieUrl = data.get("selfieUrl");
+                attendee.put("selfieUrl", selfieUrl != null ? selfieUrl.toString() : null);
+                
+                Object manualEntryObj = data.get("manualEntry");
+                attendee.put("manualEntry", manualEntryObj instanceof Boolean && (Boolean) manualEntryObj ? "true" : "false");
+                
+                attendees.add(attendee);
+            }
 
-                    attendees.add(userDetails);
+            // If no attendees found in new structure, try the old structure
+            if (attendees.isEmpty()) {
+                CollectionReference oldAttendeesRef = firestore.collection("attendees");
+                ApiFuture<QuerySnapshot> oldQuery = oldAttendeesRef
+                    .whereEqualTo("eventId", eventId)
+                    .get();
+                
+                List<QueryDocumentSnapshot> oldDocs = oldQuery.get().getDocuments();
+                
+                for (QueryDocumentSnapshot doc : oldDocs) {
+                    Map<String, Object> data = doc.getData();
+                    Map<String, String> attendee = new HashMap<>();
+                    
+                    String userId = data.getOrDefault("userId", "").toString();
+                    
+                    // Get user details including department
+                    DocumentReference userRef = firestore.collection("users").document(userId);
+                    DocumentSnapshot userDoc = userRef.get().get();
+                    String departmentName = "N/A";
+                    
+                    if (userDoc.exists()) {
+                        String departmentId = userDoc.getString("departmentId");
+                        if (departmentId != null) {
+                            DocumentReference deptRef = firestore.collection("departments").document(departmentId);
+                            DocumentSnapshot deptDoc = deptRef.get().get();
+                            if (deptDoc.exists()) {
+                                departmentName = deptDoc.getString("name");
+                            }
+                        }
+                    }
+                    
+                    attendee.put("userId", userId);
+                    attendee.put("firstName", data.getOrDefault("firstName", "").toString());
+                    attendee.put("lastName", data.getOrDefault("lastName", "").toString());
+                    attendee.put("email", data.getOrDefault("email", "").toString());
+                    attendee.put("department", departmentName);
+                    attendee.put("timeIn", data.getOrDefault("timestamp", "").toString());
+                    
+                    Object hasTimedOutObj = data.get("hasTimedOut");
+                    boolean hasTimedOut = hasTimedOutObj instanceof Boolean && (Boolean) hasTimedOutObj;
+                    attendee.put("timeOut", hasTimedOut ? data.getOrDefault("timeOutTimestamp", "").toString() : "N/A");
+                    
+                    attendee.put("type", data.getOrDefault("type", "event_time_in").toString());
+                    attendee.put("selfieUrl", data.get("selfieUrl") != null ? data.get("selfieUrl").toString() : null);
+                    attendee.put("manualEntry", data.getOrDefault("manualEntry", false).toString());
+                    
+                    attendees.add(attendee);
                 }
             }
 
-        } catch (InterruptedException | ExecutionException e) {
-            System.err.println("Error fetching attendees: " + e.getMessage());
+            return attendees;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
         }
-
-        return attendees;
     }
     
     public List<Map<String, Object>> getUserAttendedEvents(String userId) throws Exception {
