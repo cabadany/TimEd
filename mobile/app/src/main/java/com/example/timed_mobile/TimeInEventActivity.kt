@@ -494,12 +494,13 @@ class TimeInEventActivity : AppCompatActivity() {
                                     "type" to "event_time_in",
                                     "hasTimedOut" to false
                                 )
+
                                 eventDocRef.collection("attendees")
                                     .add(record)
                                     .addOnSuccessListener {
                                         AlertDialog.Builder(this)
                                             .setTitle("Time-In Successful")
-                                            .setMessage("You have timed in for '$eventName'")
+                                            .setMessage("You have timed in for '$eventName'. A certificate will be sent to your email.")
                                             .setPositiveButton("OK") { d, _ ->
                                                 d.dismiss()
                                                 setResult(RESULT_OK)
