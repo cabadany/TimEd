@@ -10,6 +10,7 @@ public class Eventdto {
     private String duration; // Format: "HH:mm:ss"
     private String departmentId; // Reference to Department
     private String departmentName; // New field for the department name
+    private String description; // Description of the event
 
     // Default constructor
     public Eventdto() {
@@ -25,7 +26,7 @@ public class Eventdto {
         this.departmentId = departmentId;
     }
 
-    public Eventdto(String eventId, String eventName, String status, String date, String duration, String departmentId, String departmentName) {
+    public Eventdto(String eventId, String eventName, String status, String date, String duration, String departmentId, String departmentName, String description) {
         this.eventId = eventId;
         this.eventName = eventName;
         this.status = status;
@@ -33,6 +34,7 @@ public class Eventdto {
         this.duration = duration;
         this.departmentId = departmentId;
         this.departmentName = departmentName;
+        this.description = description;
     }
     // Getters and Setters
     public String getEventId() {
@@ -96,5 +98,12 @@ public class Eventdto {
 
     public void setDepartment(String departmentName) {
         this.departmentName = departmentName;
+    }
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

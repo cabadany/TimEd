@@ -365,8 +365,10 @@ public class EventService {
                     event.getStatus(),
                     formattedDate,
                     event.getDuration(),
-                    event.getDepartmentId(),
-                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"  // Use department name
+                    event.getDepartmentId(),    
+                    event.getDescription(),
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"  // Use department name,
+                
                 );
 
                 eventDtos.add(eventDto);  // Add the event DTO to the list
@@ -444,7 +446,8 @@ public class EventService {
                     formattedDate,
                     event.getDuration(),
                     event.getDepartmentId(),
-                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
+                    event.getDescription()
                 );
                 
                 eventDtos.add(eventDto);
@@ -516,7 +519,9 @@ public class EventService {
                         event.getStatus(),
                         formattedDate,
                         event.getDuration(),
-                        event.getDepartmentId()
+                        event.getDepartmentId(),
+                        event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
+                        event.getDescription()
                     );
                     
                     eventDtos.add(eventDto);
