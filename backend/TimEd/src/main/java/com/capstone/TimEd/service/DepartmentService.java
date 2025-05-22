@@ -34,10 +34,35 @@ public class DepartmentService {
         return "Updated at: " + future.get().getUpdateTime();
     }
 
-    public String deleteDepartment(String departmentId) {
+    public String deleteDepartment(String departmentId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
-        db.collection(COLLECTION_NAME).document(departmentId).delete();
-        return "Department with ID " + departmentId + " deleted.";
+        
+        try {
+            // Delete the department document
+            ApiFuture<WriteResult> future = db.collection(COLLECTION_NAME).document(departmentId).delete();
+            future.get(); // Wait for deletion to complete
+            
+            // Update users who belong to this department
+            CollectionReference usersRef = db.collection("users");
+            ApiFuture<QuerySnapshot> querySnapshot = usersRef.whereEqualTo("departmentId", departmentId).get();
+            List<QueryDocumentSnapshot> documents = querySnapshot.get().getDocuments();
+            
+            // Batch update for users
+            WriteBatch batch = db.batch();
+            for (QueryDocumentSnapshot document : documents) {
+                DocumentReference userRef = usersRef.document(document.getId());
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("departmentId", null);
+                batch.update(userRef, updates);
+            }
+            
+            // Commit the batch
+            batch.commit().get();
+            
+            return "Department with ID " + departmentId + " deleted successfully.";
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete department: " + e.getMessage());
+        }
     }
 
     public List<Department> getAllDepartments() throws ExecutionException, InterruptedException {

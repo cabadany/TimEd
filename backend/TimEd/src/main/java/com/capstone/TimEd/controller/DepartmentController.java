@@ -32,7 +32,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
-    public String deleteDepartment(@PathVariable String id) {
+    public String deleteDepartment(@PathVariable String id) throws ExecutionException, InterruptedException {
         return departmentService.deleteDepartment(id);
     }
 

@@ -158,3 +158,41 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   justify-content: flex-end;
   gap: 12px;
 }
+
+/* Fix for event page header */
+.event-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 0;
+}
+
+.event-page-title {
+  flex-shrink: 0;
+  margin-right: 2rem;
+}
+
+.event-page-actions {
+  display: flex;
+  flex-grow: 1;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .event-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .event-page-title {
+    margin-bottom: 1rem;
+  }
+  
+  .event-page-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}

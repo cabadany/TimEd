@@ -124,7 +124,32 @@ public class AuthService {
             return new AuthResponse("Login failed: " + e.getMessage());
         }
     }
+    public AuthResponse loginBySchoolId(LoginRequest request) {
+        try {
+            // Step 1: Get user by schoolId
+            User user = userService.getUserBySchoolId(request.getSchoolId());
+            if (user == null) {
+                return new AuthResponse("User not found with schoolId: " + request.getSchoolId());
+            }
 
+            // Step 2: Use the Firebase Admin SDK to get user data based on userId
+            UserRecord userRecord = firebaseAuth.getUser(user.getUserId());
+
+            // Step 3: Prepare additional claims if needed
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("role", user.getRole());
+
+            // Step 4: Generate Firebase Custom Token
+            String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
+
+            // Step 5: Return the AuthResponse with token, user info, etc.
+            return new AuthResponse(token, user.getUserId(), user.getSchoolId(), user.getRole());
+
+        } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
+            // If anything goes wrong, catch the exception and return a failure message
+            return new AuthResponse("Login failed: " + e.getMessage());
+        }
+    }
     public boolean verifyToken(String idToken) {
         try {
             firebaseAuth.verifyIdToken(idToken);

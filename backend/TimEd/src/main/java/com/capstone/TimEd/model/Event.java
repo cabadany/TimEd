@@ -11,6 +11,7 @@ public class Event {
     private String status;
     private String departmentId; // Reference to Department
     private Department department;  // This will hold the full department object (to be set manually)
+    private String certificateId; // Reference to Certificate
 
     // Constructors
     public Event() {}
@@ -79,5 +80,13 @@ public class Event {
 
     public void setDepartment(Department department) {
         this.department = department;
+    }
+    
+    public String getCertificateId() {
+        return certificateId;
+    }
+
+    public void setCertificateId(String certificateId) {
+        this.certificateId = certificateId;
     }
 }

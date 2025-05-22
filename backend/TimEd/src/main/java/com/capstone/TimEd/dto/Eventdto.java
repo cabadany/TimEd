@@ -6,7 +6,7 @@ public class Eventdto {
     private String eventId;
     private String eventName;
     private String status;
-    private String date;     // Format: "yyyy-MM-dd"
+    private String date;     // Format: "yyyy-MM-dd'T'HH:mm:ss"
     private String duration; // Format: "HH:mm:ss"
     private String departmentId; // Reference to Department
     private String departmentName; // New field for the department name
@@ -64,10 +64,10 @@ public class Eventdto {
     }
 
     public void setDate(String date) {
-        if (date.matches("\\d{4}-\\d{2}-\\d{2}")) {  // Check if the date is in the correct format
+        if (date.matches("\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2})?")) {  // Accept format yyyy-MM-dd or yyyy-MM-dd'T'HH:mm:ss
             this.date = date;
         } else {
-            throw new IllegalArgumentException("Date must be in format yyyy-MM-dd");
+            throw new IllegalArgumentException("Date must be in format yyyy-MM-dd or yyyy-MM-dd'T'HH:mm:ss");
         }
     }
 

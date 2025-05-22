@@ -1,0 +1,337 @@
+/* Global Dark Mode Styles
+ * This file contains all dark mode styles for the application
+ */
+
+:root {
+  /* Light mode variables */
+  --background-primary: #ffffff;
+  --background-secondary: #f8f9fb;
+  --background-tertiary: #f5f7fa;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-color: #e2e8f0;
+  --accent-color: #3538CD;
+  --accent-hover: #2C2EA9;
+  --accent-light: rgba(53, 56, 205, 0.1);
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --card-bg: #ffffff;
+  --table-header-bg: #F8FAFC;
+  --table-border: #E2E8F0;
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-hover: #94a3b8;
+  --input-bg: #ffffff;
+  --input-border: #d0d4dd;
+  --status-green: #10b981;
+  --status-yellow: #f59e0b;
+  --status-red: #ef4444;
+  --status-blue: #3b82f6;
+  --status-gray: #9ca3af;
+}
+
+.dark-mode {
+  /* Dark mode variables */
+  --background-primary: #121212;
+  --background-secondary: #1e1e1e;
+  --background-tertiary: #2d2d2d;
+  --text-primary: #f5f5f5;
+  --text-secondary: #d0d0d0;
+  --text-tertiary: #aaaaaa;
+  --border-color: #333333;
+  --accent-color: #6b6ef7;
+  --accent-hover: #5558ff;
+  --accent-light: rgba(107, 110, 247, 0.15);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --card-bg: #1e1e1e;
+  --table-header-bg: #1e1e1e;
+  --table-border: #333333;
+  --scrollbar-track: #2d2d2d;
+  --scrollbar-thumb: #555555;
+  --scrollbar-hover: #777777;
+  --input-bg: #2d2d2d;
+  --input-border: #555555;
+  --status-green: #059669;
+  --status-yellow: #d97706;
+  --status-red: #dc2626;
+  --status-blue: #2563eb;
+  --status-gray: #6b7280;
+}
+
+/* Global Element Styles */
+.dark-mode body, 
+.dark-mode html {
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+}
+
+/* App Structure */
+.dark-mode .sidebar {
+  background-color: var(--background-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .MuiDivider-root {
+  border-color: var(--border-color) !important;
+}
+
+/* Material UI Overrides */
+.dark-mode .MuiPaper-root {
+  background-color: var(--background-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .MuiCard-root {
+  background-color: var(--card-bg) !important;
+  box-shadow: var(--shadow) !important;
+  border: 1px solid var(--border-color);
+}
+
+.dark-mode .MuiCardContent-root {
+  color: var(--text-primary);
+}
+
+/* Typography */
+.dark-mode .MuiTypography-root {
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiTypography-colorTextSecondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Buttons */
+.dark-mode .MuiButton-root {
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiButton-contained {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+.dark-mode .MuiButton-contained:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+.dark-mode .MuiButton-outlined {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiIconButton-root {
+  color: var(--text-primary);
+}
+
+/* Tabs */
+.dark-mode .MuiTab-root {
+  color: var(--text-secondary);
+}
+
+.dark-mode .MuiTab-root.Mui-selected {
+  color: var(--accent-color);
+}
+
+.dark-mode .MuiTabs-indicator {
+  background-color: var(--accent-color);
+}
+
+/* Tables */
+.dark-mode th {
+  background-color: var(--table-header-bg) !important;
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+.dark-mode td {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color) !important;
+}
+
+.dark-mode .MuiTableCell-root {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color) !important;
+}
+
+.dark-mode .MuiTableRow-root:hover {
+  background-color: var(--accent-light);
+}
+
+.dark-mode .MuiTableCell-stickyHeader {
+  background-color: var(--table-header-bg) !important;
+}
+
+.dark-mode .MuiTablePagination-root {
+  color: var(--text-primary);
+}
+
+/* Forms & Inputs */
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiInputBase-input {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .MuiOutlinedInput-notchedOutline {
+  border-color: var(--input-border) !important;
+}
+
+.dark-mode .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--text-tertiary) !important;
+}
+
+.dark-mode .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--accent-color) !important;
+}
+
+.dark-mode .MuiFormLabel-root {
+  color: var(--text-secondary);
+}
+
+.dark-mode .MuiFormLabel-root.Mui-focused {
+  color: var(--accent-color);
+}
+
+.dark-mode .MuiSwitch-track {
+  background-color: var(--text-tertiary) !important;
+}
+
+.dark-mode .MuiSwitch-thumb {
+  background-color: var(--text-primary) !important;
+}
+
+.dark-mode .Mui-checked .MuiSwitch-thumb {
+  background-color: var(--accent-color) !important;
+}
+
+.dark-mode .MuiCheckbox-root {
+  color: var(--text-tertiary);
+}
+
+.dark-mode .MuiCheckbox-root.Mui-checked {
+  color: var(--accent-color);
+}
+
+/* Menu and Dropdown */
+.dark-mode .MuiMenu-paper {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.dark-mode .MuiMenuItem-root {
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiMenuItem-root:hover {
+  background-color: var(--accent-light);
+}
+
+.dark-mode .MuiListItemIcon-root {
+  color: var(--text-primary) !important;
+}
+
+/* Date Pickers */
+.dark-mode input[type="date"] {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* Modal */
+.dark-mode .MuiModal-backdrop {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.dark-mode .MuiDialog-paper {
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+/* Scrollbars */
+.dark-mode ::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* Dashboard specific styles */
+.dark-mode .status-chip {
+  background-color: var(--background-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .status-pending {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: var(--status-yellow) !important;
+}
+
+.dark-mode .status-completed {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: var(--status-green) !important;
+}
+
+.dark-mode .status-canceled {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: var(--status-red) !important;
+}
+
+.dark-mode .status-active {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: var(--status-blue) !important;
+}
+
+.dark-mode .status-inactive {
+  background-color: rgba(156, 163, 175, 0.2) !important;
+  color: var(--status-gray) !important;
+}
+
+/* Card stats on dashboard */
+.dark-mode .stat-card {
+  background-color: var(--card-bg) !important;
+  box-shadow: var(--shadow) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark-mode .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-mode .stat-icon {
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+}
+
+/* Custom component dark mode styles */
+.dark-mode .content-area {
+  background-color: #121212;
+}
+
+.dark-mode .header {
+  background-color: #1e1e1e;
+  border-bottom-color: #333333;
+}
+
+.dark-mode .table-container {
+  background-color: #1e1e1e;
+  border-color: #333333;
+}
+
+.dark-mode .form-container {
+  background-color: #1e1e1e;
+  border-color: #333333;
+} 

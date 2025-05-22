@@ -1,0 +1,331 @@
+/* Sidebar Styles */
+.sidebar-container {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.dark-mode .sidebar-container {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced Menu Item Hover Effect */
+.sidebar-menu-item {
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden !important;
+  border-left: 4px solid transparent;
+}
+
+.sidebar-menu-item::before {
+  content: none; /* Remove gradient animation */
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(25, 118, 210, 0.04) !important;
+  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
+}
+
+.dark-mode .sidebar-menu-item:hover {
+  background-color: rgba(66, 165, 245, 0.05) !important;
+  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
+}
+
+/* Improved active item styling */
+.sidebar-item-active {
+  box-shadow: none;
+  background-color: rgba(25, 118, 210, 0.08) !important;
+  border-left: 4px solid #1976d2 !important;
+  position: relative;
+  font-weight: 600 !important;
+}
+
+/* Add a subtle gradient to active items */
+.sidebar-item-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(25, 118, 210, 0.12),
+    rgba(25, 118, 210, 0.04),
+    rgba(25, 118, 210, 0.01)
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Dark mode styling */
+.dark-mode .sidebar-item-active {
+  box-shadow: none;
+  background-color: rgba(66, 165, 245, 0.08) !important;
+  border-left: 4px solid #42a5f5 !important;
+}
+
+.dark-mode .sidebar-item-active::before {
+  background: linear-gradient(
+    to right,
+    rgba(66, 165, 245, 0.12),
+    rgba(66, 165, 245, 0.04),
+    rgba(66, 165, 245, 0.01)
+  );
+}
+
+/* Remove hover animation */
+.sidebar-item-hovered {
+  /* Remove animation */
+  animation: none;
+  /* Instead add a subtle background change */
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.dark-mode .sidebar-item-hovered {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Toggle Button Animation */
+.sidebar-toggle {
+  transition: all 0.3s ease !important;
+  z-index: 9999;
+  overflow: visible;
+}
+
+/* Make sure toggle is visible in dark mode */
+.dark-mode .sidebar-toggle {
+  border-color: #333 !important;
+}
+
+/* Remove the rotation animations as they might interfere with icon changes */
+.sidebar-toggle svg {
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover svg {
+  transform: scale(1.2);
+}
+
+/* Menu Item expanded/collapsed state - no animations */
+.sidebar-collapsed .sidebar-menu-item {
+  animation: none;
+  padding-left: 0;
+}
+
+.sidebar-container:not(.sidebar-collapsed) .sidebar-menu-item {
+  animation: none;
+  padding-left: 16px;
+}
+
+/* Logo Animation */
+.sidebar-collapsed .logo-container img {
+  animation: shrink-logo 0.3s forwards;
+}
+
+.sidebar-container:not(.sidebar-collapsed) .logo-container img {
+  animation: expand-logo 0.3s forwards;
+}
+
+@keyframes shrink-logo {
+  from { height: 80px; }
+  to { height: 40px; }
+}
+
+@keyframes expand-logo {
+  from { height: 40px; }
+  to { height: 80px; }
+}
+
+/* Active Indicator Animation */
+.sidebar-menu-item::after {
+  transition: all 0.3s ease !important;
+}
+
+@keyframes indicator-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(65, 105, 225, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0);
+  }
+}
+
+/* Tooltip Animation */
+.MuiTooltip-popper {
+  position: absolute !important;
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Fix for initial tooltip positioning */
+.MuiTooltip-tooltip {
+  position: relative !important;
+  transform: none !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  letter-spacing: 0.5px !important;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Custom Scrollbar for Sidebar Menu */
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Add subtle menu category dividers */
+.sidebar-menu-item:nth-of-type(3)::after,
+.sidebar-menu-item:nth-of-type(6)::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .sidebar-menu-item:nth-of-type(3)::after,
+.dark-mode .sidebar-menu-item:nth-of-type(6)::after {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Scale up icons slightly when hovering over them in collapsed mode */
+.sidebar-collapsed .sidebar-menu-item:hover svg {
+  transform: scale(1.2);
+  transition: transform 0.2s ease;
+}
+
+/* Enhance logo section appearance */
+.sidebar-container img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: filter 0.3s ease, height 0.3s ease;
+}
+
+.dark-mode .sidebar-container img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Focus style for keyboard navigation */
+.sidebar-menu-item:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: -2px;
+}
+
+
+.group-main:nth-of-type(3)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+.group-resources:nth-of-type(5)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+
+.group-resources:nth-of-type(6)::before {
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0) 0%,
+    rgba(25, 118, 210, 0.06) 50%,
+    rgba(25, 118, 210, 0) 100%
+  );
+}
+
+/* Badge styling without animations */
+.MuiBadge-badge {
+  transition: none !important;
+}
+
+/* Ensure badge visibility in collapsed mode */
+.sidebar-collapsed .MuiBadge-badge {
+  z-index: 2;
+  transform: scale(1) translate(25%, -25%) !important;
+}
+
+/* Clean badge styling for notification items */
+.group-main:nth-of-type(3) .MuiBadge-badge,
+.group-resources:nth-of-type(5) .MuiBadge-badge,
+.group-resources:nth-of-type(6) .MuiBadge-badge {
+  animation: none;
+}
+
+/* Enhanced hover effect for notification items - no animations */
+.group-main:nth-of-type(3):hover,
+.group-resources:nth-of-type(5):hover,
+.group-resources:nth-of-type(6):hover {
+  background-color: rgba(25, 118, 210, 0.04) !important;
+  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+.dark-mode .group-main:nth-of-type(3):hover,
+.dark-mode .group-resources:nth-of-type(5):hover,
+.dark-mode .group-resources:nth-of-type(6):hover {
+  background-color: rgba(66, 165, 245, 0.05) !important;
+  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
+  box-shadow: none !important;
+}
+
+/* Item active effect when active - consistent with new design */
+.group-main:nth-of-type(3).sidebar-item-active,
+.group-resources:nth-of-type(5).sidebar-item-active,
+.group-resources:nth-of-type(6).sidebar-item-active {
+  box-shadow: none !important;
+  background-color: rgba(25, 118, 210, 0.08) !important;
+  border-left: 4px solid #1976d2 !important;
+}
+
+/* Dark mode styling for special items */
+.dark-mode .group-main:nth-of-type(3).sidebar-item-active,
+.dark-mode .group-resources:nth-of-type(5).sidebar-item-active,
+.dark-mode .group-resources:nth-of-type(6).sidebar-item-active {
+  box-shadow: none !important;
+  background-color: rgba(66, 165, 245, 0.08) !important;
+  border-left: 4px solid #42a5f5 !important;
+}
+
+/* Remove entrance animation for notification items - no animations requested */
+.group-main:nth-of-type(3),
+.group-resources:nth-of-type(5),
+.group-resources:nth-of-type(6) {
+  animation: none;
+} 

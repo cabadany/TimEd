@@ -1,0 +1,104 @@
+/* ProfilePicture Component Styles */
+
+.profile-picture-container {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-picture-avatar {
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.profile-picture-avatar:hover {
+  border-color: #0288d1;
+  transform: scale(1.02);
+}
+
+.profile-picture-edit-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: #0288d1;
+  color: white;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.profile-picture-edit-button:hover {
+  background-color: #0277bd;
+  transform: scale(1.1);
+}
+
+/* Preview Dialog */
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.preview-avatar {
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.preview-avatar:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Drag and drop area */
+.dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 180px;
+  width: 100%;
+}
+
+.dropzone-active {
+  border-color: #0288d1;
+  background-color: rgba(2, 136, 209, 0.05);
+}
+
+.dropzone:hover {
+  border-color: #0288d1;
+  background-color: rgba(2, 136, 209, 0.05);
+}
+
+.dropzone-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #0288d1;
+  opacity: 0.8;
+}
+
+.dropzone-text {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.dropzone-or {
+  text-align: center;
+  margin-bottom: 8px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.dropzone-button {
+  margin-top: 8px;
+}
+
+/* Hidden file input */
+.hidden-file-input {
+  display: none;
+} 
