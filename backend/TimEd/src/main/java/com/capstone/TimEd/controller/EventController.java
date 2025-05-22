@@ -1,9 +1,11 @@
 package com.capstone.TimEd.controller;
 
+import com.capstone.TimEd.config.QRCodeGenerator;
 import com.capstone.TimEd.dto.Eventdto;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.Event;
 import com.capstone.TimEd.service.EventService;
+import com.capstone.TimEd.service.CertificateService;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
@@ -25,11 +27,13 @@ import java.util.concurrent.ExecutionException;
 @RequestMapping("/api/events")
 public class EventController {
 	 @Autowired
-	    public EventController(EventService eventService) {
+	    public EventController(EventService eventService, CertificateService certificateService) {
 	        this.eventService = eventService;
+	        this.certificateService = certificateService;
 	    }
     @Autowired private final Firestore firestore = FirestoreClient.getFirestore();
-    private EventService eventService;
+    private final EventService eventService;
+    private final CertificateService certificateService;
 
     @PostMapping("/createEvent")
     public String saveEvent(@RequestBody Event event) throws ExecutionException, InterruptedException {
@@ -47,17 +51,64 @@ public class EventController {
             return null;
         }
     }
-
-    @GetMapping("/getAll")
-    public List<Eventdto> getAllEvents() {
+    
+    /**
+     * Get certificate ID for a specific event
+     * This is a compatibility endpoint that redirects to the certificate service
+     */
+    @GetMapping("/getCertificateId/{eventId}")
+    public ResponseEntity<?> getCertificateId(@PathVariable String eventId) {
         try {
-            return eventService.getAllEvents();  // Returns a list of Eventdto, not Event
+            // Redirect to the certificate service to fetch certificate by event ID
+            return certificateService.getCertificateByEventId(eventId) != null
+                ? ResponseEntity.ok(certificateService.getCertificateByEventId(eventId))
+                : ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No certificate found for event ID: " + eventId);
         } catch (Exception e) {
-            // Log error and return an empty list or handle error as appropriate
-            System.err.println("Error fetching all events: " + e.getMessage());
-            return new ArrayList<>(); // Return an empty list in case of an error
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error retrieving certificate: " + e.getMessage());
         }
     }
+    
+    @GetMapping("/qr/{eventId}")
+    public ResponseEntity<byte[]> generateQrCode(@PathVariable String eventId) {
+        try {
+            String baseUrl = "localhost:5173/qr-join/";
+            String qrUrl = baseUrl + eventId;
+
+            byte[] image = QRCodeGenerator.generateQRCodeImage(qrUrl, 300, 300);
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", "image/png")
+                    .body(image);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+    @GetMapping("/getAll")
+    public List<Eventdto> getAllEvents(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+        try {
+            return eventService.getPaginatedEvents(page, size);
+        } catch (Exception e) {
+            System.err.println("Error fetching paginated events: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    @GetMapping("/getByDateRange")
+    public List<Eventdto> getEventsByDateRange(
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate) {
+        try {
+            return eventService.getEventsByDateRange(startDate, endDate);
+        } catch (Exception e) {
+            System.err.println("Error fetching events by date range: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
     @DeleteMapping("/deleteEvent/{id}")
     public String deleteEvent(@PathVariable String id) throws ExecutionException, InterruptedException {
         return eventService.deleteEvent(id);
@@ -75,4 +126,49 @@ public class EventController {
         }
     }
 
+    @GetMapping("/getJoinUrl/{eventId}")
+    public String getEventJoinUrl(@PathVariable String eventId) {
+        // Generate the event join URL based on eventId
+        return "https://yourapi.com/join/" + eventId;
+    }
+
+    @GetMapping("/getPaginated")
+    public ResponseEntity<Map<String, Object>> getPaginatedEvents(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+        try {
+            List<Eventdto> events = eventService.getPaginatedEvents(page, size);
+            int totalEvents = eventService.getTotalEventCount();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", events);
+            response.put("totalElements", totalEvents);
+            response.put("totalPages", (int) Math.ceil((double) totalEvents / size));
+            response.put("currentPage", page);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error fetching paginated events: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @PutMapping("/updateStatus/{eventId}")
+    public ResponseEntity<?> updateEventStatus(
+            @PathVariable String eventId,
+            @RequestBody Map<String, String> statusUpdate
+    ) {
+        try {
+            String status = statusUpdate.get("status");
+            if (status == null) {
+                return ResponseEntity.status(400).body("Status is required");
+            }
+            
+            String result = eventService.updateEventStatus(eventId, status);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to update event status: " + e.getMessage());
+        }
+    }
 }

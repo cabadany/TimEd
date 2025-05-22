@@ -1,0 +1,23 @@
+.dark-mode th {
+  background-color: #1e1e1e !important;
+  color: #f5f5f5 !important;
+  border-bottom-color: #333333 !important;
+}
+
+.dark-mode .MuiTableCell-stickyHeader {
+  background-color: #1e1e1e !important;
+  color: #f5f5f5 !important;
+}
+
+.dark-mode .MuiTableHead-root .MuiTableCell-root {
+  background-color: #1e1e1e !important;
+  color: #f5f5f5 !important;
+  border-bottom-color: #333333 !important;
+}
+
+/* Ensure table header text is visible in dark mode */
+.dark-mode table th {
+  background-color: #1e1e1e !important;
+  color: #f5f5f5 !important;
+  border-bottom-color: #333333 !important;
+} 

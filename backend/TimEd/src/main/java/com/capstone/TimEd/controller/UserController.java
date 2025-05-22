@@ -1,6 +1,7 @@
 package com.capstone.TimEd.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,11 @@ import com.capstone.TimEd.model.User;
 import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.service.AuthService;
 import com.capstone.TimEd.service.UserService;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.api.core.ApiFuture;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/user")
@@ -27,6 +33,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private Firestore firestore;
 
     // GET all users
     @GetMapping("/getAll")
@@ -39,7 +48,19 @@ public class UserController {
         }
     }
 
-
+    @GetMapping("/getUser/{userId}")
+    public ResponseEntity<?> getUserByUserId(@PathVariable String userId) {
+        try {
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with ID: " + userId);
+            }
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving user: " + e.getMessage());
+        }
+    }
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {
         try {
@@ -53,12 +74,50 @@ public class UserController {
 
     // DELETE - delete user
     @DeleteMapping("/deleteUser/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable String userId) {
+    public ResponseEntity<String> deleteUser(@PathVariable String userId) {
         try {
             userService.deleteUser(userId);
-            return ResponseEntity.ok("User deleted successfully.");
+            return ResponseEntity.ok("✅ User deleted successfully from Firestore and Firebase Auth.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("❌ " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error deleting user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("🔥 Error deleting user: " + e.getMessage());
+        }
+    }
+
+    // Add a new endpoint to update profile picture URL
+    @PutMapping("/updateProfilePicture/{userId}")
+    public ResponseEntity<?> updateProfilePicture(
+            @PathVariable String userId,
+            @RequestBody Map<String, String> request) {
+        
+        try {
+            String profilePictureUrl = request.get("profilePictureUrl");
+            
+            if (profilePictureUrl == null || profilePictureUrl.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Profile picture URL is required");
+            }
+            
+            // Get reference to user document
+            DocumentReference userRef = firestore.collection("users").document(userId);
+            ApiFuture<DocumentSnapshot> future = userRef.get();
+            DocumentSnapshot document = future.get();
+            
+            if (!document.exists()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+            
+            // Update only the profile picture URL field
+            userRef.update("profilePictureUrl", profilePictureUrl);
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Profile picture updated successfully"
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error updating profile picture: " + e.getMessage());
         }
     }
 }

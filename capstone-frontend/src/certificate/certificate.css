@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+/* Override App.css settings to ensure full width/height */
+#root {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+/* Date input styling */
+input[type="date"] {
+  border: none;
+  border-bottom: 1px solid #0288d1;
+  padding: 4px 8px;
+  font-size: 14px;
+  outline: none;
+  background-color: transparent;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5);
+}
+
+/* Table styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+th {
+  font-weight: 600;
+  color: #475569;
+  background-color: #F8FAFC;
+}
+
+/* Button styling */
+button {
+  cursor: pointer;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.manage-attendance-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  background-color: white;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-input {
+  width: 100%;
+  border-radius: 8px;
+  background-color: #F8FAFC;
+}
+
+.actions-button {
+  min-width: 32px;
+  height: 32px;
+  padding: 6px;
+}
+
+.table-container {
+  max-height: calc(100vh - 400px);
+  overflow-y: auto;
+}
+
+.modal-table-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.search-and-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Make sure table headers remain visible when scrolling */
+.MuiTableCell-stickyHeader {
+  background-color: #F8FAFC !important;
+}
+
+/* Smaller action buttons in the modal */
+.modal-action-button {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 4px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .search-and-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .manage-attendance-modal {
+    width: 95%;
+  }
+}

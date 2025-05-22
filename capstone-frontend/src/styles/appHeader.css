@@ -1,0 +1,180 @@
+/* App Header Styles */
+.app-header {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.app-header::after {
+  content: "";
+  position: absolute;
+  height: 4px;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(90deg, #304FFF 0%, #7B68EE 50%, #304FFF 100%);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.5s ease;
+  z-index: 10;
+}
+
+
+
+/* Header avatar styling */
+.header-avatar {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.header-avatar::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #304FFF, #7B68EE);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.header-avatar:hover::before {
+  opacity: 0.7;
+}
+
+/* User Menu Styling */
+.user-menu {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.user-menu-header {
+  background: linear-gradient(135deg, rgba(48, 79, 255, 0.1), rgba(123, 104, 238, 0.1));
+  position: relative;
+  overflow: hidden;
+}
+
+.dark-mode .user-menu-header {
+  background: linear-gradient(135deg, rgba(48, 79, 255, 0.15), rgba(123, 104, 238, 0.15));
+}
+
+.user-menu-header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  animation: pulse 8s infinite linear;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+}
+
+.user-menu-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.user-menu-item::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0;
+  left: 18px;
+  transition: all 0.3s ease;
+}
+
+.user-menu-item:hover::after {
+  opacity: 0.4;
+}
+
+.logout-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(244, 67, 54, 0) 0%, 
+    rgba(244, 67, 54, 0.08) 50%, 
+    rgba(244, 67, 54, 0) 100%);
+  transform: translateX(-100%);
+  transition: transform 2s ease;
+}
+
+.logout-button:hover::before {
+  transform: translateX(100%);
+}
+
+/* Popup arrow animation */
+.menu-arrow {
+  animation: appear 0.3s ease forwards;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* User email display animation */
+.user-email {
+  animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive header for smaller screens */
+@media (max-width: 600px) {
+  .app-header-title {
+    font-size: 1.2rem !important;
+  }
+  
+  .header-avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+} 
