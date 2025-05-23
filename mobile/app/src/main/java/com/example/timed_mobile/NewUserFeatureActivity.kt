@@ -1,4 +1,3 @@
-/*
 package com.example.timed_mobile
 
 import android.content.Intent
@@ -10,17 +9,20 @@ import androidx.appcompat.app.AppCompatActivity
 
 class NewUserFeatureActivity : AppCompatActivity() {
 
+    private var clockAnimation: Animatable? = null
+    private lateinit var featureIcon: ImageView // Declare at class level
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.new_user_feature_page) // Make sure this matches your XML file name
+        setContentView(R.layout.new_user_feature_page) // Ensure this layout file name is correct
 
         val nextButton: Button = findViewById(R.id.btn_next_feature)
-        val featureIcon: ImageView = findViewById(R.id.feature_icon)
+        featureIcon = findViewById(R.id.feature_icon) // Initialize here
 
-        // Start the animation for the clock icon
+        // Get the drawable and store it if it's Animatable
         val drawable = featureIcon.drawable
         if (drawable is Animatable) {
-            (drawable as Animatable).start()
+            clockAnimation = drawable
         }
 
         nextButton.setOnClickListener {
@@ -32,7 +34,18 @@ class NewUserFeatureActivity : AppCompatActivity() {
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, getIntent().getStringExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT))
             }
             startActivity(intent)
-            // Not finishing here to allow back navigation within the onboarding flow
         }
     }
-}*/
+
+    override fun onStart() {
+        super.onStart()
+        // Start the animation when the activity becomes visible
+        clockAnimation?.start()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Stop the animation when the activity is no longer visible to save resources
+        clockAnimation?.stop()
+    }
+}

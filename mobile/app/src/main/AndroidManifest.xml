@@ -58,28 +58,28 @@
 
         <!--NEW USER WELCOME PAGE-->
         <activity
-                android:name=".LoginActivity"
+                android:name=".NewUserWelcomeActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="true"
-                android:label="@string/login_page"
+                android:label="@string/new_user_welcome_page"
                 android:screenOrientation="portrait"
                 android:windowSoftInputMode="adjustPan" />
 
         <!--NEW USER FEATURE PAGE-->
         <activity
-                android:name=".LoginActivity"
+                android:name=".NewUserFeatureActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="true"
-                android:label="@string/login_page"
+                android:label="@string/new_user_feature_page"
                 android:screenOrientation="portrait"
                 android:windowSoftInputMode="adjustPan" />
 
         <!--NEW USER FINAL STEP PAGE-->
         <activity
-                android:name=".LoginActivity"
+                android:name=".NewUserFinalStepActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="true"
-                android:label="@string/login_page"
+                android:label="@string/new_user_final_step_page"
                 android:screenOrientation="portrait"
                 android:windowSoftInputMode="adjustPan" />
 

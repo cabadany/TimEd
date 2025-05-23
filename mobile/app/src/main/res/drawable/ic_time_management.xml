@@ -4,21 +4,29 @@
         android:viewportWidth="24"
         android:viewportHeight="24">
 
-    <!-- Clock Face part (should remain as is) -->
+    <!-- Clock Face part (remains the same) -->
     <path
             android:name="clock_face"
             android:fillColor="#FF000000"
-            android:pathData="M11.99,2C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 11.99,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z" />
+            android:pathData="M11.99,2C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 11.99,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z"/>
 
-    <!-- Group the hands for animation -->
+    <!-- Static Hour Hand (pointing to 3 o'clock, tip rounded) -->
+    <!-- Base at X=12, Tip at X=16. Thickness 1.5. Radius of tip 0.75. -->
+    <path
+            android:name="hour_hand_path"
+            android:fillColor="#FF000000"
+            android:pathData="M12,11.25 L15.25,11.25 A0.75,0.75 0 0,1 15.25,12.75 L12,12.75 Z"/>
+
+    <!-- Group for the Minute Hand (this group will be animated) -->
     <group
-            android:name="hands_group"
+            android:name="minute_hand_group"
             android:pivotX="12"
             android:pivotY="12">
-        <!-- Original hands path -->
+        <!-- Minute Hand (pointing to 12 o'clock, tip rounded) -->
+        <!-- Base at Y=12, Tip at Y=5. Thickness 1.5. Radius of tip 0.75. -->
         <path
-                android:name="clock_hands_path"
+                android:name="minute_hand_path"
                 android:fillColor="#FF000000"
-                android:pathData="M12.5,7H11v6l5.25,3.15 0.75,-1.23 -4.5,-2.67z" />
+                android:pathData="M11.25,12 L11.25,5.75 A0.75,0.75 0 0,1 12.75,5.75 L12.75,12 Z"/>
     </group>
 </vector>

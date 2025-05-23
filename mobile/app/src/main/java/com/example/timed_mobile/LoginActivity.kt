@@ -50,7 +50,8 @@ class LoginActivity : AppCompatActivity() {
             val password = inputPassword.text.toString().trim()
 
             if (idNumber.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please enter ID number and password", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please enter ID number and password", Toast.LENGTH_SHORT)
+                    .show()
                 return@setOnClickListener
             }
 
@@ -72,8 +73,13 @@ class LoginActivity : AppCompatActivity() {
                 val dbPassword = userDoc.getString("password") ?: ""
                 val role = userDoc.getString("role")?.uppercase() ?: ""
 
-                if (role != "USER") {
-                    Toast.makeText(this, "Only USER accounts can log in on mobile.", Toast.LENGTH_SHORT).show()
+
+                if (role != "USER" && role != "FACULTY") {
+                    Toast.makeText(
+                        this,
+                        "Only USER/FACULTY accounts can log in on mobile.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@addOnSuccessListener
                 }
 
@@ -83,38 +89,64 @@ class LoginActivity : AppCompatActivity() {
                     return@addOnSuccessListener
                 }
 
-                val userId = userDoc.id
+                val userId = userDoc.id // This is the crucial Firebase document ID
                 val firstName = userDoc.getString("firstName") ?: ""
-                val lastName = userDoc.getString("lastName") ?: ""
                 val email = userDoc.getString("email") ?: ""
                 val department = when (val dep = userDoc.get("department")) {
                     is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
                     else -> "N/A"
                 }
+                val schoolIdValue = userDoc.getString("schoolId") ?: idNumber // Use schoolId from doc or fallback
 
                 // Save login session
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 with(prefs.edit()) {
                     putBoolean(KEY_IS_LOGGED_IN, true)
-                    putString(KEY_USER_ID, userId)
+                    putString(KEY_USER_ID, userId) // Storing Firebase document ID
                     putString(KEY_FIRST_NAME, firstName)
                     putString(KEY_EMAIL, email)
-                    putString(KEY_ID_NUMBER, idNumber)
+                    putString(KEY_ID_NUMBER, schoolIdValue) // Storing schoolId
                     putString(KEY_DEPARTMENT, department)
                     apply()
                 }
 
                 Toast.makeText(this, "Welcome $firstName!", Toast.LENGTH_SHORT).show()
 
-                val intent = Intent(this, HomeActivity::class.java).apply {
-                    putExtra("userId", userId)
-                    putExtra("email", email)
-                    putExtra("firstName", firstName)
-                    putExtra("idNumber", idNumber)
-                    putExtra("department", department)
-                }
+                // Check if onboarding is completed for this specific user
+                val onboardingPrefs = getSharedPreferences(
+                    NewUserWelcomeActivity.PREFS_ONBOARDING,
+                    Context.MODE_PRIVATE
+                )
+                // Construct the user-specific key
+                val userSpecificOnboardingKey = "${NewUserWelcomeActivity.KEY_ONBOARDING_COMPLETED}_$userId"
+                val isOnboardingCompleted = onboardingPrefs.getBoolean(
+                    userSpecificOnboardingKey, // Check user-specific key
+                    false // Default to false if no entry found for this user
+                )
 
-                startActivity(intent)
+                if (!isOnboardingCompleted) {
+                    // THIS IS FOR "NEW USERS" (to the onboarding flow)
+                    // Start Onboarding Flow
+                    val intent = Intent(this, NewUserWelcomeActivity::class.java).apply {
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                        putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
+                    }
+                    startActivity(intent)
+                } else {
+                    // THIS IS FOR "EXISTING USERS" (who have completed onboarding)
+                    // Go to Home Activity
+                    val intent = Intent(this, HomeActivity::class.java).apply {
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                        putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
+                        putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
+                    }
+                    startActivity(intent)
+                }
                 finish()
             }
             .addOnFailureListener { e ->
