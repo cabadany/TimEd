@@ -28,6 +28,7 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.google.firebase.firestore.FieldValue
 // Removed duplicate import: import com.example.timed_mobile.TimeInActivity
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -40,6 +41,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
+import android.widget.Toast
+import androidx.camera.core.ImageProxy
 
 class TimeInEventActivity : AppCompatActivity() {
 
@@ -80,13 +84,23 @@ class TimeInEventActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_page)
 
+        // Run deep link parser
+        handleDeepLinkIfPresent()
+
+        // Existing session check
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG)
-                .show()
+            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
+            userId = prefs.getString("userId", null)
+            userEmail = prefs.getString("email", null)
+            userFirstName = prefs.getString("firstName", null)
+        }
+
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -94,35 +108,68 @@ class TimeInEventActivity : AppCompatActivity() {
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        initializeViews() // scannerOverlay will be initialized here to the XML one
+        initializeViews()
 
-        // cameraPreviewView is created programmatically
+        // Ensure the cameraPreviewView is attached once
         cameraPreviewView = PreviewView(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            implementationMode = PreviewView.ImplementationMode.PERFORMANCE // Recommended for CameraX
-            scaleType = PreviewView.ScaleType.FILL_CENTER // Or FIT_CENTER depending on desired preview
+            implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
         }
 
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
-            .build()
-        barcodeScanner = BarcodeScanning.getClient(options)
+        cameraPreviewHostFrame.addView(cameraPreviewView, 0)
+
+        barcodeScanner = BarcodeScanning.getClient() // Accepts all supported formats
 
         setupClickListeners()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         if (allPermissionsGranted()) {
-            setupCameraPreview() // Sets up the cameraPreviewView in the FrameLayout
+            setupCameraPreview()
             startCameraPreviewOnly()
             scanButton.text = "Start Scanning"
             selfieReminder.text = "Position QR code within the frame to scan"
-            scannerOverlay.visibility = View.GONE // Ensure XML overlay is initially hidden
-            shutterButton.visibility = View.GONE // Hide shutter initially
+            scannerOverlay.visibility = View.GONE
+            shutterButton.visibility = View.GONE
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        }
+    }
+
+    private fun handleDeepLinkIfPresent() {
+        val data: Uri? = intent?.data
+        val eventId = data?.getQueryParameter("eventId")
+
+        if (eventId != null) {
+            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
+            val userId = prefs.getString("userId", null)
+
+            if (userId.isNullOrEmpty()) {
+                Toast.makeText(this, "Not logged in. Please log in first.", Toast.LENGTH_LONG).show()
+                finish()
+                return
+            }
+
+            val db = FirebaseFirestore.getInstance()
+            val log = hashMapOf(
+                "userId" to userId,
+                "eventId" to eventId,
+                "timeIn" to FieldValue.serverTimestamp()
+            )
+
+            db.collection("timeLogs")
+                .add(log)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Timed in successfully for event $eventId!", Toast.LENGTH_LONG).show()
+                    finish()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Failed to time in: ${it.message}", Toast.LENGTH_LONG).show()
+                    finish()
+                }
         }
     }
 
@@ -270,41 +317,49 @@ class TimeInEventActivity : AppCompatActivity() {
 
     private fun startQrScanner() {
         Log.d(TAG, "startQrScanner called")
-        isFrontCamera = false // Ensure we are using back camera for QR
-        setupCameraPreview() // Ensure preview is set up for back camera
-        if (scannerOverlay.visibility != View.VISIBLE) { // Ensure visible before animation
+        isFrontCamera = false
+        setupCameraPreview()
+
+        if (scannerOverlay.visibility != View.VISIBLE) {
             scannerOverlay.visibility = View.VISIBLE
         }
+
         showScanningAnimation()
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
+
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
             }
+
+            val imageCaptureLocal = ImageCapture.Builder().build()
+            imageCapture = imageCaptureLocal // Update global reference
+
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor, ::processImageForQrCode)
                 }
-            // imageCapture is already initialized in startCameraPreviewOnly or setupCameraPreview
-            // No need to re-initialize imageCapture here unless changing its config
+
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
                     this,
-                    CameraSelector.DEFAULT_BACK_CAMERA, // Explicitly use back camera
+                    cameraSelector,
                     preview,
-                    imageCapture, // Use the existing imageCapture instance
+                    imageCaptureLocal,
                     imageAnalyzer
                 )
                 selfieReminder.text = "Scanning for QR codes..."
-                Log.d(TAG, "Camera bound for QR scanning.")
+                Log.d(TAG, "Camera bound successfully for QR scanning.")
             } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed for QR Scanner", exc)
+                Log.e(TAG, "Use case binding failed", exc)
+                Toast.makeText(this, "Failed to start camera: ${exc.message}", Toast.LENGTH_LONG).show()
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -354,116 +409,125 @@ class TimeInEventActivity : AppCompatActivity() {
     private fun processImageForQrCode(imageProxy: ImageProxy) {
         Log.d(TAG, "processImageForQrCode called. isScanningEnabled: $isScanningEnabled, isQrScanned: $isQrScanned, rotation: ${imageProxy.imageInfo.rotationDegrees}")
         val mediaImage = imageProxy.image
+
         if (mediaImage != null && isScanningEnabled && !isQrScanned) {
-            Log.d(TAG, "Processing image. Format: ${mediaImage.format}, Size: ${mediaImage.width}x${mediaImage.height}")
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+
             barcodeScanner.process(image)
                 .addOnSuccessListener { barcodes ->
                     Log.d(TAG, "Barcodes detected: ${barcodes.size}")
-                    if (barcodes.isNotEmpty()) {
-                        for (barcode in barcodes) {
-                            Log.d(TAG, "Barcode raw value: ${barcode.rawValue}, format: ${barcode.format}, type: ${barcode.valueType}")
-                        }
+
+                    barcodes.forEach {
+                        Log.d(TAG, "Found barcode: ${it.rawValue}")
                     }
 
-                    if (isScanningEnabled && !isQrScanned) { // Double check state
-                        val matchingBarcode = barcodes.firstOrNull {
-                            Log.d(TAG, "Checking barcode for prefix: '${it.rawValue}'")
-                            it.rawValue?.startsWith("TIMED:EVENT:") == true
-                        }
+                    val matchingBarcode = barcodes.firstOrNull {
+                        val value = it.rawValue?.trim()
+                        value != null // No prefix restriction
+                    }
 
-                        if (matchingBarcode != null) {
-                            Log.d(TAG, "Matching QR code found: ${matchingBarcode.rawValue}")
-                            runOnUiThread { handleQrCodeScanned(matchingBarcode.rawValue!!) }
-                        } else {
-                            Log.d(TAG, "No QR code with 'TIMED:EVENT:' prefix found in this batch.")
-                        }
+                    if (matchingBarcode != null) {
+                        handleQrCodeScanned(matchingBarcode.rawValue!!.trim())
                     } else {
-                        Log.d(TAG, "State changed during barcode processing. isScanningEnabled: $isScanningEnabled, isQrScanned: $isQrScanned")
+                        Log.d(TAG, "No matching QR code found. All values: ${barcodes.map { it.rawValue }}")
+                        runOnUiThread {
+                            Toast.makeText(this@TimeInEventActivity, "No matching QR code found.", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
                 .addOnFailureListener {
                     Log.e(TAG, "Barcode scanning failed", it)
+                    runOnUiThread {
+                        Toast.makeText(this@TimeInEventActivity, "Barcode scanning error: ${it.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 .addOnCompleteListener {
-                    // Log.d(TAG, "Image processing complete, closing proxy.") // Can be noisy
                     imageProxy.close()
                 }
         } else {
-            if (mediaImage == null) Log.d(TAG, "mediaImage is null in processImageForQrCode")
-            if (!isScanningEnabled) Log.d(TAG, "isScanningEnabled is false in processImageForQrCode (state: $isScanningEnabled)")
-            if (isQrScanned) Log.d(TAG, "isQrScanned is true in processImageForQrCode (state: $isQrScanned)")
-            imageProxy.close() // Always close the proxy
+            if (mediaImage == null) Log.d(TAG, "mediaImage is null")
+            if (!isScanningEnabled) Log.d(TAG, "isScanningEnabled is false")
+            if (isQrScanned) Log.d(TAG, "isQrScanned is true")
+            imageProxy.close()
         }
     }
 
     @RequiresPermission(Manifest.permission.VIBRATE)
     private fun handleQrCodeScanned(qrContent: String) {
         Log.d(TAG, "handleQrCodeScanned called with: $qrContent")
-        if (isQrScanned) { // Check if already processed or in verification
-            Log.d(TAG, "handleQrCodeScanned: Already processed or verifying, returning.")
-            return
-        }
+        if (isQrScanned) return
         vibrate()
 
-        // isScanningEnabled = false; // This is now set before calling this if verification is involved
-        // stopQrScannerAndAnalysis(); // This is also called before if verification is involved
+        val eventId = qrContent.substringAfterLast("/").trim()
+        isQrScanned = true
+        scanButton.isEnabled = false
+        stopQrScannerAndAnalysis()
 
-        val eventData = qrContent.removePrefix("TIMED:EVENT:").split(":")
-        if (eventData.size >= 2) {
-            currentScannedEventId = eventData[0]
-            currentScannedEventName = eventData[1]
-            Log.d(TAG, "Parsed Event ID: $currentScannedEventId, Name: $currentScannedEventName")
+        val db = FirebaseFirestore.getInstance()
+        val eventDocRef = db.collection("events").document(eventId)
 
-            // --- SIMULATED VERIFICATION ---
-            selfieReminder.text = "Verifying QR Code for ${currentScannedEventName}..."
-            scanButton.isEnabled = false // Disable button during verification
+        eventDocRef.get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val eventName = document.getString("eventName") ?: "Unnamed Event"
+                    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
-            Handler(Looper.getMainLooper()).postDelayed({
-                scanButton.isEnabled = true // Re-enable button
-                val isVerified = Random().nextBoolean() // Randomly succeed or fail
-                Log.d(TAG, "Simulated verification result: $isVerified")
+                    selfieReminder.text = "Logging time-in for $eventName..."
 
-                if (isVerified) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Verification Successful")
-                        .setMessage("QR Code for '${currentScannedEventName}' verified. Please proceed to take a selfie.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            isQrScanned = true // Mark as scanned only after successful verification
-                            selfieReminder.text = "Event: ${currentScannedEventName}\nPlease take a selfie for verification."
-                            scanButton.text = "Take Selfie"
-                            scanButton.setOnClickListener { // Update listener for "Take Selfie"
-                                if (isFrontCamera) {
-                                    takeSelfie()
-                                } else {
-                                    Toast.makeText(this, "Please wait, switching to selfie camera.", Toast.LENGTH_SHORT).show()
-                                    switchToSelfieMode()
-                                }
+                    eventDocRef.collection("attendees")
+                        .whereEqualTo("userId", userId)
+                        .whereEqualTo("type", "event_time_in")
+                        .get()
+                        .addOnSuccessListener { docs ->
+                            if (!docs.isEmpty) {
+                                showErrorDialog("You have already timed in for this event.")
+                                finish()
+                            } else {
+                                val record = hashMapOf(
+                                    "userId" to userId,
+                                    "firstName" to userFirstName,
+                                    "email" to userEmail,
+                                    "eventId" to eventId,
+                                    "eventName" to eventName,
+                                    "timestamp" to timestamp,
+                                    "selfieUrl" to null,
+                                    "type" to "event_time_in",
+                                    "hasTimedOut" to false
+                                )
+
+                                eventDocRef.collection("attendees")
+                                    .add(record)
+                                    .addOnSuccessListener {
+                                        AlertDialog.Builder(this)
+                                            .setTitle("Time-In Successful")
+                                            .setMessage("You have timed in for '$eventName'. A certificate will be sent to your email.")
+                                            .setPositiveButton("OK") { d, _ ->
+                                                d.dismiss()
+                                                setResult(RESULT_OK)
+                                                finish()
+                                            }
+                                            .setCancelable(false)
+                                            .show()
+                                    }
+                                    .addOnFailureListener {
+                                        showErrorDialog("Failed to save time-in: ${it.message}")
+                                        isQrScanned = false
+                                    }
                             }
-                            shutterButton.visibility = View.VISIBLE
-                            switchToSelfieMode()
                         }
-                        .setCancelable(false)
-                        .show()
+                        .addOnFailureListener {
+                            showErrorDialog("Error checking existing records: ${it.message}")
+                            isQrScanned = false
+                        }
                 } else {
-                    AlertDialog.Builder(this)
-                        .setTitle("Verification Failed")
-                        .setMessage("The scanned QR code for '${currentScannedEventName}' could not be verified. It might be invalid or expired. Please try again.")
-                        .setPositiveButton("Try Again") { dialog, _ ->
-                            dialog.dismiss()
-                            resetForNewScan() // Allow user to scan again
-                        }
-                        .setCancelable(false)
-                        .show()
+                    showErrorDialog("Event not found.")
+                    isQrScanned = false
                 }
-            }, 2000) // 2-second delay for simulation
-
-        } else {
-            Log.e(TAG, "Invalid QR code format after prefix removal: $qrContent")
-            showErrorDialog("Invalid QR code format.")
-            resetForNewScan()
-        }
+            }
+            .addOnFailureListener {
+                showErrorDialog("Failed to fetch event info: ${it.message}")
+                isQrScanned = false
+            }
     }
 
     private fun switchToSelfieMode() {

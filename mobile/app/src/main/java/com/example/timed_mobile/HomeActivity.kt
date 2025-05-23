@@ -25,6 +25,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.timed_mobile.adapter.EventAdapter
@@ -38,11 +39,14 @@ import java.util.*
 import android.graphics.drawable.ColorDrawable
 import android.app.Dialog
 import kotlin.math.abs
+import androidx.core.view.isVisible
 
 class HomeActivity : AppCompatActivity() {
 
     companion object {
         const val TOTAL_QUICK_TOUR_STEPS = 4
+        const val PREFS_TUTORIAL = "TutorialPrefs"
+        const val KEY_TUTORIAL_COMPLETED = "tutorialCompleted"
     }
 
     private var previousTargetLocation: IntArray? = null
@@ -53,7 +57,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var greetingName: TextView
     private lateinit var greetingDetails: TextView
     private lateinit var recyclerEvents: RecyclerView
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var statusSpinner: Spinner
 
     private lateinit var btnCancelled: Button
     private lateinit var btnUpcoming: Button
@@ -66,12 +72,17 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var greetingCardNavIcon: ImageView
     private lateinit var tutorialOverlay: FrameLayout
 
+
+    private var currentTutorialPopupWindow: PopupWindow? = null // Track current tutorial popup
     private val allEvents = mutableListOf<EventModel>()
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
     private var idNumber: String? = null
     private var department: String? = null
+    private val statusOptions = listOf("On Duty", "On Break", "Off Duty")
+
+    private lateinit var btnHelp: ImageView // Added for btn_help
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -91,9 +102,19 @@ class HomeActivity : AppCompatActivity() {
         setContentView(R.layout.home_page)
 
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
-        tutorialOverlay.setOnTouchListener { v, event ->
-            if (event?.action == MotionEvent.ACTION_UP) v?.performClick()
-            true
+        tutorialOverlay.setOnTouchListener { _, _ ->
+            // Consume the touch event if the overlay is visible AND a tutorial popup is active.
+            // This prevents the overlay from blocking touches if it was somehow left visible
+            // when no tutorial step is active.
+            val isTutorialStepActive = currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing
+            val shouldConsumeTouch = tutorialOverlay.isVisible && isTutorialStepActive
+
+            if (shouldConsumeTouch) {
+                // Optionally, you could give a subtle feedback like a quick "shake" animation
+                // to the currentTutorialPopupWindow to indicate the user should interact with it.
+                // For now, just consuming the touch is the main goal.
+            }
+            shouldConsumeTouch
         }
 
         drawerLayout = findViewById(R.id.drawer_layout)
@@ -108,6 +129,7 @@ class HomeActivity : AppCompatActivity() {
         greetingName = findViewById(R.id.greeting_name)
         greetingDetails = findViewById(R.id.home_greeting)
         recyclerEvents = findViewById(R.id.recycler_events)
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
         btnCancelled = findViewById(R.id.btn_filter_cancelled)
         btnUpcoming = findViewById(R.id.btn_filter_upcoming)
         btnOngoing = findViewById(R.id.btn_filter_ongoing)
@@ -115,6 +137,30 @@ class HomeActivity : AppCompatActivity() {
         btnTimeIn = findViewById(R.id.btntime_in)
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
+
+        btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
+
+        // Setup for btn_help
+        btnHelp.setOnClickListener {
+            showTutorialDialog()
+        }
+
+        firestore = FirebaseFirestore.getInstance()
+
+        statusSpinner = findViewById(R.id.status_spinner)
+        val statusAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, statusOptions)
+        statusSpinner.adapter = statusAdapter
+
+        loadUserStatus()
+
+        statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedStatus = statusOptions[position]
+                showStatusConfirmationDialog(selectedStatus)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
         recyclerEvents.layoutManager = LinearLayoutManager(this)
         firestore = FirebaseFirestore.getInstance()
@@ -126,8 +172,19 @@ class HomeActivity : AppCompatActivity() {
         idNumber = sharedPrefs.getString(LoginActivity.KEY_ID_NUMBER, "N/A")
         department = sharedPrefs.getString(LoginActivity.KEY_DEPARTMENT, "N/A")
 
-        greetingName.text = "Hi, $userFirstName 👋"
-        greetingDetails.text = "ID: $idNumber • $department"
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
+        usersRef.get().addOnSuccessListener { doc ->
+            val fullName = userFirstName ?: "User"
+            val deptObj = doc.get("department")
+            val abbreviation = if (deptObj is Map<*, *>) {
+                deptObj["abbreviation"]?.toString() ?: "N/A"
+            } else {
+                "N/A"
+            }
+
+            greetingName.text = "Hi, $fullName"
+            greetingDetails.text = "$idNumber • $abbreviation"
+        }
 
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
@@ -135,7 +192,198 @@ class HomeActivity : AppCompatActivity() {
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
+
+        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+        swipeRefreshLayout.setOnRefreshListener {
+            Log.d("HomeActivity", "Pull-to-refresh triggered")
+            loadTodayTimeInPhoto()
+            updateSidebarProfileImage()
+            loadAndStoreEvents()
+            swipeRefreshLayout.isRefreshing = false
+        }
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false)) {
+            showTutorialDialog()
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+        }
+
         loadAndStoreEvents()
+    }
+
+    private fun hasTimedInToday(callback: (Boolean) -> Unit) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return callback(false)
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            callback(true)
+                            return
+                        }
+                    }
+                    callback(false)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false)
+                }
+            })
+    }
+
+    private fun showStatusConfirmationDialog(selectedStatus: String) {
+        if (selectedStatus == "On Duty") {
+            hasTimedInToday { alreadyTimedIn ->
+                if (!alreadyTimedIn) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Time-In Required")
+                        .setMessage("You haven't timed in yet. Do you want to time in now?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            val intent = Intent(this, TimeInActivity::class.java).apply {
+                                putExtra("userId", userId)
+                                putExtra("email", userEmail ?: "")
+                                putExtra("firstName", userFirstName ?: "User")
+                            }
+                            timeInLauncher.launch(intent)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else {
+                    confirmStatusChange(selectedStatus)
+                }
+            }
+        } else {
+            confirmStatusChange(selectedStatus)
+        }
+    }
+
+    private fun confirmStatusChange(status: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm Status Change")
+            .setMessage("Are you sure you want to set your status to '$status'?")
+            .setPositiveButton("Yes") { _, _ ->
+                updateUserStatus(status)
+                updateTimeLogsStatus(status)
+                if (status == "Off Duty") {
+                    handleTimeOutOnOffDuty()
+                }
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                loadUserStatus()
+            }
+            .show()
+    }
+
+    private fun updateUserStatus(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        firestore.collection("users").document(userId)
+            .update("status", status)
+            .addOnSuccessListener {
+                Log.d("HomeActivity", "Status updated to $status")
+            }
+            .addOnFailureListener {
+                Log.e("HomeActivity", "Failed to update status: ${it.message}")
+            }
+    }
+
+    private fun updateTimeLogsStatus(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        child.ref.child("status").setValue(status)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to update timeLogs status: ${error.message}")
+                }
+            })
+    }
+
+    private fun handleTimeOutOnOffDuty() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userEmail = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_EMAIL, null)
+        val userFirstName = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_FIRST_NAME, "User")
+
+        val intent = Intent(this, TimeOutActivity::class.java).apply {
+            putExtra("userId", userId)
+            putExtra("email", userEmail ?: "")
+            putExtra("firstName", userFirstName ?: "User")
+        }
+        startActivity(intent)
+    }
+
+    private fun loadUserStatus() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+
+        realtimeRef.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var overrideStatus: String? = null
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            overrideStatus = "On Duty"
+                        }
+                    }
+
+                    firestore.collection("users").document(userId)
+                        .get()
+                        .addOnSuccessListener { doc ->
+                            val currentStatus = overrideStatus ?: doc.getString("status") ?: "Off Duty"
+
+                            if (!doc.contains("status")) {
+                                firestore.collection("users").document(userId)
+                                    .update("status", currentStatus)
+                            }
+
+                            val index = statusOptions.indexOf(currentStatus)
+                            if (index != -1) {
+                                statusSpinner.setSelection(index)
+                            }
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to load user status: ${error.message}")
+                }
+            })
     }
 
     private fun updateFilterButtonStates(selectedButton: Button) {
@@ -185,41 +433,69 @@ class HomeActivity : AppCompatActivity() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+        usersRef.get().addOnSuccessListener { document ->
+            val userStatus = document.getString("status") ?: "Off Duty"
+            val profileUrl = document.getString("profilePictureUrl")
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+            if (userStatus == "On Duty") {
+                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                ref.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
 
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                            if (!imageUrl.isNullOrEmpty()) {
+                                val todayStart = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    if (!imageUrl.isNullOrEmpty()) {
+                                        Glide.with(this@HomeActivity)
+                                            .load(imageUrl)
+                                            .circleCrop()
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                            .skipMemoryCache(true)
+                                            .into(profileImageView)
+                                        return
+                                    }
+                                }
+                            }
+                            // fallback to profile picture if no time-in image found
+                            if (!profileUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
-                                    .load(imageUrl)
+                                    .load(profileUrl)
                                     .circleCrop()
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                    .skipMemoryCache(true)
                                     .into(profileImageView)
-                                return
+                            } else {
+                                profileImageView.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                    }
-                    profileImageView.setImageResource(R.drawable.ic_profile)
-                }
 
-                override fun onCancelled(error: DatabaseError) {
+                        override fun onCancelled(error: DatabaseError) {
+                            profileImageView.setImageResource(R.drawable.ic_profile)
+                        }
+                    })
+            } else {
+                // User is Off Duty – show profilePictureUrl
+                if (!profileUrl.isNullOrEmpty()) {
+                    Glide.with(this@HomeActivity)
+                        .load(profileUrl)
+                        .circleCrop()
+                        .into(profileImageView)
+                } else {
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
-            })
+            }
+        }.addOnFailureListener {
+            profileImageView.setImageResource(R.drawable.ic_profile)
+        }
     }
 
     private fun updateSidebarProfileImage() {
@@ -229,41 +505,70 @@ class HomeActivity : AppCompatActivity() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+        usersRef.get().addOnSuccessListener { document ->
+            val userStatus = document.getString("status") ?: "Off Duty"
+            val profileUrl = document.getString("profilePictureUrl")
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+            if (userStatus == "On Duty") {
+                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                ref.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
 
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                            if (!imageUrl.isNullOrEmpty()) {
+                                val todayStart = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    if (!imageUrl.isNullOrEmpty()) {
+                                        Glide.with(this@HomeActivity)
+                                            .load(imageUrl)
+                                            .circleCrop()
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                            .skipMemoryCache(true)
+                                            .into(sidebarImage)
+                                        return
+                                    }
+                                }
+                            }
+
+                            // fallback to profilePictureUrl
+                            if (!profileUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
-                                    .load(imageUrl)
+                                    .load(profileUrl)
                                     .circleCrop()
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                    .skipMemoryCache(true)
                                     .into(sidebarImage)
-                                return
+                            } else {
+                                sidebarImage.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                    }
-                    sidebarImage.setImageResource(R.drawable.ic_profile)
-                }
 
-                override fun onCancelled(error: DatabaseError) {
+                        override fun onCancelled(error: DatabaseError) {
+                            sidebarImage.setImageResource(R.drawable.ic_profile)
+                        }
+                    })
+            } else {
+                // Off Duty - use profilePictureUrl
+                if (!profileUrl.isNullOrEmpty()) {
+                    Glide.with(this@HomeActivity)
+                        .load(profileUrl)
+                        .circleCrop()
+                        .into(sidebarImage)
+                } else {
                     sidebarImage.setImageResource(R.drawable.ic_profile)
                 }
-            })
+            }
+        }.addOnFailureListener {
+            sidebarImage.setImageResource(R.drawable.ic_profile)
+        }
     }
 
     private fun setupNavigationDrawer() {
@@ -273,8 +578,77 @@ class HomeActivity : AppCompatActivity() {
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
 
         sidebarName.text = userFirstName ?: "User"
-        sidebarDetails.text = "ID: $idNumber • $department"
+        sidebarDetails.text = "$idNumber • $department"
         sidebarEmail.text = userEmail ?: ""
+
+        navigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_home -> {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_event_log -> {
+                    val sharedPref = getSharedPreferences("TimedAppPrefs", Context.MODE_PRIVATE)
+                    val userId = sharedPref.getString("userId", null)
+
+                    val intent = Intent(this, EventLogActivity::class.java)
+                    intent.putExtra("userId", userId)
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_excuse_letter -> {
+                    val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                        putExtra("idNumber", idNumber)
+                        putExtra("department", department)
+                    }
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_excuse_letter_history -> {
+                    val intent = Intent(this, ExcuseLetterHistoryActivity::class.java)
+                    intent.putExtra("userId", userId)
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_profile -> {
+                    val intent = Intent(this, ProfileActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail)
+                        putExtra("firstName", userFirstName)
+                        putExtra("idNumber", idNumber)
+                        putExtra("department", department)
+                    }
+                    startActivity(intent)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_logout -> {
+                    showLogoutDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun showLogoutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Log Out")
+            .setMessage("Are you sure you want to log out?")
+            .setPositiveButton("Yes") { _, _ ->
+                val prefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().clear().apply()
+                startActivity(Intent(this, LoginActivity::class.java))
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupFilterButtons() {
@@ -340,6 +714,7 @@ class HomeActivity : AppCompatActivity() {
             val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
+                putExtra("email", userEmail)
                 putExtra("firstName", userFirstName)
                 putExtra("idNumber", idNumber)
                 putExtra("department", department)
@@ -349,67 +724,137 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun loadAndStoreEvents() {
-        firestore.collection("events").get()
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        // Step 1: Get the user's departmentId from nested "department" object
+        FirebaseFirestore.getInstance().collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { userDoc ->
+                val department = userDoc.get("department")
+                Log.d("DEBUG", "Raw department field: $department")
+                Log.d("DEBUG", "Full user document: ${userDoc.data}")
+
+                val departmentId: String?
+                val departmentName: String?
+
+                if (department is Map<*, *>) {
+                    departmentId = department["departmentId"]?.toString()
+                    departmentName = department["name"]?.toString()
+                } else {
+                    departmentId = null
+                    departmentName = null
+                }
+
+                if (departmentId.isNullOrEmpty()) {
+                    Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                Log.d("HomeActivity", "User's departmentId: $departmentId")
+
+                // Step 2: Now load events for this departmentId
+                firestore.collection("events")
+                    .whereEqualTo("departmentId", departmentId)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                        allEvents.clear()
+
+                        for (doc in result) {
+                            try {
+                                val title = doc.getString("eventName") ?: continue
+                                val duration = doc.getString("duration") ?: "1:00:00"
+                                val date = doc.getTimestamp("date")?.toDate() ?: continue
+                                val dateFormatted = formatter.format(date)
+                                val status = doc.getString("status") ?: "upcoming" // <-- Add this line
+
+                                allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
+                            } catch (e: Exception) {
+                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                            }
+                        }
+
+                        showEventsByStatus("upcoming")
+                        updateFilterButtonStates(btnUpcoming)
+                    }
+                    .addOnFailureListener {
+                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
+                        Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
+                Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun fetchEventsByDepartmentId(departmentId: String) {
+        firestore.collection("events")
+            .whereEqualTo("departmentId", departmentId)
+            .get()
             .addOnSuccessListener { result ->
                 val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
                 allEvents.clear()
 
-                Log.d("FirestoreEvents", "Fetched ${result.size()} event documents")
-
                 for (doc in result) {
                     try {
                         val title = doc.getString("eventName") ?: continue
-                        val statusRaw = doc.getString("status") ?: "unknown"
-                        val status = statusRaw.lowercase(Locale.ROOT)
+                        val duration = doc.getString("duration") ?: "1:00:00"
                         val date = doc.getTimestamp("date")?.toDate() ?: continue
-                        val formattedDate = formatter.format(date)
+                        val dateFormatted = formatter.format(date)
 
-                        Log.d("FirestoreEvents", "Loaded event: $title | Status: $status | Date: $formattedDate")
-
-                        allEvents.add(EventModel(title, status, formattedDate))
+                        allEvents.add(EventModel(title, duration, dateFormatted))
                     } catch (e: Exception) {
-                        Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                        Log.e("EventParse", "Skipping bad event: ${e.message}", e)
                     }
                 }
 
-                // Default display = upcoming events
                 showEventsByStatus("upcoming")
                 updateFilterButtonStates(btnUpcoming)
             }
             .addOnFailureListener {
-                Log.e("FirestoreEvents", "Failed to load events: ${it.message}", it)
                 Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show()
-                updateFilterButtonStates(btnUpcoming)
             }
     }
 
     private fun showEventsByStatus(statusFilter: String?) {
-        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
         val currentDate = Date()
 
         val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = try {
-                formatter.parse(event.dateFormatted)
-            } catch (e: Exception) {
-                null
+            val eventDate = event.rawDate
+
+            val durationParts = event.duration.split(":")
+            val durationMillis = when (durationParts.size) {
+                3 -> {
+                    val hours = durationParts[0].toIntOrNull() ?: 0
+                    val minutes = durationParts[1].toIntOrNull() ?: 0
+                    val seconds = durationParts[2].toIntOrNull() ?: 0
+                    (hours * 3600 + minutes * 60 + seconds) * 1000L
+                }
+                2 -> {
+                    val hours = durationParts[0].toIntOrNull() ?: 0
+                    val minutes = durationParts[1].toIntOrNull() ?: 0
+                    (hours * 3600 + minutes * 60) * 1000L
+                }
+                1 -> {
+                    val minutes = durationParts[0].toIntOrNull() ?: 0
+                    (minutes * 60) * 1000L
+                }
+                else -> 3600000L
             }
+
+            val eventEndDate = eventDate?.time?.plus(durationMillis)
+
             val dynamicStatus = when {
-                eventDate == null -> "unknown"
-                // For "upcoming", check if eventDate is strictly after current time
-                eventDate.after(currentDate) && !event.status.equals(
-                    "ongoing",
-                    ignoreCase = true
-                ) -> "upcoming"
-                // For "ongoing", explicitly trust the status if it's "ongoing"
-                event.status.equals("ongoing", ignoreCase = true) -> "ongoing"
-                // For "ended", check if eventDate is before current time and not "ongoing"
-                eventDate.before(currentDate) && !event.status.equals(
-                    "ongoing",
-                    ignoreCase = true
-                ) -> "ended"
-                // Fallback to original status if none of the above
-                else -> event.status
+                event.status.equals("cancelled", ignoreCase = true) -> "cancelled"
+                eventDate == null || eventEndDate == null -> "unknown"
+                currentDate.time < eventDate.time -> "upcoming"
+                currentDate.time in eventDate.time until eventEndDate -> "ongoing"
+                else -> "ended"
             }
+
             event.copy(status = dynamicStatus)
         }
 
@@ -422,14 +867,9 @@ class HomeActivity : AppCompatActivity() {
         val sorted = filtered.sortedWith(
             compareBy(
                 { statusOrder(it.status) },
-                {
-                    try {
-                        formatter.parse(it.dateFormatted)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            ))
+                { it.rawDate }
+            )
+        )
 
         recyclerEvents.adapter = EventAdapter(sorted)
     }
@@ -446,51 +886,58 @@ class HomeActivity : AppCompatActivity() {
     override fun onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
+        } else if (currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing) {
+            // If a tutorial step popup is showing, handle back press to cancel the tour
+            currentTutorialPopupWindow?.dismiss() // Dismiss the popup (will trigger its OnDismissListener)
+
+            // Explicitly hide overlay and update state here for immediate effect
+            tutorialOverlay.visibility = View.GONE
+            previousTargetLocation = null
+
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+            Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
+            // currentTutorialPopupWindow is set to null in its OnDismissListener
         } else {
             super.onBackPressed()
         }
     }
 
+
     private fun showTutorialDialog() {
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_tutorial_options)
+        dialog.setCancelable(false)
 
-        ContextCompat.getColor(this, android.R.color.transparent)
-
-        // Adjust dialog width to be responsive
         val window = dialog.window
         if (window != null) {
             val layoutParams = WindowManager.LayoutParams()
             layoutParams.copyFrom(window.attributes)
-
-            // Set dialog width to 90% of screen width
             val displayMetrics = resources.displayMetrics
             layoutParams.width = (displayMetrics.widthPixels * 0.90).toInt()
-            // You can also set a maxHeight if needed, e.g.,
-            // layoutParams.height = (displayMetrics.heightPixels * 0.85).toInt();
-            // For now, let's keep height as wrap_content by not setting it explicitly here,
-            // as the XML root is android:layout_height="wrap_content"
-
             window.attributes = layoutParams
         }
-
 
         val layoutQuickTour = dialog.findViewById<LinearLayout>(R.id.layout_quick_tour)
         val btnCancel = dialog.findViewById<Button>(R.id.btn_cancel_tutorial_dialog)
 
         layoutQuickTour.setOnClickListener {
-            previousTargetLocation = null // Reset for a new tour
+            previousTargetLocation = null
             showQuickTour()
             dialog.dismiss()
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
         }
 
         btnCancel.setOnClickListener {
             dialog.dismiss()
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
         }
-
         dialog.show()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun showCustomTutorialDialog(
         message: String,
         targetView: View,
@@ -498,16 +945,15 @@ class HomeActivity : AppCompatActivity() {
         totalSteps: Int,
         onNext: () -> Unit
     ) {
-        tutorialOverlay.visibility = View.VISIBLE // Make sure overlay is visible
+        tutorialOverlay.visibility = View.VISIBLE
 
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null)
-        // ... (findViewById for progressText, messageText, nextButton, closeButton)
+
         val progressTextView = dialogView.findViewById<TextView>(R.id.tutorial_progress_text)
         val messageTextView = dialogView.findViewById<TextView>(R.id.tutorial_message)
         val nextButton = dialogView.findViewById<Button>(R.id.tutorial_next_button)
         val closeButton = dialogView.findViewById<ImageButton>(R.id.btn_close_tutorial_step)
-
 
         progressTextView.text = "Step $currentStep of $totalSteps"
         messageTextView.text = message
@@ -521,7 +967,7 @@ class HomeActivity : AppCompatActivity() {
 
         var finalDialogX: Int
         var finalDialogY: Int
-        // ... (Your existing robust dialogX, dialogY calculation logic from previous step) ...
+
         val currentTargetLocationOnScreen = IntArray(2)
         targetView.getLocationOnScreen(currentTargetLocationOnScreen)
         if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0) {
@@ -534,8 +980,7 @@ class HomeActivity : AppCompatActivity() {
                 maxX < minX -> margin
                 else -> (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minX, maxX)
             }
-            val showBelow = spaceBelow >= dialogHeight + 24
-            finalDialogY = if (showBelow) {
+            finalDialogY = if (spaceBelow >= dialogHeight + 24) {
                 currentTargetLocationOnScreen[1] + targetView.height + 16
             } else if (spaceAbove >= dialogHeight + 24) {
                 currentTargetLocationOnScreen[1] - dialogHeight - 16
@@ -546,15 +991,17 @@ class HomeActivity : AppCompatActivity() {
             finalDialogX = (resources.displayMetrics.widthPixels - dialogWidth) / 2
             finalDialogY = (resources.displayMetrics.heightPixels - dialogHeight) / 2
         }
-        // End of dialogX, dialogY calculation
-
 
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         popupWindow.isOutsideTouchable = false
         popupWindow.isFocusable = true
-        popupWindow.setBackgroundDrawable(ContextCompat.getDrawable(this, android.R.color.transparent))
+        popupWindow.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)))
 
-        // ... (Animation setup as in the previous correct step) ...
+        currentTutorialPopupWindow = popupWindow // Track the current popup
+        popupWindow.setOnDismissListener {
+            currentTutorialPopupWindow = null // Clear reference when dismissed
+        }
+
         val animationSet = AnimationSet(true)
         val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
         alphaAnimation.duration = 400
@@ -580,8 +1027,6 @@ class HomeActivity : AppCompatActivity() {
         translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.anticipate_overshoot_interpolator)
         animationSet.addAnimation(translateAnimation)
         dialogView.startAnimation(animationSet)
-        // End of animation setup
-
 
         popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
 
@@ -589,12 +1034,12 @@ class HomeActivity : AppCompatActivity() {
         targetView.getLocationOnScreen(currentTargetScreenPos)
         previousTargetLocation = currentTargetScreenPos
 
-        val dismissPopupAndOverlay = {
+        val dismissPopupAndHideOverlay = {
             val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
-                    popupWindow.dismiss()
+                    popupWindow.dismiss() // This will trigger OnDismissListener
                     tutorialOverlay.visibility = View.GONE
                     previousTargetLocation = null
                 }
@@ -608,10 +1053,12 @@ class HomeActivity : AppCompatActivity() {
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
-                    popupWindow.dismiss()
+                    popupWindow.dismiss() // This will trigger OnDismissListener
                     if (currentStep == totalSteps) {
                         tutorialOverlay.visibility = View.GONE
                         previousTargetLocation = null
+                        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+                        tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
                     }
                 }
                 override fun onAnimationRepeat(animation: Animation?) {}
@@ -621,15 +1068,18 @@ class HomeActivity : AppCompatActivity() {
         }
 
         closeButton.setOnClickListener {
-            dismissPopupAndOverlay()
+            dismissPopupAndHideOverlay() // This handles dismissing popup and hiding overlay
             Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
         }
     }
 
 
-    // Function to hide the overlay
-    private fun hideOverlay() {
-        tutorialOverlay.visibility = View.GONE
+    private fun hideOverlay() { // This function might be redundant if direct visibility changes are used
+        if (tutorialOverlay.visibility == View.VISIBLE) {
+            tutorialOverlay.visibility = View.GONE
+        }
     }
 
     private fun showQuickTour() {

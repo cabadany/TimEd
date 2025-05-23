@@ -18,8 +18,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,10 +32,33 @@ class TimeInEventManualActivity : AppCompatActivity() {
     private lateinit var verifyButton: Button
     private lateinit var returnToScanButton: Button
 
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_manual_page)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
+
+        // Get user session from intent or SharedPreferences
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
+
+        if (userId.isNullOrEmpty()) {
+            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
+            userId = prefs.getString("userId", null)
+            userEmail = prefs.getString("email", null)
+            userFirstName = prefs.getString("firstName", null)
+        }
+
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG)
+                .show()
+            finish()
+            return
+        }
 
         // Initialize views
         backButton = findViewById(R.id.icon_back_button)
@@ -44,119 +67,106 @@ class TimeInEventManualActivity : AppCompatActivity() {
         verifyButton = findViewById(R.id.btn_verify_code)
         returnToScanButton = findViewById(R.id.btn_return_to_scan)
 
-        // Start top wave animation
+        codeInput.setMaxLines(Integer.MAX_VALUE)
+        codeInput.setHorizontallyScrolling(false)
+
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
             topDrawable.start()
         }
 
-        // Start bottom wave animation
         val bottomWave = findViewById<ImageView>(R.id.bottom_wave_animation)
         val bottomDrawable = bottomWave.drawable
         if (bottomDrawable is AnimatedVectorDrawable) {
             bottomDrawable.start()
         }
 
-        // Set up back button with animation
         backButton.setOnClickListener { view ->
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
-            view.postDelayed({
-                finish() // Return to previous screen
-            }, 50)
+            view.postDelayed({ finish() }, 50)
         }
 
-        // Set up verify button in TimeInEventManualActivity.kt
         verifyButton.setOnClickListener {
             if (validateInputs()) {
-                // Show a loading state on button
                 verifyButton.isEnabled = false
                 verifyButton.text = "Verifying..."
 
-                // Get the entered code
-                val eventCode = codeInput.text.toString().trim()
-
-                // Simulate verification process
+                val eventId = codeInput.text.toString().trim()
                 Handler(Looper.getMainLooper()).postDelayed({
-                    // Simulate code verification
-                    if (eventCode.equals("TEST123", ignoreCase = true) ||
-                        eventCode.equals("WILD123", ignoreCase = true)) {
-                        // Valid test codes
-                        logAttendanceToFirebase(eventCode)
-                        showSuccessDialog()
-                    } else {
-                        // Invalid code
-                        showErrorDialog("Invalid event code. Please try again.")
-                    }
+                    checkIfAlreadyTimedIn(eventId)
                 }, 1000)
             }
         }
 
-        // Set up return to scanner button
         returnToScanButton.setOnClickListener {
-            finish() // Simply go back to QR scanner activity
+            finish()
         }
     }
 
-    /**
-     * Validate user inputs before proceeding
-     */
     private fun validateInputs(): Boolean {
         val code = codeInput.text.toString().trim()
 
-        // Check if code field is empty
         if (TextUtils.isEmpty(code)) {
-            codeInputLayout.error = "Please enter an event code"
+            codeInputLayout.error = "Please enter an event ID"
             codeInput.requestFocus()
             return false
         }
 
-        // Validate code format (example: must be at least 4 characters)
-        if (code.length < 4) {
-            codeInputLayout.error = "Code must be at least 4 characters"
-            codeInput.requestFocus()
-            return false
-        }
-
-        // Clear any previous errors
         codeInputLayout.error = null
         return true
     }
 
-    /**
-     * Log attendance record to Firebase
-     */
-    private fun logAttendanceToFirebase(eventCode: String) {
-        try {
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
-            if (userId != null) {
-                val database = FirebaseDatabase.getInstance().reference
-                val timestamp = System.currentTimeMillis()
-
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                val formattedDate = dateFormat.format(Date(timestamp))
-
-                val attendanceData = hashMapOf(
-                    "eventCode" to eventCode,
-                    "timestamp" to timestamp,
-                    "date" to formattedDate,
-                    "method" to "manual",
-                    "userId" to userId
-                )
-
-                database.child("eventAttendance").child(userId).push().setValue(attendanceData)
+    private fun checkIfAlreadyTimedIn(eventId: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("attendanceRecords")
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("eventId", eventId)
+            .whereEqualTo("type", "event_time_in")
+            .get()
+            .addOnSuccessListener { documents ->
+                if (!documents.isEmpty) {
+                    showErrorDialog("You have already timed in for this event.")
+                } else {
+                    logAttendanceToFirestore(eventId)
+                }
             }
-        } catch (e: Exception) {
-            // Silent failure - we're logging attendance as a best-effort operation
-        }
+            .addOnFailureListener {
+                showErrorDialog("Failed to check for duplicates: ${it.message}")
+            }
     }
 
-    /**
-     * Show success dialog after verification
-     */
+    private fun logAttendanceToFirestore(eventId: String) {
+        val db = FirebaseFirestore.getInstance()
+        val timestamp = System.currentTimeMillis()
+        val formattedDate =
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+
+        val attendanceData = hashMapOf(
+            "userId" to userId,
+            "firstName" to userFirstName,
+            "email" to userEmail,
+            "eventId" to eventId,
+            "eventName" to eventId,
+            "timestamp" to formattedDate,
+            "selfieUrl" to null,
+            "type" to "event_time_in",
+            "hasTimedOut" to false
+        )
+
+        db.collection("attendanceRecords")
+            .add(attendanceData)
+            .addOnSuccessListener {
+                showSuccessDialog()
+            }
+            .addOnFailureListener {
+                showErrorDialog("Failed to save attendance: ${it.message}")
+            }
+    }
+
     private fun showSuccessDialog() {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -176,17 +186,13 @@ class TimeInEventManualActivity : AppCompatActivity() {
         val closeButton = dialog.findViewById<Button>(R.id.popup_close_button)
         closeButton.setOnClickListener {
             dialog.dismiss()
-            finish() // Return to main activity after success
+            finish()
         }
 
         dialog.show()
     }
 
-    /**
-     * Show error dialog for invalid code
-     */
     private fun showErrorDialog(errorMessage: String) {
-        // Re-enable button
         verifyButton.isEnabled = true
         verifyButton.text = "Verify Code"
 

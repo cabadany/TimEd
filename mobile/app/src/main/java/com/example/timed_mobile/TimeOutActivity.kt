@@ -1,6 +1,7 @@
 package com.example.timed_mobile
 
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -18,13 +19,21 @@ import java.util.UUID
 
 class TimeOutActivity : AppCompatActivity() {
 
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_out_page)
 
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
+
         findViewById<Button>(R.id.btntime_out).setOnClickListener {
-            showTimeOutSuccessDialog()
             logTimeOutToFirebase()
+            showTimeOutSuccessDialog()
         }
     }
 
@@ -55,18 +64,19 @@ class TimeOutActivity : AppCompatActivity() {
     }
 
     private fun logTimeOutToFirebase() {
-        val authUid = FirebaseAuth.getInstance().currentUser?.uid
-
-        if (authUid == null) {
-            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+        if (userId == null) {
+            Toast.makeText(this, "User ID missing", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(authUid)
+        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId!!)
 
         val log = mapOf(
             "timestamp" to System.currentTimeMillis(),
-            "type" to "TimeOut"
+            "type" to "TimeOut",
+            "email" to userEmail,
+            "firstName" to userFirstName,
+            "userId" to userId
         )
 
         dbRef.push().setValue(log).addOnSuccessListener {
@@ -77,9 +87,9 @@ class TimeOutActivity : AppCompatActivity() {
     }
 
     private fun uploadImageToFirebase(uri: Uri) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val uid = userId ?: return
         val filename = UUID.randomUUID().toString()
-        val storageRef = FirebaseStorage.getInstance().getReference("uploads/$userId/$filename.jpg")
+        val storageRef = FirebaseStorage.getInstance().getReference("uploads/$uid/$filename.jpg")
 
         storageRef.putFile(uri).addOnSuccessListener {
             Toast.makeText(this, "Photo uploaded", Toast.LENGTH_SHORT).show()

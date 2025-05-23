@@ -2,6 +2,9 @@
     <string name="app_name">TimEd-Mobile</string>
     <string name="home_page">Home Page</string>
     <string name="login_page">Login Page</string>
+    <string name="new_user_welcome_page">New User Welcome Page</string>
+    <string name="new_user_feature_page">New User Feature Page</string>
+    <string name="new_user_final_step_page">New User Final Page</string>
     <string name="time_in_page">Time-In Page</string>
     <string name="time_in_event_page">Time-In QR Event Page</string>
     <string name="time_in_manual_event_page">Time-In Manual Code QR Event Page</string>
@@ -15,6 +18,7 @@
     <string name="time_out_capture">Time Out Capture</string>
     <string name="qr_event_capture">QR Event Capture</string>
     <string name="time_out_page">Time Out</string>
+    <string name="welcome_icon_description">Welcome Icon</string>
 
     <string name="selected_date_format">Selected Date: %1$d/%2$d/%3$d</string>
 

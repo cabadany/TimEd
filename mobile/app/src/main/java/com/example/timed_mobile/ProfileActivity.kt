@@ -14,7 +14,6 @@ import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import de.hdodenhof.circleimageview.CircleImageView
 
@@ -82,47 +81,83 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun loadUserProfile() {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser == null) {
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
+
+        if (userId.isNullOrEmpty()) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val currentUserId = currentUser.uid
-        Log.d("FIREBASE_UID", "Logged-in UID: $currentUserId")
-
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("users")
-            .document(currentUserId)
+            .document(userId)
             .get()
             .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val firstName = document.getString("firstName") ?: ""
-                    val lastName = document.getString("lastName") ?: ""
-                    val department = document.getString("department") ?: "N/A"
-                    val email = document.getString("email") ?: "No email"
-                    val profilePhotoUrl = document.getString("profileImageUrl")
-
-                    teacherName.text = "$firstName $lastName"
-                    teacherId.text = department
-                    profileEmail.text = email
-                    profileDepartment.text = department
-
-                    if (!profilePhotoUrl.isNullOrEmpty()) {
-                        Glide.with(this)
-                            .load(profilePhotoUrl)
-                            .placeholder(R.drawable.profile_placeholder)
-                            .into(profileImage)
-                    } else {
-                        profileImage.setImageResource(R.drawable.profile_placeholder)
-                    }
-                } else {
-                    Log.e("FIRESTORE", "No profile found for UID: $currentUserId")
+                if (!document.exists()) {
                     Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
+
+                val firstName = document.getString("firstName") ?: ""
+                val lastName = document.getString("lastName") ?: ""
+                val departmentMap = document.get("department")
+                val departmentName = if (departmentMap is Map<*, *>) departmentMap["name"].toString() else "N/A"
+                val idNumber = document.getString("schoolId") ?: "N/A"
+                val email = document.getString("email") ?: "No email"
+                val profilePictureUrl = document.getString("profilePictureUrl")
+
+                teacherName.text = "$firstName $lastName"
+                teacherId.text = idNumber
+                profileEmail.text = email
+                profileDepartment.text = departmentName
+
+                val timeLogsRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                    .getReference("timeLogs").child(userId)
+
+                timeLogsRef.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                        override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                            var timeInImageUrl: String? = null
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                                val todayStart = java.util.Calendar.getInstance().apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    set(java.util.Calendar.MINUTE, 0)
+                                    set(java.util.Calendar.SECOND, 0)
+                                    set(java.util.Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    timeInImageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    break
+                                }
+                            }
+
+                            val imageToLoad = when {
+                                !timeInImageUrl.isNullOrEmpty() -> timeInImageUrl
+                                !profilePictureUrl.isNullOrEmpty() -> profilePictureUrl
+                                else -> null
+                            }
+
+                            if (!imageToLoad.isNullOrEmpty()) {
+                                Glide.with(this@ProfileActivity)
+                                    .load(imageToLoad)
+                                    .placeholder(R.drawable.profile_placeholder)
+                                    .into(profileImage)
+                            } else {
+                                profileImage.setImageResource(R.drawable.profile_placeholder)
+                            }
+                        }
+
+                        override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                            profileImage.setImageResource(R.drawable.profile_placeholder)
+                        }
+                    })
             }
             .addOnFailureListener {
-                Log.e("FIRESTORE", "Failed to retrieve profile", it)
                 Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
             }
     }
@@ -174,7 +209,7 @@ class ProfileActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener { dialog.dismiss() }
         logoutButton.setOnClickListener {
-            FirebaseAuth.getInstance().signOut()
+            getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).edit().clear().apply()
             Toast.makeText(this, "Successfully logged out", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
             val intent = Intent(this, LoginActivity::class.java)

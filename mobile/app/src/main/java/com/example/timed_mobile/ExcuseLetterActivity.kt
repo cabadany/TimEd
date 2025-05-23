@@ -29,6 +29,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
     private lateinit var detailsInput: EditText
     private lateinit var submitButton: Button
     private lateinit var backButton: ImageView
+    private lateinit var daysAbsentInput: EditText
 
     private var selectedFileUri: Uri? = null
     private var userId: String? = null
@@ -81,6 +82,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
         detailsInput = findViewById(R.id.edit_text_details)
         submitButton = findViewById(R.id.btn_submit_excuse)
         backButton = findViewById(R.id.icon_back_button)
+        daysAbsentInput = findViewById(R.id.edit_text_days_absent)
 
         backButton.setOnClickListener {
             (it as? ImageView)?.drawable?.let { drawable ->
@@ -132,8 +134,9 @@ class ExcuseLetterActivity : AppCompatActivity() {
         val date = datePicker.text.toString()
         val reason = reasonSpinner.selectedItem.toString()
         val details = detailsInput.text.toString().trim()
+        val daysAbsent = daysAbsentInput.text.toString().trim()
 
-        if (date == "Select date" || details.isBlank()) {
+        if (date == "Select date" || details.isBlank() || daysAbsent.isBlank()) {
             Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show()
             return
         }
@@ -164,9 +167,9 @@ class ExcuseLetterActivity : AppCompatActivity() {
                         Toast.makeText(this@ExcuseLetterActivity, "You’ve already submitted for this date.", Toast.LENGTH_SHORT).show()
                     } else {
                         if (selectedFileUri != null) {
-                            uploadFileToFirebase(date, reason, details, progress)
+                            uploadFileToFirebase(date, reason, details, daysAbsent, progress)
                         } else {
-                            saveExcuseToRealtimeDB(date, reason, details, null, progress)
+                            saveExcuseToRealtimeDB(date, reason, details, daysAbsent, null, progress)
                         }
                     }
                 }
@@ -179,9 +182,9 @@ class ExcuseLetterActivity : AppCompatActivity() {
             })
     }
 
-    private fun uploadFileToFirebase(date: String, reason: String, details: String, progress: ProgressDialog) {
+    private fun uploadFileToFirebase(date: String, reason: String, details: String, daysAbsent: String, progress: ProgressDialog) {
         val filename = UUID.randomUUID().toString()
-        val storageRef = FirebaseStorage.getInstance().reference.child("excuse_documents/$filename")
+        val storageRef = FirebaseStorage.getInstance().reference.child("excuse_documents/$userId/$filename")
 
         selectedFileUri?.let { uri ->
             storageRef.putFile(uri)
@@ -190,7 +193,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
                     storageRef.downloadUrl
                 }
                 .addOnSuccessListener { downloadUri ->
-                    saveExcuseToRealtimeDB(date, reason, details, downloadUri.toString(), progress)
+                    saveExcuseToRealtimeDB(date, reason, details, daysAbsent, downloadUri.toString(), progress)
                 }
                 .addOnFailureListener {
                     progress.dismiss()
@@ -199,7 +202,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveExcuseToRealtimeDB(date: String, reason: String, details: String, fileUrl: String?, progress: ProgressDialog) {
+    private fun saveExcuseToRealtimeDB(date: String, reason: String, details: String, daysAbsent: String, fileUrl: String?, progress: ProgressDialog) {
         val excuse = mapOf(
             "userId" to userId,
             "email" to userEmail,
@@ -209,6 +212,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
             "date" to date,
             "reason" to reason,
             "details" to details,
+            "daysAbsent" to daysAbsent,
             "attachmentUrl" to (fileUrl ?: ""),
             "status" to "Pending",
             "submittedAt" to System.currentTimeMillis()
