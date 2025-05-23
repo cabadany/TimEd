@@ -172,8 +172,19 @@ class HomeActivity : AppCompatActivity() {
         idNumber = sharedPrefs.getString(LoginActivity.KEY_ID_NUMBER, "N/A")
         department = sharedPrefs.getString(LoginActivity.KEY_DEPARTMENT, "N/A")
 
-        greetingName.text = "Hi, $userFirstName"
-        greetingDetails.text = "$idNumber • $department"
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
+        usersRef.get().addOnSuccessListener { doc ->
+            val fullName = userFirstName ?: "User"
+            val deptObj = doc.get("department")
+            val abbreviation = if (deptObj is Map<*, *>) {
+                deptObj["abbreviation"]?.toString() ?: "N/A"
+            } else {
+                "N/A"
+            }
+
+            greetingName.text = "Hi, $fullName"
+            greetingDetails.text = "$idNumber • $abbreviation"
+        }
 
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
@@ -200,21 +211,79 @@ class HomeActivity : AppCompatActivity() {
         loadAndStoreEvents()
     }
 
+    private fun hasTimedInToday(callback: (Boolean) -> Unit) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return callback(false)
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            callback(true)
+                            return
+                        }
+                    }
+                    callback(false)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false)
+                }
+            })
+    }
 
     private fun showStatusConfirmationDialog(selectedStatus: String) {
+        if (selectedStatus == "On Duty") {
+            hasTimedInToday { alreadyTimedIn ->
+                if (!alreadyTimedIn) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Time-In Required")
+                        .setMessage("You haven't timed in yet. Do you want to time in now?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            val intent = Intent(this, TimeInActivity::class.java).apply {
+                                putExtra("userId", userId)
+                                putExtra("email", userEmail ?: "")
+                                putExtra("firstName", userFirstName ?: "User")
+                            }
+                            timeInLauncher.launch(intent)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else {
+                    confirmStatusChange(selectedStatus)
+                }
+            }
+        } else {
+            confirmStatusChange(selectedStatus)
+        }
+    }
+
+    private fun confirmStatusChange(status: String) {
         AlertDialog.Builder(this)
             .setTitle("Confirm Status Change")
-            .setMessage("Are you sure you want to set your status to '$selectedStatus'?")
+            .setMessage("Are you sure you want to set your status to '$status'?")
             .setPositiveButton("Yes") { _, _ ->
-                updateUserStatus(selectedStatus)
-                updateTimeLogsStatus(selectedStatus)
-                if (selectedStatus == "Off Duty") {
+                updateUserStatus(status)
+                updateTimeLogsStatus(status)
+                if (status == "Off Duty") {
                     handleTimeOutOnOffDuty()
                 }
             }
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
-                loadUserStatus() // reset to last known value
+                loadUserStatus()
             }
             .show()
     }
@@ -364,41 +433,69 @@ class HomeActivity : AppCompatActivity() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+        usersRef.get().addOnSuccessListener { document ->
+            val userStatus = document.getString("status") ?: "Off Duty"
+            val profileUrl = document.getString("profilePictureUrl")
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+            if (userStatus == "On Duty") {
+                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                ref.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
 
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                            if (!imageUrl.isNullOrEmpty()) {
+                                val todayStart = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    if (!imageUrl.isNullOrEmpty()) {
+                                        Glide.with(this@HomeActivity)
+                                            .load(imageUrl)
+                                            .circleCrop()
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                            .skipMemoryCache(true)
+                                            .into(profileImageView)
+                                        return
+                                    }
+                                }
+                            }
+                            // fallback to profile picture if no time-in image found
+                            if (!profileUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
-                                    .load(imageUrl)
+                                    .load(profileUrl)
                                     .circleCrop()
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                    .skipMemoryCache(true)
                                     .into(profileImageView)
-                                return
+                            } else {
+                                profileImageView.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                    }
-                    profileImageView.setImageResource(R.drawable.ic_profile)
-                }
 
-                override fun onCancelled(error: DatabaseError) {
+                        override fun onCancelled(error: DatabaseError) {
+                            profileImageView.setImageResource(R.drawable.ic_profile)
+                        }
+                    })
+            } else {
+                // User is Off Duty – show profilePictureUrl
+                if (!profileUrl.isNullOrEmpty()) {
+                    Glide.with(this@HomeActivity)
+                        .load(profileUrl)
+                        .circleCrop()
+                        .into(profileImageView)
+                } else {
                     profileImageView.setImageResource(R.drawable.ic_profile)
                 }
-            })
+            }
+        }.addOnFailureListener {
+            profileImageView.setImageResource(R.drawable.ic_profile)
+        }
     }
 
     private fun updateSidebarProfileImage() {
@@ -408,41 +505,70 @@ class HomeActivity : AppCompatActivity() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+        usersRef.get().addOnSuccessListener { document ->
+            val userStatus = document.getString("status") ?: "Off Duty"
+            val profileUrl = document.getString("profilePictureUrl")
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+            if (userStatus == "On Duty") {
+                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                ref.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
 
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                            if (!imageUrl.isNullOrEmpty()) {
+                                val todayStart = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    if (!imageUrl.isNullOrEmpty()) {
+                                        Glide.with(this@HomeActivity)
+                                            .load(imageUrl)
+                                            .circleCrop()
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                            .skipMemoryCache(true)
+                                            .into(sidebarImage)
+                                        return
+                                    }
+                                }
+                            }
+
+                            // fallback to profilePictureUrl
+                            if (!profileUrl.isNullOrEmpty()) {
                                 Glide.with(this@HomeActivity)
-                                    .load(imageUrl)
+                                    .load(profileUrl)
                                     .circleCrop()
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                    .skipMemoryCache(true)
                                     .into(sidebarImage)
-                                return
+                            } else {
+                                sidebarImage.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                    }
-                    sidebarImage.setImageResource(R.drawable.ic_profile)
-                }
 
-                override fun onCancelled(error: DatabaseError) {
+                        override fun onCancelled(error: DatabaseError) {
+                            sidebarImage.setImageResource(R.drawable.ic_profile)
+                        }
+                    })
+            } else {
+                // Off Duty - use profilePictureUrl
+                if (!profileUrl.isNullOrEmpty()) {
+                    Glide.with(this@HomeActivity)
+                        .load(profileUrl)
+                        .circleCrop()
+                        .into(sidebarImage)
+                } else {
                     sidebarImage.setImageResource(R.drawable.ic_profile)
                 }
-            })
+            }
+        }.addOnFailureListener {
+            sidebarImage.setImageResource(R.drawable.ic_profile)
+        }
     }
 
     private fun setupNavigationDrawer() {

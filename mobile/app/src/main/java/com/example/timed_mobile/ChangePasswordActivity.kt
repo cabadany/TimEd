@@ -77,24 +77,63 @@ class ChangePasswordActivity : AppCompatActivity() {
             .document(userId!!)
             .get()
             .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val firstName = document.getString("firstName") ?: ""
-                    val lastName = document.getString("lastName") ?: ""
-                    val schoolId = document.getString("schoolId") ?: ""
-                    val profilePhotoUrl = document.getString("profileImageUrl")
-
-                    teacherName.text = "$firstName $lastName"
-                    teacherId.text = schoolId
-
-                    if (!profilePhotoUrl.isNullOrEmpty()) {
-                        Glide.with(this)
-                            .load(profilePhotoUrl)
-                            .placeholder(R.drawable.profile_placeholder)
-                            .into(profileImage)
-                    } else {
-                        profileImage.setImageResource(R.drawable.profile_placeholder)
-                    }
+                if (!document.exists()) {
+                    Toast.makeText(this, "User profile not found", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
+
+                val firstName = document.getString("firstName") ?: ""
+                val lastName = document.getString("lastName") ?: ""
+                val schoolId = document.getString("schoolId") ?: ""
+                val profilePictureUrl = document.getString("profilePictureUrl")
+
+                teacherName.text = "$firstName $lastName"
+                teacherId.text = schoolId
+
+                val timeLogsRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                    .getReference("timeLogs").child(userId!!)
+
+                timeLogsRef.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                        override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                            var timeInImageUrl: String? = null
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                                val todayStart = java.util.Calendar.getInstance().apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    set(java.util.Calendar.MINUTE, 0)
+                                    set(java.util.Calendar.SECOND, 0)
+                                    set(java.util.Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    timeInImageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    break
+                                }
+                            }
+
+                            val imageToLoad = when {
+                                !timeInImageUrl.isNullOrEmpty() -> timeInImageUrl
+                                !profilePictureUrl.isNullOrEmpty() -> profilePictureUrl
+                                else -> null
+                            }
+
+                            if (!imageToLoad.isNullOrEmpty()) {
+                                Glide.with(this@ChangePasswordActivity)
+                                    .load(imageToLoad)
+                                    .placeholder(R.drawable.profile_placeholder)
+                                    .into(profileImage)
+                            } else {
+                                profileImage.setImageResource(R.drawable.profile_placeholder)
+                            }
+                        }
+
+                        override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                            profileImage.setImageResource(R.drawable.profile_placeholder)
+                        }
+                    })
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to load user info", Toast.LENGTH_SHORT).show()
