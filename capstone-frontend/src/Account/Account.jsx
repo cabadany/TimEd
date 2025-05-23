@@ -609,18 +609,9 @@ export default function AccountPage() {
   const fetchStatusCounts = async () => {
     setStatusLoading(true);
     try {
-      // Use the same professors data that's already loaded for Faculty Accounts
-      // This ensures the count matches exactly with what's shown in the Faculty Accounts tab
+      // Use the same professors data that's already loaded
       const totalFaculty = professors.length;
       
-      console.log("Using existing professors data:");
-      console.log("Total professors count:", totalFaculty);
-      console.log("Professors list:", professors.map(u => ({ 
-        name: `${u.firstName} ${u.lastName}`, 
-        role: u.role || 'undefined',
-        email: u.email 
-      })));
-
       // Get status from Firebase Realtime Database
       const timeLogs = dbRef(database, 'timeLogs');
       const statusSnapshot = await get(timeLogs);
@@ -629,70 +620,141 @@ export default function AccountPage() {
       let onBreakCount = 0;
       let offDutyCount = 0;
       
-      // Current date in milliseconds (start of day)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTimestamp = today.getTime();
-      
-      console.log("Fetching status data for timestamp ≥", todayTimestamp);
-      
       // Process data to count statuses
       if (statusSnapshot.exists()) {
         const latestStatusByUser = new Map();
         
-        // For each user, find their latest status entry
+        // For each user node in timeLogs
         statusSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
-          const userData = userSnap.val();
+          const userLogs = userSnap.val();
           
-          // Process each time log entry for the user
-          Object.entries(userData).forEach(([entryId, entry]) => {
-            if (!entry.timestamp) {
-              console.log("Entry missing timestamp:", entry);
-              return;
-            }
+          // Skip if this is just the userId field
+          if (typeof userLogs === 'string') return;
+          
+          // Get all entries for this user
+          const entries = Object.entries(userLogs)
+            .filter(([_, entry]) => typeof entry === 'object' && entry.timestamp)
+            .map(([logId, entry]) => ({
+              ...entry,
+              logId,
+              timestamp: typeof entry.timestamp === 'string' ? parseInt(entry.timestamp) : entry.timestamp
+            }));
+          
+          // Sort entries by timestamp (newest first)
+          entries.sort((a, b) => b.timestamp - a.timestamp);
+          
+          // Get the latest entry
+          if (entries.length > 0) {
+            const latestEntry = entries[0];
+            latestStatusByUser.set(userId, latestEntry);
             
-            // Convert timestamp to number if it's a string
-            const entryTimestamp = typeof entry.timestamp === 'string' 
-              ? parseInt(entry.timestamp) 
-              : entry.timestamp;
-              
-            // Only consider entries from today
-            if (entryTimestamp >= todayTimestamp) {
-              // If we don't have an entry for this user yet, or this one is newer
-              if (!latestStatusByUser.has(entry.userId) || 
-                  entryTimestamp > latestStatusByUser.get(entry.userId).timestamp) {
-                latestStatusByUser.set(entry.userId, {
-                  ...entry,
-                  timestamp: entryTimestamp
-                });
-              }
-            }
-          });
+            console.log(`Latest entry for user ${userId}:`, {
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              status: latestEntry.status,
+              type: latestEntry.type,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          }
         });
         
-        console.log("Latest status entries:", latestStatusByUser.size);
-        
         // Count the latest status for each user
-        latestStatusByUser.forEach(entry => {
-          if (entry.type === 'TimeIn') {
-            if (entry.status === 'On Break') {
-              onBreakCount++;
-            } else {
-              onDutyCount++;
-            }
-          } else if (entry.type === 'TimeOut') {
+        latestStatusByUser.forEach((latestEntry, userId) => {
+          // Explicitly check status field first
+          if (latestEntry.status === 'On Break') {
+            onBreakCount++;
+            console.log(`Counting as On Break:`, {
+              userId,
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              status: latestEntry.status,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          } else if (latestEntry.status === 'On Duty') {
+            onDutyCount++;
+            console.log(`Counting as On Duty:`, {
+              userId,
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              status: latestEntry.status,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          } else if (latestEntry.status === 'Off Duty' || latestEntry.type === 'TimeOut') {
             offDutyCount++;
+            console.log(`Counting as Off Duty:`, {
+              userId,
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              status: latestEntry.status,
+              type: latestEntry.type,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          } else if (latestEntry.type === 'TimeIn') {
+            // If no explicit status but TimeIn, count as On Duty
+            onDutyCount++;
+            console.log(`Counting as On Duty (TimeIn):`, {
+              userId,
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              type: latestEntry.type,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          } else {
+            // Default case
+            offDutyCount++;
+            console.log(`Counting as Off Duty (default):`, {
+              userId,
+              name: latestEntry.firstName,
+              email: latestEntry.email,
+              status: latestEntry.status,
+              type: latestEntry.type,
+              timestamp: new Date(latestEntry.timestamp).toLocaleString()
+            });
+          }
+        });
+
+        // Log final detailed counts
+        console.log('Final Status Counts:', {
+          onBreak: {
+            count: onBreakCount,
+            users: Array.from(latestStatusByUser.entries())
+              .filter(([_, entry]) => entry.status === 'On Break')
+              .map(([userId, entry]) => ({
+                userId,
+                name: entry.firstName,
+                email: entry.email,
+                timestamp: new Date(entry.timestamp).toLocaleString()
+              }))
+          },
+          onDuty: {
+            count: onDutyCount,
+            users: Array.from(latestStatusByUser.entries())
+              .filter(([_, entry]) => 
+                entry.status === 'On Duty' || 
+                (entry.type === 'TimeIn' && entry.status !== 'On Break' && entry.status !== 'Off Duty'))
+              .map(([userId, entry]) => ({
+                userId,
+                name: entry.firstName,
+                email: entry.email,
+                timestamp: new Date(entry.timestamp).toLocaleString()
+              }))
+          },
+          offDuty: {
+            count: offDutyCount,
+            users: Array.from(latestStatusByUser.entries())
+              .filter(([_, entry]) => 
+                entry.status === 'Off Duty' || 
+                (entry.type === 'TimeOut' && entry.status !== 'On Break'))
+              .map(([userId, entry]) => ({
+                userId,
+                name: entry.firstName,
+                email: entry.email,
+                timestamp: new Date(entry.timestamp).toLocaleString()
+              }))
           }
         });
       }
-
-      console.log("Status counts:", {
-        onDuty: onDutyCount,
-        onBreak: onBreakCount,
-        offDuty: offDutyCount,
-        total: totalFaculty
-      });
 
       // Update state with counts
       setStatusCounts({
@@ -701,6 +763,7 @@ export default function AccountPage() {
         offDuty: offDutyCount,
         total: totalFaculty
       });
+
     } catch (err) {
       console.error('Error fetching status counts:', err);
       showSnackbar('Failed to load status counts', 'error');
@@ -878,66 +941,64 @@ export default function AccountPage() {
       endOfToday.setHours(23, 59, 59, 999);
       const endOfTodayTimestamp = endOfToday.getTime();
       
-      console.log("Fetching timeline data for today only:", {
-        start: todayTimestamp,
-        end: endOfTodayTimestamp,
-        startDate: new Date(todayTimestamp).toLocaleString(),
-        endDate: new Date(endOfTodayTimestamp).toLocaleString()
-      });
-      
       if (timelineSnapshot.exists()) {
         // Process timeline data from all users
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
-          const userData = userSnap.val();
+          const userLogs = userSnap.val();
           
-          console.log(`Processing user ${userId}:`, userData);
+          // Skip if this is just the userId field
+          if (typeof userLogs === 'string') return;
           
           // Process each time log entry for this user
-          Object.entries(userData).forEach(([entryId, entry]) => {
-            if (!entry.timestamp) {
-              console.log("Timeline entry missing timestamp:", entry);
-              return;
-            }
+          Object.entries(userLogs).forEach(([logId, entry]) => {
+            if (!entry || !entry.timestamp) return;
             
             // Convert timestamp to number if it's a string
-            let entryTimestamp = entry.timestamp;
-            if (typeof entry.timestamp === 'string') {
-              entryTimestamp = parseInt(entry.timestamp);
+            const historyEntryTimestamp = typeof entry.timestamp === 'string' 
+              ? parseInt(entry.timestamp) 
+              : entry.timestamp;
+            
+            // Get date string for grouping (YYYY-MM-DD)
+            const historyEntryDate = new Date(historyEntryTimestamp);
+            const dateKey = historyEntryDate.toISOString().split('T')[0];
+            const displayDate = historyEntryDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            let status = entry.status || '';
+            let description = '';
+            
+            if (entry.type === 'TimeIn') {
+              description = status === 'On Duty' ? 'Started shift' : 'Timed in';
+            } else if (entry.type === 'TimeOut') {
+              if (status === 'On Break') {
+                description = 'Started break';
+              } else if (status === 'Off Duty') {
+                description = 'Ended shift';
+              } else {
+                description = 'Timed out';
+              }
             }
             
-            console.log(`Entry ${entryId} timestamp:`, {
-              original: entry.timestamp,
-              converted: entryTimestamp,
-              date: new Date(entryTimestamp).toLocaleString(),
-              isToday: entryTimestamp >= todayTimestamp && entryTimestamp <= endOfTodayTimestamp
-            });
-                
-            // Only include entries from today
-            if (entryTimestamp >= todayTimestamp && entryTimestamp <= endOfTodayTimestamp) {
-              let status;
-              if (entry.type === 'TimeIn') {
-                status = entry.status === 'On Break' ? 'Break (30min)' : 'Started shift';
-              } else if (entry.type === 'TimeOut') {
-                status = 'Off Duty';
-              } else {
-                status = entry.type || 'Unknown';
-              }
-              
-              const timelineEntry = {
-                id: `${userId}_${entryId}`,
-                name: entry.firstName || 'Unknown User',
-                status: status,
-                time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
-                  hour: '2-digit', minute: '2-digit'
-                }),
-                timestamp: entryTimestamp,
-                userId: entry.userId || userId
-              };
-              
-              timelineData.push(timelineEntry);
-              console.log("Added timeline entry:", timelineEntry);
-            }
+            const timelineEntry = {
+              id: `${userId}_${logId}`,
+              name: entry.firstName || 'Unknown User',
+              status: status,
+              description: description,
+              time: new Date(historyEntryTimestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit', 
+                minute: '2-digit'
+              }),
+              timestamp: historyEntryTimestamp,
+              userId: entry.userId || userId,
+              type: entry.type
+            };
+            
+            timelineData.push(timelineEntry);
           });
         });
       }
@@ -945,15 +1006,111 @@ export default function AccountPage() {
       // Sort timeline by timestamp (ascending - oldest first)
       timelineData.sort((a, b) => a.timestamp - b.timestamp);
       
-      console.log("Final timeline data entries for today:", timelineData.length);
-      console.log("Timeline entries:", timelineData);
-      
       setTodayTimeline(timelineData);
     } catch (err) {
       console.error('Error fetching timeline data:', err);
       showSnackbar('Failed to load timeline data', 'error');
     } finally {
       setTimelineLoading(false);
+    }
+  };
+
+  // Fetch attendance history
+  const fetchAttendanceHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      // Get timeline data from Firebase
+      const timeLogs = dbRef(database, 'timeLogs');
+      const timelineSnapshot = await get(timeLogs);
+      
+      const historyByDate = new Map();
+      
+      if (timelineSnapshot.exists()) {
+        // Process timeline data from all users
+        timelineSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userLogs = userSnap.val();
+          
+          // Skip if this is just the userId field
+          if (typeof userLogs === 'string') return;
+          
+          // Process each time log entry for this user
+          Object.entries(userLogs).forEach(([logId, entry]) => {
+            if (!entry || !entry.timestamp) return;
+            
+            // Convert timestamp to number if it's a string
+            const historyEntryTimestamp = typeof entry.timestamp === 'string' 
+              ? parseInt(entry.timestamp) 
+              : entry.timestamp;
+            
+            // Get date string for grouping (YYYY-MM-DD)
+            const historyEntryDate = new Date(historyEntryTimestamp);
+            const dateKey = historyEntryDate.toISOString().split('T')[0];
+            const displayDate = historyEntryDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            let status = entry.status || '';
+            let description = '';
+            
+            if (entry.type === 'TimeIn') {
+              description = status === 'On Duty' ? 'Started shift' : 'Timed in';
+            } else if (entry.type === 'TimeOut') {
+              if (status === 'On Break') {
+                description = 'Started break';
+              } else if (status === 'Off Duty') {
+                description = 'Ended shift';
+              } else {
+                description = 'Timed out';
+              }
+            }
+            
+            const timelineEntry = {
+              id: `${userId}_${logId}`,
+              name: entry.firstName || 'Unknown User',
+              status: status,
+              description: description,
+              time: new Date(historyEntryTimestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              timestamp: historyEntryTimestamp,
+              userId: entry.userId || userId,
+              type: entry.type,
+              email: entry.email
+            };
+            
+            if (!historyByDate.has(dateKey)) {
+              historyByDate.set(dateKey, {
+                dateKey,
+                displayDate,
+                entries: []
+              });
+            }
+            
+            historyByDate.get(dateKey).entries.push(timelineEntry);
+          });
+        });
+      }
+      
+      // Convert map to array and sort by date (newest first)
+      const historyArray = Array.from(historyByDate.values())
+        .map(dayData => {
+          // Sort entries within each day by timestamp (ascending)
+          dayData.entries.sort((a, b) => a.timestamp - b.timestamp);
+          return dayData;
+        })
+        .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+      
+      setAttendanceHistory(historyArray);
+    } catch (err) {
+      console.error('Error fetching attendance history:', err);
+      showSnackbar('Failed to load attendance history', 'error');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -1023,92 +1180,6 @@ export default function AccountPage() {
     fetchStatusCounts();
     fetchTodayTimeline();
     showSnackbar('Status data refreshed', 'success');
-  };
-
-  // Fetch attendance history organized by date
-  const fetchAttendanceHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      // Get timeline data from Firebase
-      const timeLogs = dbRef(database, 'timeLogs');
-      const timelineSnapshot = await get(timeLogs);
-      
-      const historyByDate = new Map();
-      
-      if (timelineSnapshot.exists()) {
-        // Process timeline data from all users
-        timelineSnapshot.forEach(userSnap => {
-          const userId = userSnap.key;
-          const userData = userSnap.val();
-          
-          // Process each time log entry for this user
-          Object.entries(userData).forEach(([entryId, entry]) => {
-            if (!entry.timestamp) return;
-            
-            // Convert timestamp to number if it's a string
-            let entryTimestamp = entry.timestamp;
-            if (typeof entry.timestamp === 'string') {
-              entryTimestamp = parseInt(entry.timestamp);
-            }
-            
-            // Get date string for grouping (YYYY-MM-DD)
-            const entryDate = new Date(entryTimestamp);
-            const dateKey = entryDate.toISOString().split('T')[0];
-            const displayDate = entryDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            });
-            
-            let status;
-            if (entry.type === 'TimeIn') {
-              status = entry.status === 'On Break' ? 'Break (30min)' : 'Started shift';
-            } else if (entry.type === 'TimeOut') {
-              status = 'Off Duty';
-            } else {
-              status = entry.type || 'Unknown';
-            }
-            
-            const timelineEntry = {
-              id: `${userId}_${entryId}`,
-              name: entry.firstName || 'Unknown User',
-              status: status,
-              time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
-                hour: '2-digit', minute: '2-digit'
-              }),
-              timestamp: entryTimestamp,
-              userId: entry.userId || userId
-            };
-            
-            if (!historyByDate.has(dateKey)) {
-              historyByDate.set(dateKey, {
-                dateKey,
-                displayDate,
-                entries: []
-              });
-            }
-            
-            historyByDate.get(dateKey).entries.push(timelineEntry);
-          });
-        });
-      }
-      
-      // Convert map to array and sort by date (newest first)
-      const historyArray = Array.from(historyByDate.values()).map(dayData => {
-        // Sort entries within each day by timestamp
-        dayData.entries.sort((a, b) => a.timestamp - b.timestamp);
-        return dayData;
-      }).sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
-      
-      console.log("Attendance history:", historyArray);
-      setAttendanceHistory(historyArray);
-    } catch (err) {
-      console.error('Error fetching attendance history:', err);
-      showSnackbar('Failed to load attendance history', 'error');
-    } finally {
-      setHistoryLoading(false);
-    }
   };
 
   // Handle expanding/collapsing day entries
@@ -1572,7 +1643,11 @@ export default function AccountPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)'
+                }
               }}
             >
               <Box sx={{ 
@@ -1582,9 +1657,19 @@ export default function AccountPage() {
                 bgcolor: '#4CAF50', 
                 position: 'absolute',
                 top: 15,
-                left: 15 
+                left: 15,
+                boxShadow: '0 0 10px #4CAF50'
               }} />
-              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '150px',
+                height: '150px',
+                background: 'radial-gradient(circle at top right, rgba(76, 175, 80, 0.2), transparent 70%)',
+                borderRadius: '0 0 0 100%'
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1, fontWeight: 600 }}>
                 On Duty
               </Typography>
               <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
@@ -1595,11 +1680,12 @@ export default function AccountPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
-                mt: 'auto'
+                mt: 'auto',
+                gap: 1
               }}>
-                <AccessTime sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <AccessTime sx={{ fontSize: 18, opacity: 0.7 }} />
                 <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Faculty count
+                  Active faculty members
                 </Typography>
               </Box>
             </Paper>
@@ -1618,7 +1704,11 @@ export default function AccountPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)'
+                }
               }}
             >
               <Box sx={{ 
@@ -1628,9 +1718,19 @@ export default function AccountPage() {
                 bgcolor: '#FF9800', 
                 position: 'absolute',
                 top: 15,
-                left: 15 
+                left: 15,
+                boxShadow: '0 0 10px #FF9800'
               }} />
-              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '150px',
+                height: '150px',
+                background: 'radial-gradient(circle at top right, rgba(255, 152, 0, 0.2), transparent 70%)',
+                borderRadius: '0 0 0 100%'
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1, fontWeight: 600 }}>
                 On Break
               </Typography>
               <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
@@ -1641,11 +1741,12 @@ export default function AccountPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
-                mt: 'auto'
+                mt: 'auto',
+                gap: 1
               }}>
-                <RemoveFromQueue sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <RemoveFromQueue sx={{ fontSize: 18, opacity: 0.7 }} />
                 <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Faculty count
+                  Faculty on break
                 </Typography>
               </Box>
             </Paper>
@@ -1664,7 +1765,11 @@ export default function AccountPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)'
+                }
               }}
             >
               <Box sx={{ 
@@ -1674,9 +1779,19 @@ export default function AccountPage() {
                 bgcolor: '#F44336', 
                 position: 'absolute',
                 top: 15,
-                left: 15 
+                left: 15,
+                boxShadow: '0 0 10px #F44336'
               }} />
-              <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '150px',
+                height: '150px',
+                background: 'radial-gradient(circle at top right, rgba(244, 67, 54, 0.2), transparent 70%)',
+                borderRadius: '0 0 0 100%'
+              }} />
+              <Typography variant="h6" sx={{ mb: 1, mt: 1, fontWeight: 600 }}>
                 Off Duty
               </Typography>
               <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
@@ -1687,11 +1802,12 @@ export default function AccountPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
-                mt: 'auto'
+                mt: 'auto',
+                gap: 1
               }}>
-                <DirectionsWalk sx={{ fontSize: 18, mr: 1, opacity: 0.7 }} />
+                <DirectionsWalk sx={{ fontSize: 18, opacity: 0.7 }} />
                 <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Faculty count
+                  Inactive faculty
                 </Typography>
               </Box>
             </Paper>
@@ -1748,7 +1864,7 @@ export default function AccountPage() {
               borderRadius: 2,
               bgcolor: '#fff',
               border: '1px solid #E2E8F0',
-              minHeight: 200, // Ensure minimum height even when empty
+              minHeight: 200,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: timelineLoading || todayTimeline.length === 0 ? 'center' : 'flex-start',
@@ -1771,9 +1887,9 @@ export default function AccountPage() {
                     <Box sx={{ 
                       position: 'relative',
                       borderLeft: '2px solid',
-                      borderColor: item.status.includes('Started') ? '#4CAF50' : 
-                                item.status.includes('Break') ? '#FF9800' : 
-                                item.status.includes('Resumed') ? '#2196F3' : 
+                      borderColor: item.status === 'On Duty' ? '#4CAF50' : 
+                                item.status === 'On Break' ? '#FF9800' : 
+                                item.status === 'Off Duty' ? '#F44336' : 
                                 '#9E9E9E',
                       pl: 3,
                       pb: index < todayTimeline.length - 1 ? 3 : 0
@@ -1782,16 +1898,22 @@ export default function AccountPage() {
                         width: 10,
                         height: 10,
                         borderRadius: '50%',
-                        bgcolor: item.status.includes('Started') ? '#4CAF50' : 
-                                item.status.includes('Break') ? '#FF9800' : 
-                                item.status.includes('Resumed') ? '#2196F3' : 
+                        bgcolor: item.status === 'On Duty' ? '#4CAF50' : 
+                                item.status === 'On Break' ? '#FF9800' : 
+                                item.status === 'Off Duty' ? '#F44336' : 
                                 '#9E9E9E',
                         position: 'absolute',
                         left: -6,
-                        top: 5
+                        top: 5,
+                        boxShadow: `0 0 10px ${
+                          item.status === 'On Duty' ? '#4CAF50' : 
+                          item.status === 'On Break' ? '#FF9800' : 
+                          item.status === 'Off Duty' ? '#F44336' : 
+                          '#9E9E9E'
+                        }`
                       }} />
                       <Typography variant="body2" fontWeight="600">
-                        {item.status}
+                        {item.description}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {item.name}
@@ -1930,9 +2052,9 @@ export default function AccountPage() {
                             <Box sx={{ 
                               position: 'relative',
                               borderLeft: '2px solid',
-                              borderColor: entry.status.includes('Started') ? '#4CAF50' : 
-                                        entry.status.includes('Break') ? '#FF9800' : 
-                                        entry.status.includes('Resumed') ? '#2196F3' : 
+                              borderColor: entry.status === 'On Duty' ? '#4CAF50' : 
+                                        entry.status === 'On Break' ? '#FF9800' : 
+                                        entry.status === 'Off Duty' ? '#F44336' : 
                                         '#9E9E9E',
                               pl: 3,
                               pb: entryIndex < dayData.entries.length - 1 ? 2 : 0
@@ -1941,9 +2063,9 @@ export default function AccountPage() {
                                 width: 8,
                                 height: 8,
                                 borderRadius: '50%',
-                                bgcolor: entry.status.includes('Started') ? '#4CAF50' : 
-                                        entry.status.includes('Break') ? '#FF9800' : 
-                                        entry.status.includes('Resumed') ? '#2196F3' : 
+                                bgcolor: entry.status === 'On Duty' ? '#4CAF50' : 
+                                        entry.status === 'On Break' ? '#FF9800' : 
+                                        entry.status === 'Off Duty' ? '#F44336' : 
                                         '#9E9E9E',
                                 position: 'absolute',
                                 left: -5,
