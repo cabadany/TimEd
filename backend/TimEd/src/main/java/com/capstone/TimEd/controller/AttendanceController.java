@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.capstone.TimEd.model.Certificate;
 import com.capstone.TimEd.service.AttendanceService;
 import com.capstone.TimEd.service.CertificateService;
 import com.capstone.TimEd.service.EmailService;
@@ -45,18 +44,21 @@ public class AttendanceController {
         this.emailService = emailService;
     }
 
-    @PostMapping("/{eventId}/{userId}")
-    public ResponseEntity<String> markAttendance(
-            @PathVariable String eventId,
-            @PathVariable String userId) {
-        try {
-            System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
-            String result = attendanceService.markAttendance(eventId, userId);
-            System.out.println("Attendance marked successfully: " + result);
 
-            if (!result.contains("Already timed in")) {
-                try {
-                    List<QueryDocumentSnapshot> attendeeDocs = FirestoreClient.getFirestore()
+@PostMapping("/{eventId}/{userId}")
+public ResponseEntity<String> markAttendance(
+        @PathVariable String eventId,
+        @PathVariable String userId) {
+    try {
+        System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
+
+        String result = attendanceService.markAttendance(eventId, userId);
+        System.out.println("Attendance marked result: " + result);
+
+        // Only proceed if the user hasn't already timed in
+        if (!result.contains("Already timed in")) {
+            try {
+                List<QueryDocumentSnapshot> attendeeDocs = FirestoreClient.getFirestore()
                         .collection("events")
                         .document(eventId)
                         .collection("attendees")
@@ -66,48 +68,51 @@ public class AttendanceController {
                         .get()
                         .getDocuments();
 
-                    System.out.println("Fetched " + attendeeDocs.size() + " attendee documents");
+                if (!attendeeDocs.isEmpty()) {
+                    DocumentSnapshot userDoc = attendeeDocs.get(0);
 
-                    if (!attendeeDocs.isEmpty()) {
-                        DocumentSnapshot userDoc = attendeeDocs.get(0);
+                    String email = userDoc.getString("email");
+                    String firstName = userDoc.getString("firstName");
+                    String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
 
-                        Map<String, String> userAttendance = new HashMap<>();
-                        userAttendance.put("userId", userId);
-                        userAttendance.put("timeIn", userDoc.getString("timestamp"));
-                        userAttendance.put("timeOut", "");
-                        userAttendance.put("manualEntry", "false");
-
-                        String facultyEmail = userDoc.getString("email");
-                        String firstName = userDoc.getString("firstName");
-                        String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
-
-                        userAttendance.put("email", facultyEmail);
-                        userAttendance.put("firstName", firstName);
-                        userAttendance.put("lastName", lastName);
-
-                        System.out.println("Generating certificate for: " + firstName + " " + lastName);
-
-                        Certificate certificateTemplate = certificateService.getCertificateByEventId(eventId);
-                        byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-                        emailService.sendCertificateEmail(facultyEmail, eventId, certificatePdf);
-
-                        System.out.println("Certificate email sent to " + facultyEmail);
-                    } else {
-                        System.out.println("No matching attendee document found for userId: " + userId);
+                    if (email == null || email.isEmpty()) {
+                        System.err.println("Email is missing for userId: " + userId);
+                        return ResponseEntity.ok(result + " (Note: Email not found)");
                     }
-                } catch (Exception e) {
-                    System.err.println("Error generating/sending certificate: " + e.getMessage());
-                    e.printStackTrace();
-                    return ResponseEntity.ok(result + " (Note: Certificate generation failed)");
+
+                    Map<String, String> userAttendance = new HashMap<>();
+                    userAttendance.put("userId", userId);
+                    userAttendance.put("email", email);
+                    userAttendance.put("firstName", firstName);
+                    userAttendance.put("lastName", lastName);
+                    userAttendance.put("manualEntry", "false");
+                    userAttendance.put("timeIn", userDoc.getString("timestamp"));
+                    userAttendance.put("timeOut", "");
+
+                    System.out.println("Generating certificate for " + firstName + " " + lastName);
+                    byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
+
+                    System.out.println("Sending certificate to " + email);
+                    emailService.sendCertificateEmail(email, eventId, certificatePdf);
+                    System.out.println("Certificate email successfully sent to " + email);
+                } else {
+                    System.err.println("No attendee record found for userId: " + userId);
+                    return ResponseEntity.ok(result + " (Note: No attendee record found)");
                 }
+            } catch (Exception e) {
+                System.err.println("Error during certificate generation or email sending: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.ok(result + " (Note: Certificate/email failed)");
             }
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            System.err.println("Error marking attendance: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Error marking attendance: " + e.getMessage());
         }
+
+        return ResponseEntity.ok(result);
+    } catch (Exception e) {
+        System.err.println("Error marking attendance: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("Error marking attendance: " + e.getMessage());
     }
+}
 
     @PostMapping("/{eventId}/{userId}/timeout")
     public ResponseEntity<String> markTimeOut(
