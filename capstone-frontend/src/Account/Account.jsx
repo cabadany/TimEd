@@ -5,17 +5,20 @@ import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
   CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
-  Tabs, Tab, Zoom
+  Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
-  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera, ArrowUpward, ArrowDownward
+  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera, ArrowUpward, ArrowDownward,
+  Refresh, PeopleAlt, DateRange, FileDownload, ExpandMore, History
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
-import { storage } from '../firebase/firebase';
+import { storage, database } from '../firebase/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref as dbRef, get, query, orderByChild, limitToLast, onValue } from 'firebase/database';
+import * as XLSX from 'xlsx';
 
 // Base API URL
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -116,17 +119,14 @@ export default function AccountPage() {
   const [statusCounts, setStatusCounts] = useState({
     onDuty: 0,
     onBreak: 0,
-    offDuty: 0
+    offDuty: 0,
+    total: 0
   });
 
   // Faculty timeline data
   const [todayTimeline, setTodayTimeline] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
 
-  // Status reports data
-  const [statusReports, setStatusReports] = useState([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  
   // Professors state
   const [professors, setProfessors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -206,11 +206,26 @@ export default function AccountPage() {
   const [newProfilePicture, setNewProfilePicture] = useState(null);
   const [editProfilePicture, setEditProfilePicture] = useState(null);
 
+  // Loading states for real-time data
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  // Attendance history state
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedDays, setExpandedDays] = useState(new Set());
+
   // Fetch professors and departments on component mount
   useEffect(() => {
     fetchProfessors();
     fetchDepartments();
   }, []);
+
+  // Update status counts when professors data changes (to ensure count is always current)
+  useEffect(() => {
+    if (professors.length > 0 && tabValue === 1) {
+      fetchStatusCounts();
+    }
+  }, [professors.length, tabValue]);
 
   // Fetch professors from API
   const fetchProfessors = async () => {
@@ -573,26 +588,273 @@ export default function AccountPage() {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     if (newValue === 1) {
-      // When switching to Current Status tab, fetch the relevant data
-      fetchStatusCounts();
-      fetchTodayTimeline();
-      fetchStatusReports();
+      // When switching to Current Status tab, ensure professors data is loaded first
+      if (professors.length === 0) {
+        // If professors data is not loaded yet, fetch it first
+        fetchProfessors().then(() => {
+          fetchStatusCounts();
+          fetchTodayTimeline();
+          fetchAttendanceHistory();
+        });
+      } else {
+        // If professors data is already loaded, proceed with status data
+        fetchStatusCounts();
+        fetchTodayTimeline();
+        fetchAttendanceHistory();
+      }
     }
   };
 
   // Fetch faculty status counts
   const fetchStatusCounts = async () => {
+    setStatusLoading(true);
     try {
-      // This would be replaced with actual API calls in a real implementation
-      // Mock data for demonstration
+      // Use the same professors data that's already loaded for Faculty Accounts
+      // This ensures the count matches exactly with what's shown in the Faculty Accounts tab
+      const totalFaculty = professors.length;
+      
+      console.log("Using existing professors data:");
+      console.log("Total professors count:", totalFaculty);
+      console.log("Professors list:", professors.map(u => ({ 
+        name: `${u.firstName} ${u.lastName}`, 
+        role: u.role || 'undefined',
+        email: u.email 
+      })));
+
+      // Get status from Firebase Realtime Database
+      const timeLogs = dbRef(database, 'timeLogs');
+      const statusSnapshot = await get(timeLogs);
+      
+      let onDutyCount = 0;
+      let onBreakCount = 0;
+      let offDutyCount = 0;
+      
+      // Current date in milliseconds (start of day)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTimestamp = today.getTime();
+      
+      console.log("Fetching status data for timestamp ≥", todayTimestamp);
+      
+      // Process data to count statuses
+      if (statusSnapshot.exists()) {
+        const latestStatusByUser = new Map();
+        
+        // For each user, find their latest status entry
+        statusSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userData = userSnap.val();
+          
+          // Process each time log entry for the user
+          Object.entries(userData).forEach(([entryId, entry]) => {
+            if (!entry.timestamp) {
+              console.log("Entry missing timestamp:", entry);
+              return;
+            }
+            
+            // Convert timestamp to number if it's a string
+            const entryTimestamp = typeof entry.timestamp === 'string' 
+              ? parseInt(entry.timestamp) 
+              : entry.timestamp;
+              
+            // Only consider entries from today
+            if (entryTimestamp >= todayTimestamp) {
+              // If we don't have an entry for this user yet, or this one is newer
+              if (!latestStatusByUser.has(entry.userId) || 
+                  entryTimestamp > latestStatusByUser.get(entry.userId).timestamp) {
+                latestStatusByUser.set(entry.userId, {
+                  ...entry,
+                  timestamp: entryTimestamp
+                });
+              }
+            }
+          });
+        });
+        
+        console.log("Latest status entries:", latestStatusByUser.size);
+        
+        // Count the latest status for each user
+        latestStatusByUser.forEach(entry => {
+          if (entry.type === 'TimeIn') {
+            if (entry.status === 'On Break') {
+              onBreakCount++;
+            } else {
+              onDutyCount++;
+            }
+          } else if (entry.type === 'TimeOut') {
+            offDutyCount++;
+          }
+        });
+      }
+
+      console.log("Status counts:", {
+        onDuty: onDutyCount,
+        onBreak: onBreakCount,
+        offDuty: offDutyCount,
+        total: totalFaculty
+      });
+
+      // Update state with counts
       setStatusCounts({
-        onDuty: 12,
-        onBreak: 5,
-        offDuty: 8
+        onDuty: onDutyCount,
+        onBreak: onBreakCount,
+        offDuty: offDutyCount,
+        total: totalFaculty
       });
     } catch (err) {
       console.error('Error fetching status counts:', err);
       showSnackbar('Failed to load status counts', 'error');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  // Export faculty attendance to Excel
+  const handleExportToExcel = async () => {
+    try {
+      setTimelineLoading(true);
+      
+      // Get current date for filename
+      const today = new Date();
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+      const month = monthNames[today.getMonth()];
+      const day = today.getDate();
+      const year = today.getFullYear();
+      const filename = `Faculty Attendance for ${month} ${day}, ${year}.xlsx`;
+
+      // Use the same professors data that's already loaded
+      const exportFacultyUsers = professors;
+
+      // Get timeline data from Firebase
+      const timeLogs = dbRef(database, 'timeLogs');
+      const timelineSnapshot = await get(timeLogs);
+      
+      const exportData = [];
+      
+      // Current date in milliseconds (start and end of day)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayTimestamp = todayStart.getTime();
+      
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      const todayEndTimestamp = todayEnd.getTime();
+      
+      // Create a map to store all activities by user for today only
+      const activitiesByUser = new Map();
+      
+      // Process Firebase data to extract today's activities
+      if (timelineSnapshot.exists()) {
+        timelineSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userData = userSnap.val();
+          
+          Object.entries(userData).forEach(([entryId, entry]) => {
+            if (entry.timestamp && entry.userId) {
+              const entryTimestamp = typeof entry.timestamp === 'string' 
+                ? parseInt(entry.timestamp) 
+                : entry.timestamp;
+              
+              // Only include entries from today
+              if (entryTimestamp >= todayTimestamp && entryTimestamp <= todayEndTimestamp) {
+                const activity = {
+                  userId: entry.userId,
+                  firstName: entry.firstName || 'Unknown',
+                  email: entry.email || 'N/A',
+                  time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                  }),
+                  date: new Date(entryTimestamp).toLocaleDateString('en-US'),
+                  activity: entry.type === 'TimeIn' 
+                    ? (entry.status === 'On Break' ? 'Break' : 'Time In')
+                    : 'Time Out',
+                  status: entry.status || 'N/A',
+                  timestamp: entryTimestamp
+                };
+                
+                if (!activitiesByUser.has(entry.userId)) {
+                  activitiesByUser.set(entry.userId, []);
+                }
+                activitiesByUser.get(entry.userId).push(activity);
+              }
+            }
+          });
+        });
+      }
+      
+      // Process each faculty member
+      exportFacultyUsers.forEach(faculty => {
+        const facultyActivities = activitiesByUser.get(faculty.userId) || [];
+        
+        // Sort activities by timestamp
+        facultyActivities.sort((a, b) => a.timestamp - b.timestamp);
+        
+        if (facultyActivities.length > 0) {
+          facultyActivities.forEach((activity, index) => {
+            exportData.push({
+              'Faculty Name': `${faculty.firstName} ${faculty.lastName}`,
+              'Email': faculty.email,
+              'Date': activity.date,
+              'Time': activity.time,
+              'Activity': activity.activity,
+              'Status': activity.status,
+              'Department': faculty.department?.name || 'N/A'
+            });
+          });
+        } else {
+          // Include faculty with no activity today
+          exportData.push({
+            'Faculty Name': `${faculty.firstName} ${faculty.lastName}`,
+            'Email': faculty.email,
+            'Date': today.toLocaleDateString('en-US'),
+            'Time': 'No activity today',
+            'Activity': 'No activity today',
+            'Status': 'No activity today',
+            'Department': faculty.department?.name || 'N/A'
+          });
+        }
+      });
+
+      // If no data found, add summary info
+      if (exportData.length === 0) {
+        exportData.push({
+          'Faculty Name': 'No Data Available',
+          'Email': 'N/A',
+          'Date': today.toLocaleDateString('en-US'),
+          'Time': 'N/A',
+          'Activity': 'No activities recorded today',
+          'Status': 'N/A',
+          'Department': 'N/A'
+        });
+      }
+
+      // Create Excel workbook
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Faculty Attendance');
+
+      // Auto-size columns
+      const colWidths = [];
+      const header = Object.keys(exportData[0] || {});
+      header.forEach((key, i) => {
+        const maxLength = Math.max(
+          key.length,
+          ...exportData.map(row => (row[key] || '').toString().length)
+        );
+        colWidths[i] = { width: Math.min(maxLength + 2, 50) };
+      });
+      worksheet['!cols'] = colWidths;
+
+      // Save file
+      XLSX.writeFile(workbook, filename);
+      
+      showSnackbar(`Exported successfully: ${filename}`, 'success');
+    } catch (err) {
+      console.error('Error exporting to Excel:', err);
+      showSnackbar('Failed to export data', 'error');
+    } finally {
+      setTimelineLoading(false);
     }
   };
 
@@ -600,16 +862,93 @@ export default function AccountPage() {
   const fetchTodayTimeline = async () => {
     setTimelineLoading(true);
     try {
-      // This would be replaced with actual API calls in a real implementation
-      // Mock data for demonstration
+      // Get timeline data from Firebase
+      const timeLogs = dbRef(database, 'timeLogs');
+      const timelineSnapshot = await get(timeLogs);
+      
+      const timelineData = [];
+      
+      // Current date in milliseconds (start of day)
       const today = new Date();
-      setTodayTimeline([
-        { id: 1, name: "John Wayne Largo", status: "Started shift", time: "9:00 AM" },
-        { id: 2, name: "Alexa Tumungha", status: "Break (30min)", time: "10:30 AM" },
-        { id: 3, name: "John Wayne Largo", status: "Resumed work", time: "11:00 AM" },
-        { id: 4, name: "Mikhail Navarro", status: "Started shift", time: "12:00 PM" },
-        { id: 5, name: "Danisse Cabana", status: "Off Duty", time: "2:00 PM" }
-      ]);
+      today.setHours(0, 0, 0, 0);
+      const todayTimestamp = today.getTime();
+      
+      // End of today
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      const endOfTodayTimestamp = endOfToday.getTime();
+      
+      console.log("Fetching timeline data for today only:", {
+        start: todayTimestamp,
+        end: endOfTodayTimestamp,
+        startDate: new Date(todayTimestamp).toLocaleString(),
+        endDate: new Date(endOfTodayTimestamp).toLocaleString()
+      });
+      
+      if (timelineSnapshot.exists()) {
+        // Process timeline data from all users
+        timelineSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userData = userSnap.val();
+          
+          console.log(`Processing user ${userId}:`, userData);
+          
+          // Process each time log entry for this user
+          Object.entries(userData).forEach(([entryId, entry]) => {
+            if (!entry.timestamp) {
+              console.log("Timeline entry missing timestamp:", entry);
+              return;
+            }
+            
+            // Convert timestamp to number if it's a string
+            let entryTimestamp = entry.timestamp;
+            if (typeof entry.timestamp === 'string') {
+              entryTimestamp = parseInt(entry.timestamp);
+            }
+            
+            console.log(`Entry ${entryId} timestamp:`, {
+              original: entry.timestamp,
+              converted: entryTimestamp,
+              date: new Date(entryTimestamp).toLocaleString(),
+              isToday: entryTimestamp >= todayTimestamp && entryTimestamp <= endOfTodayTimestamp
+            });
+                
+            // Only include entries from today
+            if (entryTimestamp >= todayTimestamp && entryTimestamp <= endOfTodayTimestamp) {
+              let status;
+              if (entry.type === 'TimeIn') {
+                status = entry.status === 'On Break' ? 'Break (30min)' : 'Started shift';
+              } else if (entry.type === 'TimeOut') {
+                status = 'Off Duty';
+              } else {
+                status = entry.type || 'Unknown';
+              }
+              
+              const timelineEntry = {
+                id: `${userId}_${entryId}`,
+                name: entry.firstName || 'Unknown User',
+                status: status,
+                time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
+                  hour: '2-digit', minute: '2-digit'
+                }),
+                timestamp: entryTimestamp,
+                userId: entry.userId || userId
+              };
+              
+              timelineData.push(timelineEntry);
+              console.log("Added timeline entry:", timelineEntry);
+            }
+          });
+        });
+      }
+      
+      // Sort timeline by timestamp (ascending - oldest first)
+      timelineData.sort((a, b) => a.timestamp - b.timestamp);
+      
+      console.log("Final timeline data entries for today:", timelineData.length);
+      console.log("Timeline entries:", timelineData);
+      
+      setTodayTimeline(timelineData);
     } catch (err) {
       console.error('Error fetching timeline data:', err);
       showSnackbar('Failed to load timeline data', 'error');
@@ -676,6 +1015,178 @@ export default function AccountPage() {
   const handleProfileClick = (professor) => {
     setSelectedProfile(professor);
     setShowProfileModal(true);
+  };
+
+  // Add a function to refresh faculty status data
+  const handleRefreshStatus = () => {
+    setStatusLoading(true);
+    fetchStatusCounts();
+    fetchTodayTimeline();
+    showSnackbar('Status data refreshed', 'success');
+  };
+
+  // Fetch attendance history organized by date
+  const fetchAttendanceHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      // Get timeline data from Firebase
+      const timeLogs = dbRef(database, 'timeLogs');
+      const timelineSnapshot = await get(timeLogs);
+      
+      const historyByDate = new Map();
+      
+      if (timelineSnapshot.exists()) {
+        // Process timeline data from all users
+        timelineSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userData = userSnap.val();
+          
+          // Process each time log entry for this user
+          Object.entries(userData).forEach(([entryId, entry]) => {
+            if (!entry.timestamp) return;
+            
+            // Convert timestamp to number if it's a string
+            let entryTimestamp = entry.timestamp;
+            if (typeof entry.timestamp === 'string') {
+              entryTimestamp = parseInt(entry.timestamp);
+            }
+            
+            // Get date string for grouping (YYYY-MM-DD)
+            const entryDate = new Date(entryTimestamp);
+            const dateKey = entryDate.toISOString().split('T')[0];
+            const displayDate = entryDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            let status;
+            if (entry.type === 'TimeIn') {
+              status = entry.status === 'On Break' ? 'Break (30min)' : 'Started shift';
+            } else if (entry.type === 'TimeOut') {
+              status = 'Off Duty';
+            } else {
+              status = entry.type || 'Unknown';
+            }
+            
+            const timelineEntry = {
+              id: `${userId}_${entryId}`,
+              name: entry.firstName || 'Unknown User',
+              status: status,
+              time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit'
+              }),
+              timestamp: entryTimestamp,
+              userId: entry.userId || userId
+            };
+            
+            if (!historyByDate.has(dateKey)) {
+              historyByDate.set(dateKey, {
+                dateKey,
+                displayDate,
+                entries: []
+              });
+            }
+            
+            historyByDate.get(dateKey).entries.push(timelineEntry);
+          });
+        });
+      }
+      
+      // Convert map to array and sort by date (newest first)
+      const historyArray = Array.from(historyByDate.values()).map(dayData => {
+        // Sort entries within each day by timestamp
+        dayData.entries.sort((a, b) => a.timestamp - b.timestamp);
+        return dayData;
+      }).sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+      
+      console.log("Attendance history:", historyArray);
+      setAttendanceHistory(historyArray);
+    } catch (err) {
+      console.error('Error fetching attendance history:', err);
+      showSnackbar('Failed to load attendance history', 'error');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Handle expanding/collapsing day entries
+  const handleDayToggle = (dateKey) => {
+    const newExpandedDays = new Set(expandedDays);
+    if (newExpandedDays.has(dateKey)) {
+      newExpandedDays.delete(dateKey);
+    } else {
+      newExpandedDays.add(dateKey);
+    }
+    setExpandedDays(newExpandedDays);
+  };
+
+  // Export specific day's attendance to Excel
+  const handleExportDayToExcel = async (dayData) => {
+    try {
+      const date = new Date(dayData.dateKey);
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+      const month = monthNames[date.getMonth()];
+      const day = date.getDate();
+      const year = date.getFullYear();
+      const filename = `Faculty Attendance for ${month} ${day}, ${year}.xlsx`;
+
+      const exportData = [];
+      
+      // Process entries for this specific day
+      dayData.entries.forEach(entry => {
+        // Find faculty details from professors data
+        const faculty = professors.find(p => p.userId === entry.userId);
+        
+        exportData.push({
+          'Faculty Name': faculty ? `${faculty.firstName} ${faculty.lastName}` : entry.name,
+          'Email': faculty ? faculty.email : 'N/A',
+          'Date': dayData.displayDate,
+          'Time': entry.time,
+          'Activity': entry.status,
+          'Department': faculty?.department?.name || 'N/A'
+        });
+      });
+
+      // If no entries, show no activity message
+      if (exportData.length === 0) {
+        exportData.push({
+          'Faculty Name': 'No Activity',
+          'Email': 'N/A',
+          'Date': dayData.displayDate,
+          'Time': 'No activities recorded',
+          'Activity': 'No activities',
+          'Department': 'N/A'
+        });
+      }
+
+      // Create Excel workbook
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Attendance');
+
+      // Auto-size columns
+      const colWidths = [];
+      const header = Object.keys(exportData[0] || {});
+      header.forEach((key, i) => {
+        const maxLength = Math.max(
+          key.length,
+          ...exportData.map(row => (row[key] || '').toString().length)
+        );
+        colWidths[i] = { width: Math.min(maxLength + 2, 50) };
+      });
+      worksheet['!cols'] = colWidths;
+
+      // Save file
+      XLSX.writeFile(workbook, filename);
+      
+      showSnackbar(`Exported successfully: ${filename}`, 'success');
+    } catch (err) {
+      console.error('Error exporting day to Excel:', err);
+      showSnackbar('Failed to export data', 'error');
+    }
   };
 
   return (
@@ -987,23 +1498,72 @@ export default function AccountPage() {
             <Typography variant="h5" fontWeight="600" color="#1E293B">
               Faculty Status
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Last updated: Just now
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                Last updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+              </Typography>
+              <IconButton 
+                size="small" 
+                onClick={handleRefreshStatus}
+                sx={{ 
+                  color: '#0288d1',
+                  '&:hover': { color: '#01579b' }
+                }}
+                disabled={statusLoading}
+              >
+                <Refresh />
+              </IconButton>
+            </Box>
           </Box>
+
+          {/* Total Faculty Card */}
+          <Card
+            elevation={0}
+            sx={{
+              p: 3,
+              mb: 3,
+              borderRadius: 2,
+              bgcolor: '#fff',
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <PeopleAlt sx={{ fontSize: 24, color: '#1E293B', mr: 1.5 }} />
+                <Typography variant="h6" fontWeight="600" color="#1E293B">
+                  Total Faculty Count
+                </Typography>
+              </Box>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                bgcolor: 'rgba(30,41,59,0.1)',
+                minWidth: 60,
+                justifyContent: 'center'
+              }}>
+                <Typography variant="h4" fontWeight="700" color="#1E293B">
+                  {statusLoading ? <CircularProgress size={30} /> : statusCounts.total}
+                </Typography>
+              </Box>
+            </Box>
+          </Card>
 
           {/* Status Cards */}
           <Box sx={{ 
             display: 'flex', 
             gap: 2,
-            mb: 4
+            mb: 4,
+            flexDirection: { xs: 'column', sm: 'row' }
           }}>
             {/* On Duty Card */}
             <Paper
               elevation={0}
               sx={{
                 flex: 1,
-                p: 2,
+                p: 3,
                 borderRadius: 2,
                 bgcolor: '#1E293B',
                 color: 'white',
@@ -1027,8 +1587,8 @@ export default function AccountPage() {
               <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
                 On Duty
               </Typography>
-              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
-                {statusCounts.onDuty}
+              <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
+                {statusLoading ? <CircularProgress size={40} /> : statusCounts.onDuty}
               </Typography>
               <Box sx={{
                 display: 'flex',
@@ -1049,7 +1609,7 @@ export default function AccountPage() {
               elevation={0}
               sx={{
                 flex: 1,
-                p: 2,
+                p: 3,
                 borderRadius: 2,
                 bgcolor: '#1E293B',
                 color: 'white',
@@ -1073,8 +1633,8 @@ export default function AccountPage() {
               <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
                 On Break
               </Typography>
-              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
-                {statusCounts.onBreak}
+              <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
+                {statusLoading ? <CircularProgress size={40} /> : statusCounts.onBreak}
               </Typography>
               <Box sx={{
                 display: 'flex',
@@ -1095,7 +1655,7 @@ export default function AccountPage() {
               elevation={0}
               sx={{
                 flex: 1,
-                p: 2,
+                p: 3,
                 borderRadius: 2,
                 bgcolor: '#1E293B',
                 color: 'white',
@@ -1119,8 +1679,8 @@ export default function AccountPage() {
               <Typography variant="h6" sx={{ mb: 1, mt: 1 }}>
                 Off Duty
               </Typography>
-              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
-                {statusCounts.offDuty}
+              <Typography variant="h2" fontWeight="700" sx={{ mb: 1 }}>
+                {statusLoading ? <CircularProgress size={40} /> : statusCounts.offDuty}
               </Typography>
               <Box sx={{
                 display: 'flex',
@@ -1153,7 +1713,9 @@ export default function AccountPage() {
               <Button 
                 variant="outlined" 
                 size="small" 
-                startIcon={<CalendarToday fontSize="small" />}
+                startIcon={<FileDownload fontSize="small" />}
+                onClick={handleExportToExcel}
+                disabled={timelineLoading}
                 sx={{
                   textTransform: 'none',
                   borderColor: '#E2E8F0',
@@ -1162,22 +1724,19 @@ export default function AccountPage() {
                   fontSize: '0.875rem',
                 }}
               >
-                Select Date
+                Export to Excel
               </Button>
-              <Button
-                variant="outlined"
+              <IconButton
                 size="small"
-                startIcon={<FilterList fontSize="small" />}
-                sx={{
-                  textTransform: 'none',
-                  borderColor: '#E2E8F0',
-                  color: '#64748B',
-                  fontWeight: 500,
-                  fontSize: '0.875rem',
+                onClick={fetchTodayTimeline}
+                disabled={timelineLoading}
+                sx={{ 
+                  color: '#0288d1',
+                  '&:hover': { color: '#01579b' }
                 }}
               >
-                Filter
-              </Button>
+                <Refresh />
+              </IconButton>
             </Box>
           </Box>
 
@@ -1189,20 +1748,23 @@ export default function AccountPage() {
               borderRadius: 2,
               bgcolor: '#fff',
               border: '1px solid #E2E8F0',
+              minHeight: 200, // Ensure minimum height even when empty
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: timelineLoading || todayTimeline.length === 0 ? 'center' : 'flex-start',
+              alignItems: timelineLoading || todayTimeline.length === 0 ? 'center' : 'stretch'
             }}
           >
             {timelineLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress size={30} />
-              </Box>
+              <CircularProgress size={30} />
             ) : todayTimeline.length === 0 ? (
-              <Typography variant="body1" textAlign="center" color="text.secondary" py={4}>
+              <Typography variant="body1" textAlign="center" color="text.secondary">
                 No timeline data available for today
               </Typography>
             ) : (
-              <>
+              <Box>
                 {todayTimeline.map((item, index) => (
-                  <Box key={item.id} sx={{ display: 'flex', mb: 2 }}>
+                  <Box key={item.id} sx={{ display: 'flex', mb: index < todayTimeline.length - 1 ? 2 : 0, py: 1 }}>
                     <Box sx={{ width: '80px', textAlign: 'right', pr: 2, color: '#64748B' }}>
                       <Typography variant="body2">{item.time}</Typography>
                     </Box>
@@ -1214,7 +1776,7 @@ export default function AccountPage() {
                                 item.status.includes('Resumed') ? '#2196F3' : 
                                 '#9E9E9E',
                       pl: 3,
-                      pb: index < todayTimeline.length - 1 ? 4 : 0
+                      pb: index < todayTimeline.length - 1 ? 3 : 0
                     }}>
                       <Box sx={{
                         width: 10,
@@ -1237,13 +1799,13 @@ export default function AccountPage() {
                     </Box>
                   </Box>
                 ))}
-              </>
+              </Box>
             )}
           </Paper>
         </Box>
 
-        {/* Status Reports Section */}
-        <Box>
+        {/* Attendance Status History Section */}
+        <Box sx={{ mb: 4 }}>
           <Box sx={{ 
             display: 'flex',
             justifyContent: 'space-between',
@@ -1251,43 +1813,22 @@ export default function AccountPage() {
             mb: 2
           }}>
             <Typography variant="h5" fontWeight="600" color="#1E293B">
-              Status Reports
+              Attendance Status History
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<FilterList fontSize="small" />}
-                sx={{
-                  textTransform: 'none',
-                  borderColor: '#E2E8F0',
-                  color: '#64748B',
-                  fontWeight: 500,
-                  fontSize: '0.875rem',
-                }}
-              >
-                Filter
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleExportReport}
-                sx={{
-                  textTransform: 'none',
-                  bgcolor: '#0288d1',
-                  '&:hover': {
-                    bgcolor: '#0277bd',
-                  },
-                  fontWeight: 500,
-                  fontSize: '0.875rem',
-                }}
-              >
-                Export Report
-              </Button>
-            </Box>
+            <IconButton
+              size="small"
+              onClick={fetchAttendanceHistory}
+              disabled={historyLoading}
+              sx={{ 
+                color: '#0288d1',
+                '&:hover': { color: '#01579b' }
+              }}
+            >
+              <Refresh />
+            </IconButton>
           </Box>
 
-          {/* Reports Table */}
+          {/* History Table */}
           <Paper
             elevation={0}
             sx={{
@@ -1297,61 +1838,132 @@ export default function AccountPage() {
               overflow: 'hidden'
             }}
           >
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 600px)' }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Duration</TableCell>
-                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Notes</TableCell>
-                    <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 100 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportsLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                        <CircularProgress size={30} />
-                      </TableCell>
-                    </TableRow>
-                  ) : statusReports.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                        No status reports available
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    statusReports.map((report) => (
-                      <TableRow key={report.id} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
-                        <TableCell>{report.date}</TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {historyLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : attendanceHistory.length === 0 ? (
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <History sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  No attendance history available
+                </Typography>
+              </Box>
+            ) : (
+              <Box>
+                {attendanceHistory.map((dayData, index) => (
+                  <Accordion 
+                    key={dayData.dateKey}
+                    expanded={expandedDays.has(dayData.dateKey)}
+                    onChange={() => handleDayToggle(dayData.dateKey)}
+                    sx={{
+                      '&:before': { display: 'none' },
+                      boxShadow: 'none',
+                      borderBottom: index < attendanceHistory.length - 1 ? '1px solid #E2E8F0' : 'none'
+                    }}
+                  >
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={{
+                        py: 1.5,
+                        px: 3,
+                        '&:hover': { bgcolor: '#F8FAFC' },
+                        minHeight: 'auto',
+                        '& .MuiAccordionSummary-content': {
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          my: 1
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                        <History sx={{ fontSize: 20, color: '#64748B', mr: 2 }} />
+                        <Box>
+                          <Typography variant="body1" fontWeight="600" color="#1E293B">
+                            Faculty Attendance for {dayData.displayDate}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {dayData.entries.length} {dayData.entries.length === 1 ? 'activity' : 'activities'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<FileDownload fontSize="small" />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportDayToExcel(dayData);
+                        }}
+                        sx={{
+                          textTransform: 'none',
+                          borderColor: '#E2E8F0',
+                          color: '#64748B',
+                          mr: 2,
+                          '&:hover': {
+                            borderColor: '#0288d1',
+                            color: '#0288d1'
+                          }
+                        }}
+                      >
+                        Export
+                      </Button>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ px: 3, py: 0, pb: 2 }}>
+                      <Box sx={{ pl: 4 }}>
+                        {dayData.entries.map((entry, entryIndex) => (
+                          <Box 
+                            key={entry.id} 
+                            sx={{ 
+                              display: 'flex', 
+                              mb: entryIndex < dayData.entries.length - 1 ? 1.5 : 0, 
+                              py: 1,
+                              borderRadius: 1,
+                              '&:hover': { bgcolor: '#F8FAFC' },
+                              px: 2,
+                              mx: -2
+                            }}
+                          >
+                            <Box sx={{ width: '80px', textAlign: 'right', pr: 2, color: '#64748B' }}>
+                              <Typography variant="body2">{entry.time}</Typography>
+                            </Box>
                             <Box sx={{ 
-                              width: 8, 
-                              height: 8, 
-                              borderRadius: '50%', 
-                              bgcolor: report.status === 'On Duty' ? '#4CAF50' : 
-                                        report.status === 'Break' ? '#FF9800' : 
-                                        '#9E9E9E', 
-                              mr: 1 
-                            }} />
-                            {report.status}
+                              position: 'relative',
+                              borderLeft: '2px solid',
+                              borderColor: entry.status.includes('Started') ? '#4CAF50' : 
+                                        entry.status.includes('Break') ? '#FF9800' : 
+                                        entry.status.includes('Resumed') ? '#2196F3' : 
+                                        '#9E9E9E',
+                              pl: 3,
+                              pb: entryIndex < dayData.entries.length - 1 ? 2 : 0
+                            }}>
+                              <Box sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: entry.status.includes('Started') ? '#4CAF50' : 
+                                        entry.status.includes('Break') ? '#FF9800' : 
+                                        entry.status.includes('Resumed') ? '#2196F3' : 
+                                        '#9E9E9E',
+                                position: 'absolute',
+                                left: -5,
+                                top: 8
+                              }} />
+                              <Typography variant="body2" fontWeight="600">
+                                {entry.status}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {entry.name}
+                              </Typography>
+                            </Box>
                           </Box>
-                        </TableCell>
-                        <TableCell>{report.duration}</TableCell>
-                        <TableCell>{report.notes}</TableCell>
-                        <TableCell>
-                          <IconButton size="small" sx={{ color: '#64748B' }}>
-                            <MoreVert fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                        ))}
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
+            )}
           </Paper>
         </Box>
       </TabPanel>
@@ -2158,7 +2770,7 @@ export default function AccountPage() {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
