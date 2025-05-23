@@ -10,7 +10,7 @@ import {
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
-  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera
+  Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera, ArrowUpward, ArrowDownward
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
@@ -190,6 +190,13 @@ export default function AccountPage() {
     message: '',
     severity: 'info'
   });
+
+  // Add sorting and department filter states
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'asc'
+  });
+  const [selectedDepartment, setSelectedDepartment] = useState('');
 
   // Add new state for profile picture zoom modal
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -523,7 +530,44 @@ export default function AccountPage() {
       default:
         return matchesSearch;
     }
+  }).filter(professor => {
+    // Apply department filter
+    if (selectedDepartment) {
+      return professor.department?.departmentId === selectedDepartment;
+    }
+    return true;
   });
+
+  // Sort the filtered professors
+  const sortedProfessors = [...filteredProfessors].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    let aValue, bValue;
+    if (sortConfig.key === 'name') {
+      aValue = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
+      bValue = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
+    } else if (sortConfig.key === 'email') {
+      aValue = (a.email || '').toLowerCase();
+      bValue = (b.email || '').toLowerCase();
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Handle column sort
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // Toggle direction if same key
+        return { key, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
+      } else {
+        // Reset other column and set new key to asc
+        return { key, direction: 'asc' };
+      }
+    });
+  };
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -708,6 +752,29 @@ export default function AccountPage() {
                 onChange={handleSearch}
               />
             </Paper>
+            <FormControl sx={{ minWidth: 200 }}>
+              <Select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                displayEmpty
+                size="small"
+                sx={{
+                  bgcolor: '#F8FAFC',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E2E8F0',
+                  },
+                }}
+              >
+                <MenuItem value="">
+                  <em>All Departments</em>
+                </MenuItem>
+                {departments.map((dept) => (
+                  <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                    {dept.name} ({dept.abbreviation})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Button 
               variant="outlined" 
               startIcon={<FilterList />}
@@ -727,41 +794,6 @@ export default function AccountPage() {
             >
               {activeFilter || 'FILTER'}
             </Button>
-            <Menu
-              anchorEl={filterAnchorEl}
-              open={filterMenuOpen}
-              onClose={handleFilterClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { 
-                  width: 180,
-                  mt: 1,
-                  '& .MuiMenuItem-root': {
-                    fontSize: 14,
-                    py: 1
-                  }
-                }
-              }}
-            >
-              <MenuItem onClick={() => handleFilterSelect('Department')}>
-                <ListItemIcon>
-                  <Group fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Department</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('ID')}>
-                <ListItemIcon>
-                  <CalendarToday fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>ID</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={() => handleFilterSelect('Name')}>
-                <ListItemIcon>
-                  <People fontSize="small" sx={{ color: '#64748B' }} />
-                </ListItemIcon>
-                <ListItemText>Name</ListItemText>
-              </MenuItem>
-            </Menu>
             <Button
               variant="contained"
               startIcon={<Add />}
@@ -796,8 +828,42 @@ export default function AccountPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>School ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Email</TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: '#F8FAFC',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: '#F1F5F9' }
+                    }}
+                    onClick={() => handleSort('name')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      Name
+                      {sortConfig.key === 'name' && (
+                        sortConfig.direction === 'asc' ? 
+                          <ArrowUpward sx={{ fontSize: 16 }} /> : 
+                          <ArrowDownward sx={{ fontSize: 16 }} />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: '#F8FAFC',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: '#F1F5F9' }
+                    }}
+                    onClick={() => handleSort('email')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      Email
+                      {sortConfig.key === 'email' && (
+                        sortConfig.direction === 'asc' ? 
+                          <ArrowUpward sx={{ fontSize: 16 }} /> : 
+                          <ArrowDownward sx={{ fontSize: 16 }} />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 180 }}>Actions</TableCell>
                 </TableRow>
@@ -811,14 +877,14 @@ export default function AccountPage() {
                       {error}
                     </TableCell>
                   </TableRow>
-                ) : filteredProfessors.length === 0 ? (
+                ) : sortedProfessors.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                       No faculty members found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProfessors.map((professor) => (
+                  sortedProfessors.map((professor) => (
                     <TableRow 
                       key={professor.userId}
                       sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
