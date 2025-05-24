@@ -211,5 +211,11 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".AttendanceSheetActivity"
+            android:theme="@style/Theme.TimEd"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>
