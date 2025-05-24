@@ -5,5 +5,6 @@ data class EventLogModel(
     val eventName: String,
     val timeInTimestamp: String,
     val status: String,
-    val showTimeOutButton: Boolean = false
+    val showTimeOutButton: Boolean = false,
+    val userId: String
 )

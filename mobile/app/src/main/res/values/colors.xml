@@ -19,4 +19,7 @@
     <color name="attendance_green">#4CAF50</color> <!-- On Time -->
     <color name="attendance_yellow">#FFEB3B</color> <!-- Late -->
     <color name="attendance_red">#F44336</color> <!-- Absent -->
+
+    <color name="success_green">#388E3C</color>
+    <color name="error_red">#D32F2F</color>
 </resources>

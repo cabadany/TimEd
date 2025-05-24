@@ -9,6 +9,7 @@ import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import android.util.Log
+import android.widget.ImageView
 import android.widget.Toast
 import java.util.*
 
@@ -23,6 +24,12 @@ class AttendanceSheetActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.attendance_sheet)
+
+        // Now it's safe to find views after layout is set
+        val backButton: ImageView = findViewById(R.id.icon_back_button)
+        backButton.setOnClickListener {
+            finish()
+        }
 
         dailyLogContainer = findViewById(R.id.daily_log_container)
         eventLogContainer = findViewById(R.id.event_log_container)
