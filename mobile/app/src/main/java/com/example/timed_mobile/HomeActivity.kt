@@ -1198,6 +1198,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun updateAttendanceBadge(status: String) {
         attendanceStatusBadge.visibility = View.VISIBLE
+        writeAttendanceStatusToRealtime(status) // ✅ Only this, no recursion
 
         when (status.trim().lowercase()) {
             "on time" -> {
@@ -1222,6 +1223,36 @@ class HomeActivity : AppCompatActivity() {
             }
             else -> attendanceStatusBadge.visibility = View.GONE
         }
+    }
+
+    private fun writeAttendanceStatusToRealtime(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (timestamp >= todayStart) {
+                            child.ref.child("attendanceBadge").setValue(status)
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to write badge to Realtime DB: ${error.message}")
+                }
+            })
     }
 
     private fun evaluateAndDisplayAttendanceBadge() {
