@@ -82,6 +82,8 @@ class HomeActivity : AppCompatActivity() {
     private var department: String? = null
     private val statusOptions = listOf("On Duty", "On Break", "Off Duty")
 
+    private lateinit var attendanceStatusBadge: TextView
+
     private lateinit var btnHelp: ImageView // Added for btn_help
 
     private val timeInLauncher =
@@ -100,6 +102,11 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
+
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
+
+        attendanceStatusBadge = findViewById(R.id.attendance_status_badge)
 
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
         tutorialOverlay.setOnTouchListener { _, _ ->
@@ -1124,5 +1131,33 @@ class HomeActivity : AppCompatActivity() {
                 Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
             }
         )
+    }
+
+    private fun updateAttendanceBadge(status: String) {
+        attendanceStatusBadge.visibility = View.VISIBLE // Make sure the badge is visible
+
+        when (status.trim().lowercase()) {
+            "on time" -> {
+                attendanceStatusBadge.text = "On Time"
+                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_on_time)
+                // Assuming white text color works for all backgrounds as per your XML
+                // attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.white))
+            }
+            "late" -> {
+                attendanceStatusBadge.text = "Late"
+                // As per your attendance_badge_late.xml, this will be a red background.
+                // If you intend a different color for "Late" (e.g., orange/yellow),
+                // you would adjust the attendance_badge_late.xml drawable's color.
+                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_late)
+            }
+            "absent" -> {
+                attendanceStatusBadge.text = "Absent"
+                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_absent)
+            }
+            else -> {
+                // Optionally handle unknown status, e.g., hide the badge or set a default
+                attendanceStatusBadge.visibility = View.GONE
+            }
+        }
     }
 }
