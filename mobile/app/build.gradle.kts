@@ -90,6 +90,8 @@ dependencies {
 
     implementation ("at.favre.lib:bcrypt:0.9.0")
 
+    implementation ("org.mindrot:jbcrypt:0.4")
+
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

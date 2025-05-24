@@ -12,362 +12,398 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-        <!-- Main Content -->
+        <!-- Main Content Wrapper -->
         <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
-            <RelativeLayout
-                    android:id="@+id/main_content_relative_layout"
+            <androidx.core.widget.NestedScrollView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@color/light_gray"> <!-- Ensure @color/light_gray is defined, or use your preferred background like @color/soft_white_background -->
+                    android:fillViewport="true">
 
-                <!-- Top Wave - Drawn first as background -->
-                <ImageView
-                        android:id="@+id/top_wave_animation"
-                        android:layout_width="match_parent"
-                        android:layout_height="300dp"
-                        android:scaleType="fitXY"
-                        android:src="@drawable/animated_wave_top"
-                        android:layout_alignParentTop="true" />
-
-                <ImageView
-                        android:id="@+id/btn_help"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginEnd="16dp"
-                        android:src="@drawable/ic_info"
-                        android:contentDescription="Help"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:clickable="true"
-                        android:focusable="true"
-                        app:tint="@color/maroon" />
-
-                <!-- Title Name -->
-                <TextView
-                        android:id="@+id/titleName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentTop="true"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginTop="28dp"
-                        android:fontFamily="@font/league_spartan_bold"
-                        android:letterSpacing="0.05"
-                        android:padding="8dp"
-                        android:shadowColor="#33000000"
-                        android:shadowDx="1"
-                        android:shadowDy="1"
-                        android:shadowRadius="2"
-                        android:text="WILDTIMed"
-                        android:textColor="#8B0000"
-                        android:textSize="42sp"
-                        android:textStyle="bold" />
-
-                <!-- Greeting Card -->
-                <androidx.cardview.widget.CardView
-                        android:id="@+id/greeting_card"
+                <RelativeLayout
+                        android:id="@+id/main_content_relative_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_below="@id/titleName"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="4dp"
-                        app:cardBackgroundColor="@color/white"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:stateListAnimator="@animator/button_scale_animator">
+                        android:background="@color/light_gray">
 
+                    <!-- Top Wave -->
+                    <ImageView
+                            android:id="@+id/top_wave_animation"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentTop="true"
+                            android:adjustViewBounds="true"
+                            android:maxHeight="250dp"
+                            android:scaleType="fitXY"
+                            android:src="@drawable/animated_wave_top" />
+
+                    <ImageView
+                            android:id="@+id/btn_help"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_alignParentEnd="true"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginEnd="16dp"
+                            android:src="@drawable/ic_info"
+                            android:contentDescription="Help"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            app:tint="@color/maroon" />
+
+                    <!-- Title Name -->
+                    <TextView
+                            android:id="@+id/titleName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentTop="true"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginTop="24dp"
+                            android:fontFamily="@font/league_spartan_bold"
+                            android:letterSpacing="0.05"
+                            android:padding="6dp"
+                            android:shadowColor="#33000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2"
+                            android:text="WILDTIMed"
+                            android:textColor="#8B0000"
+                            android:textSize="38sp"
+                            android:textStyle="bold" />
+
+                    <!-- Greeting Card -->
+                    <androidx.cardview.widget.CardView
+                            android:id="@+id/greeting_card"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_below="@id/titleName"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginEnd="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:stateListAnimator="@animator/button_scale_animator"
+                            app:cardBackgroundColor="@color/white"
+                            app:cardElevation="4dp"
+                            app:cardCornerRadius="12dp">
+
+                        <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="12dp">
+
+                            <ImageView
+                                    android:id="@+id/profile_image_placeholder"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:layout_margin="6dp"
+                                    android:background="@drawable/circle_background"
+                                    android:clipToOutline="true"
+                                    android:contentDescription="Profile Image"
+                                    android:elevation="4dp"
+                                    android:scaleType="centerCrop" />
+
+                            <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                <LinearLayout
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center_vertical"
+                                        android:orientation="horizontal">
+
+                                    <TextView
+                                            android:id="@+id/greeting_name"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:ellipsize="end"
+                                            android:singleLine="true"
+                                            android:text="Hi, Username"
+                                            android:textColor="@color/maroon"
+                                            android:textSize="18sp"
+                                            android:textStyle="bold" />
+
+                                    <TextView
+                                            android:id="@+id/attendance_status_badge"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="8dp"
+                                            android:background="@drawable/attendance_badge_on_time"
+                                            android:paddingStart="10dp"
+                                            android:paddingTop="3dp"
+                                            android:paddingEnd="10dp"
+                                            android:paddingBottom="3dp"
+                                            android:text="On Time"
+                                            android:textColor="@color/white"
+                                            android:textSize="12sp"
+                                            android:textStyle="bold"
+                                            android:visibility="visible"
+                                            tools:visibility="visible" />
+                                </LinearLayout>
+
+                                <TextView
+                                        android:id="@+id/home_greeting"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="2dp"
+                                        android:ellipsize="end"
+                                        android:singleLine="true"
+                                        android:text="ID: 123456 • CITE"
+                                        android:textColor="#666666"
+                                        android:textSize="13sp" />
+
+                                <Spinner
+                                    android:id="@+id/status_spinner"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:layout_marginTop="4dp"
+                                    android:paddingStart="10dp"
+                                    android:paddingTop="3dp"
+                                    android:paddingEnd="10dp"
+                                    android:paddingBottom="3dp"
+                                    android:textAlignment="center"
+                                    android:spinnerMode="dropdown"
+                                    app:layout_constraintStart_toEndOf="@id/profile_image_placeholder"
+                                    app:layout_constraintTop_toBottomOf="@id/greeting_name" />
+                            </LinearLayout>
+
+                            <ImageView
+                                    android:id="@+id/greeting_card_nav_icon"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_marginStart="10dp"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:clickable="true"
+                                    android:contentDescription="Open navigation menu"
+                                    android:focusable="true"
+                                    android:src="@drawable/ic_menu"
+                                    app:tint="@color/maroon" />
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+
+                    <!-- Filter Buttons -->
                     <LinearLayout
+                            android:id="@+id/filter_buttons"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="16dp"
-                            android:gravity="center_vertical">
+                            android:layout_below="@id/greeting_card"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginEnd="16dp"
+                            android:background="@drawable/filter_button_background"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:elevation="2dp">
 
-                        <ImageView
-                                android:id="@+id/profile_image_placeholder"
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:layout_margin="8dp"
-                                android:scaleType="centerCrop"
-                                android:background="@drawable/circle_background"
-                                android:clipToOutline="true"
-                                android:contentDescription="Profile Image"
-                                android:elevation="4dp" />
-
-                        <LinearLayout
+                        <Button
+                                android:id="@+id/btn_filter_upcoming"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:layout_marginStart="12dp"
-                                android:layout_weight="1">
+                                android:layout_weight="1"
+                                android:text="Upcoming"
+                                android:textColor="@color/filter_button_text_selector"
+                                android:backgroundTint="@color/white"
+                                android:layout_marginStart="2dp"
+                                android:layout_marginEnd="2dp"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                android:minHeight="36dp"
+                                android:gravity="center"
+                                android:stateListAnimator="@animator/button_scale_animator"
+                                app:autoSizeTextType="uniform"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeMaxTextSize="13sp"
+                                app:autoSizeStepGranularity="1sp"
+                                android:maxLines="1" />
 
-                            <TextView
-                                    android:id="@+id/greeting_name"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Hi, User 👋"
-                                    android:textSize="20sp"
-                                    android:textStyle="bold"
-                                    android:textColor="@color/maroon" />
-
-                            <TextView
-                                    android:id="@+id/home_greeting"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="ID: 123456 • CITE"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:layout_marginTop="4dp" />
-
-                            <Spinner
-                                android:id="@+id/status_spinner"
-                                android:layout_width="wrap_content"
+                        <Button
+                                android:id="@+id/btn_filter_ongoing"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:layout_marginStart="20dp"
-                                android:layout_marginBottom="4dp"
-                                android:backgroundTint="@color/maroon"
-                                android:padding="4dp"
-                                android:textAlignment="center"
-                                android:minWidth="0dp"
-                                android:minHeight="0dp"
-                                android:theme="@style/SpinnerTheme.Small" />
-                        </LinearLayout>
+                                android:layout_weight="1"
+                                android:text="Ongoing"
+                                android:textColor="@color/filter_button_text_selector"
+                                android:backgroundTint="@color/white"
+                                android:layout_marginStart="2dp"
+                                android:layout_marginEnd="2dp"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                android:minHeight="36dp"
+                                android:gravity="center"
+                                android:stateListAnimator="@animator/button_scale_animator"
+                                app:autoSizeTextType="uniform"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeMaxTextSize="13sp"
+                                app:autoSizeStepGranularity="1sp"
+                                android:maxLines="1" />
 
-                        <ImageView
-                                android:id="@+id/greeting_card_nav_icon"
-                                android:layout_width="30dp"
-                                android:layout_height="30dp"
-                                android:src="@drawable/ic_menu"
-                                app:tint="@color/maroon"
-                                android:layout_marginStart="12dp"
-                                android:clickable="true"
-                                android:focusable="true"
-                                android:contentDescription="Open navigation menu"
-                                android:background="?attr/selectableItemBackgroundBorderless" />
+                        <Button
+                                android:id="@+id/btn_filter_ended"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Ended"
+                                android:textColor="@color/filter_button_text_selector"
+                                android:backgroundTint="@color/white"
+                                android:layout_marginStart="2dp"
+                                android:layout_marginEnd="2dp"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                android:minHeight="36dp"
+                                android:gravity="center"
+                                android:stateListAnimator="@animator/button_scale_animator"
+                                app:autoSizeTextType="uniform"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeMaxTextSize="13sp"
+                                app:autoSizeStepGranularity="1sp"
+                                android:maxLines="1" />
+
+                        <Button
+                                android:id="@+id/btn_filter_cancelled"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Cancelled"
+                                android:textColor="@color/filter_button_text_selector"
+                                android:backgroundTint="@color/white"
+                                android:layout_marginStart="2dp"
+                                android:layout_marginEnd="2dp"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                android:minHeight="36dp"
+                                android:gravity="center"
+                                android:stateListAnimator="@animator/button_scale_animator"
+                                app:autoSizeTextType="uniform"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeMaxTextSize="13sp"
+                                app:autoSizeStepGranularity="1sp"
+                                android:maxLines="1" />
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
 
-                <!-- Filter Buttons -->
-                <LinearLayout
-                        android:id="@+id/filter_buttons"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_below="@id/greeting_card"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="@drawable/filter_button_background"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:elevation="2dp">
-
-                    <Button
-                            android:id="@+id/btn_filter_upcoming"
-                            android:layout_width="0dp"
+                    <!-- Excuse Letter - Anchored to bottom -->
+                    <TextView
+                            android:id="@+id/excuse_letter_text_button"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Upcoming"
-                            android:textColor="@color/filter_button_text_selector"
-                            android:backgroundTint="@color/white"
-                            android:layout_marginStart="2dp"
-                            android:layout_marginEnd="2dp"
-                            android:paddingStart="6dp"
-                            android:paddingEnd="6dp"
-                            android:minHeight="40dp"
-                            android:gravity="center"
-                            android:stateListAnimator="@animator/button_scale_animator"
-                            app:autoSizeTextType="uniform"
-                            app:autoSizeMinTextSize="10sp"
-                            app:autoSizeMaxTextSize="14sp"
-                            app:autoSizeStepGranularity="1sp"
-                            android:maxLines="1" />
+                            android:layout_alignParentBottom="true"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginBottom="12dp"
+                            android:text="Send a Excuse Letter"
+                            android:textColor="@color/maroon"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:padding="6dp" />
 
+                    <!-- Time Out - Anchored above excuse letter -->
                     <Button
-                            android:id="@+id/btn_filter_ongoing"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Ongoing"
-                            android:textColor="@color/filter_button_text_selector"
-                            android:backgroundTint="@color/white"
-                            android:layout_marginStart="2dp"
-                            android:layout_marginEnd="2dp"
-                            android:paddingStart="6dp"
-                            android:paddingEnd="6dp"
-                            android:minHeight="40dp"
-                            android:gravity="center"
-                            android:stateListAnimator="@animator/button_scale_animator"
-                            app:autoSizeTextType="uniform"
-                            app:autoSizeMinTextSize="10sp"
-                            app:autoSizeMaxTextSize="14sp"
-                            app:autoSizeStepGranularity="1sp"
-                            android:maxLines="1" />
+                            android:id="@+id/btntime_out"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_above="@id/excuse_letter_text_button"
+                            android:layout_marginBottom="6dp"
+                            android:layout_marginStart="48dp"
+                            android:layout_marginEnd="48dp"
+                            android:backgroundTint="@color/maroon"
+                            android:elevation="6dp"
+                            android:text="Time - Out"
+                            android:textColor="@color/yellow_gold"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="10dp"
+                            android:stateListAnimator="@animator/button_scale_animator" />
 
+                    <!-- Time In - Anchored above Time Out -->
                     <Button
-                            android:id="@+id/btn_filter_ended"
-                            android:layout_width="0dp"
+                            android:id="@+id/btntime_in"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_above="@id/btntime_out"
+                            android:layout_marginBottom="4dp"
+                            android:layout_marginStart="48dp"
+                            android:layout_marginEnd="48dp"
+                            android:backgroundTint="@color/yellow_gold"
+                            android:elevation="6dp"
+                            android:text="Time - In"
+                            android:textColor="@color/maroon"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="10dp"
+                            android:stateListAnimator="@animator/button_scale_animator" />
+
+                    <!-- Attendance Prompt - Anchored above Time In -->
+                    <TextView
+                            android:id="@+id/attendance_prompt"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Ended"
-                            android:textColor="@color/filter_button_text_selector"
-                            android:backgroundTint="@color/white"
-                            android:layout_marginStart="2dp"
-                            android:layout_marginEnd="4dp"
-                            android:paddingStart="6dp"
-                            android:paddingEnd="6dp"
-                            android:minHeight="40dp"
-                            android:gravity="center"
-                            android:stateListAnimator="@animator/button_scale_animator"
-                            app:autoSizeTextType="uniform"
-                            app:autoSizeMinTextSize="10sp"
-                            app:autoSizeMaxTextSize="14sp"
-                            app:autoSizeStepGranularity="1sp"
-                            android:maxLines="1" />
+                            android:layout_above="@id/btntime_in"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginBottom="10dp"
+                            android:text="Mark your attendance for today:"
+                            android:textSize="14sp"
+                            android:textColor="@color/black"
+                            android:textStyle="bold" />
 
-                    <Button
-                            android:id="@+id/btn_filter_cancelled"
-                            android:layout_width="0dp"
+                    <!-- Event box List (Design Image) -->
+                    <ImageView
+                            android:id="@+id/event_box_list"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Cancelled"
-                            android:textColor="@color/filter_button_text_selector"
-                            android:backgroundTint="@color/white"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="2dp"
-                            android:paddingStart="6dp"
-                            android:paddingEnd="6dp"
-                            android:minHeight="40dp"
-                            android:gravity="center"
-                            android:stateListAnimator="@animator/button_scale_animator"
-                            app:autoSizeTextType="uniform"
-                            app:autoSizeMinTextSize="10sp"
-                            app:autoSizeMaxTextSize="14sp"
-                            app:autoSizeStepGranularity="1sp"
-                            android:maxLines="1" />
-                </LinearLayout>
+                            android:layout_below="@id/filter_buttons"
+                            android:layout_above="@id/attendance_prompt"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginStart="24dp"
+                            android:layout_marginTop="10dp"
+                            android:layout_marginBottom="10dp"
+                            android:layout_marginEnd="24dp"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="Event list background"
+                            android:maxHeight="100dp"
+                            android:scaleType="fitXY"
+                            app:srcCompat="@drawable/event_box_list" />
 
-                <!-- Excuse Letter - Anchored to bottom -->
-                <TextView
-                        android:id="@+id/excuse_letter_text_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentBottom="true"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginBottom="24dp"
-                        android:text="Send a Excuse Letter"
-                        android:textColor="@color/maroon"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp" />
+                    <!-- Event List (RecyclerView on top of the ImageView) -->
+                    <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recycler_events"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_alignStart="@id/event_box_list"
+                            android:layout_alignEnd="@id/event_box_list"
+                            android:layout_alignTop="@id/event_box_list"
+                            android:layout_alignBottom="@id/event_box_list"
+                            android:padding="4dp"
+                            tools:listitem="@layout/event_card"
+                            android:clipToPadding="true"
+                            android:background="@android:color/transparent" />
 
-                <!-- Time Out - Anchored above excuse letter -->
-                <Button
-                        android:id="@+id/btntime_out"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_above="@id/excuse_letter_text_button"
-                        android:layout_marginBottom="12dp"
-                        android:layout_marginStart="48dp"
-                        android:layout_marginEnd="48dp"
-                        android:backgroundTint="@color/maroon"
-                        android:elevation="6dp"
-                        android:text="Time - Out"
-                        android:textColor="@color/yellow_gold"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        app:cornerRadius="12dp"
-                        android:stateListAnimator="@animator/button_scale_animator" />
+                    <!-- Tutorial Overlay - MOVED TO BE THE LAST CHILD for correct Z-ordering -->
+                    <FrameLayout
+                            android:id="@+id/tutorial_overlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="#80000000"
+                            android:visibility="gone"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:focusableInTouchMode="false" />
 
-                <!-- Time In - Anchored above Time Out -->
-                <Button
-                        android:id="@+id/btntime_in"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_above="@id/btntime_out"
-                        android:layout_marginBottom="8dp"
-                        android:layout_marginStart="48dp"
-                        android:layout_marginEnd="48dp"
-                        android:backgroundTint="@color/yellow_gold"
-                        android:elevation="6dp"
-                        android:text="Time - In"
-                        android:textColor="@color/maroon"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        app:cornerRadius="12dp"
-                        android:stateListAnimator="@animator/button_scale_animator" />
-
-                <!-- Attendance Prompt - Anchored above Time In -->
-                <TextView
-                        android:id="@+id/attendance_prompt"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_above="@id/btntime_in"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginBottom="16dp"
-                        android:text="Mark your attendance for today:"
-                        android:textSize="15sp"
-                        android:textColor="@color/black"
-                        android:textStyle="bold" />
-
-                <!-- Event box List (Design Image) -->
-                <ImageView
-                        android:id="@+id/event_box_list"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_below="@id/filter_buttons"
-                        android:layout_above="@id/attendance_prompt"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginStart="32dp"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginBottom="16dp"
-                        android:layout_marginEnd="32dp"
-                        android:adjustViewBounds="true"
-                        android:contentDescription="Event list background"
-                        android:maxHeight="160dp"
-                        android:scaleType="fitXY"
-                        app:srcCompat="@drawable/event_box_list" />
-
-                <!-- Event List (RecyclerView on top of the ImageView) -->
-                <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/recycler_events"
-                        android:layout_width="350dp"
-                        android:layout_height="100dp"
-                        android:layout_alignStart="@id/event_box_list"
-                        android:layout_alignEnd="@id/event_box_list"
-                        android:layout_alignTop="@id/event_box_list"
-                        android:layout_alignBottom="@id/event_box_list"
-                        android:padding="6dp"
-                        tools:listitem="@layout/event_card"
-                        android:clipToPadding="true"
-                        android:background="@android:color/transparent" />
-
-                <!-- Tutorial Overlay - MOVED TO BE THE LAST CHILD for correct Z-ordering -->
-                <FrameLayout
-                        android:id="@+id/tutorial_overlay"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="#80000000"
-                        android:visibility="gone"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:focusableInTouchMode="false" />
-
-            </RelativeLayout>
-
+                </RelativeLayout>
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

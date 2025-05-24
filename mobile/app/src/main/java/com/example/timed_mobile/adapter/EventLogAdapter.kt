@@ -1,6 +1,5 @@
 package com.example.timed_mobile.adapter
 
-import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,11 +9,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.timed_mobile.model.EventLogModel
-import com.example.timed_mobile.ManualTimeOutActivity
 import com.example.timed_mobile.R
-import kotlin.jvm.java
 
-class EventLogAdapter : ListAdapter<EventLogModel, EventLogAdapter.EventLogViewHolder>(DiffCallback) {
+class EventLogAdapter(
+    private val onTimeOutClick: (EventLogModel) -> Unit
+) : ListAdapter<EventLogModel, EventLogAdapter.EventLogViewHolder>(DiffCallback) {
 
     object DiffCallback : DiffUtil.ItemCallback<EventLogModel>() {
         override fun areItemsTheSame(oldItem: EventLogModel, newItem: EventLogModel): Boolean {
@@ -46,15 +45,10 @@ class EventLogAdapter : ListAdapter<EventLogModel, EventLogAdapter.EventLogViewH
             timeInView.text = "Time-In: ${log.timeInTimestamp}"
             statusView.text = log.status
 
-            if (log.status == "Timed-In: Haven't Timed-Out") {
+            if (log.status == "Timed-In: Haven't Timed-Out" && log.showTimeOutButton) {
                 timeOutButton.visibility = View.VISIBLE
                 timeOutButton.setOnClickListener {
-                    val context = itemView.context
-                    val intent = Intent(context, ManualTimeOutActivity::class.java).apply {
-                        putExtra("eventId", log.eventId)
-                        putExtra("eventName", log.eventName)
-                    }
-                    context.startActivity(intent)
+                    onTimeOutClick(log)
                 }
             } else {
                 timeOutButton.visibility = View.GONE

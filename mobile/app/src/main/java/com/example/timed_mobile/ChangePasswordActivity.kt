@@ -12,6 +12,7 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import de.hdodenhof.circleimageview.CircleImageView
+import android.util.Log
 
 class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var newPasswordInput: TextInputEditText
@@ -23,6 +24,7 @@ class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var profileImage: CircleImageView
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
+    private lateinit var currentPasswordInput: TextInputEditText
 
     private var userId: String? = null
 
@@ -45,6 +47,7 @@ class ChangePasswordActivity : AppCompatActivity() {
         profileImage = findViewById(R.id.profile_image)
         teacherName = findViewById(R.id.teacher_name)
         teacherId = findViewById(R.id.teacher_id)
+        currentPasswordInput = findViewById(R.id.current_password_input)
 
         updatePasswordButton.setOnClickListener {
             updatePassword()
@@ -141,11 +144,17 @@ class ChangePasswordActivity : AppCompatActivity() {
     }
 
     private fun updatePassword() {
+        val currentPassword = currentPasswordInput.text.toString().trim()
         val newPassword = newPasswordInput.text.toString().trim()
         val confirmPassword = reenterPasswordInput.text.toString().trim()
 
         newPasswordLayout.error = null
         reenterPasswordLayout.error = null
+
+        if (currentPassword.isEmpty()) {
+            Toast.makeText(this, "Enter your current password", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         if (newPassword.isEmpty()) {
             newPasswordLayout.error = "Enter a new password"
@@ -162,27 +171,41 @@ class ChangePasswordActivity : AppCompatActivity() {
             return
         }
 
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser != null && userId != null) {
-            currentUser.updatePassword(newPassword).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Update Firestore 'users' document password only if document exists and we have permission
-                    FirebaseFirestore.getInstance().collection("users")
-                        .document(userId!!)
-                        .update(mapOf("password" to newPassword))
-                        .addOnSuccessListener {
-                            showSuccessDialog()
-                        }
-                        .addOnFailureListener { e ->
-                            e.printStackTrace()
-                            Toast.makeText(this, "Password updated but failed to save in Firestore", Toast.LENGTH_SHORT).show()
-                        }
-                } else {
-                    Toast.makeText(this, "Failed to update password", Toast.LENGTH_SHORT).show()
+        if (userId == null) {
+            Toast.makeText(this, "Missing user session", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val firestore = FirebaseFirestore.getInstance()
+        val userDocRef = firestore.collection("users").document(userId!!)
+
+        userDocRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val storedHash = document.getString("password")
+                if (storedHash.isNullOrEmpty()) {
+                    Toast.makeText(this, "No password stored", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
+
+                val passwordMatch = org.mindrot.jbcrypt.BCrypt.checkpw(currentPassword, storedHash)
+                if (!passwordMatch) {
+                    Toast.makeText(this, "Wrong current password", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                val newHashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(newPassword, org.mindrot.jbcrypt.BCrypt.gensalt())
+                userDocRef.update("password", newHashedPassword)
+                    .addOnSuccessListener {
+                        showSuccessDialog()
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(this, "Failed to update password in Firestore", Toast.LENGTH_SHORT).show()
+                    }
+            } else {
+                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener {
+            Toast.makeText(this, "Error accessing Firestore", Toast.LENGTH_SHORT).show()
         }
     }
 

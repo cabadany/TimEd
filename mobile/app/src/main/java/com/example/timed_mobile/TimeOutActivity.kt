@@ -3,19 +3,18 @@ package com.example.timed_mobile
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.Gravity // <<< ADD THIS IMPORT
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.storage.FirebaseStorage
-import android.net.Uri
-import java.util.UUID
 
 class TimeOutActivity : AppCompatActivity() {
 
@@ -27,13 +26,19 @@ class TimeOutActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_out_page)
 
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
+
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
 
         findViewById<Button>(R.id.btntime_out).setOnClickListener {
             logTimeOutToFirebase()
-            showTimeOutSuccessDialog()
+        }
+
+        findViewById<ImageView>(R.id.icon_back_button).setOnClickListener {
+            finish()
         }
     }
 
@@ -44,19 +49,27 @@ class TimeOutActivity : AppCompatActivity() {
         dialog.setContentView(R.layout.success_popup_time_out)
 
         dialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT, // Dialog window takes full width
+            ViewGroup.LayoutParams.WRAP_CONTENT  // Height wraps content
         )
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT)) // Makes XML background visible
+        dialog.window?.setGravity(Gravity.CENTER) // Ensure it's centered
+        dialog.window?.setWindowAnimations(R.style.DialogAnimation) // Apply the animation
 
-        val titleText = dialog.findViewById<TextView>(R.id.popup_title)
-        val messageText = dialog.findViewById<TextView>(R.id.popup_message)
-        titleText.text = "Successfully Timed - Out"
-        messageText.text = "Thank you. It has been recorded."
+        // TextViews text is set in XML, no need to set them here unless dynamic
+        // val titleText = dialog.findViewById<TextView>(R.id.popup_title)
+        // val messageText = dialog.findViewById<TextView>(R.id.popup_message)
 
         val closeButton = dialog.findViewById<Button>(R.id.popup_close_button)
         closeButton.setOnClickListener {
             dialog.dismiss()
+            val intent = Intent(this, HomeActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+            }
+            startActivity(intent)
             finish()
         }
 
@@ -65,7 +78,7 @@ class TimeOutActivity : AppCompatActivity() {
 
     private fun logTimeOutToFirebase() {
         if (userId == null) {
-            Toast.makeText(this, "User ID missing", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "User ID missing. Cannot log time-out.", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -79,22 +92,14 @@ class TimeOutActivity : AppCompatActivity() {
             "userId" to userId
         )
 
-        dbRef.push().setValue(log).addOnSuccessListener {
-            Toast.makeText(this, "Time-Out logged", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener {
-            Toast.makeText(this, "Failed to log Time-Out", Toast.LENGTH_SHORT).show()
-        }
+        dbRef.push().setValue(log)
+            .addOnSuccessListener {
+                showTimeOutSuccessDialog()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed to log Time-Out: ${e.message}", Toast.LENGTH_LONG)
+                    .show()
+            }
     }
 
-    private fun uploadImageToFirebase(uri: Uri) {
-        val uid = userId ?: return
-        val filename = UUID.randomUUID().toString()
-        val storageRef = FirebaseStorage.getInstance().getReference("uploads/$uid/$filename.jpg")
-
-        storageRef.putFile(uri).addOnSuccessListener {
-            Toast.makeText(this, "Photo uploaded", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener {
-            Toast.makeText(this, "Upload failed: ${it.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
 }
