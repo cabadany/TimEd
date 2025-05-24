@@ -14,4 +14,9 @@
     <color name="face_box_detected">#4CAF50</color>
     <color name="purple">#800080</color>
     <color name="light_gray">#FAFAFA</color>
+
+    <!-- Additional attendance text colors -->
+    <color name="attendance_green">#4CAF50</color> <!-- On Time -->
+    <color name="attendance_yellow">#FFEB3B</color> <!-- Late -->
+    <color name="attendance_red">#F44336</color> <!-- Absent -->
 </resources>

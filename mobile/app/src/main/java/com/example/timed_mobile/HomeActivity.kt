@@ -98,6 +98,7 @@ class HomeActivity : AppCompatActivity() {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
                     loadTodayTimeInPhoto()
                     updateSidebarProfileImage()
+                    evaluateAndDisplayAttendanceBadge()
                 }
             }
         }
@@ -457,6 +458,7 @@ class HomeActivity : AppCompatActivity() {
         } else {
             loadTodayTimeInPhoto()
             updateSidebarProfileImage()
+            evaluateAndDisplayAttendanceBadge()
         }
     }
 
@@ -1174,19 +1176,25 @@ class HomeActivity : AppCompatActivity() {
         when (status.trim().lowercase()) {
             "on time" -> {
                 attendanceStatusBadge.text = "On Time"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_on_time)
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_green))
+                attendanceStatusBadge.background = null
             }
             "late" -> {
                 attendanceStatusBadge.text = "Late"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_late)
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_yellow))
+                attendanceStatusBadge.background = null
+            }
+            "absent" -> {
+                attendanceStatusBadge.text = "Absent"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_red))
+                attendanceStatusBadge.background = null
             }
             "not timed-in" -> {
-                attendanceStatusBadge.text = "Not Timed-In"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_default)
+                attendanceStatusBadge.text = "Has not Timed-In"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray))
+                attendanceStatusBadge.background = null
             }
-            else -> {
-                attendanceStatusBadge.visibility = View.GONE
-            }
+            else -> attendanceStatusBadge.visibility = View.GONE
         }
     }
 
@@ -1195,47 +1203,85 @@ class HomeActivity : AppCompatActivity() {
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
+        val now = Calendar.getInstance()
+        val currentTime = now.timeInMillis
+
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val cutoff9am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 9)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val cutoff10am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 10)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        ref.orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-
-                    val cutoffTime = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 9)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-
-                    var foundTimeIn = false
+                    var timeInTimestamp: Long? = null
 
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
-
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            foundTimeIn = true
-                            if (timestamp <= cutoffTime) {
-                                updateAttendanceBadge("On Time")
-                            } else {
-                                updateAttendanceBadge("Late")
-                            }
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
+                        if (type == "TimeIn" && timestamp != null) {
+                            timeInTimestamp = timestamp
                             break
                         }
                     }
 
-                    if (!foundTimeIn) {
-                        updateAttendanceBadge("Not Timed-In")
+                    if (timeInTimestamp != null) {
+                        if (timeInTimestamp <= cutoff9am) {
+                            updateAttendanceBadge("On Time")
+                        } else {
+                            updateAttendanceBadge("Late")
+                        }
+                    } else {
+                        // Check excuse letter from Realtime Database
+                        val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
+
+                        val excuseRef = FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId)
+                        excuseRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(excuseSnapshot: DataSnapshot) {
+                                var matched = false
+                                for (doc in excuseSnapshot.children) {
+                                    val date = doc.child("date").getValue(String::class.java)
+                                    val status = doc.child("status").getValue(String::class.java)
+                                    if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) {
+                                        matched = true
+                                        break
+                                    }
+                                }
+
+                                if (matched) {
+                                    updateAttendanceBadge("Absent")
+                                } else if (currentTime > cutoff10am) {
+                                    updateAttendanceBadge("Has not Timed-In")
+                                } else {
+                                    attendanceStatusBadge.visibility = View.GONE
+                                }
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                updateAttendanceBadge("Has not Timed-In")
+                            }
+                        })
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    updateAttendanceBadge("Not Timed-In")
+                    updateAttendanceBadge("Has not Timed-In")
                 }
             })
     }
