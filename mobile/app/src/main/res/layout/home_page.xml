@@ -162,21 +162,19 @@
                                         android:textSize="13sp" />
 
                                 <Spinner
-                                        android:id="@+id/status_spinner"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginStart="20dp"
-                                        android:layout_marginTop="2dp"
-                                        android:layout_marginBottom="2dp"
-                                        android:backgroundTint="@color/maroon"
-                                        android:minWidth="0dp"
-                                        android:minHeight="0dp"
-                                        android:paddingStart="4dp"
-                                        android:paddingTop="2dp"
-                                        android:paddingEnd="4dp"
-                                        android:paddingBottom="2dp"
-                                        android:textAlignment="center"
-                                        android:theme="@style/SpinnerTheme.Small" />
+                                    android:id="@+id/status_spinner"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:layout_marginTop="4dp"
+                                    android:paddingStart="10dp"
+                                    android:paddingTop="3dp"
+                                    android:paddingEnd="10dp"
+                                    android:paddingBottom="3dp"
+                                    android:textAlignment="center"
+                                    android:spinnerMode="dropdown"
+                                    app:layout_constraintStart_toEndOf="@id/profile_image_placeholder"
+                                    app:layout_constraintTop_toBottomOf="@id/greeting_name" />
                             </LinearLayout>
 
                             <ImageView
