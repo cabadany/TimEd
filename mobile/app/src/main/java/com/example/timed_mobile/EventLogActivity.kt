@@ -69,8 +69,6 @@ class EventLogActivity : AppCompatActivity() {
             return
         }
 
-        Log.d(TAG, "Fetching CURRENT time-ins for userId: $userId")
-
         if (!isRefreshing) {
             progressBar.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
@@ -101,22 +99,25 @@ class EventLogActivity : AppCompatActivity() {
                         .collection("events")
                         .document(eventId)
                         .collection("attendees")
-                        .document(userId)
+                        .whereEqualTo("userId", userId)
                         .get()
-                        .addOnSuccessListener { attendeeDoc ->
-                            Log.d(TAG, "Checked event: $eventId → attendee exists: ${attendeeDoc.exists()}")
+                        .addOnSuccessListener { attendeeSnapshot ->
+                            if (!attendeeSnapshot.isEmpty) {
+                                for (attendeeDoc in attendeeSnapshot.documents) {
+                                    val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
+                                    val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
+                                    val status = if (hasTimedOut) {
+                                        "Timed-In: Timed-Out"
+                                    } else {
+                                        "Timed-In: Haven’t Timed-Out"
+                                    }
 
-                            if (attendeeDoc.exists()) {
-                                val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
-                                val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
-
-                                if (!hasTimedOut) { // ✅ Only include if still timed-in
                                     logs.add(
                                         EventLogModel(
                                             eventId = eventId,
                                             eventName = eventName,
                                             timeInTimestamp = timestamp,
-                                            status = "Timed-In: Haven’t Timed-Out"
+                                            status = status
                                         )
                                     )
                                 }
@@ -125,7 +126,7 @@ class EventLogActivity : AppCompatActivity() {
                             processedCount++
                             if (processedCount == totalEvents) {
                                 if (logs.isEmpty()) {
-                                    showEmptyText("You are not currently timed-in to any event.")
+                                    showEmptyText("You haven’t timed-in to any event yet.")
                                 } else {
                                     emptyText.visibility = View.GONE
                                     recyclerView.visibility = View.VISIBLE
@@ -136,12 +137,12 @@ class EventLogActivity : AppCompatActivity() {
                                 else progressBar.visibility = View.GONE
                             }
                         }
-                        .addOnFailureListener { e ->
-                            Log.e(TAG, "Failed checking attendees in $eventId", e)
+                        .addOnFailureListener {
+                            Log.e(TAG, "Error checking attendees in $eventId", it)
                             processedCount++
                             if (processedCount == totalEvents) {
                                 if (logs.isEmpty()) {
-                                    showEmptyText("You are not currently timed-in to any event.")
+                                    showEmptyText("You haven’t timed-in to any event yet.")
                                 } else {
                                     emptyText.visibility = View.GONE
                                     recyclerView.visibility = View.VISIBLE

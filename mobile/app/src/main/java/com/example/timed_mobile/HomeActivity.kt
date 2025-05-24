@@ -73,7 +73,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var tutorialOverlay: FrameLayout
 
 
-    private var currentTutorialPopupWindow: PopupWindow? = null // Track current tutorial popup
+    private var currentTutorialPopupWindow: PopupWindow? = null
     private val allEvents = mutableListOf<EventModel>()
     private var userId: String? = null
     private var userEmail: String? = null
@@ -81,10 +81,12 @@ class HomeActivity : AppCompatActivity() {
     private var idNumber: String? = null
     private var department: String? = null
     private val statusOptions = listOf("On Duty", "On Break", "Off Duty")
+    private var isSpinnerInitialized = false
+    private var isUserChangingStatus = false
 
     private lateinit var attendanceStatusBadge: TextView
 
-    private lateinit var btnHelp: ImageView // Added for btn_help
+    private lateinit var btnHelp: ImageView
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -160,10 +162,30 @@ class HomeActivity : AppCompatActivity() {
 
         loadUserStatus()
 
+        statusSpinner.setOnTouchListener { _, _ ->
+            isUserChangingStatus = true // Set flag when user touches the spinner
+            false
+        }
+
         statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (!isSpinnerInitialized) {
+                    isSpinnerInitialized = true // Skip automatic first trigger
+                    return
+                }
+
                 val selectedStatus = statusOptions[position]
-                showStatusConfirmationDialog(selectedStatus)
+
+                if (isUserChangingStatus) {
+                    // ✅ Show confirmation if user changed manually
+                    showStatusConfirmationDialog(selectedStatus)
+                } else {
+                    // ✅ Silent update if programmatic
+                    updateUserStatus(selectedStatus)
+                    updateTimeLogsStatus(selectedStatus)
+                }
+
+                isUserChangingStatus = false
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -382,6 +404,7 @@ class HomeActivity : AppCompatActivity() {
 
                             val index = statusOptions.indexOf(currentStatus)
                             if (index != -1) {
+                                isUserChangingStatus = false
                                 statusSpinner.setSelection(index)
                             }
                         }
@@ -694,25 +717,35 @@ class HomeActivity : AppCompatActivity() {
         }
 
         btnTimeOut.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("Time - Out Confirmation")
-                .setMessage("Are you sure you want to time out for today?")
-                .setPositiveButton("Yes") { _, _ ->
-                    val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
-                    profileImageView.setImageResource(R.drawable.ic_profile)
-                    val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
-                    sidebarImage.setImageResource(R.drawable.ic_profile)
-                    setTimedOutToday()
+            hasTimedInToday { alreadyTimedIn ->
+                if (!alreadyTimedIn) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Cannot Time-Out")
+                        .setMessage("You haven't timed in yet. Please time in first before timing out.")
+                        .setPositiveButton("OK", null)
+                        .show()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Time - Out Confirmation")
+                        .setMessage("Are you sure you want to time out for today?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            val profileImageView = findViewById<ImageView>(R.id.profile_image_placeholder)
+                            profileImageView.setImageResource(R.drawable.ic_profile)
+                            val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+                            sidebarImage.setImageResource(R.drawable.ic_profile)
+                            setTimedOutToday()
 
-                    val intent = Intent(this, TimeOutActivity::class.java).apply {
-                        putExtra("userId", userId)
-                        putExtra("email", userEmail ?: "")
-                        putExtra("firstName", userFirstName ?: "User")
-                    }
-                    startActivity(intent)
+                            val intent = Intent(this, TimeOutActivity::class.java).apply {
+                                putExtra("userId", userId)
+                                putExtra("email", userEmail ?: "")
+                                putExtra("firstName", userFirstName ?: "User")
+                            }
+                            startActivity(intent)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
                 }
-                .setNegativeButton("Cancel", null)
-                .show()
+            }
         }
     }
 
@@ -1134,30 +1167,74 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateAttendanceBadge(status: String) {
-        attendanceStatusBadge.visibility = View.VISIBLE // Make sure the badge is visible
+        attendanceStatusBadge.visibility = View.VISIBLE
 
         when (status.trim().lowercase()) {
             "on time" -> {
                 attendanceStatusBadge.text = "On Time"
                 attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_on_time)
-                // Assuming white text color works for all backgrounds as per your XML
-                // attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.white))
             }
             "late" -> {
                 attendanceStatusBadge.text = "Late"
-                // As per your attendance_badge_late.xml, this will be a red background.
-                // If you intend a different color for "Late" (e.g., orange/yellow),
-                // you would adjust the attendance_badge_late.xml drawable's color.
                 attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_late)
             }
-            "absent" -> {
-                attendanceStatusBadge.text = "Absent"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_absent)
+            "not timed-in" -> {
+                attendanceStatusBadge.text = "Not Timed-In"
+                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_default)
             }
             else -> {
-                // Optionally handle unknown status, e.g., hide the badge or set a default
                 attendanceStatusBadge.visibility = View.GONE
             }
         }
+    }
+
+    private fun evaluateAndDisplayAttendanceBadge() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    val cutoffTime = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 9)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    var foundTimeIn = false
+
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            foundTimeIn = true
+                            if (timestamp <= cutoffTime) {
+                                updateAttendanceBadge("On Time")
+                            } else {
+                                updateAttendanceBadge("Late")
+                            }
+                            break
+                        }
+                    }
+
+                    if (!foundTimeIn) {
+                        updateAttendanceBadge("Not Timed-In")
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    updateAttendanceBadge("Not Timed-In")
+                }
+            })
     }
 }
