@@ -2,6 +2,7 @@ package com.example.timed_mobile
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.util.Log
@@ -17,6 +18,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.timed_mobile.adapter.EventLogAdapter
 import com.example.timed_mobile.model.EventLogModel
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.*
 
 class EventLogActivity : AppCompatActivity() {
 
@@ -34,7 +37,6 @@ class EventLogActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.event_log)
 
-        // Initialize views
         recyclerView = findViewById(R.id.recycler_event_logs)
         emptyText = findViewById(R.id.text_empty)
         backButton = findViewById(R.id.icon_back_button_event_log)
@@ -44,20 +46,25 @@ class EventLogActivity : AppCompatActivity() {
         val topWave = findViewById<ImageView>(R.id.top_wave_animation_event_log)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        backButton.setOnClickListener {
-            finish()
-        }
+        backButton.setOnClickListener { finish() }
 
-        adapter = EventLogAdapter()
+        adapter = EventLogAdapter() { eventLog ->
+            if (eventLog.showTimeOutButton) {
+                val intent = Intent(this, TimeOutActivity::class.java).apply {
+                    putExtra("userId", intent.getStringExtra("userId"))
+                    putExtra("eventId", eventLog.eventId)
+                    putExtra("eventName", eventLog.eventName)
+                }
+                startActivity(intent)
+            }
+        }
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
         swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
-        swipeRefreshLayout.setOnRefreshListener {
-            fetchEventLogs(isRefreshing = true)
-        }
+        swipeRefreshLayout.setOnRefreshListener { fetchEventLogs(true) }
 
-        fetchEventLogs(isRefreshing = false)
+        fetchEventLogs(false)
     }
 
     private fun fetchEventLogs(isRefreshing: Boolean = false) {
@@ -85,15 +92,22 @@ class EventLogActivity : AppCompatActivity() {
                 var processedCount = 0
 
                 if (totalEvents == 0) {
-                    showEmptyText("No events found.")
-                    swipeRefreshLayout.isRefreshing = false
-                    progressBar.visibility = View.GONE
+                    updateUIWithLogs(logs)
                     return@addOnSuccessListener
                 }
 
                 for (eventDoc in eventSnapshots) {
                     val eventId = eventDoc.id
                     val eventName = eventDoc.getString("eventName") ?: "Unknown Event"
+                    val eventDate = eventDoc.getTimestamp("date")?.toDate()
+                    val duration = eventDoc.getString("duration") ?: "01:00:00"
+
+                    val parts = duration.split(":").map { it.toIntOrNull() ?: 0 }
+                    val durationMillis = (parts.getOrNull(0) ?: 0) * 3600000L +
+                            (parts.getOrNull(1) ?: 0) * 60000L +
+                            (parts.getOrNull(2) ?: 0) * 1000L
+                    val now = System.currentTimeMillis()
+                    val isStillActive = eventDate != null && (eventDate.time + durationMillis) > now
 
                     FirebaseFirestore.getInstance()
                         .collection("events")
@@ -106,18 +120,14 @@ class EventLogActivity : AppCompatActivity() {
                                 for (attendeeDoc in attendeeSnapshot.documents) {
                                     val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
                                     val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
-                                    val status = if (hasTimedOut) {
-                                        "Timed-In: Timed-Out"
-                                    } else {
-                                        "Timed-In: Haven’t Timed-Out"
-                                    }
 
                                     logs.add(
                                         EventLogModel(
                                             eventId = eventId,
                                             eventName = eventName,
                                             timeInTimestamp = timestamp,
-                                            status = status
+                                            status = if (hasTimedOut) "Timed-Out" else "Timed-In",
+                                            showTimeOutButton = !hasTimedOut && isStillActive
                                         )
                                     )
                                 }
@@ -125,43 +135,57 @@ class EventLogActivity : AppCompatActivity() {
 
                             processedCount++
                             if (processedCount == totalEvents) {
-                                if (logs.isEmpty()) {
-                                    showEmptyText("You haven’t timed-in to any event yet.")
-                                } else {
-                                    emptyText.visibility = View.GONE
-                                    recyclerView.visibility = View.VISIBLE
-                                    adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
-                                }
-
-                                if (isRefreshing) swipeRefreshLayout.isRefreshing = false
-                                else progressBar.visibility = View.GONE
+                                updateUIWithLogs(logs)
                             }
                         }
                         .addOnFailureListener {
-                            Log.e(TAG, "Error checking attendees in $eventId", it)
                             processedCount++
                             if (processedCount == totalEvents) {
-                                if (logs.isEmpty()) {
-                                    showEmptyText("You haven’t timed-in to any event yet.")
-                                } else {
-                                    emptyText.visibility = View.GONE
-                                    recyclerView.visibility = View.VISIBLE
-                                    adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
-                                }
-
-                                if (isRefreshing) swipeRefreshLayout.isRefreshing = false
-                                else progressBar.visibility = View.GONE
+                                updateUIWithLogs(logs)
                             }
                         }
                 }
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to fetch events", e)
-                Toast.makeText(this, "Error loading events: ${e.message}", Toast.LENGTH_LONG).show()
+            .addOnFailureListener {
+                Toast.makeText(this, "Error loading events: ${it.message}", Toast.LENGTH_LONG).show()
                 swipeRefreshLayout.isRefreshing = false
                 progressBar.visibility = View.GONE
-                showEmptyText("Error loading logs.")
+                showEmptyText("Failed to load event data.")
             }
+    }
+
+    private fun updateUIWithLogs(logs: List<EventLogModel>) {
+        if (logs.isEmpty()) {
+            showEmptyText("No logs found.")
+        } else {
+            recyclerView.visibility = View.VISIBLE
+            emptyText.visibility = View.GONE
+            adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
+        }
+
+        swipeRefreshLayout.isRefreshing = false
+        progressBar.visibility = View.GONE
+    }
+
+    private fun parseDurationToMillis(duration: String): Long {
+        val parts = duration.split(":")
+        val hours = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        val seconds = parts.getOrNull(2)?.toIntOrNull() ?: 0
+        return (hours * 3600 + minutes * 60 + seconds) * 1000L
+    }
+
+    private fun showResults(logs: List<EventLogModel>, isRefreshing: Boolean) {
+        if (logs.isEmpty()) {
+            showEmptyText("No event logs found.")
+        } else {
+            emptyText.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+            adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
+        }
+
+        if (isRefreshing) swipeRefreshLayout.isRefreshing = false
+        else progressBar.visibility = View.GONE
     }
 
     private fun showEmptyText(message: String) {
