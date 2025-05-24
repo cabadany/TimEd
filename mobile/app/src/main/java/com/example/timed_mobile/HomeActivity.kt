@@ -1,5 +1,6 @@
 package com.example.timed_mobile
 
+import com.example.timed_mobile.adapter.StatusAdapter
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -38,6 +39,7 @@ import java.util.*
 
 import android.graphics.drawable.ColorDrawable
 import android.app.Dialog
+import android.view.ViewGroup
 import kotlin.math.abs
 import androidx.core.view.isVisible
 
@@ -149,16 +151,16 @@ class HomeActivity : AppCompatActivity() {
 
         btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
 
+        statusSpinner = findViewById(R.id.status_spinner)
+        val statusAdapter = StatusAdapter(this, statusOptions)
+        statusSpinner.adapter = statusAdapter
+
         // Setup for btn_help
         btnHelp.setOnClickListener {
             showTutorialDialog()
         }
 
         firestore = FirebaseFirestore.getInstance()
-
-        statusSpinner = findViewById(R.id.status_spinner)
-        val statusAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, statusOptions)
-        statusSpinner.adapter = statusAdapter
 
         loadUserStatus()
 
