@@ -8,6 +8,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
+import android.util.Log
+import android.widget.Toast
 import java.util.*
 
 class AttendanceSheetActivity : AppCompatActivity() {
@@ -66,23 +68,36 @@ class AttendanceSheetActivity : AppCompatActivity() {
     private fun loadEventLogs(userId: String) {
         firestore.collection("events")
             .get()
-            .addOnSuccessListener { events ->
-                for (event in events) {
-                    firestore.collection("events").document(event.id)
+            .addOnSuccessListener { eventSnapshots ->
+                for (eventDoc in eventSnapshots) {
+                    val eventId = eventDoc.id
+                    val eventTitle = eventDoc.getString("eventName") ?: "Untitled Event"
+
+                    firestore.collection("events")
+                        .document(eventId)
                         .collection("attendees")
-                        .document(userId)
+                        .whereEqualTo("userId", userId)  // exact casing!
                         .get()
-                        .addOnSuccessListener { doc ->
-                            if (doc.exists()) {
-                                val timeIn = doc.getLong("timeIn")
-                                val timeOut = doc.getLong("timeOut")
-                                val view = TextView(this)
-                                view.text = "📌 ${event.getString("title") ?: "Event"}\n- Time In: ${formatTime(timeIn)}\n- Time Out: ${formatTime(timeOut)}"
-                                view.setPadding(16, 16, 16, 16)
-                                eventLogContainer.addView(view)
+                        .addOnSuccessListener { attendeesSnapshot ->
+                            for (attendeeDoc in attendeesSnapshot) {
+                                val type = attendeeDoc.getString("type") ?: ""
+                                val timestampString = attendeeDoc.getString("timestamp")
+
+                                if (type == "event_time_in" && timestampString != null) {
+                                    val view = TextView(this)
+                                    view.text = "📌 $eventTitle\n- Time In: $timestampString\n- Time Out: —"
+                                    view.setPadding(16, 16, 16, 16)
+                                    eventLogContainer.addView(view)
+                                }
                             }
                         }
+                        .addOnFailureListener {
+                            Log.e("AttendanceSheet", "Failed to load attendees for $eventId: ${it.message}")
+                        }
                 }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
             }
     }
 
