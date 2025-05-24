@@ -42,6 +42,7 @@ import android.app.Dialog
 import android.view.ViewGroup
 import kotlin.math.abs
 import androidx.core.view.isVisible
+import com.google.firebase.firestore.DocumentReference
 
 class HomeActivity : AppCompatActivity() {
 
@@ -207,15 +208,23 @@ class HomeActivity : AppCompatActivity() {
         val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
         usersRef.get().addOnSuccessListener { doc ->
             val fullName = userFirstName ?: "User"
-            val deptObj = doc.get("department")
-            val abbreviation = if (deptObj is Map<*, *>) {
-                deptObj["abbreviation"]?.toString() ?: "N/A"
-            } else {
-                "N/A"
-            }
-
             greetingName.text = "Hi, $fullName"
-            greetingDetails.text = "$idNumber • $abbreviation"
+
+            val departmentId = doc.getString("departmentId")
+            if (!departmentId.isNullOrEmpty()) {
+                FirebaseFirestore.getInstance().collection("departments")
+                    .document(departmentId)
+                    .get()
+                    .addOnSuccessListener { deptDoc ->
+                        val abbreviation = deptDoc.getString("abbreviation") ?: "N/A"
+                        greetingDetails.text = "$idNumber • $abbreviation"
+                    }
+                    .addOnFailureListener {
+                        greetingDetails.text = "$idNumber • N/A"
+                    }
+            } else {
+                greetingDetails.text = "$idNumber • N/A"
+            }
         }
 
         loadTodayTimeInPhoto()
