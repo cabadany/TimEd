@@ -72,6 +72,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
     private fun fetchExcuseLetters(isRefreshing: Boolean = false) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val uid = currentUser?.uid
+        monitorExcuseLetterStatusChanges()
 
         if (uid.isNullOrEmpty()) {
             Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
@@ -140,6 +141,38 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
                 })
                 recyclerView.visibility = View.GONE
             }
+        })
+    }
+
+    private var lastKnownStatuses: MutableMap<String, String> = mutableMapOf()
+
+    private fun monitorExcuseLetterStatusChanges() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val ref = FirebaseDatabase.getInstance().getReference("excuseLetters").child(uid)
+
+        ref.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val id = snapshot.key ?: return
+                val status = snapshot.child("status").getValue(String::class.java) ?: return
+                lastKnownStatuses[id] = status
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                val id = snapshot.key ?: return
+                val newStatus = snapshot.child("status").getValue(String::class.java) ?: return
+                val oldStatus = lastKnownStatuses[id]
+
+                if (oldStatus != null && newStatus != oldStatus) {
+                    lastKnownStatuses[id] = newStatus
+                    val title = "Excuse Letter Update"
+                    val message = "Your excuse letter has been $newStatus."
+                    com.example.timed_mobile.utils.NotificationUtils.showNotification(this@ExcuseLetterHistoryActivity, title, message)
+                }
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
         })
     }
 }
