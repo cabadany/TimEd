@@ -135,8 +135,8 @@ class HomeActivity : AppCompatActivity() {
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
         greetingCardNavIcon.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
-            else drawerLayout.openDrawer(GravityCompat.START)
+            if (drawerLayout.isDrawerOpen(GravityCompat.END)) drawerLayout.closeDrawer(GravityCompat.END)
+            else drawerLayout.openDrawer(GravityCompat.END)
         }
 
         greetingName = findViewById(R.id.greeting_name)
@@ -644,7 +644,7 @@ class HomeActivity : AppCompatActivity() {
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_home -> {
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_event_log -> {
@@ -654,7 +654,7 @@ class HomeActivity : AppCompatActivity() {
                     val intent = Intent(this, EventLogActivity::class.java)
                     intent.putExtra("userId", userId)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_excuse_letter -> {
@@ -666,14 +666,14 @@ class HomeActivity : AppCompatActivity() {
                         putExtra("department", department)
                     }
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_excuse_letter_history -> {
                     val intent = Intent(this, ExcuseLetterHistoryActivity::class.java)
                     intent.putExtra("userId", userId)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_profile -> {
@@ -685,7 +685,7 @@ class HomeActivity : AppCompatActivity() {
                         putExtra("department", department)
                     }
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_logout -> {
@@ -954,8 +954,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START)
+        if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
+            drawerLayout.closeDrawer(GravityCompat.END)
         } else if (currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing) {
             // If a tutorial step popup is showing, handle back press to cancel the tour
             currentTutorialPopupWindow?.dismiss() // Dismiss the popup (will trigger its OnDismissListener)
