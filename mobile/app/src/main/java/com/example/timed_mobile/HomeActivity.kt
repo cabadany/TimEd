@@ -621,7 +621,24 @@ class HomeActivity : AppCompatActivity() {
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
 
         sidebarName.text = userFirstName ?: "User"
-        sidebarDetails.text = "$idNumber • $department"
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
+        usersRef.get().addOnSuccessListener { userDoc ->
+            val departmentId = userDoc.getString("departmentId")
+            if (!departmentId.isNullOrEmpty()) {
+                FirebaseFirestore.getInstance().collection("departments")
+                    .document(departmentId)
+                    .get()
+                    .addOnSuccessListener { deptDoc ->
+                        val abbreviation = deptDoc.getString("abbreviation") ?: "N/A"
+                        sidebarDetails.text = "$idNumber • $abbreviation"
+                    }
+                    .addOnFailureListener {
+                        sidebarDetails.text = "$idNumber • N/A"
+                    }
+            } else {
+                sidebarDetails.text = "$idNumber • N/A"
+            }
+        }
         sidebarEmail.text = userEmail ?: ""
 
         navigationView.setNavigationItemSelectedListener { menuItem ->
