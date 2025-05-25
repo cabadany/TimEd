@@ -1,32 +1,24 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:aapt="http://schemas.android.com/aapt"
-        android:width="593dp"
-        android:height="337dp"
-        android:viewportWidth="393"
-        android:viewportHeight="137">
+    android:width="550dp"
+    android:height="511dp"
+    android:viewportWidth="393"
+    android:viewportHeight="511">
 
-    <group android:name="bottom_wave_group"
-            android:pivotY="137"> <!-- Set pivot point to bottom edge -->
+    <group
+        android:name="bottom_wave_group1"
+        android:scaleY="-1"
+        android:translateY="511"> <!-- Flip vertically and push to bottom -->
         <path
-                android:pathData="M435.03 155.5c0 3.87-3.12 7.02-6.99 7.04l-446.8 2.6c-3.87 0.03-7.01-3.08-7.02-6.95L-25.95 23.7c0-2.84 3.76-3.86 5.17-1.4C7.4 71.23 67.82 91.2 119.87 68.76l102.11-44.02C284.95 0.53 353.4-5.43 419.43 7.56l14.56 2.87c0.5 0.1 0.85 0.53 0.85 1.03l0.2 144.04Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                        android:type="linear"
-                        android:startX="434.9"
-                        android:startY="58.92"
-                        android:endX="-26.26"
-                        android:endY="65.44">
-                    <item
-                            android:color="#FFC46B02"
-                            android:offset="0.08"/>
-                    <item
-                            android:color="#FF7F0404"
-                            android:offset="0.43"/>
-                    <item
-                            android:color="#FF992500"
-                            android:offset="0.71"/>
-                </gradient>
-            </aapt:attr>
-        </path>
+            android:fillColor="#0288d1"
+            android:pathData="M85.21-360.67c1.65-3.5 5.55-4.52 8.71-2.3l555.5 391.55c3.16 2.23 4.38 6.86 2.73 10.36L472.4 419.02c-2.13 4.48-8.3 1.32-7.37-3.77 23.37-128.84-78.16-254.16-190.94-235.7l-103.15 16.9C68.23 206.27-36.01 151.83-103.4 53.15l-3.85-5.65c-0.21-0.3-0.25-0.7-0.1-1.02L85.21-360.67Z" />
+    </group>
+
+    <group
+        android:name="bottom_wave_group2"
+        android:scaleY="-1"
+        android:translateY="511">
+        <path
+            android:fillColor="#039be5"
+            android:pathData="M-85.23-320.5c0-3.86 3.14-7 7-7h566.96c3.87 0 7 3.14 7 7V59.16c0 4.22-6.01 5-7.1 0.92C460.68-45.63 330.37-83.7 249.89-9.7l-66.73 61.36c-74.6 61.1-177.16 75.2-265.47 36.48l-2.5-1.1c-0.25-0.1-0.4-0.35-0.4-0.62v-406.91Z" />
     </group>
 </vector>

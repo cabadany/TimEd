@@ -1,60 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#FFFFFF">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
 
     <!-- Top wave -->
     <View
-            android:id="@+id/top_wave"
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_alignParentTop="true"
-            android:background="@drawable/wave_top_design" />
+        android:id="@+id/top_wave"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:paddingBottom="-100dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/wave_top_design" />
 
     <!-- Bottom wave -->
     <View
-            android:id="@+id/bottom_wave"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:layout_alignParentBottom="true"
-            android:background="@drawable/wave_bottom_design" />
+        android:id="@+id/bottom_wave"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_alignParentBottom="true"
+        android:background="@drawable/wave_bottom_design" />
 
-    <!-- App Logo -->
     <ImageView
-            android:id="@+id/splash_logo"
-            android:layout_width="150dp"
-            android:layout_height="150dp"
-            android:layout_centerInParent="true"
-            android:src="@drawable/app_logo"
-            android:contentDescription="App Logo" />
+        android:id="@+id/splash_logo"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="-40dp"
+        android:src="@drawable/timeed_logo"
+        android:contentDescription="App Logo" />
 
     <!-- App Name -->
     <TextView
-            android:id="@+id/splash_app_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/splash_logo"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp"
-            android:fontFamily="@font/league_spartan_bold"
-            android:text="WILDTIMed"
-            android:textColor="#8B0000"
-            android:textSize="36sp"
-            android:textStyle="bold"
-            android:alpha="0" />
+        android:id="@+id/splash_app_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/splash_logo"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="24dp"
+        android:fontFamily="@font/league_spartan_bold"
+        android:text="Welcome to TimeEd"
+        android:textColor="#475569"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:alpha="0" />
 
     <!-- Loading indicator -->
     <ProgressBar
-            android:id="@+id/splash_progress"
-            style="@style/Widget.AppCompat.ProgressBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/splash_app_name"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="32dp"
-            android:indeterminateTint="@color/yellow_gold"
-            android:alpha="0" />
+        android:id="@+id/splash_progress"
+        style="@style/Widget.AppCompat.ProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/splash_app_name"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="24dp"
+        android:indeterminateTint="#039be5"
+        android:alpha="0" />
 
 </RelativeLayout>
