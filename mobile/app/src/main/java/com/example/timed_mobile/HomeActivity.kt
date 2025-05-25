@@ -403,37 +403,51 @@ class HomeActivity : AppCompatActivity() {
 
         val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
 
-        realtimeRef.orderByChild("timestamp").limitToLast(1)
+        realtimeRef.orderByChild("timestamp").limitToLast(10) // grab last few records just in case
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    var overrideStatus: String? = null
+                    var latestTimeIn: Long? = null
+                    var latestTimeOut: Long? = null
+
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
-
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            overrideStatus = "On Duty"
+                        if (type == "TimeIn" && timestamp != null) {
+                            if (latestTimeIn == null || timestamp > latestTimeIn) {
+                                latestTimeIn = timestamp
+                            }
+                        } else if (type == "TimeOut" && timestamp != null) {
+                            if (latestTimeOut == null || timestamp > latestTimeOut) {
+                                latestTimeOut = timestamp
+                            }
                         }
+                    }
+
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    val statusFromLogs: String = when {
+                        latestTimeOut != null && latestTimeOut >= todayStart &&
+                                (latestTimeIn == null || latestTimeOut > latestTimeIn) -> "Off Duty"
+                        latestTimeIn != null && latestTimeIn >= todayStart -> "On Duty"
+                        else -> "Off Duty"
                     }
 
                     firestore.collection("users").document(userId)
                         .get()
                         .addOnSuccessListener { doc ->
-                            val currentStatus = overrideStatus ?: doc.getString("status") ?: "Off Duty"
+                            val currentStatus = doc.getString("status") ?: statusFromLogs
 
-                            if (!doc.contains("status")) {
-                                firestore.collection("users").document(userId)
-                                    .update("status", currentStatus)
-                            }
+                            // Update Firestore if not yet stored
+                            firestore.collection("users").document(userId)
+                                .update("status", statusFromLogs)
 
-                            val index = statusOptions.indexOf(currentStatus)
+                            val index = statusOptions.indexOf(statusFromLogs)
                             if (index != -1) {
                                 isUserChangingStatus = false
                                 statusSpinner.setSelection(index)
@@ -1265,6 +1279,11 @@ class HomeActivity : AppCompatActivity() {
                 attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray))
                 attendanceStatusBadge.background = null
             }
+            "timed-out" -> {
+                attendanceStatusBadge.text = "Timed-Out"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray))
+                attendanceStatusBadge.background = null
+            }
             else -> attendanceStatusBadge.visibility = View.GONE
         }
     }
@@ -1332,21 +1351,52 @@ class HomeActivity : AppCompatActivity() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var timeInTimestamp: Long? = null
+                    var timeOutTimestamp: Long? = null
+                    var timeInSnapshot: DataSnapshot? = null
+                    var timeOutSnapshot: DataSnapshot? = null
 
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
                         val timestamp = child.child("timestamp").getValue(Long::class.java)
+
                         if (type == "TimeIn" && timestamp != null) {
                             timeInTimestamp = timestamp
-                            break
+                            timeInSnapshot = child
+                        } else if (type == "TimeOut" && timestamp != null) {
+                            timeOutTimestamp = timestamp
+                            timeOutSnapshot = child
                         }
                     }
 
-                    if (timeInTimestamp != null) {
-                        if (timeInTimestamp <= cutoff9am) {
-                            updateAttendanceBadge("On Time")
+                    // 🟨 If TimeOut is the most recent entry
+                    if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
+                        updateUserStatus("Off Duty")
+
+                        // 🔍 Look for the badge in BOTH timeIn and timeOut
+                        var badge: String? = null
+                        for (child in snapshot.children) {
+                            val type = child.child("type").getValue(String::class.java)
+                            val badgeValue =
+                                child.child("attendanceBadge").getValue(String::class.java)
+                            if ((type == "TimeIn" || type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
+                                badge = badgeValue
+                                break
+                            }
+                        }
+
+                        Log.d("BADGE_DEBUG", "Final fallback badge: $badge")
+
+                        if (!badge.isNullOrEmpty()) {
+                            updateAttendanceBadge(badge)
                         } else {
-                            updateAttendanceBadge("Late")
+                            attendanceStatusBadge.visibility = View.GONE
+                        }
+                    } else if (timeInTimestamp != null) {
+                        val badge = timeInSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                        if (!badge.isNullOrEmpty()) {
+                            updateAttendanceBadge(badge)
+                        } else {
+                            attendanceStatusBadge.visibility = View.GONE
                         }
                     } else {
                         // Check excuse letter from Realtime Database
