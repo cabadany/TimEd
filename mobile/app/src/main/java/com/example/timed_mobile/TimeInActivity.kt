@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
 
+import androidx.exifinterface.media.ExifInterface
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -361,33 +362,56 @@ class TimeInActivity : AppCompatActivity() {
                     try {
                         val photoFile = File(output.savedUri?.path ?: file.path)
 
-                        // Flip the image horizontally (mirror fix)
-                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                        val matrix = Matrix().apply { preScale(-1f, 1f) } // Horizontal flip
-                        val flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                        // 🔄 FIX ROTATION BASED ON EXIF + FLIP
+                        val rotatedBitmap = fixImageOrientationAndFlip(photoFile)
 
-                        // Overwrite original file
+                        // Overwrite file with rotated image
                         FileOutputStream(photoFile).use { out ->
-                            flippedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
                         }
 
-                        // Upload the flipped image
                         uploadImageToFirebase(Uri.fromFile(photoFile), uid)
                     } catch (e: Exception) {
-                        Log.e("TimeInActivity", "Failed to flip image: ${e.message}", e)
-                        Toast.makeText(this@TimeInActivity, "Image flip failed.", Toast.LENGTH_SHORT).show()
+                        Log.e("TimeInActivity", "Failed to rotate image: ${e.message}", e)
+                        Toast.makeText(
+                            this@TimeInActivity,
+                            "Image processing failed.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         timeInButton.isEnabled = true
                         timeInButton.text = "Time - In"
                     }
                 }
 
                 override fun onError(exc: ImageCaptureException) {
-                    Toast.makeText(this@TimeInActivity, "Capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@TimeInActivity,
+                        "Capture failed: ${exc.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     timeInButton.isEnabled = true
                     timeInButton.text = "Time - In"
                 }
             }
         )
+    }
+
+    private fun fixImageOrientationAndFlip(photoFile: File): Bitmap {
+        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+        val exif = ExifInterface(photoFile.absolutePath)
+        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        }
+
+        // Mirror horizontally (selfie mode)
+        matrix.preScale(-1f, 1f)
+
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun uploadImageToFirebase(uri: Uri, uid: String) {

@@ -97,9 +97,22 @@ class HomeActivity : AppCompatActivity() {
                 val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
                 if (isTimedIn) {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
+
+                    // ✅ Automatically update status to On Duty
+                    updateUserStatus("On Duty")
+                    updateTimeLogsStatus("On Duty")
+
+                    // ✅ Refresh visual indicators
                     loadTodayTimeInPhoto()
                     updateSidebarProfileImage()
                     evaluateAndDisplayAttendanceBadge()
+
+                    // ✅ Force update spinner visually
+                    val index = statusOptions.indexOf("On Duty")
+                    if (index != -1) {
+                        isUserChangingStatus = false
+                        statusSpinner.setSelection(index)
+                    }
                 }
             }
         }
@@ -505,6 +518,7 @@ class HomeActivity : AppCompatActivity() {
                                             .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .skipMemoryCache(true)
+                                            .dontTransform() // Important: Prevents unintended rotations
                                             .into(profileImageView)
                                         return
                                     }
@@ -577,6 +591,7 @@ class HomeActivity : AppCompatActivity() {
                                             .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .skipMemoryCache(true)
+                                            .dontTransform() // Important: Prevents unintended rotations
                                             .into(sidebarImage)
                                         return
                                     }
