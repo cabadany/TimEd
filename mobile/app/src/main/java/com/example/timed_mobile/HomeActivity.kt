@@ -44,6 +44,12 @@ import kotlin.math.abs
 import androidx.core.view.isVisible
 import com.google.firebase.firestore.DocumentReference
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+
 class HomeActivity : AppCompatActivity() {
 
     companion object {
@@ -629,6 +635,36 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendEventNotification(title: String, message: String) {
+        val channelId = "event_channel_id"
+        val notificationId = System.currentTimeMillis().toInt()
+
+        val intent = Intent(this, HomeActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification) // Create this icon in drawable
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Event Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        notificationManager.notify(notificationId, builder.build())
+    }
+
     private fun setupNavigationDrawer() {
         val headerView = navigationView.getHeaderView(0)
         val sidebarName = headerView.findViewById<TextView>(R.id.sidebar_user_name)
@@ -812,34 +848,17 @@ class HomeActivity : AppCompatActivity() {
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        // Step 1: Get the user's departmentId from nested "department" object
         FirebaseFirestore.getInstance().collection("users")
             .document(userId)
             .get()
             .addOnSuccessListener { userDoc ->
                 val department = userDoc.get("department")
-                Log.d("DEBUG", "Raw department field: $department")
-                Log.d("DEBUG", "Full user document: ${userDoc.data}")
-
-                val departmentId: String?
-                val departmentName: String?
-
-                if (department is Map<*, *>) {
-                    departmentId = department["departmentId"]?.toString()
-                    departmentName = department["name"]?.toString()
-                } else {
-                    departmentId = null
-                    departmentName = null
-                }
-
+                val departmentId: String? = if (department is Map<*, *>) department["departmentId"]?.toString() else null
                 if (departmentId.isNullOrEmpty()) {
                     Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
                 }
 
-                Log.d("HomeActivity", "User's departmentId: $departmentId")
-
-                // Step 2: Now load events for this departmentId
                 firestore.collection("events")
                     .whereEqualTo("departmentId", departmentId)
                     .get()
@@ -853,11 +872,21 @@ class HomeActivity : AppCompatActivity() {
                                 val duration = doc.getString("duration") ?: "1:00:00"
                                 val date = doc.getTimestamp("date")?.toDate() ?: continue
                                 val dateFormatted = formatter.format(date)
-                                val status = doc.getString("status") ?: "upcoming" // <-- Add this line
+                                val status = doc.getString("status") ?: "upcoming"
+
+                                // 🔔 Notifications
+                                val now = Date()
+                                val timeDiff = date.time - now.time
+                                if (status.equals("upcoming", ignoreCase = true) && timeDiff in 1..(24 * 60 * 60 * 1000)) {
+                                    sendEventNotification("Upcoming Event", "There's an upcoming event on $dateFormatted.")
+                                }
+                                if (status.equals("cancelled", ignoreCase = true)) {
+                                    sendEventNotification("Event Cancelled", "Event on $dateFormatted has been cancelled.")
+                                }
 
                                 allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
                             } catch (e: Exception) {
-                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                                Log.e("FirestoreEvents", "Skipping event due to error: \${e.message}", e)
                             }
                         }
 
@@ -865,12 +894,12 @@ class HomeActivity : AppCompatActivity() {
                         updateFilterButtonStates(btnUpcoming)
                     }
                     .addOnFailureListener {
-                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
+                        Log.e("Firestore", "Failed to load events: \${it.message}", it)
                         Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener {
-                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
+                Log.e("Firestore", "Failed to fetch user document: \${it.message}", it)
                 Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
             }
     }
