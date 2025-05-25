@@ -7,7 +7,7 @@
     <group
         android:name="bottom_wave_group1"
         android:scaleY="-1"
-        android:translateY="511"> <!-- Flip vertically and push to bottom -->
+        android:translateY="511"> <!-- Flip vertically and move to bottom -->
         <path
             android:fillColor="#0288d1"
             android:pathData="M85.21-360.67c1.65-3.5 5.55-4.52 8.71-2.3l555.5 391.55c3.16 2.23 4.38 6.86 2.73 10.36L472.4 419.02c-2.13 4.48-8.3 1.32-7.37-3.77 23.37-128.84-78.16-254.16-190.94-235.7l-103.15 16.9C68.23 206.27-36.01 151.83-103.4 53.15l-3.85-5.65c-0.21-0.3-0.25-0.7-0.1-1.02L85.21-360.67Z" />

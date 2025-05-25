@@ -139,6 +139,231 @@ class TimeInEventActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String) {
+        Log.d(TAG, "sendCertificateEmail called for event: $eventName, email: $userEmail")
+
+        val db = FirebaseFirestore.getInstance()
+
+        // Create certificate data
+        val certificateData = hashMapOf(
+            "recipientEmail" to userEmail,
+            "recipientName" to userName,
+            "eventId" to eventId,
+            "eventName" to eventName,
+            "issueDate" to FieldValue.serverTimestamp(),
+            "certificateType" to "attendance",
+            "status" to "pending"
+        )
+
+        // Add to certificates collection to trigger cloud function
+        db.collection("certificates")
+            .add(certificateData)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Certificate request created with ID: ${documentReference.id}")
+
+                // Optionally, you can also add this to a mail queue collection
+                // that your backend service monitors
+                val mailQueueData = hashMapOf(
+                    "to" to userEmail,
+                    "template" to "event_certificate",
+                    "templateData" to mapOf(
+                        "userName" to userName,
+                        "eventName" to eventName,
+                        "eventId" to eventId,
+                        "issueDate" to SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
+                    ),
+                    "status" to "queued",
+                    "createdAt" to FieldValue.serverTimestamp()
+                )
+
+                db.collection("mail_queue")
+                    .add(mailQueueData)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Email queued successfully for certificate")
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Failed to queue certificate email", exception)
+                    }
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to create certificate request", exception)
+                Toast.makeText(this, "Failed to process certificate request", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // Alternative method using Firebase Cloud Functions trigger
+    private fun triggerCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String, attendanceRecordId: String) {
+        Log.d(TAG, "triggerCertificateEmail called")
+
+        val db = FirebaseFirestore.getInstance()
+
+        // Update the attendance record to trigger certificate email
+        db.collection("attendanceRecords").document(attendanceRecordId)
+            .update("certificateRequested", true, "certificateRequestedAt", FieldValue.serverTimestamp())
+            .addOnSuccessListener {
+                Log.d(TAG, "Certificate email trigger updated in attendance record")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to update attendance record for certificate", exception)
+            }
+
+        // Or create a dedicated certificate email request
+        val emailRequest = hashMapOf(
+            "type" to "event_certificate",
+            "recipientEmail" to userEmail,
+            "recipientName" to userName,
+            "eventId" to eventId,
+            "eventName" to eventName,
+            "attendanceRecordId" to attendanceRecordId,
+            "requestedAt" to FieldValue.serverTimestamp(),
+            "processed" to false
+        )
+
+        db.collection("email_requests")
+            .add(emailRequest)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Certificate email request created: ${documentReference.id}")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to create certificate email request", exception)
+            }
+    }
+
+    private fun handleQrCodeScannedUpdated(qrContent: String) {
+        Log.d(TAG, "handleQrCodeScanned called with: $qrContent")
+        if (isQrScanned) return
+        vibrate()
+
+        val eventId = qrContent.substringAfterLast("/").trim()
+        isQrScanned = true
+        scanButton.isEnabled = false
+        stopQrScannerAndAnalysis()
+
+        val db = FirebaseFirestore.getInstance()
+        val eventDocRef = db.collection("events").document(eventId)
+
+        eventDocRef.get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val eventName = document.getString("eventName") ?: "Unnamed Event"
+                    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+                    selfieReminder.text = "Logging time-in for $eventName..."
+
+                    eventDocRef.collection("attendees")
+                        .whereEqualTo("userId", userId)
+                        .whereEqualTo("type", "event_time_in")
+                        .get()
+                        .addOnSuccessListener { docs ->
+                            if (!docs.isEmpty) {
+                                showErrorDialog("You have already timed in for this event.")
+                                finish()
+                            } else {
+                                val record = hashMapOf(
+                                    "userId" to userId,
+                                    "firstName" to userFirstName,
+                                    "email" to userEmail,
+                                    "eventId" to eventId,
+                                    "eventName" to eventName,
+                                    "timestamp" to timestamp,
+                                    "selfieUrl" to null,
+                                    "type" to "event_time_in",
+                                    "hasTimedOut" to false
+                                )
+
+                                eventDocRef.collection("attendees")
+                                    .add(record)
+                                    .addOnSuccessListener { documentReference ->
+                                        // Send certificate email here
+                                        userEmail?.let { email ->
+                                            userFirstName?.let { name ->
+                                                sendCertificateEmail(eventName, eventId, email, name)
+                                            }
+                                        }
+
+                                        AlertDialog.Builder(this)
+                                            .setTitle("Time-In Successful")
+                                            .setMessage("You have timed in for '$eventName'. A certificate will be sent to your email shortly.")
+                                            .setPositiveButton("OK") { d, _ ->
+                                                d.dismiss()
+                                                setResult(RESULT_OK)
+                                                finish()
+                                            }
+                                            .setCancelable(false)
+                                            .show()
+                                    }
+                                    .addOnFailureListener {
+                                        showErrorDialog("Failed to save time-in: ${it.message}")
+                                        isQrScanned = false
+                                    }
+                            }
+                        }
+                        .addOnFailureListener {
+                            showErrorDialog("Error checking existing records: ${it.message}")
+                            isQrScanned = false
+                        }
+                } else {
+                    showErrorDialog("Event not found.")
+                    isQrScanned = false
+                }
+            }
+            .addOnFailureListener {
+                showErrorDialog("Failed to fetch event info: ${it.message}")
+                isQrScanned = false
+            }
+    }
+
+    private fun logTimeInToFirestoreUpdated(selfieUrl: String, timestampPhoto: String) {
+        Log.d(TAG, "logTimeInToFirestore called. Selfie URL: $selfieUrl")
+
+        val eventNameForLog = currentScannedEventName ?: "Unknown Event"
+        val eventIdForLog = currentScannedEventId ?: "UNKNOWN_ID_${timestampPhoto.substring(0,8)}"
+
+        val record = hashMapOf(
+            "userId" to userId,
+            "firstName" to userFirstName,
+            "email" to userEmail,
+            "eventId" to eventIdForLog,
+            "eventName" to eventNameForLog,
+            "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+            "selfieUrl" to selfieUrl,
+            "type" to "event_time_in",
+            "hasTimedOut" to false
+        )
+
+        Log.d(TAG, "Logging to Firestore: $record")
+
+        FirebaseFirestore.getInstance().collection("attendanceRecords")
+            .add(record)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Attendance record added to Firestore with ID: ${documentReference.id}")
+
+                // Send certificate email after successful record creation
+                userEmail?.let { email ->
+                    userFirstName?.let { name ->
+                        triggerCertificateEmail(eventNameForLog, eventIdForLog, email, name, documentReference.id)
+                    }
+                }
+
+                AlertDialog.Builder(this)
+                    .setTitle("Time-In Recorded")
+                    .setMessage("Attendance for event '$eventNameForLog' saved successfully! A certificate will be sent to your email.")
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                        val resultIntent = Intent()
+                        setResult(RESULT_OK, resultIntent)
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
+            .addOnFailureListener {
+                Log.e(TAG, "Failed to save attendance to Firestore", it)
+                Toast.makeText(this, "Failed to save attendance: ${it.message}", Toast.LENGTH_LONG)
+                    .show()
+            }
+    }
+
     private fun handleDeepLinkIfPresent() {
         val data: Uri? = intent?.data
         val eventId = data?.getQueryParameter("eventId")
@@ -427,7 +652,7 @@ class TimeInEventActivity : AppCompatActivity() {
                     }
 
                     if (matchingBarcode != null) {
-                        handleQrCodeScanned(matchingBarcode.rawValue!!.trim())
+                        handleQrCodeScannedUpdated(matchingBarcode.rawValue!!.trim())
                     } else {
                         Log.d(TAG, "No matching QR code found. All values: ${barcodes.map { it.rawValue }}")
                         runOnUiThread {
@@ -450,84 +675,6 @@ class TimeInEventActivity : AppCompatActivity() {
             if (isQrScanned) Log.d(TAG, "isQrScanned is true")
             imageProxy.close()
         }
-    }
-
-    @RequiresPermission(Manifest.permission.VIBRATE)
-    private fun handleQrCodeScanned(qrContent: String) {
-        Log.d(TAG, "handleQrCodeScanned called with: $qrContent")
-        if (isQrScanned) return
-        vibrate()
-
-        val eventId = qrContent.substringAfterLast("/").trim()
-        isQrScanned = true
-        scanButton.isEnabled = false
-        stopQrScannerAndAnalysis()
-
-        val db = FirebaseFirestore.getInstance()
-        val eventDocRef = db.collection("events").document(eventId)
-
-        eventDocRef.get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val eventName = document.getString("eventName") ?: "Unnamed Event"
-                    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-
-                    selfieReminder.text = "Logging time-in for $eventName..."
-
-                    eventDocRef.collection("attendees")
-                        .whereEqualTo("userId", userId)
-                        .whereEqualTo("type", "event_time_in")
-                        .get()
-                        .addOnSuccessListener { docs ->
-                            if (!docs.isEmpty) {
-                                showErrorDialog("You have already timed in for this event.")
-                                finish()
-                            } else {
-                                val record = hashMapOf(
-                                    "userId" to userId,
-                                    "firstName" to userFirstName,
-                                    "email" to userEmail,
-                                    "eventId" to eventId,
-                                    "eventName" to eventName,
-                                    "timestamp" to timestamp,
-                                    "selfieUrl" to null,
-                                    "type" to "event_time_in",
-                                    "hasTimedOut" to false
-                                )
-
-                                eventDocRef.collection("attendees")
-                                    .add(record)
-                                    .addOnSuccessListener {
-                                        AlertDialog.Builder(this)
-                                            .setTitle("Time-In Successful")
-                                            .setMessage("You have timed in for '$eventName'. A certificate will be sent to your email.")
-                                            .setPositiveButton("OK") { d, _ ->
-                                                d.dismiss()
-                                                setResult(RESULT_OK)
-                                                finish()
-                                            }
-                                            .setCancelable(false)
-                                            .show()
-                                    }
-                                    .addOnFailureListener {
-                                        showErrorDialog("Failed to save time-in: ${it.message}")
-                                        isQrScanned = false
-                                    }
-                            }
-                        }
-                        .addOnFailureListener {
-                            showErrorDialog("Error checking existing records: ${it.message}")
-                            isQrScanned = false
-                        }
-                } else {
-                    showErrorDialog("Event not found.")
-                    isQrScanned = false
-                }
-            }
-            .addOnFailureListener {
-                showErrorDialog("Failed to fetch event info: ${it.message}")
-                isQrScanned = false
-            }
     }
 
     private fun switchToSelfieMode() {
@@ -591,7 +738,7 @@ class TimeInEventActivity : AppCompatActivity() {
                 Log.d(TAG, "Selfie upload successful. Getting download URL.")
                 selfieRef.downloadUrl.addOnSuccessListener { downloadUrl ->
                     Log.d(TAG, "Download URL: $downloadUrl")
-                    logTimeInToFirestore(downloadUrl.toString(), timestamp)
+                    logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp)
                 }.addOnFailureListener {
                     Log.e(TAG, "Failed to get download URL", it)
                     Toast.makeText(this, "Failed to get download URL: ${it.message}", Toast.LENGTH_SHORT).show()
@@ -600,49 +747,6 @@ class TimeInEventActivity : AppCompatActivity() {
             .addOnFailureListener {
                 Log.e(TAG, "Selfie upload failed", it)
                 Toast.makeText(this, "Selfie upload failed: ${it.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun logTimeInToFirestore(selfieUrl: String, timestampPhoto: String) {
-        Log.d(TAG, "logTimeInToFirestore called. Selfie URL: $selfieUrl")
-        // Use stored event name and ID
-        val eventNameForLog = currentScannedEventName ?: "Unknown Event"
-        val eventIdForLog = currentScannedEventId ?: "UNKNOWN_ID_${timestampPhoto.substring(0,8)}"
-
-        val record = hashMapOf(
-            "userId" to userId,
-            "firstName" to userFirstName,
-            "email" to userEmail,
-            "eventId" to eventIdForLog,
-            "eventName" to eventNameForLog,
-            "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
-            "selfieUrl" to selfieUrl,
-            "type" to "event_time_in",
-            "hasTimedOut" to false
-        )
-        Log.d(TAG, "Logging to Firestore: $record")
-
-        FirebaseFirestore.getInstance().collection("attendanceRecords")
-            .add(record)
-            .addOnSuccessListener {
-                Log.d(TAG, "Attendance record added to Firestore with ID: ${it.id}")
-                AlertDialog.Builder(this)
-                    .setTitle("Time-In Recorded")
-                    .setMessage("Attendance for event '$eventNameForLog' saved successfully!")
-                    .setPositiveButton("OK") { dialog, _ ->
-                        dialog.dismiss()
-                        val resultIntent = Intent()
-                        // You can put extras here if HomeActivity needs to know about success
-                        setResult(RESULT_OK, resultIntent)
-                        finish()
-                    }
-                    .setCancelable(false)
-                    .show()
-            }
-            .addOnFailureListener {
-                Log.e(TAG, "Failed to save attendance to Firestore", it)
-                Toast.makeText(this, "Failed to save attendance: ${it.message}", Toast.LENGTH_LONG)
-                    .show()
             }
     }
 
