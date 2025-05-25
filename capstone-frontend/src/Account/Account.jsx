@@ -11,7 +11,7 @@ import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
   Person, AccessTime, RemoveFromQueue, DirectionsWalk, MoreVert, PhotoCamera, ArrowUpward, ArrowDownward,
-  Refresh, PeopleAlt, DateRange, FileDownload, ExpandMore, History
+  Refresh, PeopleAlt, DateRange, FileDownload, ExpandMore, History, ChevronLeft, ChevronRight
 } from '@mui/icons-material';
 import axios from 'axios';
 import NotificationSystem from '../components/NotificationSystem';
@@ -214,6 +214,21 @@ export default function AccountPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedDays, setExpandedDays] = useState(new Set());
 
+  // Add new state for selected date
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Add function to handle date changes
+  const handleDateChange = (direction) => {
+    const newDate = new Date(selectedDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 1);
+    } else {
+      newDate.setDate(newDate.getDate() + 1);
+    }
+    setSelectedDate(newDate);
+    fetchTimelineForDate(newDate);
+  };
+
   // Fetch professors and departments on component mount
   useEffect(() => {
     fetchProfessors();
@@ -224,6 +239,8 @@ export default function AccountPage() {
   useEffect(() => {
     if (professors.length > 0 && tabValue === 1) {
       fetchStatusCounts();
+      fetchTimelineForDate(selectedDate);
+      fetchAttendanceHistory();
     }
   }, [professors.length, tabValue]);
 
@@ -593,13 +610,13 @@ export default function AccountPage() {
         // If professors data is not loaded yet, fetch it first
         fetchProfessors().then(() => {
           fetchStatusCounts();
-          fetchTodayTimeline();
+          fetchTimelineForDate(selectedDate);
           fetchAttendanceHistory();
         });
       } else {
         // If professors data is already loaded, proceed with status data
         fetchStatusCounts();
-        fetchTodayTimeline();
+        fetchTimelineForDate(selectedDate);
         fetchAttendanceHistory();
       }
     }
@@ -921,8 +938,8 @@ export default function AccountPage() {
     }
   };
 
-  // Fetch today's faculty timeline
-  const fetchTodayTimeline = async () => {
+  // Modify fetchTodayTimeline to accept a date parameter
+  const fetchTimelineForDate = async (date) => {
     setTimelineLoading(true);
     try {
       // Get timeline data from Firebase
@@ -931,81 +948,73 @@ export default function AccountPage() {
       
       const timelineData = [];
       
-      // Current date in milliseconds (start of day)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTimestamp = today.getTime();
+      // Get start and end of the selected date
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const startTimestamp = startOfDay.getTime();
       
-      // End of today
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      const endOfTodayTimestamp = endOfToday.getTime();
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      const endTimestamp = endOfDay.getTime();
       
       if (timelineSnapshot.exists()) {
-        // Process timeline data from all users
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
           const userLogs = userSnap.val();
           
-          // Skip if this is just the userId field
           if (typeof userLogs === 'string') return;
           
-          // Process each time log entry for this user
           Object.entries(userLogs).forEach(([logId, entry]) => {
             if (!entry || !entry.timestamp) return;
             
-            // Convert timestamp to number if it's a string
-            const historyEntryTimestamp = typeof entry.timestamp === 'string' 
+            const entryTimestamp = typeof entry.timestamp === 'string' 
               ? parseInt(entry.timestamp) 
               : entry.timestamp;
             
-            // Get date string for grouping (YYYY-MM-DD)
-            const historyEntryDate = new Date(historyEntryTimestamp);
-            const dateKey = historyEntryDate.toISOString().split('T')[0];
-            const displayDate = historyEntryDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            });
-            
-            let status = entry.status || '';
-            let description = '';
-            
-            if (entry.type === 'TimeIn') {
-              description = status === 'On Duty' ? 'Started shift' : 'Timed in';
-            } else if (entry.type === 'TimeOut') {
-              if (status === 'On Break') {
-                description = 'Started break';
-              } else if (status === 'Off Duty') {
-                description = 'Ended shift';
-              } else {
-                description = 'Timed out';
+            if (entryTimestamp >= startTimestamp && entryTimestamp <= endTimestamp) {
+              let status = entry.status || '';
+              let description = '';
+              
+              if (entry.type === 'TimeIn') {
+                if (status === 'On Break') {
+                  description = 'Started break';
+                } else if (status === 'On Duty') {
+                  description = 'Started shift';
+                } else {
+                  description = 'Timed in';
+                }
+              } else if (entry.type === 'TimeOut') {
+                if (status === 'On Break') {
+                  description = 'Started break';
+                } else if (status === 'Off Duty') {
+                  description = 'Ended shift';
+                } else {
+                  description = 'Timed out';
+                }
               }
+              
+              const timelineEntry = {
+                id: `${userId}_${logId}`,
+                name: entry.firstName || 'Unknown User',
+                status: status,
+                description: description,
+                time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
+                  hour: '2-digit', 
+                  minute: '2-digit'
+                }),
+                timestamp: entryTimestamp,
+                userId: entry.userId || userId,
+                type: entry.type,
+                email: entry.email
+              };
+              
+              timelineData.push(timelineEntry);
             }
-            
-            const timelineEntry = {
-              id: `${userId}_${logId}`,
-              name: entry.firstName || 'Unknown User',
-              status: status,
-              description: description,
-              time: new Date(historyEntryTimestamp).toLocaleTimeString('en-US', {
-                hour: '2-digit', 
-                minute: '2-digit'
-              }),
-              timestamp: historyEntryTimestamp,
-              userId: entry.userId || userId,
-              type: entry.type
-            };
-            
-            timelineData.push(timelineEntry);
           });
         });
       }
       
-      // Sort timeline by timestamp (ascending - oldest first)
       timelineData.sort((a, b) => a.timestamp - b.timestamp);
-      
       setTodayTimeline(timelineData);
     } catch (err) {
       console.error('Error fetching timeline data:', err);
@@ -1178,7 +1187,7 @@ export default function AccountPage() {
   const handleRefreshStatus = () => {
     setStatusLoading(true);
     fetchStatusCounts();
-    fetchTodayTimeline();
+    fetchTimelineForDate(selectedDate);
     showSnackbar('Status data refreshed', 'success');
   };
 
@@ -1193,42 +1202,98 @@ export default function AccountPage() {
     setExpandedDays(newExpandedDays);
   };
 
-  // Export specific day's attendance to Excel
-  const handleExportDayToExcel = async (dayData) => {
+  // Modify handleExportDayToExcel to use the selected date
+  const handleExportDayToExcel = async (date) => {
     try {
-      const date = new Date(dayData.dateKey);
+      setTimelineLoading(true);
+      const selectedDate = new Date(date);
       const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
-      const month = monthNames[date.getMonth()];
-      const day = date.getDate();
-      const year = date.getFullYear();
+      const month = monthNames[selectedDate.getMonth()];
+      const day = selectedDate.getDate();
+      const year = selectedDate.getFullYear();
       const filename = `Faculty Attendance for ${month} ${day}, ${year}.xlsx`;
 
+      // Get timeline data from Firebase
+      const timeLogs = dbRef(database, 'timeLogs');
+      const timelineSnapshot = await get(timeLogs);
+      
       const exportData = [];
       
-      // Process entries for this specific day
-      dayData.entries.forEach(entry => {
-        // Find faculty details from professors data
-        const faculty = professors.find(p => p.userId === entry.userId);
-        
-        exportData.push({
-          'Faculty Name': faculty ? `${faculty.firstName} ${faculty.lastName}` : entry.name,
-          'Email': faculty ? faculty.email : 'N/A',
-          'Date': dayData.displayDate,
-          'Time': entry.time,
-          'Activity': entry.status,
-          'Department': faculty?.department?.name || 'N/A'
+      // Get start and end of the selected date
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const startTimestamp = startOfDay.getTime();
+      
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      const endTimestamp = endOfDay.getTime();
+      
+      if (timelineSnapshot.exists()) {
+        timelineSnapshot.forEach(userSnap => {
+          const userId = userSnap.key;
+          const userLogs = userSnap.val();
+          
+          if (typeof userLogs === 'string') return;
+          
+          // Get all entries for this user on the selected date
+          const entries = Object.entries(userLogs)
+            .filter(([_, entry]) => {
+              if (!entry || !entry.timestamp) return false;
+              const entryTimestamp = typeof entry.timestamp === 'string' 
+                ? parseInt(entry.timestamp) 
+                : entry.timestamp;
+              return entryTimestamp >= startTimestamp && entryTimestamp <= endTimestamp;
+            })
+            .map(([logId, entry]) => ({
+              ...entry,
+              timestamp: typeof entry.timestamp === 'string' ? parseInt(entry.timestamp) : entry.timestamp
+            }));
+          
+          // Sort entries by timestamp
+          entries.sort((a, b) => a.timestamp - b.timestamp);
+          
+          // Find the faculty details
+          const faculty = professors.find(p => p.userId === userId);
+          
+          if (entries.length > 0) {
+            entries.forEach(entry => {
+              let status = entry.status || '';
+              let activity = entry.type === 'TimeIn' 
+                ? (status === 'On Break' ? 'Started Break' : 'Time In')
+                : (status === 'Off Duty' ? 'Time Out' : status);
+              
+              exportData.push({
+                'Faculty Name': faculty ? `${faculty.firstName} ${faculty.lastName}` : entry.firstName || 'Unknown',
+                'Email': faculty ? faculty.email : entry.email || 'N/A',
+                'Time': new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                'Activity': activity,
+                'Status': status,
+                'Department': faculty?.department?.name || 'N/A'
+              });
+            });
+          }
         });
+      }
+
+      // Sort all entries by time
+      exportData.sort((a, b) => {
+        const timeA = new Date(`${month} ${day}, ${year} ${a.Time}`).getTime();
+        const timeB = new Date(`${month} ${day}, ${year} ${b.Time}`).getTime();
+        return timeA - timeB;
       });
 
-      // If no entries, show no activity message
+      // If no data found, add a summary row
       if (exportData.length === 0) {
         exportData.push({
-          'Faculty Name': 'No Activity',
+          'Faculty Name': 'No Data Available',
           'Email': 'N/A',
-          'Date': dayData.displayDate,
-          'Time': 'No activities recorded',
-          'Activity': 'No activities',
+          'Time': 'N/A',
+          'Activity': 'No activities recorded',
+          'Status': 'N/A',
           'Department': 'N/A'
         });
       }
@@ -1236,7 +1301,7 @@ export default function AccountPage() {
       // Create Excel workbook
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Attendance');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Log');
 
       // Auto-size columns
       const colWidths = [];
@@ -1255,8 +1320,10 @@ export default function AccountPage() {
       
       showSnackbar(`Exported successfully: ${filename}`, 'success');
     } catch (err) {
-      console.error('Error exporting day to Excel:', err);
+      console.error('Error exporting to Excel:', err);
       showSnackbar('Failed to export data', 'error');
+    } finally {
+      setTimelineLoading(false);
     }
   };
 
@@ -1823,9 +1890,51 @@ export default function AccountPage() {
             mb: 2
           }}>
             <Typography variant="h5" fontWeight="600" color="#1E293B">
-              Today's Timeline
+              Faculty Timeline
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                bgcolor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 1,
+                px: 2,
+                py: 0.5
+              }}>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleDateChange('prev')}
+                  sx={{ color: '#64748B' }}
+                >
+                  <ChevronLeft />
+                </IconButton>
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    minWidth: 200,
+                    textAlign: 'center',
+                    color: '#1E293B',
+                    fontWeight: 500
+                  }}
+                >
+                  {selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleDateChange('next')}
+                  disabled={selectedDate >= new Date()}
+                  sx={{ color: '#64748B' }}
+                >
+                  <ChevronRight />
+                </IconButton>
+              </Box>
               <Button 
                 variant="outlined" 
                 size="small" 
@@ -1844,7 +1953,7 @@ export default function AccountPage() {
               </Button>
               <IconButton
                 size="small"
-                onClick={fetchTodayTimeline}
+                onClick={() => fetchTimelineForDate(selectedDate)}
                 disabled={timelineLoading}
                 sx={{ 
                   color: '#0288d1',
@@ -1874,15 +1983,41 @@ export default function AccountPage() {
             {timelineLoading ? (
               <CircularProgress size={30} />
             ) : todayTimeline.length === 0 ? (
-              <Typography variant="body1" textAlign="center" color="text.secondary">
-                No timeline data available for today
-              </Typography>
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <History sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  No timeline data available for {
+                    selectedDate.toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  }
+                </Typography>
+              </Box>
             ) : (
               <Box>
                 {todayTimeline.map((item, index) => (
-                  <Box key={item.id} sx={{ display: 'flex', mb: index < todayTimeline.length - 1 ? 2 : 0, py: 1 }}>
-                    <Box sx={{ width: '80px', textAlign: 'right', pr: 2, color: '#64748B' }}>
-                      <Typography variant="body2">{item.time}</Typography>
+                  <Box 
+                    key={item.id} 
+                    sx={{ 
+                      display: 'flex', 
+                      mb: index < todayTimeline.length - 1 ? 2 : 0,
+                      py: 1,
+                      position: 'relative'
+                    }}
+                  >
+                    <Box sx={{ 
+                      width: '80px', 
+                      textAlign: 'right', 
+                      pr: 2, 
+                      color: '#64748B',
+                      position: 'relative',
+                      zIndex: 1
+                    }}>
+                      <Typography variant="body2" fontWeight="500">
+                        {item.time}
+                      </Typography>
                     </Box>
                     <Box sx={{ 
                       position: 'relative',
@@ -1892,7 +2027,8 @@ export default function AccountPage() {
                                 item.status === 'Off Duty' ? '#F44336' : 
                                 '#9E9E9E',
                       pl: 3,
-                      pb: index < todayTimeline.length - 1 ? 3 : 0
+                      pb: index < todayTimeline.length - 1 ? 3 : 0,
+                      flex: 1
                     }}>
                       <Box sx={{
                         width: 10,
@@ -1910,14 +2046,29 @@ export default function AccountPage() {
                           item.status === 'On Break' ? '#FF9800' : 
                           item.status === 'Off Duty' ? '#F44336' : 
                           '#9E9E9E'
-                        }`
+                        }`,
+                        zIndex: 1
                       }} />
-                      <Typography variant="body2" fontWeight="600">
-                        {item.description}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.name}
-                      </Typography>
+                      <Box sx={{
+                        bgcolor: item.status === 'On Duty' ? '#F0FDF4' : 
+                                item.status === 'On Break' ? '#FFF7ED' : 
+                                item.status === 'Off Duty' ? '#FEF2F2' : 
+                                '#F8FAFC',
+                        p: 2,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: item.status === 'On Duty' ? '#DCFCE7' : 
+                                   item.status === 'On Break' ? '#FFEDD5' : 
+                                   item.status === 'Off Duty' ? '#FEE2E2' : 
+                                   '#E2E8F0'
+                      }}>
+                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                          {item.description}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.name}
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                 ))}
@@ -1937,17 +2088,35 @@ export default function AccountPage() {
             <Typography variant="h5" fontWeight="600" color="#1E293B">
               Attendance Status History
             </Typography>
-            <IconButton
-              size="small"
-              onClick={fetchAttendanceHistory}
-              disabled={historyLoading}
-              sx={{ 
-                color: '#0288d1',
-                '&:hover': { color: '#01579b' }
-              }}
-            >
-              <Refresh />
-            </IconButton>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                startIcon={<FileDownload fontSize="small" />}
+                onClick={() => handleExportDayToExcel(selectedDate)}
+                disabled={timelineLoading}
+                sx={{
+                  textTransform: 'none',
+                  borderColor: '#E2E8F0',
+                  color: '#64748B',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Export Current Day
+              </Button>
+              <IconButton
+                size="small"
+                onClick={() => fetchTimelineForDate(selectedDate)}
+                disabled={timelineLoading}
+                sx={{ 
+                  color: '#0288d1',
+                  '&:hover': { color: '#01579b' }
+                }}
+              >
+                <Refresh />
+              </IconButton>
+            </Box>
           </Box>
 
           {/* History Table */}
@@ -1964,127 +2133,77 @@ export default function AccountPage() {
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
                 <CircularProgress size={30} />
               </Box>
-            ) : attendanceHistory.length === 0 ? (
+            ) : todayTimeline.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <History sx={{ fontSize: 48, color: '#CBD5E1', mb: 2 }} />
                 <Typography variant="body1" color="text.secondary">
-                  No attendance history available
+                  No attendance history available for {
+                    selectedDate.toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  }
                 </Typography>
               </Box>
             ) : (
-              <Box>
-                {attendanceHistory.map((dayData, index) => (
-                  <Accordion 
-                    key={dayData.dateKey}
-                    expanded={expandedDays.has(dayData.dateKey)}
-                    onChange={() => handleDayToggle(dayData.dateKey)}
-                    sx={{
-                      '&:before': { display: 'none' },
-                      boxShadow: 'none',
-                      borderBottom: index < attendanceHistory.length - 1 ? '1px solid #E2E8F0' : 'none'
-                    }}
-                  >
-                    <AccordionSummary
-                      expandIcon={<ExpandMore />}
-                      sx={{
-                        py: 1.5,
-                        px: 3,
-                        '&:hover': { bgcolor: '#F8FAFC' },
-                        minHeight: 'auto',
-                        '& .MuiAccordionSummary-content': {
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          my: 1
-                        }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                        <History sx={{ fontSize: 20, color: '#64748B', mr: 2 }} />
-                        <Box>
-                          <Typography variant="body1" fontWeight="600" color="#1E293B">
-                            Faculty Attendance for {dayData.displayDate}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {dayData.entries.length} {dayData.entries.length === 1 ? 'activity' : 'activities'}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<FileDownload fontSize="small" />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleExportDayToExcel(dayData);
-                        }}
-                        sx={{
-                          textTransform: 'none',
-                          borderColor: '#E2E8F0',
-                          color: '#64748B',
-                          mr: 2,
-                          '&:hover': {
-                            borderColor: '#0288d1',
-                            color: '#0288d1'
-                          }
-                        }}
-                      >
-                        Export
-                      </Button>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ px: 3, py: 0, pb: 2 }}>
-                      <Box sx={{ pl: 4 }}>
-                        {dayData.entries.map((entry, entryIndex) => (
-                          <Box 
-                            key={entry.id} 
-                            sx={{ 
-                              display: 'flex', 
-                              mb: entryIndex < dayData.entries.length - 1 ? 1.5 : 0, 
-                              py: 1,
-                              borderRadius: 1,
-                              '&:hover': { bgcolor: '#F8FAFC' },
-                              px: 2,
-                              mx: -2
-                            }}
-                          >
-                            <Box sx={{ width: '80px', textAlign: 'right', pr: 2, color: '#64748B' }}>
-                              <Typography variant="body2">{entry.time}</Typography>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Time</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Faculty Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Activity</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {todayTimeline.map((entry) => {
+                      const faculty = professors.find(p => p.userId === entry.userId);
+                      return (
+                        <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
+                          <TableCell>{entry.time}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Avatar
+                                src={faculty?.profilePictureUrl}
+                                alt={entry.name}
+                                sx={{ width: 24, height: 24 }}
+                              >
+                                {entry.name.charAt(0)}
+                              </Avatar>
+                              {entry.name}
                             </Box>
-                            <Box sx={{ 
-                              position: 'relative',
-                              borderLeft: '2px solid',
-                              borderColor: entry.status === 'On Duty' ? '#4CAF50' : 
-                                        entry.status === 'On Break' ? '#FF9800' : 
-                                        entry.status === 'Off Duty' ? '#F44336' : 
-                                        '#9E9E9E',
-                              pl: 3,
-                              pb: entryIndex < dayData.entries.length - 1 ? 2 : 0
-                            }}>
-                              <Box sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: entry.status === 'On Duty' ? '#4CAF50' : 
-                                        entry.status === 'On Break' ? '#FF9800' : 
-                                        entry.status === 'Off Duty' ? '#F44336' : 
-                                        '#9E9E9E',
-                                position: 'absolute',
-                                left: -5,
-                                top: 8
-                              }} />
-                              <Typography variant="body2" fontWeight="600">
-                                {entry.status}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {entry.name}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-              </Box>
+                          </TableCell>
+                          <TableCell>{entry.description}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={entry.status} 
+                              size="small"
+                              sx={{ 
+                                bgcolor: entry.status === 'On Duty' ? '#F0FDF4' : 
+                                        entry.status === 'On Break' ? '#FFF7ED' : 
+                                        entry.status === 'Off Duty' ? '#FEF2F2' : 
+                                        '#F8FAFC',
+                                color: entry.status === 'On Duty' ? '#15803D' : 
+                                       entry.status === 'On Break' ? '#9A3412' : 
+                                       entry.status === 'Off Duty' ? '#991B1B' : 
+                                       '#64748B',
+                                fontWeight: 500,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {faculty?.department?.name || 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </Box>
