@@ -20,6 +20,28 @@
     <string name="time_out_page">Time Out</string>
     <string name="welcome_icon_description">Welcome Icon</string>
 
+    //Login Page
+    <string name="app_title_login">WILDTIMed</string>
+    <string name="hint_id_number">Enter ID No.</string>
+    <string name="hint_password">Enter password</string>
+    <string name="label_forgot_password">Forgot Password?</string>
+    <string name="button_login">LOGIN</string>
+    <string name="text_terms_agreement">I agree to the <a href="terms_url">Terms of Service</a> and <a href="privacy_policy_url">Privacy Policy</a></string>
+    <string name="content_desc_top_wave">Top decorative wave</string>
+    <string name="content_desc_bottom_wave">Bottom decorative wave</string>
+
+    //New User Welcome Page
+    <string name="welcome_title_text">Welcome to TimEd!</string>
+    <string name="welcome_message_text">Hello Professor! TimEd is here to simplify your daily tasks, starting with efficient attendance tracking. Let\'s get you set up.</string>
+    <string name="button_get_started">Get Started</string>
+
+
+    //New User Final Step Page
+    <string name="final_step_title_text">You\'re Ready to Go!</string>
+    <string name="final_step_message_text">Start managing your class attendance with ease. WILDTIMed is here to support you. Let\'s begin!</string>
+    <string name="button_lets_go">Let\'s Go!</string>
+    <string name="content_desc_check_circle">Checkmark icon</string>
+
     <string name="selected_date_format">Selected Date: %1$d/%2$d/%3$d</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>

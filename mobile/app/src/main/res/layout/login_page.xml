@@ -17,7 +17,7 @@
             android:layout_gravity="top"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top"
-            android:contentDescription="Top decorative wave" />
+            android:contentDescription="@string/content_desc_top_wave" />
 
     <ImageView
             android:id="@+id/bottom_wave_animation"
@@ -27,7 +27,7 @@
             android:scaleType="fitXY"
             android:translationY="1dp"
             android:src="@drawable/animated_wave_bottom"
-            android:contentDescription="Bottom decorative wave"
+            android:contentDescription="@string/content_desc_bottom_wave"
             android:rotation="180"
             android:scaleX="-1" />
 
@@ -53,7 +53,7 @@
                     android:shadowDx="1"
                     android:shadowDy="1"
                     android:shadowRadius="2"
-                    android:text="WILDTIMed"
+                    android:text="@string/app_title_login"
                     android:textColor="@color/primary_deep_blue"
                     android:textSize="42sp"
                     android:textStyle="bold"
@@ -85,7 +85,7 @@
                         android:id="@+id/input_idnumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Enter ID No."
+                        android:hint="@string/hint_id_number"
                         android:inputType="text"
                         android:textColor="@color/neutral_text_gray"
                         android:padding="16dp" />
@@ -117,7 +117,7 @@
                         android:id="@+id/input_Password"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Enter password"
+                        android:hint="@string/hint_password"
                         android:inputType="textPassword"
                         android:textColor="@color/neutral_text_gray"
                         android:padding="16dp" />
@@ -133,7 +133,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:padding="4dp"
-                    android:text="Forgot Password?"
+                    android:text="@string/label_forgot_password"
                     android:textColor="@color/primary_medium_blue"
                     android:textSize="14sp"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -150,7 +150,7 @@
                     android:elevation="6dp"
                     android:fontFamily="@font/league_spartan_medium"
                     android:padding="16dp"
-                    android:text="LOGIN"
+                    android:text="@string/button_login"
                     android:textColor="@color/white"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -177,7 +177,7 @@
                     android:layout_marginEnd="32dp"
                     android:gravity="center_vertical"
                     android:linksClickable="true"
-                    android:text="I agree to the Terms of Service and Privacy Policy"
+                    android:text="@string/text_terms_agreement"
                     android:textColor="@color/neutral_text_gray"
                     android:textColorLink="@color/primary_medium_blue"
                     app:layout_constraintBottom_toBottomOf="@id/cbTerms"

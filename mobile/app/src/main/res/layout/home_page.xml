@@ -52,7 +52,7 @@
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:clickable="true"
                             android:focusable="true"
-                            app:tint="@color/primary_medium_blue" />
+                            app:tint="@color/accent_coral" />
 
                     <!-- Title Name -->
                     <TextView

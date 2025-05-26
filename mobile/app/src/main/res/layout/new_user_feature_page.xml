@@ -21,8 +21,10 @@
     <ImageView
             android:id="@+id/bottom_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="250dp"
             android:scaleType="fitXY"
+            android:rotation="180"
+            android:scaleX="-1"
             android:src="@drawable/animated_wave_bottom"
             android:layout_alignParentBottom="true"
             android:importantForAccessibility="no" />
@@ -45,7 +47,7 @@
                 android:layout_width="120dp"
                 android:layout_height="120dp"
                 android:src="@drawable/avd_clock_ticking"
-                app:tint="@color/maroon"
+                app:tint="@color/primary_medium_blue"
                 android:layout_marginBottom="24dp" />
 
 
@@ -55,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:text="Effortless Attendance Tracking"
                 android:textSize="26sp"
-                android:textColor="@color/maroon"
+                android:textColor="@color/primary_deep_blue"
                 android:fontFamily="@font/league_spartan_bold"
                 android:textAlignment="center"
                 android:layout_marginBottom="12dp" />
@@ -66,7 +68,7 @@
                 android:layout_height="wrap_content"
                 android:text="Quickly manage student presence with our simple Time-In and Time-Out system. Accurate records, less hassle."
                 android:textSize="15sp"
-                android:textColor="@color/dark_gray"
+                android:textColor="@color/neutral_text_gray"
                 android:textAlignment="center"
                 android:layout_marginBottom="32dp"
                 android:lineSpacingMultiplier="1.2" />
@@ -77,8 +79,8 @@
                 android:layout_height="wrap_content"
                 android:minWidth="200dp"
                 android:text="Next"
-                android:backgroundTint="@color/yellow_gold"
-                android:textColor="@color/maroon"
+                android:backgroundTint="@color/accent_coral"
+                android:textColor="@color/white"
                 android:paddingStart="32dp"
                 android:paddingEnd="32dp"
                 android:paddingTop="12dp"
