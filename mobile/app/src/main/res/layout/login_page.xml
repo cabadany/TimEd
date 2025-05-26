@@ -5,48 +5,47 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-    <!-- White background -->
     <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FFFFFF" />
+            android:background="@color/white" />
 
-    <!-- Top wave -->
     <ImageView
             android:id="@+id/top_wave_animation"
-            android:layout_width="450dp"
-            android:layout_height="350dp"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
             android:layout_gravity="top"
             android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_top" />
+            android:src="@drawable/animated_wave_top"
+            android:contentDescription="Top decorative wave" />
 
-    <!-- Bottom wave -->
     <ImageView
             android:id="@+id/bottom_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="250dp"
             android:layout_gravity="bottom"
             android:scaleType="fitXY"
             android:translationY="1dp"
-            android:src="@drawable/animated_wave_bottom" />
-    <!-- ScrollView to ensure content fits on smaller screens -->
+            android:src="@drawable/animated_wave_bottom"
+            android:contentDescription="Bottom decorative wave"
+            android:rotation="180"
+            android:scaleX="-1" />
+
     <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true"
             android:scrollbars="none">
 
-        <!-- Content container -->
         <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-            <!-- App Name / Branding -->
             <TextView
                     android:id="@+id/titleName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="170dp"
+                    android:layout_marginTop="140dp"
                     android:fontFamily="@font/league_spartan_bold"
                     android:letterSpacing="0.05"
                     android:padding="16dp"
@@ -55,14 +54,13 @@
                     android:shadowDy="1"
                     android:shadowRadius="2"
                     android:text="WILDTIMed"
-                    android:textColor="#8B0000"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="42sp"
                     android:textStyle="bold"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- ID Input Field -->
             <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/outline_Idnumber"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -75,13 +73,13 @@
                     app:boxCornerRadiusBottomStart="12dp"
                     app:boxCornerRadiusTopEnd="12dp"
                     app:boxCornerRadiusTopStart="12dp"
-                    app:boxStrokeColor="#8B0000"
-                    app:hintTextColor="#8B0000"
+                    app:boxStrokeColor="@color/primary_medium_blue"
+                    app:hintTextColor="@color/primary_medium_blue"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/titleName"
                     app:startIconDrawable="@drawable/ic_person"
-                    app:startIconTint="#8B0000">
+                    app:startIconTint="@color/primary_medium_blue">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_idnumber"
@@ -89,10 +87,10 @@
                         android:layout_height="wrap_content"
                         android:hint="Enter ID No."
                         android:inputType="text"
+                        android:textColor="@color/neutral_text_gray"
                         android:padding="16dp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Password Input Field -->
             <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/outline_Password"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -105,15 +103,15 @@
                     app:boxCornerRadiusBottomStart="12dp"
                     app:boxCornerRadiusTopEnd="12dp"
                     app:boxCornerRadiusTopStart="12dp"
-                    app:boxStrokeColor="#8B0000"
-                    app:hintTextColor="#8B0000"
+                    app:boxStrokeColor="@color/primary_medium_blue"
+                    app:hintTextColor="@color/primary_medium_blue"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/outline_Idnumber"
                     app:passwordToggleEnabled="true"
-                    app:passwordToggleTint="#8B0000"
+                    app:passwordToggleTint="@color/primary_medium_blue"
                     app:startIconDrawable="@drawable/ic_lock"
-                    app:startIconTint="#8B0000">
+                    app:startIconTint="@color/primary_medium_blue">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_Password"
@@ -121,10 +119,10 @@
                         android:layout_height="wrap_content"
                         android:hint="Enter password"
                         android:inputType="textPassword"
+                        android:textColor="@color/neutral_text_gray"
                         android:padding="16dp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Forgot Password -->
             <TextView
                     android:id="@+id/highlight_forgotPassword"
                     android:layout_width="wrap_content"
@@ -136,12 +134,11 @@
                     android:focusable="true"
                     android:padding="4dp"
                     android:text="Forgot Password?"
-                    android:textColor="#8B0000"
+                    android:textColor="@color/primary_medium_blue"
                     android:textSize="14sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/outline_Password" />
 
-            <!-- Login Button -->
             <Button
                     android:id="@+id/btnLogin"
                     android:layout_width="0dp"
@@ -149,12 +146,12 @@
                     android:layout_marginStart="32dp"
                     android:layout_marginTop="24dp"
                     android:layout_marginEnd="32dp"
-                    android:backgroundTint="@color/yellow_gold"
+                    android:backgroundTint="@color/accent_coral"
                     android:elevation="6dp"
                     android:fontFamily="@font/league_spartan_medium"
                     android:padding="16dp"
                     android:text="LOGIN"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/white"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     app:cornerRadius="24dp"
@@ -162,14 +159,13 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/highlight_forgotPassword" />
 
-            <!-- Terms Agreement Section -->
             <CheckBox
                     android:id="@+id/cbTerms"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="32dp"
                     android:layout_marginTop="16dp"
-                    android:buttonTint="#8B0000"
+                    android:buttonTint="@color/primary_medium_blue"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/btnLogin" />
 
@@ -182,14 +178,13 @@
                     android:gravity="center_vertical"
                     android:linksClickable="true"
                     android:text="I agree to the Terms of Service and Privacy Policy"
-                    android:textColor="#333333"
-                    android:textColorLink="#8B0000"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textColorLink="@color/primary_medium_blue"
                     app:layout_constraintBottom_toBottomOf="@id/cbTerms"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@id/cbTerms"
                     app:layout_constraintTop_toTopOf="@id/cbTerms" />
 
-            <!-- Space to ensure bottom spacing -->
             <Space
                     android:layout_width="match_parent"
                     android:layout_height="32dp"

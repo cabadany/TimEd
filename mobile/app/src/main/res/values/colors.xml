@@ -15,6 +15,12 @@
     <color name="purple">#800080</color>
     <color name="light_gray">#FAFAFA</color>
 
+    <color name="primary_deep_blue">#00796B</color> <!-- A deep teal/blue -->
+    <color name="primary_medium_blue">#0288D1</color> <!-- Your existing dark_blue, now a medium -->
+    <color name="primary_light_sky">#B3E5FC</color> <!-- A very light sky blue -->
+    <color name="accent_coral">#FF7043</color> <!-- A vibrant coral/orange -->
+    <color name="neutral_text_gray">#616161</color> <!-- A refined neutral gray for text -->
+
     <!-- Additional attendance text colors -->
     <color name="attendance_green">#4CAF50</color> <!-- On Time -->
     <color name="attendance_yellow">#FFEB3B</color> <!-- Late -->
