@@ -62,6 +62,21 @@ public class UserController {
         }
     }
 
+    // Add endpoint to get user by schoolId
+    @GetMapping("/getBySchoolId/{schoolId}")
+    public ResponseEntity<?> getUserBySchoolId(@PathVariable String schoolId) {
+        try {
+            User user = userService.getUserBySchoolId(schoolId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with School ID: " + schoolId);
+            }
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving user: " + e.getMessage());
+        }
+    }
+
     // Modify the updateUser endpoint to handle profile picture updates
     @PutMapping("/updateUser/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable String userId, @RequestBody User user) {

@@ -46,6 +46,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format, parseISO } from 'date-fns';
+import axios from 'axios';
 
 const ExcuseLetters = () => {
   // State variables
@@ -107,28 +108,94 @@ const ExcuseLetters = () => {
       const db = getDatabase();
       const excuseLettersRef = ref(db, 'excuseLetters');
       
-      // Get all excuse letters
-      const snapshot = await get(excuseLettersRef);
+      // Get excuse letters from Firebase and departments from API
+      const [excuseSnapshot, departmentsResponse] = await Promise.all([
+        get(excuseLettersRef),
+        axios.get('http://localhost:8080/api/departments')
+      ]);
       
-      if (snapshot.exists()) {
+      // Create lookup table for departments
+      const departmentsData = {};
+      
+      console.log('Departments data from API:', departmentsResponse.data);
+      
+      // Process departments data from API response
+      departmentsResponse.data.forEach(dept => {
+        if (dept.departmentId) {
+          departmentsData[dept.departmentId] = dept;
+        }
+      });
+      
+      console.log('Processed departments lookup:', departmentsData);
+      
+      if (excuseSnapshot.exists()) {
         const allLetters = [];
+        const letterPromises = [];
         
         // Convert the nested structure into a flat array
-        snapshot.forEach((userSnapshot) => {
+        excuseSnapshot.forEach((userSnapshot) => {
           const userId = userSnapshot.key;
+          console.log('Processing user ID:', userId);
           
           userSnapshot.forEach((letterSnapshot) => {
             const letter = letterSnapshot.val();
+            const letterId = letterSnapshot.key;
+            
             // Only add valid letters
             if (isValidLetterForDisplay(letter)) {
-              allLetters.push({
-                id: letterSnapshot.key,
-                userId: userId,
-                ...letter
-              });
+              // Try to get department information
+              let department = letter.department;
+              console.log('Original department:', department);
+              
+              if (!department || department === 'N/A') {
+                // Create a promise for this letter's processing
+                const letterPromise = (async () => {
+                  try {
+                    // Get user data by idNumber (schoolId)
+                    const userResponse = await axios.get(`http://localhost:8080/api/user/getBySchoolId/${letter.idNumber}`);
+                    const userData = userResponse.data;
+                    console.log('Found user by idNumber:', userData);
+                    
+                    if (userData && userData.departmentId) {
+                      console.log('User departmentId:', userData.departmentId);
+                      const dept = departmentsData[userData.departmentId];
+                      console.log('Found department:', dept);
+                      
+                      if (dept) {
+                        department = dept.abbreviation || dept.name || 'N/A';
+                        console.log('Setting department to:', department);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    // Keep the original department value if there's an error
+                  }
+                  
+                  return {
+                    id: letterId,
+                    userId: userId,
+                    ...letter,
+                    department
+                  };
+                })();
+                
+                letterPromises.push(letterPromise);
+              } else {
+                // If we already have the department, no need for async processing
+                allLetters.push({
+                  id: letterId,
+                  userId: userId,
+                  ...letter,
+                  department
+                });
+              }
             }
           });
         });
+        
+        // Wait for all letter promises to resolve
+        const processedLetters = await Promise.all(letterPromises);
+        allLetters.push(...processedLetters);
         
         // Sort letters by submittedAt in descending order
         allLetters.sort((a, b) => b.submittedAt - a.submittedAt);
@@ -153,6 +220,7 @@ const ExcuseLetters = () => {
         const start = pageNumber * pageSize;
         const paginatedLetters = filteredLetters.slice(start, start + pageSize);
         
+        console.log('Final letters with departments:', paginatedLetters);
         setLetters(paginatedLetters);
         setTotalElements(filteredLetters.length);
       } else {
