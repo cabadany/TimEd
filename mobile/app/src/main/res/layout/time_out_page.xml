@@ -4,7 +4,7 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#FFFFFF"
+        android:background="@color/white"
         tools:context=".TimeOutActivity">
 
     <!-- Top Wave -->
@@ -12,11 +12,14 @@
             android:id="@+id/top_wave_animation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
             android:adjustViewBounds="true"
             android:maxHeight="250dp"
             android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_top" />
+            android:src="@drawable/animated_wave_top"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:importantForAccessibility="no"/>
 
     <!-- Back Button -->
     <ImageView
@@ -26,21 +29,22 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:clickable="true"
-            android:contentDescription="Back button"
+            android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
             android:padding="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:srcCompat="@drawable/ic_back_button" />
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"/>
 
     <!-- Title -->
     <TextView
             android:id="@+id/titleName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="WILDTIMed"
-            android:textColor="#8B0000"
+            android:text="@string/app_title_timed"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="40sp"
             android:textStyle="bold"
             android:fontFamily="@font/league_spartan_bold"
@@ -61,8 +65,9 @@
             android:layout_width="150dp"
             android:layout_height="150dp"
             android:layout_marginTop="24dp"
-            android:contentDescription="Time-Out Illustration"
+            android:contentDescription="@string/content_desc_timeout_illustration"
             android:src="@drawable/ic_clock_red"
+            app:tint="@color/accent_coral"
             app:layout_constraintTop_toBottomOf="@id/titleName"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
@@ -72,11 +77,10 @@
             android:id="@+id/timeout_instruction"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Click the button below to time-out and record your attendance."
-            android:textColor="@color/black"
+            android:text="@string/timeout_instruction_text"
+            android:textColor="@color/neutral_text_gray"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:fontFamily="@font/roboto_bold"
+            android:fontFamily="@font/roboto_medium"
             android:gravity="center"
             android:paddingStart="24dp"
             android:paddingEnd="24dp"
@@ -86,18 +90,18 @@
             app:layout_constraintTop_toBottomOf="@id/timeout_illustration"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="16dp" /> <!-- Added margin top -->
+            android:layout_marginTop="16dp" />
 
     <!-- Time-Out Button -->
     <Button
             android:id="@+id/btntime_out"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Time - Out"
-            android:textColor="@color/maroon"
+            android:text="@string/button_time_out"
+            android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:backgroundTint="@color/yellow_gold"
+            android:backgroundTint="@color/primary_medium_blue"
             android:fontFamily="@font/roboto_medium"
             android:minHeight="50dp"
             android:elevation="6dp"
@@ -109,6 +113,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintVertical_bias="0.2"
-            app:layout_constraintWidth_percent="0.75" />
+            app:layout_constraintWidth_percent="0.75"
+            android:stateListAnimator="@animator/button_scale_animator"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
