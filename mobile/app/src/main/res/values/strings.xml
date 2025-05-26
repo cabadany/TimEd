@@ -74,7 +74,7 @@
 
 
     <string name="content_desc_back_button">Back button</string>
-    <string name="app_title_timed">WILDTIMed</string>
+    <string name="app_title_timed">TimEd</string>
 
     <!-- time_out_page.xml -->
     <string name="content_desc_timeout_illustration">Time-Out Illustration</string>
