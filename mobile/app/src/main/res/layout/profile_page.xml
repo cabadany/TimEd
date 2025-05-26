@@ -1,232 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <!-- White background -->
     <View
-        android:id="@+id/background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#FFFFFF" />
+            android:id="@+id/background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/white" />
 
     <!-- Top wave -->
     <ImageView
-        android:id="@+id/top_wave_animation"
-        android:layout_width="450dp"
-        android:layout_height="380dp"
-        android:layout_gravity="top"
-        android:scaleType="fitXY"
-        android:src="@drawable/animated_wave_top" />
+            android:id="@+id/top_wave_animation"
+            android:layout_width="450dp"
+            android:layout_height="380dp"
+            android:layout_gravity="top"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
 
     <!-- ScrollView for all content -->
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:scrollbars="none">
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="none">
 
         <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="24dp">
 
             <!-- Title -->
             <TextView
-                android:id="@+id/profile_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="48dp"
-                android:fontFamily="@font/league_spartan_bold"
-                android:letterSpacing="0.05"
-                android:padding="8dp"
-                android:shadowColor="#33000000"
-                android:shadowDx="1"
-                android:shadowDy="1"
-                android:shadowRadius="2"
-                android:text="PROFILE"
-                android:textColor="#8B0000"
-                android:textSize="48sp"
-                android:textStyle="bold" />
+                    android:id="@+id/profile_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="48dp"
+                    android:fontFamily="@font/league_spartan_bold"
+                    android:letterSpacing="0.05"
+                    android:padding="8dp"
+                    android:shadowColor="#33000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:text="PROFILE"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="48sp"
+                    android:textStyle="bold" />
 
             <!-- Profile Image -->
             <de.hdodenhof.circleimageview.CircleImageView
-                android:id="@+id/profile_image"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:layout_below="@id/profile_title"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="24dp"
-                android:src="@drawable/profile_placeholder"
-                app:civ_border_color="@color/white"
-                app:civ_border_width="2dp" />
+                    android:id="@+id/profile_image"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_below="@id/profile_title"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="24dp"
+                    android:src="@drawable/profile_placeholder"
+                    app:civ_border_color="@color/primary_medium_blue"
+                    app:civ_border_width="3dp" />
 
             <!-- Full Name -->
             <TextView
-                android:id="@+id/profile_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/profile_image"
-                android:layout_marginTop="16dp"
-                android:layout_marginStart="24dp"
-                android:layout_marginEnd="24dp"
-                android:fontFamily="@font/roboto_bold"
-                android:gravity="center"
-                android:letterSpacing="0.05"
-                android:text="Kristan Ian D. Cabaña"
-                android:textColor="@color/black"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                    android:id="@+id/profile_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/profile_image"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:gravity="center"
+                    android:letterSpacing="0.05"
+                    android:text="Kristan Ian D. Cabaña"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
             <!-- ID Number -->
             <TextView
-                android:id="@+id/profile_id_number"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/profile_name"
-                android:layout_marginTop="4dp"
-                android:layout_marginStart="24dp"
-                android:layout_marginEnd="24dp"
-                android:fontFamily="@font/roboto_medium"
-                android:gravity="center"
-                android:text="1746"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:id="@+id/profile_id_number"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/profile_name"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="center"
+                    android:text="1746"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp" />
 
             <!-- Profile information container -->
             <LinearLayout
-                android:id="@+id/profile_info_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/profile_id_number"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical"
-                android:paddingHorizontal="24dp">
+                    android:id="@+id/profile_info_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/profile_id_number"
+                    android:layout_marginTop="24dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp">
 
                 <!-- Email info -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/email_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/roboto_bold"
-                        android:text="Institutional Email: "
-                        android:textColor="@color/black"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                            android:id="@+id/email_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/roboto_bold"
+                            android:text="Institutional Email: "
+                            android:textColor="@color/primary_deep_blue"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/profile_email"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/roboto_medium"
-                        android:text="kristanian.cabana@cit.edu"
-                        android:textColor="@color/black"
-                        android:textSize="14sp" />
+                            android:id="@+id/profile_email"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/roboto_medium"
+                            android:text="kristanian.cabana@cit.edu"
+                            android:textColor="@color/neutral_text_gray"
+                            android:textSize="14sp" />
                 </LinearLayout>
 
                 <!-- Department info -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/department_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/roboto_bold"
-                        android:text="Department: "
-                        android:textColor="@color/black"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                            android:id="@+id/department_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/roboto_bold"
+                            android:text="Department: "
+                            android:textColor="@color/primary_deep_blue"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/profile_department"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/roboto_medium"
-                        android:text="College of Computer Science"
-                        android:textColor="@color/black"
-                        android:textSize="14sp" />
+                            android:id="@+id/profile_department"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/roboto_medium"
+                            android:text="College of Computer Science"
+                            android:textColor="@color/neutral_text_gray"
+                            android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
 
             <!-- Change Password Button -->
             <Button
-                android:id="@+id/btn_change_password"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_below="@id/profile_info_container"
-                android:layout_marginStart="24dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginEnd="24dp"
-                android:backgroundTint="@color/maroon"
-                android:elevation="4dp"
-                android:fontFamily="@font/roboto_medium"
-                android:text="Change Password"
-                android:textColor="@color/white"
-                android:textSize="14sp"
-                app:cornerRadius="8dp" />
+                    android:id="@+id/btn_change_password"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_below="@id/profile_info_container"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginEnd="24dp"
+                    android:backgroundTint="@color/primary_medium_blue"
+                    android:elevation="4dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Change Password"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:cornerRadius="8dp" />
 
             <!-- Attendance Sheet Button -->
             <Button
-                android:id="@+id/btn_attendance_sheet"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_below="@id/btn_change_password"
-                android:layout_marginStart="24dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginEnd="24dp"
-                android:backgroundTint="@color/yellow_gold"
-                android:elevation="4dp"
-                android:fontFamily="@font/roboto_medium"
-                android:text="Attendance Sheet"
-                android:textColor="@color/maroon"
-                android:textSize="14sp"
-                app:cornerRadius="8dp" />
+                    android:id="@+id/btn_attendance_sheet"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_below="@id/btn_change_password"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="24dp"
+                    android:backgroundTint="@color/accent_coral"
+                    android:elevation="4dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Attendance Sheet"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:cornerRadius="8dp" />
 
             <!-- Log Out Text -->
             <TextView
-                android:id="@+id/logout_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/btn_attendance_sheet"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="24dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:fontFamily="@font/roboto_bold"
-                android:padding="8dp"
-                android:text="Log Out"
-                android:textColor="@color/maroon"
-                android:textSize="16sp" />
+                    android:id="@+id/logout_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/btn_attendance_sheet"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="24dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/roboto_bold"
+                    android:padding="8dp"
+                    android:text="Log Out"
+                    android:textColor="@color/accent_coral"
+                    android:textSize="16sp"
+                    android:background="?attr/selectableItemBackground" />
         </RelativeLayout>
     </ScrollView>
 
     <!-- Back Button - Moved after ScrollView to ensure it's drawn on top -->
     <ImageView
-        android:id="@+id/icon_back_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="4dp"
-        android:padding="8dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:contentDescription="Back button"
-        app:srcCompat="@drawable/ic_back_button" />
+            android:id="@+id/icon_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:padding="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Back button"
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 </RelativeLayout>
