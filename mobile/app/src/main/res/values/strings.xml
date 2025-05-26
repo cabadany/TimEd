@@ -46,4 +46,30 @@
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+
+
+
+    <string name="popup_success_icon_desc">Success icon</string>
+
+    <string name="popup_title_success">Success</string>
+    <string name="popup_message_excuse_letter_success">Your excuse letter has been submitted successfully!</string>
+    <string name="popup_button_ok">OK</string>
+
+    <string name="popup_title_timed_out_success">Successfully Timed - Out</string>
+    <string name="popup_message_recorded_success">Thank you. It has been recorded.</string>
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_timed_in_success">Successfully Timed - In</string>
+    <!-- Uses popup_message_recorded_success -->
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_profile_updated">Profile Updated</string>
+    <string name="popup_message_profile_updated_success">Your profile has been updated successfully.</string>
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_password_changed_success">Password Changed Successfully</string>
+    <string name="popup_message_password_updated_success">Your password has been updated successfully.</string>
+    <string name="popup_button_close">Close</string>
+
+    <string name="popup_title_download_success">Successfully Downloaded</string>
 </resources>

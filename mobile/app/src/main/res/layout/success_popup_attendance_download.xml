@@ -5,15 +5,27 @@
         android:layout_height="wrap_content"
         android:background="@drawable/popup_background"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="32dp"
+        android:gravity="center_horizontal">
+
+    <!-- Success Icon -->
+    <ImageView
+            android:id="@+id/success_icon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="16dp"
+            app:srcCompat="@drawable/ic_success"
+            android:contentDescription="@string/popup_success_icon_desc" />
 
     <TextView
+            android:id="@+id/popup_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/roboto_bold"
             android:gravity="center"
-            android:text="Successfully Downloaded"
-            android:textColor="@color/black"
+            android:text="@string/popup_title_download_success"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="20sp"
             android:textStyle="bold"
             android:layout_marginBottom="24dp" />
@@ -23,9 +35,9 @@
             android:layout_width="120dp"
             android:layout_height="48dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/maroon"
-            android:text="OK"
-            android:textColor="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
+            android:text="@string/popup_button_ok"
+            android:textColor="@color/white"
             android:fontFamily="@font/roboto_medium"
             android:textSize="14sp"
             app:cornerRadius="8dp"
