@@ -1368,26 +1368,29 @@ class HomeActivity : AppCompatActivity() {
                         }
                     }
 
-                    // 🟨 If TimeOut is the most recent entry
                     if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
                         updateUserStatus("Off Duty")
 
-                        // 🔍 Look for the badge in BOTH timeIn and timeOut
                         var badge: String? = null
                         for (child in snapshot.children) {
                             val type = child.child("type").getValue(String::class.java)
-                            val badgeValue =
-                                child.child("attendanceBadge").getValue(String::class.java)
+                            val badgeValue = child.child("attendanceBadge").getValue(String::class.java)
                             if ((type == "TimeIn" || type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
                                 badge = badgeValue
                                 break
                             }
                         }
 
-                        Log.d("BADGE_DEBUG", "Final fallback badge: $badge")
-
                         if (!badge.isNullOrEmpty()) {
                             updateAttendanceBadge(badge)
+                        } else if (timeInTimestamp != null) {
+                            val fallback = when {
+                                timeInTimestamp < cutoff9am -> "On Time"
+                                timeInTimestamp < cutoff10am -> "Late"
+                                else -> "Absent"
+                            }
+                            updateAttendanceBadge(fallback)
+                            timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
                         } else {
                             attendanceStatusBadge.visibility = View.GONE
                         }
@@ -1396,13 +1399,18 @@ class HomeActivity : AppCompatActivity() {
                         if (!badge.isNullOrEmpty()) {
                             updateAttendanceBadge(badge)
                         } else {
-                            attendanceStatusBadge.visibility = View.GONE
+                            val fallback = when {
+                                timeInTimestamp < cutoff9am -> "On Time"
+                                timeInTimestamp < cutoff10am -> "Late"
+                                else -> "Absent"
+                            }
+                            updateAttendanceBadge(fallback)
+                            timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
                         }
                     } else {
-                        // Check excuse letter from Realtime Database
                         val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
-
                         val excuseRef = FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId)
+
                         excuseRef.addListenerForSingleValueEvent(object : ValueEventListener {
                             override fun onDataChange(excuseSnapshot: DataSnapshot) {
                                 var matched = false
@@ -1417,6 +1425,7 @@ class HomeActivity : AppCompatActivity() {
 
                                 if (matched) {
                                     updateAttendanceBadge("Absent")
+                                    // Optional: Write this badge to the latest excuse-linked node if needed
                                 } else if (currentTime > cutoff10am) {
                                     updateAttendanceBadge("Has not Timed-In")
                                 } else {
