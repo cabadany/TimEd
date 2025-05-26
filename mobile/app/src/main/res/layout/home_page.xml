@@ -69,7 +69,7 @@
                             android:shadowDx="1"
                             android:shadowDy="1"
                             android:shadowRadius="2"
-                            android:text="WILDTIMed"
+                            android:text="TimEd"
                             android:textColor="@color/primary_deep_blue"
                             android:textSize="38sp"
                             android:textStyle="bold" />

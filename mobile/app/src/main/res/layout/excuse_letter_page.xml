@@ -1,233 +1,241 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <!-- White background -->
     <View
-        android:id="@+id/background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#FFFFFF" />
+            android:id="@+id/background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/white" />
 
     <!-- Top wave -->
     <ImageView
-        android:id="@+id/top_wave_animation"
-        android:layout_width="450dp"
-        android:layout_height="380dp"
-        android:layout_gravity="top"
-        android:scaleType="fitXY"
-        android:src="@drawable/animated_wave_top" />
+            android:id="@+id/top_wave_animation"
+            android:layout_width="450dp"
+            android:layout_height="380dp"
+            android:layout_gravity="top"
+            android:scaleType="fitXY"
+            android:src="@drawable/animated_wave_top" />
 
     <!-- Back Button -->
     <ImageView
-        android:id="@+id/icon_back_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="4dp"
-        android:clickable="true"
-        android:contentDescription="Back button"
-        android:focusable="true"
-        android:padding="8dp"
-        app:srcCompat="@drawable/ic_back_button" />
+            android:id="@+id/icon_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:clickable="true"
+            android:contentDescription="Back button"
+            android:focusable="true"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white" />
 
     <!-- Title -->
     <TextView
-        android:id="@+id/excuse_letter_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="48dp"
-        android:fontFamily="@font/league_spartan_bold"
-        android:letterSpacing="0.05"
-        android:padding="8dp"
-        android:shadowColor="#33000000"
-        android:shadowDx="1"
-        android:shadowDy="1"
-        android:shadowRadius="2"
-        android:text="Excuse Letter"
-        android:textColor="#8B0000"
-        android:textSize="40sp"
-        android:textStyle="bold" />
+            android:id="@+id/excuse_letter_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="48dp"
+            android:fontFamily="@font/league_spartan_bold"
+            android:letterSpacing="0.05"
+            android:padding="8dp"
+            android:shadowColor="#33000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            android:text="Excuse Letter"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="40sp"
+            android:textStyle="bold" />
 
     <!-- Form Container -->
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/excuse_letter_title"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="24dp"
-        android:fillViewport="true"
-        android:scrollbars="none">
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/excuse_letter_title"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            android:fillViewport="true"
+            android:scrollbars="none">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="24dp"
-            android:paddingBottom="24dp">
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingBottom="24dp">
 
             <!-- Date Field Label -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:fontFamily="@font/roboto_bold"
-                android:text="Date of Absence"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Date of Absence"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
 
             <!-- Date Selection Button -->
             <Button
-                android:id="@+id/btn_date_picker"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="@color/white"
-                android:drawableEnd="@drawable/ic_calendar"
-                android:fontFamily="@font/roboto_medium"
-                android:gravity="start|center_vertical"
-                android:padding="16dp"
-                android:text="Select date"
-                android:textAllCaps="false"
-                android:textColor="@color/black"
-                android:textSize="16sp"
-                app:cornerRadius="8dp"
-                app:strokeColor="#CCCCCC"
-                app:strokeWidth="1dp" />
+                    android:id="@+id/btn_date_picker"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/white"
+                    android:drawableEnd="@drawable/ic_calendar"
+                    app:drawableTint="@color/primary_medium_blue"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Select date"
+                    android:textAllCaps="false"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/light_neutral_gray"
+                    app:strokeWidth="1dp" />
 
             <!-- Number of Days Absent Label -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="@font/roboto_bold"
-                android:text="Number of Days Absent"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Number of Days Absent"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
 
             <!-- Number of Days Absent Input -->
             <EditText
-                android:id="@+id/edit_text_days_absent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/edittext_background"
-                android:fontFamily="@font/roboto_medium"
-                android:hint="e.g., 1, 2, 3"
-                android:inputType="number"
-                android:padding="16dp"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:id="@+id/edit_text_days_absent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/edittext_background"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="e.g., 1, 2, 3"
+                    android:textColorHint="@color/light_neutral_gray"
+                    android:inputType="number"
+                    android:padding="16dp"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp" />
 
             <!-- Reason Label -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="@font/roboto_bold"
-                android:text="Reason for Absence"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Reason for Absence"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
 
             <!-- Reason Dropdown -->
             <Spinner
-                android:id="@+id/spinner_reason"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/spinner_background"
-                android:minHeight="48dp"
-                android:padding="16dp"
-                android:spinnerMode="dropdown" />
+                    android:id="@+id/spinner_reason"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/spinner_background"
+                    android:minHeight="48dp"
+                    android:padding="16dp"
+                    android:spinnerMode="dropdown" />
+            <!-- Note: Spinner text color is often controlled by its adapter or theme attributes -->
 
             <!-- Details Label -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="@font/roboto_bold"
-                android:text="Additional Details"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Additional Details"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
 
             <!-- Details Input -->
             <EditText
-                android:id="@+id/edit_text_details"
-                android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/edittext_background"
-                android:fontFamily="@font/roboto_medium"
-                android:gravity="top|start"
-                android:hint="Please provide additional details about your absence..."
-                android:inputType="textMultiLine"
-                android:padding="16dp"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:id="@+id/edit_text_details"
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/edittext_background"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="top|start"
+                    android:hint="Please provide additional details about your absence..."
+                    android:textColorHint="@color/light_neutral_gray"
+                    android:inputType="textMultiLine"
+                    android:padding="16dp"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp" />
 
             <!-- Upload Proof Label -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="@font/roboto_bold"
-                android:text="Upload Supporting Document (Optional)"
-                android:textColor="@color/black"
-                android:textSize="16sp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Upload Supporting Document (Optional)"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
 
             <!-- Upload Button -->
             <Button
-                android:id="@+id/btn_upload"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="@color/white"
-                android:drawableStart="@drawable/ic_upload"
-                android:fontFamily="@font/roboto_medium"
-                android:gravity="start|center_vertical"
-                android:padding="16dp"
-                android:text="Upload document"
-                android:textAllCaps="false"
-                android:textColor="@color/black"
-                android:textSize="16sp"
-                app:cornerRadius="8dp"
-                app:strokeColor="#CCCCCC"
-                app:strokeWidth="1dp" />
+                    android:id="@+id/btn_upload"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/white"
+                    android:drawableStart="@drawable/ic_upload"
+                    app:drawableTint="@color/primary_medium_blue"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Upload document"
+                    android:textAllCaps="false"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/light_neutral_gray"
+                    app:strokeWidth="1dp" />
 
             <!-- Selected file name -->
             <TextView
-                android:id="@+id/text_uploaded_filename"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:ellipsize="middle"
-                android:fontFamily="@font/roboto_medium"
-                android:singleLine="true"
-                android:textColor="@color/maroon"
-                android:textSize="14sp"
-                android:visibility="gone" />
+                    android:id="@+id/text_uploaded_filename"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:ellipsize="middle"
+                    android:fontFamily="@font/roboto_medium"
+                    android:singleLine="true"
+                    android:textColor="@color/primary_medium_blue"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
 
             <!-- Submit Button -->
             <Button
-                android:id="@+id/btn_submit_excuse"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="32dp"
-                android:backgroundTint="@color/yellow_gold"
-                android:elevation="6dp"
-                android:fontFamily="@font/roboto_medium"
-                android:text="SUBMIT"
-                android:textColor="@color/maroon"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                app:cornerRadius="8dp" />
+                    android:id="@+id/btn_submit_excuse"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
+                    android:backgroundTint="@color/accent_coral"
+                    android:elevation="6dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="SUBMIT"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="8dp" />
         </LinearLayout>
     </ScrollView>
 </RelativeLayout>
