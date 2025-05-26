@@ -538,7 +538,6 @@ class HomeActivity : AppCompatActivity() {
                                             .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .skipMemoryCache(true)
-                                            .dontTransform() // Important: Prevents unintended rotations
                                             .into(profileImageView)
                                         return
                                     }
@@ -611,7 +610,6 @@ class HomeActivity : AppCompatActivity() {
                                             .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .skipMemoryCache(true)
-                                            .dontTransform() // Important: Prevents unintended rotations
                                             .into(sidebarImage)
                                         return
                                     }

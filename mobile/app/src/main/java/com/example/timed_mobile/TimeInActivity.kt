@@ -397,21 +397,20 @@ class TimeInActivity : AppCompatActivity() {
     }
 
     private fun fixImageOrientationAndFlip(photoFile: File): Bitmap {
-        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-        val exif = ExifInterface(photoFile.absolutePath)
-        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        val originalBitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
 
         val matrix = Matrix()
-        when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-        }
-
-        // Mirror horizontally (selfie mode)
+        matrix.postRotate(90f)
         matrix.preScale(-1f, 1f)
 
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        return Bitmap.createBitmap(
+            originalBitmap,
+            0, 0,
+            originalBitmap.width,
+            originalBitmap.height,
+            matrix,
+            true
+        )
     }
 
     private fun uploadImageToFirebase(uri: Uri, uid: String) {
@@ -419,87 +418,53 @@ class TimeInActivity : AppCompatActivity() {
             Log.d(TAG, "Starting upload to Firebase: $uri")
             Log.d(TAG, "Upload for UID: $uid")
 
-            // Check current authentication state before uploading
-            val auth = FirebaseAuth.getInstance()
-            val currentUser = auth.currentUser
-
+            val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser == null) {
-                Log.e(TAG, "Firebase user is NULL during upload attempt - this shouldn't happen as we check before this method")
-                signInAnonymouslyForStorage { success ->
-                    if (success) {
-                        // Retry upload after authentication
-                        uploadImageToFirebase(uri, uid)
-                    } else {
-                        Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
-                        timeInButton.isEnabled = true
-                        timeInButton.text = "Time - In"
-                    }
-                }
-                return
-            }
-
-            // When using Firebase Storage with anonymously authenticated users,
-            // we need to use the Firebase Auth UID in the storage path
-            val firebaseAuthUid = FirebaseAuth.getInstance().currentUser?.uid
-            if (firebaseAuthUid == null) {
-                Log.e(TAG, "Firebase user is null during upload. Cannot continue.")
+                Log.e(TAG, "User is not authenticated")
                 Toast.makeText(this, "Authentication error. Please retry.", Toast.LENGTH_SHORT).show()
                 timeInButton.isEnabled = true
                 timeInButton.text = "Time - In"
                 return
             }
 
-            // The upload path must use the Firebase Auth UID to match storage rules
-            val ref = FirebaseStorage.getInstance().getReference("uploads/$firebaseAuthUid/Timed_${System.currentTimeMillis()}.jpg")
+            val timestamp = System.currentTimeMillis()
+            val fileName = "selfie_$timestamp.jpg"
+            val logsRef = FirebaseStorage.getInstance().getReference("timeLogs/$uid/$fileName")
 
-            // Check if file exists and is readable
             val file = File(uri.path ?: "")
             if (!file.exists() || !file.canRead()) {
-                Log.e(TAG, "File does not exist or cannot be read: ${file.absolutePath}")
+                Log.e(TAG, "File cannot be read: ${file.absolutePath}")
                 Toast.makeText(this, "File access error", Toast.LENGTH_SHORT).show()
                 timeInButton.isEnabled = true
                 timeInButton.text = "Time - In"
                 return
             }
 
-            // Add auth token to the request
-            val storageMetadata = com.google.firebase.storage.StorageMetadata.Builder()
+            val metadata = com.google.firebase.storage.StorageMetadata.Builder()
                 .setContentType("image/jpeg")
                 .build()
 
-            ref.putFile(uri, storageMetadata)
-                .addOnProgressListener { taskSnapshot ->
-                    val progress = (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount)
-                    Log.d(TAG, "Upload progress: $progress%")
-                }
+            logsRef.putFile(uri, metadata)
                 .addOnSuccessListener {
-                    Log.d(TAG, "Upload successful, getting download URL")
-                    ref.downloadUrl.addOnSuccessListener { imageUrl ->
-                        Log.d(TAG, "Got download URL: $imageUrl")
-                        // Store the original user ID from Firestore with the log entry
-                        logTimeIn(imageUrl.toString(), uid)
+                    logsRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                        logTimeIn(downloadUrl.toString(), uid)
                         showSuccessDialog()
                     }.addOnFailureListener { e ->
                         Log.e(TAG, "Failed to get download URL", e)
-                        Toast.makeText(this@TimeInActivity, "Failed to get image URL: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Download URL failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         timeInButton.isEnabled = true
                         timeInButton.text = "Time - In"
                     }
                 }
                 .addOnFailureListener { e ->
                     Log.e(TAG, "Upload failed", e)
-                    if (e.message?.contains("permission", ignoreCase = true) == true) {
-                        Toast.makeText(this@TimeInActivity, "Firebase Storage permission denied. Check Firebase Storage Rules.", Toast.LENGTH_LONG).show()
-                        // Log more details about authentication state
-                        Log.e(TAG, "Auth state during failure: Firebase user=${currentUser.uid}, uploading for uid=$uid")
-                    } else {
-                        Toast.makeText(this@TimeInActivity, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(this, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
                     timeInButton.isEnabled = true
                     timeInButton.text = "Time - In"
                 }
+
         } catch (e: Exception) {
-            Log.e(TAG, "Exception during upload process", e)
+            Log.e(TAG, "Upload exception", e)
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             timeInButton.isEnabled = true
             timeInButton.text = "Time - In"
