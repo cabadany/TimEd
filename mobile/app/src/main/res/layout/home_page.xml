@@ -371,19 +371,35 @@
                             android:scaleType="fitXY"
                             app:srcCompat="@drawable/event_box_list" />
 
-                    <!-- Event List (RecyclerView on top of the ImageView) -->
+                    <!-- Event List RecyclerView -->
                     <androidx.recyclerview.widget.RecyclerView
-                            android:id="@+id/recycler_events"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:layout_alignStart="@id/event_box_list"
-                            android:layout_alignEnd="@id/event_box_list"
-                            android:layout_alignTop="@id/event_box_list"
-                            android:layout_alignBottom="@id/event_box_list"
-                            android:padding="4dp"
-                            tools:listitem="@layout/event_card"
-                            android:clipToPadding="true"
-                            android:background="@android:color/transparent" />
+                        android:id="@+id/recycler_events"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_alignStart="@id/event_box_list"
+                        android:layout_alignEnd="@id/event_box_list"
+                        android:layout_alignTop="@id/event_box_list"
+                        android:layout_alignBottom="@id/event_box_list"
+                        android:padding="4dp"
+                        tools:listitem="@layout/event_card"
+                        android:clipToPadding="true"
+                        android:background="@android:color/transparent" />
+
+                    <!-- Message shown when no events are available (inside the same box) -->
+                    <TextView
+                        android:id="@+id/no_events_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_alignStart="@id/event_box_list"
+                        android:layout_alignEnd="@id/event_box_list"
+                        android:layout_alignTop="@id/event_box_list"
+                        android:layout_alignBottom="@id/event_box_list"
+                        android:gravity="center"
+                        android:textAlignment="center"
+                        android:text="No events at the moment."
+                        android:textColor="@color/medium_gray"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
 
                     <!-- Tutorial Overlay - MOVED TO BE THE LAST CHILD for correct Z-ordering -->
                     <FrameLayout

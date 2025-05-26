@@ -80,7 +80,7 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var greetingCardNavIcon: ImageView
     private lateinit var tutorialOverlay: FrameLayout
-
+    private lateinit var noEventsMessage: TextView
 
     private var currentTutorialPopupWindow: PopupWindow? = null
     private val allEvents = mutableListOf<EventModel>()
@@ -171,6 +171,7 @@ class HomeActivity : AppCompatActivity() {
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
         btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
+        noEventsMessage = findViewById(R.id.no_events_message)
 
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
@@ -959,15 +960,18 @@ class HomeActivity : AppCompatActivity() {
                     val seconds = durationParts[2].toIntOrNull() ?: 0
                     (hours * 3600 + minutes * 60 + seconds) * 1000L
                 }
+
                 2 -> {
                     val hours = durationParts[0].toIntOrNull() ?: 0
                     val minutes = durationParts[1].toIntOrNull() ?: 0
                     (hours * 3600 + minutes * 60) * 1000L
                 }
+
                 1 -> {
                     val minutes = durationParts[0].toIntOrNull() ?: 0
                     (minutes * 60) * 1000L
                 }
+
                 else -> 3600000L
             }
 
@@ -998,6 +1002,14 @@ class HomeActivity : AppCompatActivity() {
         )
 
         recyclerEvents.adapter = EventAdapter(sorted)
+
+        val readableStatus = statusFilter?.replaceFirstChar { it.uppercaseChar() } ?: "Selected"
+        if (sorted.isEmpty()) {
+            noEventsMessage.visibility = View.VISIBLE
+            noEventsMessage.text = "No $readableStatus event/s at the moment."
+        } else {
+            noEventsMessage.visibility = View.GONE
+        }
     }
 
     private fun statusOrder(status: String): Int {
