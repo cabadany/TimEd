@@ -5,8 +5,6 @@ import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.TextUtils
 import android.view.ViewGroup
 import android.view.Window
@@ -18,7 +16,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -41,7 +38,6 @@ class TimeInEventManualActivity : AppCompatActivity() {
         setContentView(R.layout.time_in_event_manual_page)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
 
-        // Get user session from intent or SharedPreferences
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
@@ -54,13 +50,11 @@ class TimeInEventManualActivity : AppCompatActivity() {
         }
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG)
-                .show()
+            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG).show()
             finish()
             return
         }
 
-        // Initialize views
         backButton = findViewById(R.id.icon_back_button)
         codeInputLayout = findViewById(R.id.code_input_layout)
         codeInput = findViewById(R.id.code_input)
@@ -71,64 +65,62 @@ class TimeInEventManualActivity : AppCompatActivity() {
         codeInput.setHorizontallyScrolling(false)
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
         val bottomWave = findViewById<ImageView>(R.id.bottom_wave_animation)
-        val bottomDrawable = bottomWave.drawable
-        if (bottomDrawable is AnimatedVectorDrawable) {
-            bottomDrawable.start()
-        }
+        (bottomWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        backButton.setOnClickListener { view ->
-            val drawable = (view as ImageView).drawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
+        backButton.setOnClickListener {
+            (it as? ImageView)?.drawable?.let { drawable ->
+                if (drawable is AnimatedVectorDrawable) drawable.start()
             }
-            view.postDelayed({ finish() }, 50)
+            it.postDelayed({ finish() }, 50)
         }
 
         verifyButton.setOnClickListener {
             if (validateInputs()) {
-                verifyButton.isEnabled = false
-                verifyButton.text = "Verifying..."
-
-                val eventId = codeInput.text.toString().trim()
-                Handler(Looper.getMainLooper()).postDelayed({
-                    checkIfAlreadyTimedIn(eventId)
-                }, 1000)
+                performTimeIn()
             }
         }
 
-        returnToScanButton.setOnClickListener {
-            finish()
+        returnToScanButton.setOnClickListener { finish() }
+
+        codeInput.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val code = codeInput.text.toString().trim()
+                if (code.isNotEmpty()) {
+                    if (validateInputs()) {
+                        performTimeIn()
+                    }
+                }
+            }
         }
     }
 
     private fun validateInputs(): Boolean {
         val code = codeInput.text.toString().trim()
-
         if (TextUtils.isEmpty(code)) {
             codeInputLayout.error = "Please enter an event ID"
             codeInput.requestFocus()
             return false
         }
-
         codeInputLayout.error = null
         return true
     }
 
-    private fun checkIfAlreadyTimedIn(eventId: String) {
+    private fun performTimeIn() {
+        verifyButton.isEnabled = false
+        verifyButton.text = "Verifying..."
+        val eventId = codeInput.text.toString().trim()
         val db = FirebaseFirestore.getInstance()
-        db.collection("attendanceRecords")
-            .whereEqualTo("userId", userId)
-            .whereEqualTo("eventId", eventId)
-            .whereEqualTo("type", "event_time_in")
+
+        db.collection("events")
+            .document(eventId)
+            .collection("attendees")
+            .document(userId!!)
             .get()
-            .addOnSuccessListener { documents ->
-                if (!documents.isEmpty) {
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
                     showErrorDialog("You have already timed in for this event.")
                 } else {
                     logAttendanceToFirestore(eventId)
@@ -142,23 +134,22 @@ class TimeInEventManualActivity : AppCompatActivity() {
     private fun logAttendanceToFirestore(eventId: String) {
         val db = FirebaseFirestore.getInstance()
         val timestamp = System.currentTimeMillis()
-        val formattedDate =
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+        val formattedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 
         val attendanceData = hashMapOf(
             "userId" to userId,
             "firstName" to userFirstName,
             "email" to userEmail,
-            "eventId" to eventId,
-            "eventName" to eventId,
             "timestamp" to formattedDate,
-            "selfieUrl" to null,
             "type" to "event_time_in",
             "hasTimedOut" to false
         )
 
-        db.collection("attendanceRecords")
-            .add(attendanceData)
+        db.collection("events")
+            .document(eventId)
+            .collection("attendees")
+            .document(userId!!)
+            .set(attendanceData)
             .addOnSuccessListener {
                 showSuccessDialog()
             }
@@ -195,7 +186,6 @@ class TimeInEventManualActivity : AppCompatActivity() {
     private fun showErrorDialog(errorMessage: String) {
         verifyButton.isEnabled = true
         verifyButton.text = "Verify Code"
-
         Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
     }
 }
