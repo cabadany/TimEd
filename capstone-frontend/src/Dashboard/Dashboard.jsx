@@ -43,12 +43,14 @@ import {
   EventNote,
   Search,
   InfoOutlined,
-  CheckCircleOutline
+  CheckCircleOutline,
+  Email
 } from '@mui/icons-material';
 import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
+import EmailStatusTracker from '../components/EmailStatusTracker';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -1106,6 +1108,11 @@ export default function Dashboard() {
               icon={<CalendarToday />} 
               iconPosition="start"
             />
+            <Tab 
+              label="Email Status" 
+              icon={<Email />} 
+              iconPosition="start"
+            />
           </Tabs>
         </Box>
 
@@ -1934,6 +1941,24 @@ export default function Dashboard() {
                 onOpenCertificateEditor={handleOpenCertificateEditor}
               />
             )}
+          </Box>
+        )}
+
+        {/* Email Status Tab */}
+        {mainTab === 3 && (
+          <Box sx={{ 
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+            borderRadius: '16px', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            overflow: 'hidden',
+            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            p: 3
+          }}>
+            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Certificate Email Status</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Monitor the delivery status of certificate emails sent via Firebase Extensions
+            </Typography>
+            <EmailStatusTracker />
           </Box>
         )}
       </Box>
