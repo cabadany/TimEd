@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
 export default function QRJoin() {
-  const { eventId } = useParams();
+  const { eventId: rawParam } = useParams();
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -15,12 +15,15 @@ export default function QRJoin() {
 
       setIsProcessing(true);
       const userId = localStorage.getItem("userId");
-      console.log("User ID:", userId);
 
       try {
-        const timeInResponse = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}`);
-        console.log('Time in response:', timeInResponse.data);
+        // Extract the actual eventId from rawParam
+        const parts = rawParam.split(":");
+        const eventId = parts.length >= 2 && parts[0] === "TIMED" && parts[1] === "EVENT"
+          ? parts[2]
+          : rawParam;
 
+        const timeInResponse = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}`);
         if (isMounted) {
           if (timeInResponse.data.includes("Already timed in")) {
             setError("You have already timed in for this event and received a certificate.");
@@ -29,10 +32,7 @@ export default function QRJoin() {
             alert('Successfully timed in! A certificate will be sent to your email.');
           }
 
-          // Try to close window
           window.close();
-
-          // If close doesn't work, show fallback
           setTimeout(() => {
             if (!window.closed) {
               alert('Browser prevented automatic tab close. Please close this tab manually. Thank you!');
@@ -40,15 +40,12 @@ export default function QRJoin() {
           }, 500);
         }
       } catch (error) {
-        console.error('Error details:', error.response?.data || error.message);
         if (isMounted) {
           setError(error.response?.data || error.message);
           alert(`Failed to time in: ${error.response?.data || error.message}`);
         }
       } finally {
-        if (isMounted) {
-          setIsProcessing(false);
-        }
+        if (isMounted) setIsProcessing(false);
       }
     };
 
@@ -73,12 +70,7 @@ export default function QRJoin() {
       {error ? (
         <div style={styles.errorContainer}>
           <p style={styles.errorText}>{error}</p>
-          <button
-            onClick={handleCloseWindow}
-            style={styles.button}
-          >
-            Close Window
-          </button>
+          <button onClick={handleCloseWindow} style={styles.button}>Close Window</button>
         </div>
       ) : (
         <p style={styles.text}>Joining event… please wait.</p>

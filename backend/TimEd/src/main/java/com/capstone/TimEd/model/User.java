@@ -13,12 +13,13 @@ public class User {
     private String schoolId;
     private String password;
     private String role;
+    private String profilePictureUrl; // URL to the profile picture in Firebase Storage
 
     // Default constructor
     public User() {}
 
     // Constructor to initialize the User with fields
-    public User(String userId, String firstName, String lastName, String departmentId, String email, String schoolId, String password, String role) {
+    public User(String userId, String firstName, String lastName, String departmentId, String email, String schoolId, String password, String role, String profilePictureUrl) {
         this.userId = userId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -27,6 +28,7 @@ public class User {
         this.schoolId = schoolId;
         this.password = password;
         this.role = role;
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     // Getters and Setters
@@ -119,6 +121,16 @@ public class User {
         this.role = role;
     }
 
+    @PropertyName("profilePictureUrl")
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    @PropertyName("profilePictureUrl")
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -129,6 +141,7 @@ public class User {
                 ", department=" + department +  // This will display the full department object
                 ", email='" + email + '\'' +
                 ", role='" + role + '\'' +
+                ", profilePictureUrl='" + profilePictureUrl + '\'' +
                 '}';
     }
 }

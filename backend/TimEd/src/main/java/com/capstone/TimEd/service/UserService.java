@@ -120,20 +120,54 @@ public class UserService {
         DocumentSnapshot snapshot = future.get();
 
         if (snapshot.exists()) {
-            // ❌ Delete from Firestore
-            ApiFuture<WriteResult> writeResult = docRef.delete();
-            writeResult.get(); // wait for completion
-
             try {
-                // ❌ Delete from Firebase Auth
-                FirebaseAuth.getInstance().deleteUser(userId);
-            } catch (FirebaseAuthException e) {
-                throw new RuntimeException("Failed to delete from Firebase Auth: " + e.getMessage());
-            }
+                // 1. Delete all attended events records for this user
+                CollectionReference attendedEventsRef = docRef.collection("attendedEvents");
+                ApiFuture<QuerySnapshot> attendedEventsFuture = attendedEventsRef.get();
+                List<QueryDocumentSnapshot> attendedEvents = attendedEventsFuture.get().getDocuments();
 
+                // Use batch write for better performance and atomicity
+                WriteBatch batch = db.batch();
+
+                // Delete all attended events documents
+                for (QueryDocumentSnapshot attendedEvent : attendedEvents) {
+                    batch.delete(attendedEvent.getReference());
+                }
+
+                // 2. Remove user from all events' attendees collections
+                CollectionReference eventsRef = db.collection("events");
+                ApiFuture<QuerySnapshot> eventsFuture = eventsRef.get();
+                List<QueryDocumentSnapshot> events = eventsFuture.get().getDocuments();
+
+                for (QueryDocumentSnapshot event : events) {
+                    DocumentReference attendeeRef = event.getReference()
+                        .collection("attendees")
+                        .document(userId);
+                    
+                    // Add delete operation to batch
+                    batch.delete(attendeeRef);
+                }
+
+                // 3. Delete the user document itself
+                batch.delete(docRef);
+
+                // Commit all the delete operations
+                batch.commit().get();
+
+                // 4. Delete from Firebase Auth
+                try {
+                    FirebaseAuth.getInstance().deleteUser(userId);
+                } catch (FirebaseAuthException e) {
+                    throw new RuntimeException("Failed to delete from Firebase Auth: " + e.getMessage());
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to delete user and associated data: " + e.getMessage());
+            }
         } else {
             throw new RuntimeException("User with ID " + userId + " not found.");
-        }}
+        }
+    }
     public User getUserById(String userId) throws Exception {
         DocumentReference userRef = firestore.collection("users").document(userId);
         ApiFuture<DocumentSnapshot> future = userRef.get();

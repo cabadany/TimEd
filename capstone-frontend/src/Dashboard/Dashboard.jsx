@@ -526,7 +526,8 @@ export default function Dashboard() {
               id: logSnapshot.key,
               userId,
               ...log,
-              time: format(logDate, 'hh:mm:ss a')
+              time: format(logDate, 'hh:mm:ss a'),
+              attendanceBadge: log.attendanceBadge || 'Unknown'
             });
           }
         });
@@ -570,7 +571,8 @@ export default function Dashboard() {
               imageUrl: pair.timeIn.imageUrl,
               timeIn: pair.timeIn,
               timeOut: pair.timeOut,
-              entryNumber: index + 1
+              entryNumber: index + 1,
+              attendanceBadge: pair.timeIn.attendanceBadge
             });
           });
         }
@@ -658,52 +660,112 @@ export default function Dashboard() {
   // Update the calculateAttendanceStats function
   const calculateAttendanceStats = async () => {
     try {
+      const db = getDatabase();
+      const logsRef = ref(db, 'timeLogs');
+      
+      // Initialize counters
+      let onTimeCount = 0;
+      let lateCount = 0;
+      let absentCount = 0;
+      const processedUsers = new Set(); // To track unique users
+
       // Get all faculty (excluding admins)
       const response = await axios.get('http://localhost:8080/api/user/getAll');
       const facultyList = response.data.filter(user => user.role !== 'ADMIN');
       const totalFaculty = facultyList.length;
-      
-      // Get unique faculty who have timed in today
-      const todayTimeIns = new Set();
-      const lateTimeIns = new Set();
-      
-      facultyLogs.forEach(entry => {
-        if (entry.timeIn) {
-          const timeInDate = new Date(entry.timeIn.timestamp);
-          const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
-          const thresholdDate = new Date(selectedDate);
-          thresholdDate.setHours(thresholdHour, thresholdMinute, 0);
 
-          if (isSameDay(timeInDate, selectedDate)) {
-            const timeInMinutes = timeInDate.getHours() * 60 + timeInDate.getMinutes();
-            const thresholdMinutes = thresholdHour * 60 + thresholdMinute;
+      onValue(logsRef, (snapshot) => {
+        snapshot.forEach((userSnapshot) => {
+          const userId = userSnapshot.key;
+          let latestTimestamp = 0;
+          let latestBadge = null;
 
-            if (timeInMinutes > thresholdMinutes) {
-              lateTimeIns.add(entry.userId);
-            } else {
-              todayTimeIns.add(entry.userId);
+          // Find the latest entry for this user on the selected date
+          userSnapshot.forEach((logSnapshot) => {
+            const log = logSnapshot.val();
+            const logDate = new Date(log.timestamp);
+            
+            if (isSameDay(logDate, selectedDate) && log.timestamp > latestTimestamp) {
+              latestTimestamp = log.timestamp;
+              latestBadge = log.attendanceBadge;
+            }
+          });
+
+          // Only count each user once based on their latest badge for the day
+          if (latestBadge && !processedUsers.has(userId)) {
+            processedUsers.add(userId);
+            
+            switch (latestBadge) {
+              case 'On Time':
+                onTimeCount++;
+                break;
+              case 'Late':
+                lateCount++;
+                break;
+              case 'Absent':
+                absentCount++;
+                break;
             }
           }
-        }
+        });
+
+        // Calculate absent count for users not found in logs
+        const totalProcessed = processedUsers.size;
+        const remainingAbsent = totalFaculty - totalProcessed;
+        absentCount += remainingAbsent;
+
+        setAttendanceStats({
+          present: onTimeCount,
+          late: lateCount,
+          absent: absentCount
+        });
+
+        // Update lists for modals
+        updateLateFacultyList(snapshot);
+        updateNoTimeInList(facultyList, processedUsers);
       });
-
-      // Create a set of all faculty who have timed in
-      const allTimeIns = new Set([...todayTimeIns, ...lateTimeIns]);
-      
-      // Find faculty who haven't timed in
-      const noTimeInFaculty = facultyList.filter(faculty => !allTimeIns.has(faculty.userId));
-
-      setAttendanceStats({
-        present: todayTimeIns.size,
-        late: lateTimeIns.size,
-        absent: noTimeInFaculty.length
-      });
-
-      // Store no time-in faculty list for the modal
-      setNoTimeInList(noTimeInFaculty);
     } catch (error) {
       console.error('Error calculating attendance stats:', error);
     }
+  };
+
+  // Add new helper function to update late faculty list
+  const updateLateFacultyList = (snapshot) => {
+    const lateFaculty = [];
+    
+    snapshot.forEach((userSnapshot) => {
+      let latestEntry = null;
+      let latestTimestamp = 0;
+
+      userSnapshot.forEach((logSnapshot) => {
+        const log = logSnapshot.val();
+        const logDate = new Date(log.timestamp);
+        
+        if (isSameDay(logDate, selectedDate) && 
+            log.timestamp > latestTimestamp && 
+            log.attendanceBadge === 'Late') {
+          latestTimestamp = log.timestamp;
+          latestEntry = log;
+        }
+      });
+
+      if (latestEntry) {
+        lateFaculty.push({
+          name: latestEntry.firstName,
+          timeIn: new Date(latestEntry.timestamp).toLocaleTimeString(),
+          imageUrl: latestEntry.imageUrl,
+          email: latestEntry.email
+        });
+      }
+    });
+
+    setLateFacultyList(lateFaculty);
+  };
+
+  // Add new helper function to update no time-in list
+  const updateNoTimeInList = (facultyList, processedUsers) => {
+    const absentFaculty = facultyList.filter(faculty => !processedUsers.has(faculty.userId));
+    setNoTimeInList(absentFaculty);
   };
 
   // Update useEffect to include attendance stats calculation
@@ -1087,7 +1149,7 @@ export default function Dashboard() {
                 <Typography variant="h6" fontWeight="600" color="#1E293B">
                   Today's Attendance Summary
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              {/*  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
                     Late after: {lateThreshold}
                   </Typography>
@@ -1104,7 +1166,7 @@ export default function Dashboard() {
                   >
                     Change Time
                   </Button>
-                </Box>
+                </Box>*/}
               </Box>
 
               <Box sx={{ 
@@ -1338,15 +1400,27 @@ export default function Dashboard() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Tooltip title="Time In" arrow>
-                              <Chip 
-                                label={entry.timeIn.time}
-                                color="success"
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Tooltip title="Time In" arrow>
+                                <Chip 
+                                  label={entry.timeIn.time}
+                                  color="success"
+                                  size="small"
+                                  variant="outlined"
+                                  icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                />
+                              </Tooltip>
+                              <Chip
+                                label={entry.attendanceBadge}
                                 size="small"
+                                color={
+                                  entry.attendanceBadge === 'On Time' ? 'success' :
+                                  entry.attendanceBadge === 'Late' ? 'warning' :
+                                  'error'
+                                }
                                 variant="outlined"
-                                icon={<AccessTime sx={{ fontSize: 16 }} />}
                               />
-                            </Tooltip>
+                            </Box>
                           </TableCell>
                           <TableCell>
                             <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>

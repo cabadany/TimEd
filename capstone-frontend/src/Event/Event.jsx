@@ -179,10 +179,12 @@ const EventCard = React.memo(({ event, getDepartmentName, formatDate, openQrModa
           <Typography variant="body2" color="#64748B" gutterBottom>
             <strong>Duration:</strong> {event.duration}
           </Typography>
-          
-          <Typography variant="body2" color="#64748B">
-            <strong>Ends at:</strong> {formatDate(endTime.toISOString())}
-          </Typography>
+
+          {event.description && (
+            <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
+              <strong>Description:</strong> {event.description}
+            </Typography>
+          )}
         </CardContent>
         
         <Divider />
@@ -303,6 +305,7 @@ export default function EventPage() {
   const [durationHours, setDurationHours] = useState('0');
   const [durationMinutes, setDurationMinutes] = useState('00');
   const [durationSeconds, setDurationSeconds] = useState('00');
+  const [description, setDescription] = useState(''); // Add description state
   
   // State for events data
   const [events, setEvents] = useState([]);
@@ -561,7 +564,8 @@ export default function EventPage() {
         departmentId,
         date: formattedDate,
         duration,
-        status: 'Upcoming'
+        status: 'Upcoming',
+        description // Add description to event data
       };
       
       setLoading(true);
@@ -746,6 +750,7 @@ export default function EventPage() {
     setDepartmentId('');
     setDate('');
     setDuration('');
+    setDescription(''); // Reset description
     setCurrentCertificateData(null);
     setEventForCertificate(null);
     setShowCertificateEditor(false);
@@ -1449,9 +1454,15 @@ export default function EventPage() {
                   <strong>Started:</strong> {formatDate(event.date)}
                 </Typography>
                 
-                <Typography variant="body2" color="#64748B">
+                <Typography variant="body2" color="#64748B" gutterBottom>
                   <strong>Duration:</strong> {event.duration}
                 </Typography>
+
+                {event.description && (
+                  <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
+                    <strong>Description:</strong> {event.description}
+                  </Typography>
+                )}
               </CardContent>
               
               <Divider />
@@ -1703,6 +1714,36 @@ export default function EventPage() {
               </Box>
               {/* Hidden field to hold the combined duration value */}
               <input type="hidden" value={duration} />
+            </Box>
+            
+            <Box sx={{ gridColumn: "span 2" }}>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Description
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                multiline
+                rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter event description..."
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#0288d1',
+                    },
+                  },
+                }}
+              />
             </Box>
             
             <Box sx={{ gridColumn: "span 2" }}>
@@ -1969,6 +2010,7 @@ export default function EventPage() {
                   )}
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Event Name</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Description</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Duration</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Status</TableCell>
@@ -1980,7 +2022,7 @@ export default function EventPage() {
                   <EventTableSkeleton />
                 ) : events.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={bulkDeleteMode ? 7 : 6} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={bulkDeleteMode ? 8 : 7} align="center" sx={{ py: 3 }}>
                       <Typography variant="body1" color="#64748B">
                         No events found
                       </Typography>
@@ -2011,6 +2053,20 @@ export default function EventPage() {
                       )}
                       <TableCell sx={{ py: 2 }}>{event.eventName}</TableCell>
                       <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
+                      <TableCell>
+                        <Tooltip title={event.description || 'No description provided'}>
+                          <Typography
+                            sx={{
+                              maxWidth: 200,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {event.description || 'No description'}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
                       <TableCell>{formatDate(event.date)}</TableCell>
                       <TableCell>{event.duration}</TableCell>
                       <TableCell>

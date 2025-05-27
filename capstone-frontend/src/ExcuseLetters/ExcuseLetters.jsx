@@ -37,13 +37,16 @@ import {
   CheckCircle, 
   Cancel, 
   AccessTime,
-  Add
+  Add,
+  AttachFile,
+  OpenInNew
 } from '@mui/icons-material';
 import { getDatabase, ref, onValue, query, orderByChild, get, update, push, child } from 'firebase/database';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format, parseISO } from 'date-fns';
+import axios from 'axios';
 
 const ExcuseLetters = () => {
   // State variables
@@ -105,28 +108,94 @@ const ExcuseLetters = () => {
       const db = getDatabase();
       const excuseLettersRef = ref(db, 'excuseLetters');
       
-      // Get all excuse letters
-      const snapshot = await get(excuseLettersRef);
+      // Get excuse letters from Firebase and departments from API
+      const [excuseSnapshot, departmentsResponse] = await Promise.all([
+        get(excuseLettersRef),
+        axios.get('http://localhost:8080/api/departments')
+      ]);
       
-      if (snapshot.exists()) {
+      // Create lookup table for departments
+      const departmentsData = {};
+      
+      console.log('Departments data from API:', departmentsResponse.data);
+      
+      // Process departments data from API response
+      departmentsResponse.data.forEach(dept => {
+        if (dept.departmentId) {
+          departmentsData[dept.departmentId] = dept;
+        }
+      });
+      
+      console.log('Processed departments lookup:', departmentsData);
+      
+      if (excuseSnapshot.exists()) {
         const allLetters = [];
+        const letterPromises = [];
         
         // Convert the nested structure into a flat array
-        snapshot.forEach((userSnapshot) => {
+        excuseSnapshot.forEach((userSnapshot) => {
           const userId = userSnapshot.key;
+          console.log('Processing user ID:', userId);
           
           userSnapshot.forEach((letterSnapshot) => {
             const letter = letterSnapshot.val();
+            const letterId = letterSnapshot.key;
+            
             // Only add valid letters
             if (isValidLetterForDisplay(letter)) {
-              allLetters.push({
-                id: letterSnapshot.key,
-                userId: userId,
-                ...letter
-              });
+              // Try to get department information
+              let department = letter.department;
+              console.log('Original department:', department);
+              
+              if (!department || department === 'N/A') {
+                // Create a promise for this letter's processing
+                const letterPromise = (async () => {
+                  try {
+                    // Get user data by idNumber (schoolId)
+                    const userResponse = await axios.get(`http://localhost:8080/api/user/getBySchoolId/${letter.idNumber}`);
+                    const userData = userResponse.data;
+                    console.log('Found user by idNumber:', userData);
+                    
+                    if (userData && userData.departmentId) {
+                      console.log('User departmentId:', userData.departmentId);
+                      const dept = departmentsData[userData.departmentId];
+                      console.log('Found department:', dept);
+                      
+                      if (dept) {
+                        department = dept.abbreviation || dept.name || 'N/A';
+                        console.log('Setting department to:', department);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    // Keep the original department value if there's an error
+                  }
+                  
+                  return {
+                    id: letterId,
+                    userId: userId,
+                    ...letter,
+                    department
+                  };
+                })();
+                
+                letterPromises.push(letterPromise);
+              } else {
+                // If we already have the department, no need for async processing
+                allLetters.push({
+                  id: letterId,
+                  userId: userId,
+                  ...letter,
+                  department
+                });
+              }
             }
           });
         });
+        
+        // Wait for all letter promises to resolve
+        const processedLetters = await Promise.all(letterPromises);
+        allLetters.push(...processedLetters);
         
         // Sort letters by submittedAt in descending order
         allLetters.sort((a, b) => b.submittedAt - a.submittedAt);
@@ -151,6 +220,7 @@ const ExcuseLetters = () => {
         const start = pageNumber * pageSize;
         const paginatedLetters = filteredLetters.slice(start, start + pageSize);
         
+        console.log('Final letters with departments:', paginatedLetters);
         setLetters(paginatedLetters);
         setTotalElements(filteredLetters.length);
       } else {
@@ -574,36 +644,51 @@ const ExcuseLetters = () => {
               <Table sx={{ minWidth: 650 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Submitted by</TableCell>
                     <TableCell>ID Number</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Department</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Reason</TableCell>
-                    <TableCell>Submitted on</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell>Attachment</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {letters.map((letter) => (
-                    <TableRow key={letter.id} hover>
-                      <TableCell>{letter.firstName || 'N/A'}</TableCell>
-                      <TableCell>{letter.idNumber || 'N/A'}</TableCell>
-                      <TableCell>{letter.date || 'N/A'}</TableCell>
-                      <TableCell>{letter.reason || 'N/A'}</TableCell>
-                      <TableCell>{formatDate(letter.submittedAt)}</TableCell>
+                    <TableRow key={letter.id}>
+                      <TableCell>{letter.idNumber}</TableCell>
+                      <TableCell>{letter.firstName}</TableCell>
+                      <TableCell>{letter.department || 'N/A'}</TableCell>
+                      <TableCell>{letter.date}</TableCell>
+                      <TableCell>{letter.reason}</TableCell>
                       <TableCell>
-                        <Chip 
-                          label={letter.status || 'Unknown'} 
-                          size="small" 
-                          sx={{
-                            ...getStatusChipColor(letter.status),
-                            fontWeight: 500,
-                            fontSize: '0.75rem'
-                          }}
+                        <Chip
+                          label={letter.status}
+                          size="small"
+                          sx={getStatusChipColor(letter.status)}
                         />
                       </TableCell>
-                      <TableCell align="right">
-                        <IconButton onClick={(e) => handleMenuOpen(e, letter.id)}>
+                      <TableCell>
+                        {letter.attachmentUrl ? (
+                          <IconButton
+                            size="small"
+                            onClick={() => window.open(letter.attachmentUrl, '_blank')}
+                            title="View Attachment"
+                          >
+                            <OpenInNew fontSize="small" />
+                          </IconButton>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No attachment
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, letter.id)}
+                        >
                           <MoreVert />
                         </IconButton>
                       </TableCell>
@@ -655,120 +740,100 @@ const ExcuseLetters = () => {
       </Menu>
       
       {/* View Letter Dialog */}
-      <Dialog open={openViewDialog} onClose={handleCloseViewDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600 }}>Excuse Letter Details</DialogTitle>
+      <Dialog
+        open={openViewDialog}
+        onClose={handleCloseViewDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Excuse Letter Details
+        </DialogTitle>
         <DialogContent>
           {selectedLetter && (
-            <Box sx={{ pt: 1 }}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Submitted By</Typography>
-                <Typography variant="body1">{selectedLetter.userName || selectedLetter.firstName || 'Unknown'}</Typography>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Student Information
+                </Typography>
+                <Typography variant="body1">
+                  {selectedLetter.firstName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  ID: {selectedLetter.idNumber}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Department: {selectedLetter.department || 'N/A'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Email: {selectedLetter.email}
+                </Typography>
               </Box>
               
-              {selectedLetter.email && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Email</Typography>
-                  <Typography variant="body1">{selectedLetter.email}</Typography>
-                </Box>
-              )}
-              
-              {selectedLetter.idNumber && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">ID Number</Typography>
-                  <Typography variant="body1">{selectedLetter.idNumber}</Typography>
-                </Box>
-              )}
-              
-              {selectedLetter.department && selectedLetter.department !== 'N/A' && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Department</Typography>
-                  <Typography variant="body1">{selectedLetter.department}</Typography>
-                </Box>
-              )}
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Date</Typography>
-                <Typography variant="body1">{selectedLetter.date}</Typography>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Excuse Details
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Date:</strong> {selectedLetter.date}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Days Absent:</strong> {selectedLetter.daysAbsent || 'N/A'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Reason:</strong> {selectedLetter.reason}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Details:</strong> {selectedLetter.details}
+                </Typography>
               </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Reason</Typography>
-                <Typography variant="body1">{selectedLetter.reason}</Typography>
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Details</Typography>
-                <Typography variant="body1">{selectedLetter.details}</Typography>
-              </Box>
-              
-              {selectedLetter.attachmentUrl && selectedLetter.attachmentUrl !== "" && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Attachment</Typography>
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    component="a" 
-                    href={selectedLetter.attachmentUrl} 
-                    target="_blank"
+
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Supporting Document
+                </Typography>
+                {selectedLetter.attachmentUrl ? (
+                  <Button
+                    variant="outlined"
+                    startIcon={<AttachFile />}
+                    onClick={() => window.open(selectedLetter.attachmentUrl, '_blank')}
+                    size="small"
                     sx={{ mt: 1 }}
                   >
                     View Attachment
                   </Button>
-                </Box>
-              )}
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Submitted On</Typography>
-                <Typography variant="body1">{formatDate(selectedLetter.submittedAt)}</Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No attachment provided
+                  </Typography>
+                )}
               </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="textSecondary">Status</Typography>
-                <Chip 
-                  label={selectedLetter.status} 
-                  size="small" 
-                  sx={{
-                    ...getStatusChipColor(selectedLetter.status),
-                    fontWeight: 500,
-                    mt: 0.5
-                  }}
-                />
-              </Box>
-              
-              {/* Display rejection reason if letter is rejected */}
-              {selectedLetter.status === 'Rejected' && selectedLetter.rejectionReason && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Rejection Reason</Typography>
-                  <Typography variant="body1" color="error.main">{selectedLetter.rejectionReason}</Typography>
+
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Status Information
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  <Chip
+                    label={selectedLetter.status}
+                    size="small"
+                    sx={getStatusChipColor(selectedLetter.status)}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Submitted on {formatDate(selectedLetter.submittedAt)}
+                  </Typography>
                 </Box>
-              )}
-            </Box>
+                {selectedLetter.status === 'Rejected' && selectedLetter.rejectionReason && (
+                  <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                    Rejection Reason: {selectedLetter.rejectionReason}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseViewDialog}>Close</Button>
-          {selectedLetter && selectedLetter.status === 'Pending' && (
-            <>
-              <Button 
-                onClick={() => {
-                  handleCloseViewDialog();
-                  handleOpenStatusDialog('Approved');
-                }}
-                color="success"
-              >
-                Approve
-              </Button>
-              <Button 
-                onClick={() => {
-                  handleCloseViewDialog();
-                  handleOpenStatusDialog('Rejected');
-                }}
-                color="error"
-              >
-                Reject
-              </Button>
-            </>
-          )}
         </DialogActions>
       </Dialog>
       

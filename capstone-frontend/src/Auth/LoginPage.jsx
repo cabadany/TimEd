@@ -512,7 +512,7 @@ function LoginPage() {
                     firstName: 'Danisse',
                     lastName: 'Cabana',
                     role: 'Mobile Backend Developer',
-                    image: 'https://randomuser.me/api/portraits/women/44.jpg',
+                    image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F494828260_646748648390700_2831467056740054150_n.jpg?alt=media&token=d613d9b2-88ff-4c59-9c3a-2d5f1825f3da',
                     description: 'Backend developer focusing on mobile app integration, database connectivity, and secure API development for seamless mobile experiences.',
                     skills: ['Firebase', 'Spring Boot', 'RESTful APIs', 'Mobile Integration', 'Authentication', 'Database Management']
                   },
@@ -530,7 +530,7 @@ function LoginPage() {
                     firstName: 'Mikhail James',
                     lastName: 'Navaroo',
                     role: 'Mobile Frontend Developer',
-                    image: 'https://randomuser.me/api/portraits/men/32.jpg',
+                    image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F495270598_1925613518207533_3638793039034373708_n.png?alt=media&token=d7aaf893-9208-4f51-b771-c9838034ffdc',
                     description: 'Frontend developer focused on building intuitive, responsive mobile applications with attention to detail and performance.',
                     skills: ['React Native', 'JavaScript', 'UI Components', 'Mobile Design Patterns', 'Expo', 'CSS-in-JS']
                   },
@@ -539,7 +539,7 @@ function LoginPage() {
                     firstName: 'John Wayne',
                     lastName: 'Largo',
                     role: 'Web Backend Developer',
-                    image: 'https://cdn.discordapp.com/attachments/971921612448337940/1374043453444587591/434168392_2189176254770061_5356900714852223221_n.jpg?ex=682c9d2f&is=682b4baf&hm=f12576f78cb5f688e07d4b6f6d843661e0dfe02ee8dd39b31e5b104baf4ff6bf&format=webp&width=565&height=569',
+                    image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F434168392_2189176254770061_5356900714852223221_n.jpg?alt=media&token=9410fa9a-fd06-40e7-bbb3-5e53aab0262d',
                     description: 'Backend specialist for web systems, focused on building scalable infrastructure and secure APIs with modern tech stack.',
                     skills: ['Spring Boot', 'Firebase', 'PostgreSQL', 'JWT Authentication', 'Docker', 'API Security']
                   },
@@ -548,7 +548,7 @@ function LoginPage() {
                     firstName: 'Clark',
                     lastName: 'Gemongala',
                     role: 'Web Frontend Developer',
-                    image: 'https://cdn.discordapp.com/attachments/971921612448337940/1374044412211892274/126269967.jfif?ex=682c9e14&is=682b4c94&hm=721112074827d9e60222feff3605fe693f7c6f897d0cc27ea48c542f782e1e3d&',
+                    image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F126269967.jfif?alt=media&token=0079cc0e-5fcc-41c6-b131-d2832f359eb1',
                     description: 'Frontend developer with strong attention to responsive design, user experience, and clean code implementation for web platforms.',
                     skills: ['React.js', 'HTML5', 'CSS3', 'Tailwind CSS', 'JavaScript', 'Version Control']
                   }
