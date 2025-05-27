@@ -14,6 +14,11 @@
         android:contentDescription="App Logo"
         android:scaleType="fitCenter"
         android:layout_marginTop="160dp"
+        android:elevation="8dp"
+        android:shadowColor="#803538CD"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="12"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -35,7 +40,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_event" />
+            android:src="@drawable/ic_event"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <FrameLayout
@@ -54,7 +63,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_form" />
+            android:src="@drawable/ic_form"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <FrameLayout
@@ -73,7 +86,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_users" />
+            android:src="@drawable/ic_users"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <FrameLayout
@@ -92,7 +109,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_chart" />
+            android:src="@drawable/ic_chart"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <FrameLayout
@@ -111,7 +132,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_clock" />
+            android:src="@drawable/ic_clock"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <FrameLayout
@@ -130,7 +155,11 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_verified" />
+            android:src="@drawable/ic_verified"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
     </FrameLayout>
 
     <!-- App Name -->
@@ -138,13 +167,17 @@
         android:id="@+id/splash_app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Welcome to \nTimeEd"
+        android:text="Smarter Attendance \nStarts Here"
         android:textColor="#37474F"
-        android:textSize="40sp"
+        android:textSize="30dp"
         android:textStyle="bold"
         android:textAlignment="center"
         android:fontFamily="@font/league_spartan_bold"
         android:alpha="0"
+        android:shadowColor="#803538CD"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="8"
         android:layout_marginTop="24dp"
         app:layout_constraintTop_toBottomOf="@id/splash_logo"
         app:layout_constraintStart_toStartOf="parent"
