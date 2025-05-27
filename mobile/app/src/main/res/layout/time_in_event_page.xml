@@ -3,14 +3,15 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@color/white">
 
     <!-- White background -->
     <View
-            android:id="@+id/background"
+            android:id="@+id/background_fill"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FFFFFF" />
+            android:background="@color/white" />
 
     <!-- Top wave -->
     <ImageView
@@ -21,9 +22,10 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
             android:adjustViewBounds="true"
-            android:maxHeight="320dp"
+            android:maxHeight="350dp"
             android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_top" />
+            android:src="@drawable/animated_wave_top"
+            android:importantForAccessibility="no"/>
 
     <!-- Back Button -->
     <ImageView
@@ -32,13 +34,15 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
             android:clickable="true"
-            android:contentDescription="Back button"
+            android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
             android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button" />
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Title Name -->
     <TextView
@@ -54,9 +58,9 @@
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
-            android:text="WILDTIMed"
-            android:textColor="#8B0000"
-            android:textSize="38sp"
+            android:text="@string/app_title_timed"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="42sp"
             android:textStyle="bold" />
 
     <!-- Camera Box Frame -->
@@ -72,14 +76,31 @@
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp">
 
-        <!-- Camera preview placeholder -->
-        <ImageView
-                android:id="@+id/camera_preview_placeholder"
+        <!-- FrameLayout to hold camera preview and overlay -->
+        <FrameLayout android:id="@+id/camera_preview_host_frame"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#DDDDDD"
-                android:scaleType="centerCrop"
-                tools:ignore="ContentDescription" />
+                android:layout_height="match_parent">
+
+            <!-- Camera preview placeholder -->
+            <ImageView
+                    android:id="@+id/camera_preview_placeholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/light_gray"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Camera preview area" />
+
+            <!-- QR Scan Box Overlay -->
+            <View
+                    android:id="@+id/qr_scan_box_overlay"
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/qr_scan_box_border"
+                    android:visibility="gone" />
+            <!-- This View will be made visible from your Activity code -->
+
+        </FrameLayout>
 
     </androidx.cardview.widget.CardView>
 
@@ -91,8 +112,12 @@
             android:layout_below="@id/camera_container"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="12dp"
-            android:contentDescription="Camera Icon"
-            app:srcCompat="@drawable/ic_shutter_camera" />
+            android:contentDescription="@string/content_desc_camera_icon"
+            app:srcCompat="@drawable/ic_shutter_camera"
+            app:tint="@color/primary_medium_blue"
+            android:clickable="true"
+            android:focusable="true"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- QR Scanner Click Reminder - must match selfieReminder in your code -->
     <TextView
@@ -103,14 +128,13 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="12dp"
             android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_bold"
+            android:fontFamily="@font/roboto_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
             android:padding="4dp"
-            android:text="Aim your camera at a QR code and press SCAN"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:text="@string/timein_event_qr_scan_instruction"
+            android:textColor="@color/neutral_text_gray"
+            android:textSize="16sp" />
 
     <!-- Scan QR Code Button - must match scanButton in your code -->
     <Button
@@ -122,16 +146,17 @@
             android:layout_marginStart="40dp"
             android:layout_marginTop="12dp"
             android:layout_marginEnd="40dp"
-            android:backgroundTint="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
             android:elevation="6dp"
             android:fontFamily="@font/roboto_medium"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:text="Start Scanning"
-            android:textColor="@color/maroon"
+            android:text="@string/button_start_scanning"
+            android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:cornerRadius="8dp" />
+            app:cornerRadius="8dp"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Manual Type Code Button -->
     <Button
@@ -144,15 +169,16 @@
             android:layout_marginTop="12dp"
             android:layout_marginEnd="40dp"
             android:layout_marginBottom="20dp"
-            android:backgroundTint="@color/yellow_gold"
+            android:backgroundTint="@color/primary_medium_blue"
             android:elevation="6dp"
             android:fontFamily="@font/roboto_medium"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:text="Manual Type Code"
-            android:textColor="@color/maroon"
+            android:text="@string/button_manual_type_code"
+            android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:cornerRadius="8dp" />
+            app:cornerRadius="8dp"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
 </RelativeLayout>

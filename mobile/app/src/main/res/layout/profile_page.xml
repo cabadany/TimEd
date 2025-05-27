@@ -10,7 +10,7 @@
             android:id="@+id/background"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FFFFFF" />
+            android:background="@color/white" />
 
     <!-- Top wave -->
     <ImageView
@@ -21,81 +21,17 @@
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
-    <!-- Bottom Navigation Icons Container - KEPT AT BOTTOM -->
-    <LinearLayout
-            android:id="@+id/bottom_nav_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_marginBottom="8dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingTop="8dp"
-            android:weightSum="3">
-
-        <!-- Home Icon -->
-        <ImageView
-                android:id="@+id/bottom_nav_home"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:clickable="true"
-                android:contentDescription="Home"
-                android:focusable="true"
-                android:padding="12dp"
-                app:srcCompat="@drawable/ic_home" />
-
-        <!-- Calendar Icon -->
-        <ImageView
-                android:id="@+id/bottom_nav_calendar"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:clickable="true"
-                android:contentDescription="Calendar"
-                android:focusable="true"
-                android:padding="12dp"
-                app:srcCompat="@drawable/ic_calendar" />
-
-        <!-- Profile Icon (Active) -->
-        <ImageView
-                android:id="@+id/bottom_nav_profile"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:clickable="true"
-                android:contentDescription="Profile"
-                android:focusable="true"
-                android:padding="12dp"
-                app:srcCompat="@drawable/ic_profile" />
-    </LinearLayout>
-
-    <!-- ScrollView for all content except navigation -->
+    <!-- ScrollView for all content -->
     <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_above="@id/bottom_nav_container"
             android:fillViewport="true"
             android:scrollbars="none">
 
         <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-            <!-- Back Button -->
-            <ImageView
-                    android:id="@+id/icon_back_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentStart="true"
-                    android:layout_alignParentTop="true"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="24dp"
-                    android:clickable="true"
-                    android:contentDescription="Back button"
-                    android:focusable="true"
-                    android:padding="8dp"
-                    app:srcCompat="@drawable/ic_back_button" />
+                android:layout_height="wrap_content"
+                android:paddingBottom="24dp">
 
             <!-- Title -->
             <TextView
@@ -104,7 +40,7 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentTop="true"
                     android:layout_centerHorizontal="true"
-                    android:layout_marginTop="67dp"
+                    android:layout_marginTop="48dp"
                     android:fontFamily="@font/league_spartan_bold"
                     android:letterSpacing="0.05"
                     android:padding="8dp"
@@ -112,9 +48,9 @@
                     android:shadowDx="1"
                     android:shadowDy="1"
                     android:shadowRadius="2"
-                    android:text="Profile"
-                    android:textColor="#8B0000"
-                    android:textSize="28sp"
+                    android:text="PROFILE"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="48sp"
                     android:textStyle="bold" />
 
             <!-- Profile Image -->
@@ -126,8 +62,8 @@
                     android:layout_centerHorizontal="true"
                     android:layout_marginTop="24dp"
                     android:src="@drawable/profile_placeholder"
-                    app:civ_border_color="@color/white"
-                    app:civ_border_width="2dp" />
+                    app:civ_border_color="@color/primary_medium_blue"
+                    app:civ_border_width="3dp" />
 
             <!-- Full Name -->
             <TextView
@@ -142,7 +78,7 @@
                     android:gravity="center"
                     android:letterSpacing="0.05"
                     android:text="Kristan Ian D. Cabaña"
-                    android:textColor="@color/black"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -158,32 +94,15 @@
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="center"
                     android:text="1746"
-                    android:textColor="@color/black"
+                    android:textColor="@color/neutral_text_gray"
                     android:textSize="16sp" />
-
-            <!-- Edit Button -->
-            <Button
-                    android:id="@+id/btn_edit_profile"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:layout_below="@id/profile_id_number"
-                    android:layout_centerHorizontal="true"
-                    android:layout_marginTop="12dp"
-                    android:backgroundTint="@color/yellow_gold"
-                    android:elevation="4dp"
-                    android:fontFamily="@font/roboto_medium"
-                    android:paddingHorizontal="16dp"
-                    android:text="EDIT"
-                    android:textColor="@color/black"
-                    android:textSize="12sp"
-                    app:cornerRadius="18dp" />
 
             <!-- Profile information container -->
             <LinearLayout
                     android:id="@+id/profile_info_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/btn_edit_profile"
+                    android:layout_below="@id/profile_id_number"
                     android:layout_marginTop="24dp"
                     android:orientation="vertical"
                     android:paddingHorizontal="24dp">
@@ -200,7 +119,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/roboto_bold"
                             android:text="Institutional Email: "
-                            android:textColor="@color/black"
+                            android:textColor="@color/primary_deep_blue"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
@@ -211,7 +130,7 @@
                             android:layout_weight="1"
                             android:fontFamily="@font/roboto_medium"
                             android:text="kristanian.cabana@cit.edu"
-                            android:textColor="@color/black"
+                            android:textColor="@color/neutral_text_gray"
                             android:textSize="14sp" />
                 </LinearLayout>
 
@@ -228,7 +147,7 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/roboto_bold"
                             android:text="Department: "
-                            android:textColor="@color/black"
+                            android:textColor="@color/primary_deep_blue"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
@@ -239,7 +158,7 @@
                             android:layout_weight="1"
                             android:fontFamily="@font/roboto_medium"
                             android:text="College of Computer Science"
-                            android:textColor="@color/black"
+                            android:textColor="@color/neutral_text_gray"
                             android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
@@ -253,7 +172,7 @@
                     android:layout_marginStart="24dp"
                     android:layout_marginTop="24dp"
                     android:layout_marginEnd="24dp"
-                    android:backgroundTint="@color/maroon"
+                    android:backgroundTint="@color/primary_medium_blue"
                     android:elevation="4dp"
                     android:fontFamily="@font/roboto_medium"
                     android:text="Change Password"
@@ -270,11 +189,11 @@
                     android:layout_marginStart="24dp"
                     android:layout_marginTop="12dp"
                     android:layout_marginEnd="24dp"
-                    android:backgroundTint="@color/yellow_gold"
+                    android:backgroundTint="@color/accent_coral"
                     android:elevation="4dp"
                     android:fontFamily="@font/roboto_medium"
                     android:text="Attendance Sheet"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/white"
                     android:textSize="14sp"
                     app:cornerRadius="8dp" />
 
@@ -292,9 +211,26 @@
                     android:fontFamily="@font/roboto_bold"
                     android:padding="8dp"
                     android:text="Log Out"
-                    android:textColor="@color/maroon"
-                    android:textSize="16sp" />
-
+                    android:textColor="@color/accent_coral"
+                    android:textSize="16sp"
+                    android:background="?attr/selectableItemBackground" />
         </RelativeLayout>
     </ScrollView>
+
+    <!-- Back Button - Moved after ScrollView to ensure it's drawn on top -->
+    <ImageView
+            android:id="@+id/icon_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:padding="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Back button"
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 </RelativeLayout>

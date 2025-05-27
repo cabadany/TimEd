@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="320dp"
+        android:layout_width="265dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/popup_background"
@@ -16,7 +16,8 @@
             android:layout_height="64dp"
             android:layout_marginBottom="16dp"
             app:srcCompat="@drawable/ic_success"
-            android:contentDescription="Success" />
+
+            android:contentDescription="@string/popup_success_icon_desc" />
 
     <!-- Title -->
     <TextView
@@ -25,8 +26,8 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/roboto_bold"
             android:gravity="center"
-            android:text="Success"
-            android:textColor="@color/black"
+            android:text="@string/popup_title_success"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="20sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
@@ -38,8 +39,8 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/roboto_medium"
             android:gravity="center"
-            android:text="Your excuse letter has been submitted successfully!"
-            android:textColor="@color/dark_gray"
+            android:text="@string/popup_message_excuse_letter_success"
+            android:textColor="@color/neutral_text_gray"
             android:textSize="16sp"
             android:layout_marginBottom="24dp" />
 
@@ -49,9 +50,9 @@
             android:layout_width="120dp"
             android:layout_height="48dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/maroon"
-            android:text="OK"
-            android:textColor="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
+            android:text="@string/popup_button_ok"
+            android:textColor="@color/white"
             android:fontFamily="@font/roboto_medium"
             android:textSize="14sp"
             app:cornerRadius="8dp"

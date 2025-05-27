@@ -1,57 +1,48 @@
 package com.example.timed_mobile
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
-import android.content.Intent
-import android.os.Bundle
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
 import android.app.Dialog
+import android.content.Intent
+import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.Window
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-
-import android.graphics.Color
+import android.util.Log
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.Window
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
+import com.google.firebase.firestore.FirebaseFirestore
+import de.hdodenhof.circleimageview.CircleImageView
 
 class ProfileActivity : AppCompatActivity() {
 
-    private lateinit var backButton: ImageView
-    private lateinit var homeIcon: ImageView
-    private lateinit var profileIcon: ImageView
-    private lateinit var calendarIcon: ImageView
-    private lateinit var editButton: Button
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button
     private lateinit var logoutText: TextView
-
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
+    private lateinit var backButton: ImageView
+    private lateinit var profileEmail: TextView
+    private lateinit var profileDepartment: TextView
+    private lateinit var profileImage: CircleImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
 
-        backButton = findViewById(R.id.icon_back_button)
-        homeIcon = findViewById(R.id.bottom_nav_home)
-        calendarIcon = findViewById(R.id.bottom_nav_calendar)
-        profileIcon = findViewById(R.id.bottom_nav_profile)
-        editButton = findViewById(R.id.btn_edit_profile)
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
         logoutText = findViewById(R.id.logout_text)
         teacherName = findViewById(R.id.profile_name)
         teacherId = findViewById(R.id.profile_id_number)
+        backButton = findViewById(R.id.icon_back_button)
+        profileEmail = findViewById(R.id.profile_email)
+        profileDepartment = findViewById(R.id.profile_department)
+        profileImage = findViewById(R.id.profile_image)
 
-        // Start top wave animation
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
@@ -59,101 +50,130 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
-            // Add a small delay before finishing to allow animation to be seen
             view.postDelayed({
                 finish()
-            }, 50) // Match animation duration
+            }, 50)
         }
 
-        // Set up click listeners with animation bottom navigation
-        setupAnimatedClickListener(homeIcon) {
-            startActivity(Intent(this, HomeActivity::class.java))
-        }
-
-        setupAnimatedClickListener(calendarIcon) {
-            startActivity(Intent(this, ScheduleActivity::class.java))
-        }
-
-        setupAnimatedClickListener(profileIcon) {
-            Toast.makeText(this, "You are already on the Profile screen", Toast.LENGTH_SHORT).show()
-        }
-
-
-        editButton.setOnClickListener {
-            startActivity(Intent(this, EditProfileActivity::class.java))
-        }
         changePasswordButton.setOnClickListener {
             startActivity(Intent(this, ChangePasswordActivity::class.java))
         }
+
         attendanceSheetButton.setOnClickListener {
-            showAttendanceDownloadDialog()
+            startActivity(Intent(this, AttendanceSheetActivity::class.java))
         }
+
         logoutText.setOnClickListener {
             showLogoutConfirmationDialog()
         }
 
-        // Load user profile from Firebase
         loadUserProfile()
     }
 
-    // Helper function for click animation
-    private fun setupAnimatedClickListener(view: View, onClickAction: () -> Unit) {
-        val scaleDownX = ObjectAnimator.ofFloat(view, "scaleX", 0.85f)
-        val scaleDownY = ObjectAnimator.ofFloat(view, "scaleY", 0.85f)
-        scaleDownX.duration = 150
-        scaleDownY.duration = 150
-        scaleDownX.interpolator = AccelerateDecelerateInterpolator()
-        scaleDownY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleUpX = ObjectAnimator.ofFloat(view, "scaleX", 1f)
-        val scaleUpY = ObjectAnimator.ofFloat(view, "scaleY", 1f)
-        scaleUpX.duration = 150
-        scaleUpY.duration = 150
-        scaleUpX.interpolator = AccelerateDecelerateInterpolator()
-        scaleUpY.interpolator = AccelerateDecelerateInterpolator()
-
-        val scaleDown = AnimatorSet()
-        scaleDown.play(scaleDownX).with(scaleDownY)
-
-        val scaleUp = AnimatorSet()
-        scaleUp.play(scaleUpX).with(scaleUpY)
-
-        view.setOnClickListener {
-            scaleDown.start()
-            // Execute the actual click action after the scale down animation
-            view.postDelayed({
-                scaleUp.start() // Start scaling back up
-                onClickAction() // Perform the navigation/action
-            }, 150) // Delay should match scaleDown duration
-        }
-    }
-
     private fun loadUserProfile() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            val database = FirebaseDatabase.getInstance().getReference("users").child(userId)
+        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
 
-            database.get().addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
-                    val department =
-                        snapshot.child("department").getValue(String::class.java) ?: "N/A"
+        if (userId.isNullOrEmpty()) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-                    teacherName.text = name
-                    teacherId.text = department // Showing department instead of student id
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (!document.exists()) {
+                    Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
-            }.addOnFailureListener {
+
+                val firstName = document.getString("firstName") ?: ""
+                val lastName = document.getString("lastName") ?: ""
+                val departmentId = document.getString("departmentId") ?: ""
+                val idNumber = document.getString("schoolId") ?: "N/A"
+                val email = document.getString("email") ?: "No email"
+                val profilePictureUrl = document.getString("profilePictureUrl")
+
+                teacherName.text = "$firstName $lastName"
+                teacherId.text = idNumber
+                profileEmail.text = email
+
+                // Fetch department name using departmentId
+                if (departmentId.isNotEmpty()) {
+                    firestore.collection("departments")
+                        .document(departmentId)
+                        .get()
+                        .addOnSuccessListener { deptDoc ->
+                            if (deptDoc.exists()) {
+                                profileDepartment.text = deptDoc.getString("name") ?: "N/A"
+                            } else {
+                                profileDepartment.text = "N/A"
+                            }
+                        }
+                        .addOnFailureListener {
+                            profileDepartment.text = "N/A"
+                        }
+                } else {
+                    profileDepartment.text = "N/A"
+                }
+
+                // Load profile image logic
+                val timeLogsRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                    .getReference("timeLogs").child(userId)
+
+                timeLogsRef.orderByChild("timestamp").limitToLast(1)
+                    .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                        override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                            var timeInImageUrl: String? = null
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                                val todayStart = java.util.Calendar.getInstance().apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    set(java.util.Calendar.MINUTE, 0)
+                                    set(java.util.Calendar.SECOND, 0)
+                                    set(java.util.Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+
+                                if (type == "TimeIn" && timestamp >= todayStart) {
+                                    timeInImageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    break
+                                }
+                            }
+
+                            val imageToLoad = when {
+                                !timeInImageUrl.isNullOrEmpty() -> timeInImageUrl
+                                !profilePictureUrl.isNullOrEmpty() -> profilePictureUrl
+                                else -> null
+                            }
+
+                            if (!imageToLoad.isNullOrEmpty()) {
+                                Glide.with(this@ProfileActivity)
+                                    .load(imageToLoad)
+                                    .placeholder(R.drawable.profile_placeholder)
+                                    .into(profileImage)
+                            } else {
+                                profileImage.setImageResource(R.drawable.profile_placeholder)
+                            }
+                        }
+
+                        override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                            profileImage.setImageResource(R.drawable.profile_placeholder)
+                        }
+                    })
+            }
+            .addOnFailureListener {
                 Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
             }
-        }
     }
 
-    // Existing methods for Attendance Download and Logout Confirmation Dialogs
     private fun showAttendanceDownloadDialog() {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -201,15 +221,9 @@ class ProfileActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener { dialog.dismiss() }
         logoutButton.setOnClickListener {
-            // Sign out user from Firebase
-            FirebaseAuth.getInstance().signOut()
-
-            // Show logout success message
+            getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).edit().clear().apply()
             Toast.makeText(this, "Successfully logged out", Toast.LENGTH_SHORT).show()
-
             dialog.dismiss()
-
-            // Navigate to login screen and clear back stack
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)

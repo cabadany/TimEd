@@ -22,7 +22,6 @@ class EditProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.edit_profile_page)
 
-        // Start top wave animation
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) {
@@ -37,15 +36,13 @@ class EditProfileActivity : AppCompatActivity() {
         backButton = findViewById(R.id.icon_back_button)
 
         backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
             }
-            // Add a small delay before finishing to allow animation to be seen
             view.postDelayed({
                 finish()
-            }, 50) // Match animation duration
+            }, 50)
         }
 
         updateProfileButton.setOnClickListener {
@@ -54,26 +51,37 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun updateProfile() {
-        val name = nameInput.text.toString().trim()
+        val fullName = nameInput.text.toString().trim()
         val email = emailInput.text.toString().trim()
         val phone = phoneInput.text.toString().trim()
-        val department = departmentInput.text.toString().trim()
+        val departmentName = departmentInput.text.toString().trim()
+
+        if (fullName.isBlank() || email.isBlank() || phone.isBlank() || departmentName.isBlank()) {
+            Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val nameParts = fullName.split(" ", limit = 2)
+        val firstName = nameParts.getOrNull(0) ?: ""
+        val lastName = nameParts.getOrNull(1) ?: ""
 
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val database = FirebaseDatabase.getInstance().getReference("users").child(userId)
+        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
 
         val profileData = mapOf(
-            "name" to name,
+            "firstName" to firstName,
+            "lastName" to lastName,
             "email" to email,
             "phone" to phone,
-            "department" to department
+            "department" to mapOf("name" to departmentName)
         )
 
-        database.setValue(profileData).addOnSuccessListener {
-            showUpdateSuccessDialog()
-        }.addOnFailureListener {
-            Toast.makeText(this, "Update failed: ${it.message}", Toast.LENGTH_SHORT).show()
-        }
+        firestore.collection("users").document(userId)
+            .update(profileData)
+            .addOnSuccessListener { showUpdateSuccessDialog() }
+            .addOnFailureListener {
+                Toast.makeText(this, "Update failed: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showUpdateSuccessDialog() {

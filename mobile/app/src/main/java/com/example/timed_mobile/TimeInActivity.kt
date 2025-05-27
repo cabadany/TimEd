@@ -1,359 +1,495 @@
 package com.example.timed_mobile
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
-import android.media.Image
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.provider.MediaStore
+import android.os.*
 import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.*
+import com.google.firebase.storage.FirebaseStorage
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
+import com.google.mlkit.vision.face.FaceDetectorOptions
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.max
+
+import androidx.exifinterface.media.ExifInterface
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import java.io.File
+import java.io.FileOutputStream
 
 class TimeInActivity : AppCompatActivity() {
-    private var previewView: PreviewView? = null
-    private var imageCapture: ImageCapture? = null
+
+    private lateinit var previewView: PreviewView
+    private lateinit var imageCapture: ImageCapture
     private lateinit var cameraExecutor: ExecutorService
-    private var capturedImageUri: Uri? = null
+    private lateinit var faceBoxOverlay: FaceBoxOverlay
+    private lateinit var faceDetector: FaceDetector
+    private lateinit var timeInButton: Button
     private lateinit var backButton: ImageView
+    private var isFaceDetected = false
+    private var isFrontCamera = true
+    private var currentLensFacing = CameraSelector.LENS_FACING_FRONT
+
+    private var userId: String? = null
+    private var userEmail: String? = null
+    private var userFirstName: String? = null
+    private var isAuthenticated = false
 
     companion object {
         private const val TAG = "TimeInActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
+        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+
+        private const val DB_PATH_TIME_LOGS = "timeLogs"
+        private const val DB_PATH_ATTENDANCE = "attendance"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_page)
-        
-        // Start top wave animation
-        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
-        val topDrawable = topWave.drawable
-        if (topDrawable is AnimatedVectorDrawable) {
-            topDrawable.start()
-        }
 
+        userId = intent.getStringExtra("userId")
+        userEmail = intent.getStringExtra("email")
+        userFirstName = intent.getStringExtra("firstName")
 
-
-        // Initialize the camera executor
+        imageCapture = ImageCapture.Builder().build()
         cameraExecutor = Executors.newSingleThreadExecutor()
+        faceBoxOverlay = findViewById(R.id.face_box_overlay)
+        timeInButton = findViewById(R.id.btntime_in)
         backButton = findViewById(R.id.icon_back_button)
 
-        // Set up camera container
-        setupCamera()
+        val topWave = findViewById<ImageView>(R.id.top_wave_animation)
+        (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        // Set up back button
-        backButton.setOnClickListener { view ->
-            // Start animation if the drawable is an AnimatedVectorDrawable
-            val drawable = (view as ImageView).drawable
-            if (drawable is AnimatedVectorDrawable) {
-                drawable.start()
-            }
-            // Add a small delay before finishing to allow animation to be seen
-            view.postDelayed({
-                finish()
-            }, 50) // Match animation duration
-        }
+        backButton.setOnClickListener { finish() }
 
-        // Set up QR scanner icon click listener
         findViewById<ImageView>(R.id.icon_qr_scanner).setOnClickListener {
-            try {
-                // Navigate to TimeInEventActivity for QR scanning
-                val intent = Intent(this@TimeInActivity, TimeInEventActivity::class.java)
-                startActivity(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error starting TimeInEventActivity", e)
-                Toast.makeText(this, "Cannot open QR scanner: ${e.message}", Toast.LENGTH_SHORT).show()
+            Intent(this, TimeInEventActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+            }.also { startActivity(it) }
+        }
+
+        // Debug current authentication state
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+
+        if (currentUser != null) {
+            Log.d(TAG, "Firebase Auth: User IS authenticated. UID: ${currentUser.uid}")
+            isAuthenticated = true
+            // ❌ Do NOT override userId
+        } else {
+            Log.e(TAG, "Firebase Auth: User is NOT authenticated")
+            signInAnonymouslyForStorage { success ->
+                if (success) {
+                    isAuthenticated = true
+                } else {
+                    isAuthenticated = false
+                    Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
-        // Set up time-in button
-        findViewById<Button>(R.id.btntime_in).setOnClickListener {
-            takePhotoAndShowSuccess()
-        }
+        // Debug auth state and userId mismatch
+        Log.d(TAG, "Authentication state - isAuthenticated: $isAuthenticated, userId: $userId, " +
+                "firebaseUID: ${currentUser?.uid}")
 
-        // Request camera permissions
-        if (allPermissionsGranted()) {
-            // Add delay to ensure UI is ready before starting camera
-            Handler(Looper.getMainLooper()).postDelayed({
-                startCamera()
-            }, 500)
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        val faceOptions = FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setMinFaceSize(0.15f)
+            .build()
+        faceDetector = FaceDetection.getClient(faceOptions)
+
+        setupCameraPreview()
+
+        if (allPermissionsGranted()) startCamera()
+        else ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+
+        timeInButton.setOnClickListener {
+            if (!isFaceDetected) {
+                Toast.makeText(this, "Please position your face properly.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Recheck current authentication state
+            val currentAuth = FirebaseAuth.getInstance()
+            val user = currentAuth.currentUser
+
+            if (user == null) {
+                // Not authenticated with Firebase Auth, try anonymous auth
+                signInAnonymouslyForStorage { success ->
+                    if (success) {
+                        // Now we're authenticated, proceed with the original action
+                        val firebaseUser = FirebaseAuth.getInstance().currentUser
+                        if (firebaseUser != null) {
+                            checkAndCapturePhoto(userId ?: firebaseUser.uid)
+                        } else {
+                            Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                return@setOnClickListener
+            }
+
+            // We have a Firebase Auth user, proceed
+            checkAndCapturePhoto(userId ?: user.uid)
         }
     }
 
-    private fun setupCamera() {
-        // Create PreviewView programmatically to avoid the DisplayManagerGlobal error
-        val container = findViewById<ViewGroup>(R.id.camera_container)
-
-        try {
-            // Create new PreviewView with COMPATIBLE implementation mode
-            previewView = PreviewView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                // Use COMPATIBLE mode for Android 8 support
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                scaleType = PreviewView.ScaleType.FILL_CENTER // Better scaling for different screen sizes
-
-                // Initially invisible until camera is ready
-                visibility = View.INVISIBLE
+    private fun checkAndCapturePhoto(uid: String) {
+        checkAlreadyTimedIn(uid) { already ->
+            if (already) {
+                AlertDialog.Builder(this)
+                    .setTitle("Already Timed In")
+                    .setMessage("You already timed in today.")
+                    .setPositiveButton("OK", null)
+                    .show()
+            } else {
+                capturePhotoAndUpload(uid)
             }
-
-            // Add to container
-            container.addView(previewView)
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error creating preview view", e)
-            Toast.makeText(this, "Could not initialize camera preview", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun signInAnonymouslyForStorage(callback: ((Boolean) -> Unit)? = null) {
+        // Display a progress dialog
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Authenticating")
+            .setMessage("Please wait...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        FirebaseAuth.getInstance().signInAnonymously()
+            .addOnSuccessListener {
+                Log.d(TAG, "Anonymous auth success")
+                isAuthenticated = true
+
+                // Link this anonymous account with the userId if available
+                if (!userId.isNullOrEmpty()) {
+                    // Here you would typically link the anonymous account with the userId
+                    // This depends on your authentication setup
+                    // For now, we'll just use the new anonymous user ID
+                    Log.d(TAG, "New Firebase Auth UID: ${FirebaseAuth.getInstance().currentUser?.uid}")
+                }
+
+                progressDialog.dismiss()
+                callback?.invoke(true)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Anonymous auth failed", e)
+                progressDialog.dismiss()
+                Toast.makeText(this, "Authentication failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                callback?.invoke(false)
+            }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (allPermissionsGranted()) {
+            setupCameraPreview()
+            startCamera()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ProcessCameraProvider.getInstance(this).get().unbindAll()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startCamera()
-            } else {
-                Toast.makeText(
-                    this,
-                    "Camera permissions are required",
-                    Toast.LENGTH_SHORT
-                ).show()
-                finish()
-            }
+    override fun onRequestPermissionsResult(code: Int, perms: Array<String>, results: IntArray) {
+        super.onRequestPermissionsResult(code, perms, results)
+        if (code == REQUEST_CODE_PERMISSIONS && allPermissionsGranted()) startCamera()
+    }
+
+    private fun setupCameraPreview() {
+        val container = findViewById<ViewGroup>(R.id.camera_container)
+        container.removeAllViews()
+        findViewById<ImageView>(R.id.camera_preview_placeholder)?.visibility = View.GONE
+
+        previewView = PreviewView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
         }
+
+        container.addView(previewView)
+        (faceBoxOverlay.parent as? ViewGroup)?.removeView(faceBoxOverlay)
+        container.addView(faceBoxOverlay)
     }
 
+    @SuppressLint("UnsafeOptInUsageError")
     private fun startCamera() {
-        try {
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
 
-            cameraProviderFuture.addListener({
-                try {
-                    // Get camera provider
-                    val cameraProvider = cameraProviderFuture.get()
-
-                    // Build preview with reduced resolution requirements
-                    val preview = Preview.Builder()
-                        // Lower resolution to increase compatibility
-                        .setTargetResolution(Size(640, 480))
-                        .build()
-
-                    // Set up image capture with reduced requirements
-                    imageCapture = ImageCapture.Builder()
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                        // Lower resolution to increase compatibility
-                        .setTargetResolution(Size(1280, 720))
-                        .build()
-
-                    // EXPLICITLY USE FRONT CAMERA but with fallback mechanism
-                    val cameraSelector = findAvailableCameraSelector(cameraProvider)
-
-                    try {
-                        // Unbind use cases before rebinding
-                        cameraProvider.unbindAll()
-
-                        // Bind use cases to camera
-                        cameraProvider.bindToLifecycle(
-                            this, cameraSelector, preview, imageCapture)
-
-                        // Only set surface provider AFTER binding use cases
-                        previewView?.let {
-                            preview.setSurfaceProvider(it.surfaceProvider)
-                            it.visibility = View.VISIBLE
-                            findViewById<ImageView>(R.id.camera_preview_placeholder).visibility = View.GONE
-                        }
-
-                        Log.d(TAG, "Camera started successfully")
-
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Use case binding failed", e)
-                        Toast.makeText(this, "Camera initialization failed. Please try again.", Toast.LENGTH_SHORT).show()
-                        // Keep placeholder visible to indicate camera failure
-                    }
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "Camera provider error", e)
-                    Toast.makeText(this, "Camera system error", Toast.LENGTH_SHORT).show()
-                }
-            }, ContextCompat.getMainExecutor(this))
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Camera start error", e)
-            Toast.makeText(this, "Failed to start camera", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // Add this method to find an available camera - prioritize front camera
-    private fun findAvailableCameraSelector(cameraProvider: ProcessCameraProvider): CameraSelector {
-        try {
-            // Try front camera first (our preference)
-            if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
-                Log.d(TAG, "Using front camera")
-                return CameraSelector.DEFAULT_FRONT_CAMERA
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            // Last resort, try a generic selector
-            Log.d(TAG, "No standard cameras found, using generic selector")
-            return CameraSelector.Builder().build()
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                .build()
 
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking camera availability", e)
-            // Default to front camera and hope for the best
-            return CameraSelector.DEFAULT_FRONT_CAMERA
-        }
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setTargetResolution(Size(640, 480))
+                .build().also {
+                    it.setAnalyzer(cameraExecutor) { proxy -> processImage(proxy) }
+                }
+
+            try {
+                val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture, imageAnalyzer)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to bind camera", e)
+            }
+        }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun takePhotoAndShowSuccess() {
-        val imageCapture = imageCapture
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun processImage(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image ?: return imageProxy.close()
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
 
-        if (imageCapture == null) {
-            Toast.makeText(this, "Camera not ready", Toast.LENGTH_SHORT).show()
-            return
-        }
+        faceDetector.process(inputImage)
+            .addOnSuccessListener { faces ->
+                isFaceDetected = faces.isNotEmpty()
+                val bounds = faces.firstOrNull()?.boundingBox
+                val transformed = bounds?.let {
+                    adjustBox(it, imageProxy.width, imageProxy.height, previewView.width, previewView.height)
+                }
+                runOnUiThread {
+                    faceBoxOverlay.updateFaceBox(transformed, isFaceDetected)
+                }
+            }
+            .addOnFailureListener {
+                isFaceDetected = false
+            }
+            .addOnCompleteListener { imageProxy.close() }
+    }
 
-        // Disable button to prevent multiple clicks
-        val timeInButton = findViewById<Button>(R.id.btntime_in)
+    private fun adjustBox(box: Rect, imgW: Int, imgH: Int, viewW: Int, viewH: Int): RectF {
+        val rect = RectF(box)
+        val scaleX = viewW.toFloat() / imgH
+        val scaleY = viewH.toFloat() / imgW
+        val scale = max(scaleX, scaleY)
+
+        val offsetX = (viewW - imgH * scale) / 2f
+        val offsetY = (viewH - imgW * scale) / 2f
+
+        return RectF(
+            viewW - (rect.right * scaleX + offsetX),
+            rect.top * scaleY + offsetY,
+            viewW - (rect.left * scaleX + offsetX),
+            rect.bottom * scaleY + offsetY
+        )
+    }
+
+    private fun checkAlreadyTimedIn(uid: String, callback: (Boolean) -> Unit) {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(uid)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val already = snapshot.children.any {
+                        val timestamp = it.child("timestamp").getValue(Long::class.java) ?: return@any false
+                        val type = it.child("type").getValue(String::class.java) ?: return@any false
+                        timestamp >= today && type == "TimeIn"
+                    }
+                    callback(already)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false)
+                }
+            })
+    }
+
+    private fun capturePhotoAndUpload(uid: String) {
         timeInButton.isEnabled = false
         timeInButton.text = "Processing..."
 
-        try {
-            // Create output file with backwards compatibility
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "TimEd_${System.currentTimeMillis()}")
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                // Add RELATIVE_PATH only on Android Q and above
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/TimEd")
+        val file = File(externalCacheDir, "Timed_${System.currentTimeMillis()}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    try {
+                        val photoFile = File(output.savedUri?.path ?: file.path)
+
+                        // 🔄 FIX ROTATION BASED ON EXIF + FLIP
+                        val rotatedBitmap = fixImageOrientationAndFlip(photoFile)
+
+                        // Overwrite file with rotated image
+                        FileOutputStream(photoFile).use { out ->
+                            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                        }
+
+                        uploadImageToFirebase(Uri.fromFile(photoFile), uid)
+                    } catch (e: Exception) {
+                        Log.e("TimeInActivity", "Failed to rotate image: ${e.message}", e)
+                        Toast.makeText(
+                            this@TimeInActivity,
+                            "Image processing failed.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        timeInButton.isEnabled = true
+                        timeInButton.text = "Time - In"
+                    }
+                }
+
+                override fun onError(exc: ImageCaptureException) {
+                    Toast.makeText(
+                        this@TimeInActivity,
+                        "Capture failed: ${exc.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    timeInButton.isEnabled = true
+                    timeInButton.text = "Time - In"
                 }
             }
+        )
+    }
 
-            // Create output options
-            val outputOptions = ImageCapture.OutputFileOptions.Builder(
-                contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues
-            ).build()
+    private fun fixImageOrientationAndFlip(photoFile: File): Bitmap {
+        val originalBitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
 
-            // Take photo
-            imageCapture.takePicture(
-                outputOptions,
-                ContextCompat.getMainExecutor(this),
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        capturedImageUri = output.savedUri
-                        showFlashEffect()
+        val matrix = Matrix()
+        matrix.postRotate(90f)
+        matrix.preScale(-1f, 1f)
 
-                        // Show success dialog after a short delay
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            showSuccessDialog()
-                            // Added from first version: Log to Firebase
-                            logTimeInToFirebase()
-                        }, 500)
-                    }
+        return Bitmap.createBitmap(
+            originalBitmap,
+            0, 0,
+            originalBitmap.width,
+            originalBitmap.height,
+            matrix,
+            true
+        )
+    }
 
-                    override fun onError(exc: ImageCaptureException) {
-                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+    private fun uploadImageToFirebase(uri: Uri, uid: String) {
+        try {
+            Log.d(TAG, "Starting upload to Firebase: $uri")
+            Log.d(TAG, "Upload for UID: $uid")
 
-                        // Re-enable the button
-                        runOnUiThread {
-                            timeInButton.isEnabled = true
-                            timeInButton.text = "Time - In"
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                Log.e(TAG, "User is not authenticated")
+                Toast.makeText(this, "Authentication error. Please retry.", Toast.LENGTH_SHORT).show()
+                timeInButton.isEnabled = true
+                timeInButton.text = "Time - In"
+                return
+            }
 
-                            Toast.makeText(
-                                baseContext,
-                                "Failed to take photo: ${exc.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+            val timestamp = System.currentTimeMillis()
+            val fileName = "selfie_$timestamp.jpg"
+            val logsRef = FirebaseStorage.getInstance().getReference("timeLogs/$uid/$fileName")
+
+            val file = File(uri.path ?: "")
+            if (!file.exists() || !file.canRead()) {
+                Log.e(TAG, "File cannot be read: ${file.absolutePath}")
+                Toast.makeText(this, "File access error", Toast.LENGTH_SHORT).show()
+                timeInButton.isEnabled = true
+                timeInButton.text = "Time - In"
+                return
+            }
+
+            val metadata = com.google.firebase.storage.StorageMetadata.Builder()
+                .setContentType("image/jpeg")
+                .build()
+
+            logsRef.putFile(uri, metadata)
+                .addOnSuccessListener {
+                    logsRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                        logTimeIn(downloadUrl.toString(), uid)
+                        showSuccessDialog()
+                    }.addOnFailureListener { e ->
+                        Log.e(TAG, "Failed to get download URL", e)
+                        Toast.makeText(this, "Download URL failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        timeInButton.isEnabled = true
+                        timeInButton.text = "Time - In"
                     }
                 }
-            )
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Upload failed", e)
+                    Toast.makeText(this, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    timeInButton.isEnabled = true
+                    timeInButton.text = "Time - In"
+                }
+
         } catch (e: Exception) {
-            Log.e(TAG, "Error taking photo", e)
+            Log.e(TAG, "Upload exception", e)
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             timeInButton.isEnabled = true
             timeInButton.text = "Time - In"
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun showFlashEffect() {
-        try {
-            // Get camera container reference
-            val cameraContainer = findViewById<ViewGroup>(R.id.camera_container)
+    private fun logTimeIn(imageUrl: String, uid: String) {
+        val log = mapOf(
+            "timestamp" to System.currentTimeMillis(),
+            "type" to "TimeIn",
+            "imageUrl" to imageUrl,
+            "email" to userEmail,
+            "firstName" to userFirstName,
+            "userId" to uid
+        )
 
-            // Create flash view sized to match the camera container
-            val flashView = View(this)
-            flashView.setBackgroundColor(Color.WHITE)
-            flashView.alpha = 0.7f
-
-            // Add flashView directly to camera container
-            cameraContainer.addView(flashView, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-
-            // Make sure the flash view is on top of other views in camera container
-            flashView.bringToFront()
-
-            // Animate fade out
-            flashView.animate()
-                .alpha(0f)
-                .setDuration(300)
-                .withEndAction {
-                    // Remove flash view from camera container
-                    cameraContainer.removeView(flashView)
-                }
-                .start()
-
-        } catch (e: Exception) {
-            // Log error but continue execution
-            Log.e(TAG, "Error showing flash effect", e)
-        }
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(uid)
+        ref.push().setValue(log)
+            .addOnSuccessListener {
+                Log.d(TAG, "Time-In log successfully written to Realtime Database")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to write Time-In log", e)
+                Toast.makeText(this, "Failed to record time-in: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showSuccessDialog() {
@@ -361,53 +497,20 @@ class TimeInActivity : AppCompatActivity() {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(false)
         dialog.setContentView(R.layout.success_popup_time_in)
-
-        // Set dialog width to match screen width with margins
-        dialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-
-        // Set transparent background
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        // Set text
-        val titleText = dialog.findViewById<TextView>(R.id.popup_title)
-        val messageText = dialog.findViewById<TextView>(R.id.popup_message)
-        titleText.text = "Successfully Timed - In"
-        messageText.text = "Thank you. It has been recorded."
-
-        // Set up close button
-        val closeButton = dialog.findViewById<Button>(R.id.popup_close_button)
-        closeButton.setOnClickListener {
+        dialog.findViewById<Button>(R.id.popup_close_button).setOnClickListener {
             dialog.dismiss()
+            setResult(RESULT_OK, Intent().putExtra("TIMED_IN_SUCCESS", true))
             finish()
         }
 
-
-
         dialog.show()
-    }
-
-    // Added from first version: Firebase logging functionality
-    private fun logTimeInToFirebase() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs")
-
-        val log = mapOf(
-            "userId" to userId,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        dbRef.push().setValue(log).addOnSuccessListener {
-            Log.d(TAG, "Time-in successfully logged in Firebase")
-        }.addOnFailureListener {
-            Log.e(TAG, "Failed to log time-in: ${it.message}")
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        faceDetector.close()
     }
 }

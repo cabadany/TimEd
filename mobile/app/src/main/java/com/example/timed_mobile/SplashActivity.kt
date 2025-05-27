@@ -4,12 +4,12 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.wifi.ScanResult
-import android.net.wifi.WifiManager
-import android.os.Build
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
+import android.util.Log
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -19,17 +19,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.firebase.auth.FirebaseAuth
 
 class SplashActivity : AppCompatActivity() {
 
     private lateinit var logo: ImageView
     private lateinit var appName: TextView
     private lateinit var progressBar: ProgressBar
-    private lateinit var wifiManager: WifiManager
 
-    private val targetWifiName = "NAVACOM AP" // <-- Your target WiFi Name here
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
+    private val TAG = "SplashActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,8 +36,6 @@ class SplashActivity : AppCompatActivity() {
         logo = findViewById(R.id.splash_logo)
         appName = findViewById(R.id.splash_app_name)
         progressBar = findViewById(R.id.splash_progress)
-
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
         if (hasLocationPermission()) {
             startAnimations()
@@ -65,115 +61,69 @@ class SplashActivity : AppCompatActivity() {
                 progressBar.startAnimation(fadeIn)
 
                 Handler(Looper.getMainLooper()).postDelayed({
-                    scanWifiAndProceed()
+                    checkUserSessionAndProceed()
                 }, 1500)
             }, 500)
-
         }, 800)
     }
 
-    /*With Strongest WIFI Scanning functions*/
-    /*private fun scanWifiAndProceed() {
-        if (!wifiManager.isWifiEnabled) {
-            Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
+    private fun checkUserSessionAndProceed() {
+        val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val isLoggedIn = sharedPreferences.getBoolean(LoginActivity.KEY_IS_LOGGED_IN, false)
 
-        val success = wifiManager.startScan()
-        if (!success) {
-            Toast.makeText(this, "WiFi scan failed. Try again.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
+        if (isLoggedIn) {
+            Log.d(TAG, "User is logged in via SharedPreferences. Navigating to Home.")
+            val userId = sharedPreferences.getString(LoginActivity.KEY_USER_ID, null)
+            val email = sharedPreferences.getString(LoginActivity.KEY_EMAIL, "N/A")
+            val firstName = sharedPreferences.getString(LoginActivity.KEY_FIRST_NAME, "User")
+            val idNumber = sharedPreferences.getString(LoginActivity.KEY_ID_NUMBER, "N/A")
+            val department = sharedPreferences.getString(LoginActivity.KEY_DEPARTMENT, "N/A")
 
-        // Delay a bit to wait for scan to complete
-        Handler(Looper.getMainLooper()).postDelayed({
-            val scanResults: List<ScanResult> = wifiManager.scanResults
-
-            if (scanResults.isEmpty()) {
-                showWifiErrorDialog("No WiFi networks found. Please move closer to a router.")
-                return@postDelayed
-            }
-
-            // Sort networks by signal strength (RSSI), strongest first
-            val strongestWifi = scanResults.maxByOrNull { it.level }
-
-            strongestWifi?.let { wifi ->
-                val ssid = wifi.SSID.replace("\"", "")
-
-                if (ssid == targetWifiName) {
-                    navigateToNextScreen()
-                } else {
-                    showWifiErrorDialog("Strongest WiFi detected is \"$ssid\". You must be near \"$targetWifiName\" to use the app.")
+            if (userId != null) {
+                val intent = Intent(this, HomeActivity::class.java).apply {
+                    putExtra("userId", userId)
+                    putExtra("email", email)
+                    putExtra("firstName", firstName)
+                    putExtra("idNumber", idNumber)
+                    putExtra("department", department)
                 }
-            } ?: run {
-                showWifiErrorDialog("Unable to detect WiFi strength. Please try again.")
-            }
-
-        }, 2000) // 2 seconds delay to allow scan results
-    }*/
-
-
-
-/*Without Strongest WIFI Scanning functions*/
-    private fun scanWifiAndProceed() {
-        if (!wifiManager.isWifiEnabled) {
-            Toast.makeText(this, "WiFi is disabled. Please enable WiFi.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        val success = wifiManager.startScan()
-        if (!success) {
-            Toast.makeText(this, "WiFi scan failed. Try again.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        // Delay a bit to wait for scan to complete
-        Handler(Looper.getMainLooper()).postDelayed({
-            val scanResults: List<ScanResult> = wifiManager.scanResults
-
-            if (scanResults.isEmpty()) {
-                showWifiErrorDialog("No WiFi networks found. Please move closer to a router.")
-                return@postDelayed
-            }
-
-            // Check if the target WiFi is in range, regardless of signal strength
-            val targetWifiFound = scanResults.any {
-                it.SSID.replace("\"", "") == targetWifiName
-            }
-
-            if (targetWifiFound) {
-                // Target WiFi is in range, proceed
-                navigateToNextScreen()
+                startActivity(intent)
+                finishAndFade()
             } else {
-                // Target WiFi not found
-                showWifiErrorDialog("\"$targetWifiName\" network not found. You must be near \"$targetWifiName\" to use this app.")
+                Log.e(TAG, "User logged in (SharedPreferences) but userId is null. Navigating to Login.")
+                clearLoginDataAndNavigateToLogin()
             }
-        }, 2000) // 2 seconds delay to allow scan results
+        } else {
+            Log.d(TAG, "No user logged in (SharedPreferences). Navigating to Login.")
+            navigateToLogin()
+        }
     }
 
-
-
-
-    private fun navigateToNextScreen() {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-
-        val intent = if (currentUser != null) {
-            Intent(this, HomeActivity::class.java)
-        } else {
-            Intent(this, LoginActivity::class.java)
+    private fun clearLoginDataAndNavigateToLogin() {
+        val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            clear()
+            apply()
         }
+        navigateToLogin()
+    }
 
+    private fun navigateToLogin() {
+        val intent = Intent(this, LoginActivity::class.java)
         startActivity(intent)
+        finishAndFade()
+    }
+
+    private fun finishAndFade() {
         finish()
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
     private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestLocationPermission() {
@@ -184,25 +134,42 @@ class SplashActivity : AppCompatActivity() {
         )
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startAnimations()
+                Log.d(TAG, "Location permission granted.")
+                if (logo.animation == null) {
+                    startAnimations()
+                }
             } else {
-                showWifiErrorDialog("Location permission is required to scan WiFi networks.")
+                Toast.makeText(this, "Location permission denied. Some features might be limited.", Toast.LENGTH_LONG).show()
+                Log.w(TAG, "Location permission denied. Proceeding to user session check.")
+                Handler(Looper.getMainLooper()).postDelayed({
+                    checkUserSessionAndProceed()
+                }, 500)
             }
         }
     }
 
-    private fun showWifiErrorDialog(message: String) {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("WiFi Connection Error")
-        builder.setMessage(message)
-        builder.setCancelable(false)
-        builder.setPositiveButton("Close App") { _, _ ->
-            finish()
-        }
-        builder.show()
+    @Suppress("unused")
+    private fun showEnableLocationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Location Services")
+            .setMessage("Location services are needed for an optimal experience. Please enable it in settings.")
+            .setCancelable(false)
+            .setPositiveButton("Go to Settings") { _, _ ->
+                startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }
+            .setNegativeButton("Continue without") { dialog, _ ->
+                dialog.dismiss()
+                Toast.makeText(this, "Proceeding without location-based features.", Toast.LENGTH_SHORT).show()
+                checkUserSessionAndProceed()
+            }
+            .show()
     }
 }

@@ -41,6 +41,9 @@ android {
 }
 
 dependencies {
+    implementation ("com.github.bumptech.glide:glide:4.16.0")
+    implementation(libs.androidx.swiperefreshlayout)
+    annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     // Compose dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -51,11 +54,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // Firebase BOM (Handles Firebase versions automatically)
+    // Firebase BOM
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-analytics")
 
     // General Android libraries
@@ -76,11 +80,22 @@ dependencies {
     // Circle ImageView
     implementation ("de.hdodenhof:circleimageview:3.1.0")
 
-    // ML Kit for barcode scanning
+    // ML Kit for barcode scanning and face detection
     implementation ("com.google.mlkit:barcode-scanning:17.1.0")
+    implementation ("com.google.mlkit:face-detection:16.1.6")
     // Material design for Snackbar
     implementation ("com.google.android.material:material:1.8.0")
 
+    implementation ("com.google.mlkit:barcode-scanning:17.2.0")
+
+    implementation ("at.favre.lib:bcrypt:0.9.0")
+
+    implementation ("org.mindrot:jbcrypt:0.4")
+
+    implementation ("com.google.firebase:firebase-database:20.3.0")
+    implementation ("androidx.core:core:1.12.0")
+
+    implementation ("androidx.exifinterface:exifinterface:1.3.6")
 
     // Testing dependencies
     testImplementation(libs.junit)

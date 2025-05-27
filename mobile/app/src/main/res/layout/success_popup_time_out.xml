@@ -1,54 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="320dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginEnd="40dp"
         android:background="@drawable/popup_background"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="32dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="28dp"
         android:gravity="center_horizontal">
 
     <!-- Success Icon -->
     <ImageView
             android:id="@+id/success_icon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:layout_marginBottom="16dp"
             app:srcCompat="@drawable/ic_success"
-            android:contentDescription="Success" />
+            android:contentDescription="@string/popup_success_icon_desc" />
 
     <TextView
             android:id="@+id/popup_title"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Successfully Timed - Out"
-            android:textColor="@color/black"
-            android:textSize="20sp"
+            android:text="@string/popup_title_timed_out_success"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:fontFamily="@font/roboto_bold"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="12dp" />
 
     <TextView
             android:id="@+id/popup_message"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Thank you. It has been recorded."
-            android:textColor="@color/dark_gray"
-            android:textSize="16sp"
+            android:text="@string/popup_message_recorded_success"
+            android:textColor="@color/neutral_text_gray"
+            android:textSize="15sp"
             android:fontFamily="@font/roboto_medium"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="20dp" />
 
     <Button
             android:id="@+id/popup_close_button"
-            android:layout_width="120dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/maroon"
-            android:text="OK"
-            android:textColor="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
+            android:text="@string/popup_button_ok"
+            android:textColor="@color/white"
             android:textSize="14sp"
             android:fontFamily="@font/roboto_medium"
             app:cornerRadius="8dp"

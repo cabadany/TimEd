@@ -10,7 +10,7 @@
             android:id="@+id/background"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FFFFFF" />
+            android:background="@color/white" />
 
     <!-- Top wave -->
     <ImageView
@@ -21,7 +21,6 @@
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
-
     <!-- Back Button -->
     <ImageView
             android:id="@+id/icon_back_button"
@@ -29,13 +28,14 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
             android:clickable="true"
             android:contentDescription="Back button"
             android:focusable="true"
-            android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button" />
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white" />
 
     <!-- Title -->
     <TextView
@@ -44,7 +44,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="67dp"
+            android:layout_marginTop="48dp"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
             android:padding="8dp"
@@ -53,8 +53,8 @@
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="Excuse Letter"
-            android:textColor="#8B0000"
-            android:textSize="28sp"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="40sp"
             android:textStyle="bold" />
 
     <!-- Form Container -->
@@ -81,27 +81,54 @@
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/roboto_bold"
                     android:text="Date of Absence"
-                    android:textColor="@color/black"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="16sp" />
 
             <!-- Date Selection Button -->
             <Button
                     android:id="@+id/btn_date_picker"
+                    style="?android:attr/borderlessButtonStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@color/white"
                     android:drawableEnd="@drawable/ic_calendar"
+                    app:drawableTint="@color/primary_medium_blue"
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="start|center_vertical"
                     android:padding="16dp"
                     android:text="Select date"
                     android:textAllCaps="false"
-                    android:textColor="@color/black"
+                    android:textColor="@color/neutral_text_gray"
                     android:textSize="16sp"
                     app:cornerRadius="8dp"
-                    app:strokeColor="#CCCCCC"
+                    app:strokeColor="@color/light_neutral_gray"
                     app:strokeWidth="1dp" />
+
+            <!-- Number of Days Absent Label -->
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Number of Days Absent"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="16sp" />
+
+            <!-- Number of Days Absent Input -->
+            <EditText
+                    android:id="@+id/edit_text_days_absent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/edittext_background"
+                    android:fontFamily="@font/roboto_medium"
+                    android:hint="e.g., 1, 2, 3"
+                    android:textColorHint="@color/light_neutral_gray"
+                    android:inputType="number"
+                    android:padding="16dp"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp" />
 
             <!-- Reason Label -->
             <TextView
@@ -110,7 +137,7 @@
                     android:layout_marginTop="24dp"
                     android:fontFamily="@font/roboto_bold"
                     android:text="Reason for Absence"
-                    android:textColor="@color/black"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="16sp" />
 
             <!-- Reason Dropdown -->
@@ -123,6 +150,7 @@
                     android:minHeight="48dp"
                     android:padding="16dp"
                     android:spinnerMode="dropdown" />
+            <!-- Note: Spinner text color is often controlled by its adapter or theme attributes -->
 
             <!-- Details Label -->
             <TextView
@@ -131,7 +159,7 @@
                     android:layout_marginTop="24dp"
                     android:fontFamily="@font/roboto_bold"
                     android:text="Additional Details"
-                    android:textColor="@color/black"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="16sp" />
 
             <!-- Details Input -->
@@ -144,41 +172,44 @@
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="top|start"
                     android:hint="Please provide additional details about your absence..."
+                    android:textColorHint="@color/light_neutral_gray"
                     android:inputType="textMultiLine"
                     android:padding="16dp"
-                    android:textColor="@color/black"
+                    android:textColor="@color/neutral_text_gray"
                     android:textSize="16sp" />
 
-            <!-- Upload Proof Label (Optional) -->
+            <!-- Upload Proof Label -->
             <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
                     android:fontFamily="@font/roboto_bold"
                     android:text="Upload Supporting Document (Optional)"
-                    android:textColor="@color/black"
+                    android:textColor="@color/primary_deep_blue"
                     android:textSize="16sp" />
 
             <!-- Upload Button -->
             <Button
                     android:id="@+id/btn_upload"
+                    style="?android:attr/borderlessButtonStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@color/white"
                     android:drawableStart="@drawable/ic_upload"
+                    app:drawableTint="@color/primary_medium_blue"
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="start|center_vertical"
                     android:padding="16dp"
                     android:text="Upload document"
                     android:textAllCaps="false"
-                    android:textColor="@color/black"
+                    android:textColor="@color/neutral_text_gray"
                     android:textSize="16sp"
                     app:cornerRadius="8dp"
-                    app:strokeColor="#CCCCCC"
+                    app:strokeColor="@color/light_neutral_gray"
                     app:strokeWidth="1dp" />
 
-            <!-- Selected file name (initially invisible) -->
+            <!-- Selected file name -->
             <TextView
                     android:id="@+id/text_uploaded_filename"
                     android:layout_width="match_parent"
@@ -187,7 +218,7 @@
                     android:ellipsize="middle"
                     android:fontFamily="@font/roboto_medium"
                     android:singleLine="true"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/primary_medium_blue"
                     android:textSize="14sp"
                     android:visibility="gone" />
 
@@ -197,11 +228,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="32dp"
-                    android:backgroundTint="@color/yellow_gold"
+                    android:backgroundTint="@color/accent_coral"
                     android:elevation="6dp"
                     android:fontFamily="@font/roboto_medium"
                     android:text="SUBMIT"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/white"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     app:cornerRadius="8dp" />

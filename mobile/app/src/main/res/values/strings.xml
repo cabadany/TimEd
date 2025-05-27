@@ -2,8 +2,12 @@
     <string name="app_name">TimEd-Mobile</string>
     <string name="home_page">Home Page</string>
     <string name="login_page">Login Page</string>
+    <string name="new_user_welcome_page">New User Welcome Page</string>
+    <string name="new_user_feature_page">New User Feature Page</string>
+    <string name="new_user_final_step_page">New User Final Page</string>
     <string name="time_in_page">Time-In Page</string>
     <string name="time_in_event_page">Time-In QR Event Page</string>
+    <string name="time_in_manual_event_page">Time-In Manual Code QR Event Page</string>
     <string name="schedule_page">Schedule Page</string>
     <string name="profile_page">Profile Page</string>
     <string name="edit_profile_page">Edit Profile Page</string>
@@ -13,4 +17,92 @@
     <string name="time_in_capture">Time In Capture</string>
     <string name="time_out_capture">Time Out Capture</string>
     <string name="qr_event_capture">QR Event Capture</string>
+    <string name="time_out_page">Time Out</string>
+    <string name="welcome_icon_description">Welcome Icon</string>
+
+    //Login Page
+    <string name="app_title_login">WILDTIMed</string>
+    <string name="hint_id_number">Enter ID No.</string>
+    <string name="hint_password">Enter password</string>
+    <string name="label_forgot_password">Forgot Password?</string>
+    <string name="button_login">LOGIN</string>
+    <string name="text_terms_agreement">I agree to the <a href="terms_url">Terms of Service</a> and <a href="privacy_policy_url">Privacy Policy</a></string>
+    <string name="content_desc_top_wave">Top decorative wave</string>
+    <string name="content_desc_bottom_wave">Bottom decorative wave</string>
+
+    //New User Welcome Page
+    <string name="welcome_title_text">Welcome to TimEd!</string>
+    <string name="welcome_message_text">Hello Professor! TimEd is here to simplify your daily tasks, starting with efficient attendance tracking. Let\'s get you set up.</string>
+    <string name="button_get_started">Get Started</string>
+
+
+    //New User Final Step Page
+    <string name="final_step_title_text">You\'re Ready to Go!</string>
+    <string name="final_step_message_text">Start managing your class attendance with ease. WILDTIMed is here to support you. Let\'s begin!</string>
+    <string name="button_lets_go">Let\'s Go!</string>
+    <string name="content_desc_check_circle">Checkmark icon</string>
+
+    <string name="selected_date_format">Selected Date: %1$d/%2$d/%3$d</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+
+    <string name="popup_success_icon_desc">Success icon</string>
+
+    <string name="popup_title_success">Success</string>
+    <string name="popup_message_excuse_letter_success">Your excuse letter has been submitted successfully!</string>
+    <string name="popup_button_ok">OK</string>
+
+    <string name="popup_title_timed_out_success">Successfully Timed - Out</string>
+    <string name="popup_message_recorded_success">Thank you. It has been recorded.</string>
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_timed_in_success">Successfully Timed - In</string>
+    <!-- Uses popup_message_recorded_success -->
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_profile_updated">Profile Updated</string>
+    <string name="popup_message_profile_updated_success">Your profile has been updated successfully.</string>
+    <!-- Uses popup_button_ok -->
+
+    <string name="popup_title_password_changed_success">Password Changed Successfully</string>
+    <string name="popup_message_password_updated_success">Your password has been updated successfully.</string>
+    <string name="popup_button_close">Close</string>
+
+    <string name="popup_title_download_success">Successfully Downloaded</string>
+
+
+    <string name="content_desc_back_button">Back button</string>
+    <string name="app_title_timed">TimEd</string>
+
+    <!-- time_out_page.xml -->
+    <string name="content_desc_timeout_illustration">Time-Out Illustration</string>
+    <string name="timeout_instruction_text">Click the button below to time-out and record your attendance.</string>
+    <string name="button_time_out">Time - Out</string>
+
+    <!-- time_out_confirmation_dialog.xml -->
+    <string name="dialog_title_time_out">Time out</string>
+    <string name="dialog_message_time_out_confirm">Are you sure you want to time out?</string>
+    <string name="button_no">No</string>
+    <string name="button_yes">Yes</string>
+
+    <!-- time_in_page.xml -->
+    <string name="timein_instruction_position_face">Position your face in the camera view</string>
+    <string name="content_desc_qr_scanner_button">QR Scanner Button</string>
+    <string name="timein_qr_scan_event_reminder">Click here for QR Scan Event</string>
+    <string name="button_time_in">Time - In</string>
+
+    <!-- time_in_event_page.xml -->
+    <string name="content_desc_camera_icon">Camera Icon</string>
+    <string name="timein_event_qr_scan_instruction">Aim your camera at a QR code and press SCAN</string>
+    <string name="button_start_scanning">Start Scanning</string>
+    <string name="button_manual_type_code">Manual Type Code</string>
+
+    <!-- time_in_event_manual_page.xml -->
+    <string name="manual_code_subtitle_text">Manually type the code</string>
+    <string name="manual_code_instruction_text">QR Code from the Event</string>
+    <string name="hint_event_code">Event Code</string>
+    <string name="button_verify_code">Verify Code</string>
+    <string name="button_return_to_scanner">Return to Scanner</string>
 </resources>
