@@ -48,6 +48,7 @@ import {
   Close
 } from '@mui/icons-material';
 import './attendance.css';
+import AttendanceAnalytics from '../components/AttendanceAnalytics';
 
 // Separate Modal Component with its own state
 const AttendanceModal = memo(({ 
@@ -489,6 +490,32 @@ const ImageZoomModal = ({ imageUrl, onClose }) => (
   </Modal>
 );
 
+// Helper to aggregate attendance by hour for analytics
+const getAttendanceAnalyticsData = (attendees) => {
+  const hourMap = {};
+  attendees.forEach(att => {
+    if (att.timeIn && att.timeIn !== 'N/A') {
+      const date = new Date(att.timeIn);
+      if (!isNaN(date.getTime())) {
+        const hour = date.getHours();
+        const label = `${hour.toString().padStart(2, '0')}:00`;
+        if (!hourMap[label]) hourMap[label] = { time: label, timeInCount: 0, timeOutCount: 0 };
+        hourMap[label].timeInCount++;
+      }
+    }
+    if (att.timeOut && att.timeOut !== 'N/A') {
+      const date = new Date(att.timeOut);
+      if (!isNaN(date.getTime())) {
+        const hour = date.getHours();
+        const label = `${hour.toString().padStart(2, '0')}:00`;
+        if (!hourMap[label]) hourMap[label] = { time: label, timeInCount: 0, timeOutCount: 0 };
+        hourMap[label].timeOutCount++;
+      }
+    }
+  });
+  return Object.values(hourMap).sort((a, b) => a.time.localeCompare(b.time));
+};
+
 export default function Attendance() {
   const { darkMode } = useTheme();
   const { eventId } = useParams();
@@ -511,36 +538,54 @@ export default function Attendance() {
   });
   const [zoomImage, setZoomImage] = useState(null);
 
+  // Helper to fetch user details by userId
+  const fetchUserById = async (userId) => {
+    try {
+      const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user by ID:', userId, error);
+      return null;
+    }
+  };
+
+  // Fetch event, department, and attendees (with profilePictureUrl)
   useEffect(() => {
-    // Remove admin role check since this is already an admin dashboard
     setIsAdmin(true);
-    
     const fetchEventData = async () => {
       try {
         setLoading(true);
-        
         // Fetch all events to find the specific one
         const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
         const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
-        
         if (!foundEvent) {
           throw new Error('Event not found');
         }
-        
         setEvent(foundEvent);
-        
         // Fetch department details
         if (foundEvent.departmentId) {
           const departmentsResponse = await axios.get('http://localhost:8080/api/departments');
           const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
           setDepartment(foundDepartment);
         }
-        
         // Fetch attendees
         const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
-        setAttendees(attendeesResponse.data);
-        setFilteredAttendees(attendeesResponse.data);
-        
+        let attendeesData = attendeesResponse.data;
+        // Fetch user details for each attendee to get profilePictureUrl
+        const attendeesWithProfile = await Promise.all(attendeesData.map(async (att) => {
+          if (att.profilePictureUrl) return att; // Already present
+          const user = await fetchUserById(att.userId);
+          return {
+            ...att,
+            profilePictureUrl: user?.profilePictureUrl || null,
+            firstName: att.firstName || user?.firstName || '',
+            lastName: att.lastName || user?.lastName || '',
+            email: att.email || user?.email || '',
+            department: att.department || user?.department?.name || 'N/A',
+          };
+        }));
+        setAttendees(attendeesWithProfile);
+        setFilteredAttendees(attendeesWithProfile);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -548,7 +593,6 @@ export default function Attendance() {
         setLoading(false);
       }
     };
-    
     if (eventId) {
       fetchEventData();
     }
@@ -881,10 +925,10 @@ export default function Attendance() {
       email: attendee.email || '',
       department: attendee.department || 'N/A',
       selfieUrl: attendee.selfieUrl || null,
+      profilePictureUrl: attendee.profilePictureUrl || null,
       type: attendee.type || 'event_time_in',
       manualEntry: String(attendee.manualEntry).toLowerCase() === 'true'
     };
-
     // Handle old structure (has timeIn in ISO format)
     if (attendee.timeIn && attendee.timeIn.includes('T')) {
       return {
@@ -893,7 +937,6 @@ export default function Attendance() {
         timeOut: attendee.timeOut || 'N/A'
       };
     }
-
     // Handle new structure
     return {
       ...baseData,
@@ -945,149 +988,325 @@ export default function Attendance() {
         overflow: 'auto', 
         bgcolor: darkMode ? '#121212' : '#FFFFFF' 
       }}>
-         <Typography variant="h5" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 3 }}>
-              Event Attendance Details
-            </Typography>
-            
-            {/* Event Information */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid',
-                  borderColor: darkMode ? '#333333' : '#E2E8F0', 
-                  height: '100%',
-                  borderRadius: '12px',
-                  bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
-                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: darkMode ? '0 6px 12px rgba(0,0,0,0.2)' : '0 6px 12px rgba(0,0,0,0.1)'
-                  }
-                }}>
-                  <CardContent>
-                    <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Event sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} />
-                      Event Information
-                    </Typography>
-                    
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Event Name</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
-                          {event?.eventName || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Event ID</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
-                          {event?.eventId || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Duration</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <AccessTime sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
-                          {event?.duration || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Date</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <CalendarToday sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
-                          {formatEventDate(event?.date)}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Status</Typography>
-                        <Box sx={{ mt: 0.5 }}>
-                          <Chip 
-                            label={event?.status || 'Unknown'}
-                            size="small"
-                            sx={{
-                              backgroundColor: `${getStatusColor(event?.status)}20`,
-                              color: getStatusColor(event?.status),
-                              fontWeight: 500,
-                              fontSize: '0.75rem',
-                              height: 24,
-                              borderRadius: '4px'
-                            }}
-                          />
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid',
-                  borderColor: darkMode ? '#333333' : '#E2E8F0', 
-                  height: '100%',
-                  borderRadius: '12px',
-                  bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
-                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: darkMode ? '0 6px 12px rgba(0,0,0,0.2)' : '0 6px 12px rgba(0,0,0,0.1)'
-                  }
-                }}>
-                  <CardContent>
-                    <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <School sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} />
-                      Hosted by Department
-                    </Typography>
-                    
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <Typography variant="caption" color="#64748B">Department Name</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
-                          {department?.name || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Abbreviation</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
-                          {department?.abbreviation || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="#64748B">Number of Faculty</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Group sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
-                          {department?.numberOfFaculty || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Typography variant="caption" color="#64748B">Programs Offered</Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
-                          {department?.offeredPrograms?.map((program, index) => (
-                            <Chip 
-                              key={index}
-                              label={program}
-                              size="small"
-                              sx={{
-                                backgroundColor: '#EFF6FF',
-                                color: '#3B82F6',
-                                fontWeight: 500,
-                                fontSize: '0.75rem',
-                                height: 24,
-                                borderRadius: '4px'
-                              }}
-                            />
-                          ))}
-                          {(!department?.offeredPrograms || department.offeredPrograms.length === 0) && (
-                            <Typography variant="body2" sx={{ color: '#64748B' }}>None specified</Typography>
-                          )}
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+         <Typography variant="h4" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 4, textAlign: 'center' }}>
+  Event Attendance Details
+</Typography>
+
+{/* Event Information */}
+<Grid container spacing={4} sx={{ mb: 5 }}>
+  <Grid item xs={12} lg={7}>
+    <Card sx={{ 
+      boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
+      border: '1px solid',
+      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', 
+      height: '100%',
+      borderRadius: '16px',
+      bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
+      backdropFilter: 'blur(10px)',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      position: 'relative',
+      overflow: 'hidden',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
+      },
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '4px',
+        background: 'linear-gradient(90deg, #0288d1, #90caf9)',
+      }
+    }}>
+      <CardContent sx={{ p: 4 }}>
+        <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ 
+          mb: 3, 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          letterSpacing: '-0.025em'
+        }}>
+          <Box sx={{ 
+            p: 1.5, 
+            borderRadius: '12px', 
+            bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Event sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
+          </Box>
+          Event Information
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Event Name
+              </Typography>
+              <Typography variant="h6" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                {event?.eventName || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Event ID
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', mt: 0.5, fontFamily: 'monospace' }}>
+                {event?.eventId || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Duration
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                <AccessTime sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
+                {event?.duration || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Date
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                <CalendarToday sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
+                {formatEventDate(event?.date)}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={12}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              textAlign: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'block' }}>
+                Status
+              </Typography>
+              <Chip 
+                label={event?.status || 'Unknown'}
+                size="medium"
+                sx={{
+                  backgroundColor: `${getStatusColor(event?.status)}15`,
+                  color: getStatusColor(event?.status),
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  height: 32,
+                  borderRadius: '8px',
+                  border: `1px solid ${getStatusColor(event?.status)}30`,
+                  px: 1
+                }}
+              />
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  </Grid>
+  
+  <Grid item xs={12} lg={5}>
+    <Card sx={{ 
+      boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
+      border: '1px solid',
+      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', 
+      height: '100%',
+      borderRadius: '16px',
+      bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
+      backdropFilter: 'blur(10px)',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      position: 'relative',
+      overflow: 'hidden',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
+      },
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '4px',
+        background: 'linear-gradient(90deg, #0288d1, #90caf9)',
+      }
+    }}>
+      <CardContent sx={{ p: 4 }}>
+        <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ 
+          mb: 3, 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          letterSpacing: '-0.025em'
+        }}>
+          <Box sx={{ 
+            p: 1.5, 
+            borderRadius: '12px', 
+            bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <School sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
+          </Box>
+          Department Host
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              transition: 'all 0.2s ease',
+              textAlign: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Department Name
+              </Typography>
+              <Typography variant="h6" fontWeight="700" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                {department?.name || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%',
+              textAlign: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Abbreviation
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontFamily: 'monospace', fontSize: '1.1rem', mt: 0.5 }}>
+                {department?.abbreviation || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%',
+              textAlign: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Faculty Count
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8, mt: 0.5 }}>
+                <Group sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
+                {department?.numberOfFaculty || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              textAlign: 'center'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'block' }}>
+                Programs Offered
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
+                {department?.offeredPrograms?.map((program, index) => (
+                  <Chip 
+                    key={index}
+                    label={program}
+                    size="medium"
+                    sx={{
+                      backgroundColor: darkMode ? 'rgba(59,130,246,0.15)' : '#EFF6FF',
+                      color: darkMode ? '#93C5FD' : '#3B82F6',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      height: 32,
+                      borderRadius: '8px',
+                      border: darkMode ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(59,130,246,0.2)',
+                      px: 1.5,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: darkMode ? '0 4px 8px rgba(59,130,246,0.2)' : '0 4px 8px rgba(59,130,246,0.15)'
+                      }
+                    }}
+                  />
+                ))}
+                {(!department?.offeredPrograms || department.offeredPrograms.length === 0) && (
+                  <Typography variant="body2" sx={{ color: '#64748B', fontStyle: 'italic' }}>
+                    No programs specified
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  </Grid>
+</Grid>
           {/*  <Button
                     variant="contained"
                     onClick={handleOpenManageModal}
@@ -1146,7 +1365,11 @@ export default function Attendance() {
           </Box>
         ) : (
           <>
-           
+           {/* Attendance Analytics */}
+    <AttendanceAnalytics
+      data={getAttendanceAnalyticsData(attendees)}
+      title="Time-In/Out Distribution for This Event"
+    />
             {/* Attendees Table */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ 
@@ -1255,7 +1478,13 @@ export default function Attendance() {
                         return (
                           <TableRow key={formattedAttendee.userId}>
                             <TableCell>
-                              {formattedAttendee.selfieUrl ? (
+                              {formattedAttendee.profilePictureUrl ? (
+                                <Avatar
+                                  src={formattedAttendee.profilePictureUrl}
+                                  alt={formattedAttendee.firstName}
+                                  sx={{ width: 40, height: 40, cursor: 'pointer' }}
+                                />
+                              ) : formattedAttendee.selfieUrl ? (
                                 <Box
                                   component="img"
                                   src={formattedAttendee.selfieUrl}
@@ -1372,6 +1601,9 @@ export default function Attendance() {
         onClose={() => setZoomImage(null)}
       />
     )}
+
+    
     </Box>
+    
   );
 }
