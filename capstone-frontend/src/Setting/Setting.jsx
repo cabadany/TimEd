@@ -346,7 +346,7 @@ export default function SettingPage() {
             {/* Form Fields - Right Section */}
             <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   First Name
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -361,6 +361,26 @@ export default function SettingPage() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
                         fontSize: '14px',
+                        '& input': {
+                          color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'inherit',
+                        },
+                        '& fieldset': {
+                          borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&.Mui-disabled': {
+                          '& input': {
+                            WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                            color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                          },
+                          '& fieldset': {
+                            borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                          },
+                          backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                        },
+                      },
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                       },
                     }}
                   />
@@ -368,7 +388,10 @@ export default function SettingPage() {
                     <IconButton 
                       onClick={() => toggleLock('firstName')}
                       size="small"
-                      sx={{ ml: 1 }}
+                      sx={{ 
+                        ml: 1,
+                        color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'inherit'
+                      }}
                     >
                       {firstNameLocked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
                     </IconButton>
@@ -377,7 +400,7 @@ export default function SettingPage() {
               </Box>
               
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   Last Name
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -392,6 +415,26 @@ export default function SettingPage() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
                         fontSize: '14px',
+                        '& input': {
+                          color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'inherit',
+                        },
+                        '& fieldset': {
+                          borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&.Mui-disabled': {
+                          '& input': {
+                            WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                            color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                          },
+                          '& fieldset': {
+                            borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                          },
+                          backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                        },
+                      },
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                       },
                     }}
                   />
@@ -399,7 +442,10 @@ export default function SettingPage() {
                     <IconButton 
                       onClick={() => toggleLock('lastName')}
                       size="small"
-                      sx={{ ml: 1 }}
+                      sx={{ 
+                        ml: 1,
+                        color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'inherit'
+                      }}
                     >
                       {lastNameLocked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
                     </IconButton>
@@ -408,7 +454,7 @@ export default function SettingPage() {
               </Box>
               
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   Email (Read-only)
                 </Typography>
                 <TextField
@@ -421,14 +467,25 @@ export default function SettingPage() {
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
                       fontSize: '14px',
-                      bgcolor: 'action.disabledBackground',
+                      bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'action.disabledBackground',
+                      '& input': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      },
+                      '& fieldset': {
+                        borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                      },
+                    },
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                     },
                   }}
                 />
               </Box>
               
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   School ID
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -443,6 +500,26 @@ export default function SettingPage() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
                         fontSize: '14px',
+                        '& input': {
+                          color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'inherit',
+                        },
+                        '& fieldset': {
+                          borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&.Mui-disabled': {
+                          '& input': {
+                            WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                            color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                          },
+                          '& fieldset': {
+                            borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                          },
+                          backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                        },
+                      },
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                       },
                     }}
                   />
@@ -450,7 +527,10 @@ export default function SettingPage() {
                     <IconButton 
                       onClick={() => toggleLock('schoolId')}
                       size="small"
-                      sx={{ ml: 1 }}
+                      sx={{ 
+                        ml: 1,
+                        color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'inherit'
+                      }}
                     >
                       {schoolIdLocked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
                     </IconButton>
@@ -460,7 +540,7 @@ export default function SettingPage() {
         
               
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   Role (Read-only)
                 </Typography>
                 <TextField
@@ -473,14 +553,25 @@ export default function SettingPage() {
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
                       fontSize: '14px',
-                      bgcolor: 'action.disabledBackground',
+                      bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'action.disabledBackground',
+                      '& input': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      },
+                      '& fieldset': {
+                        borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                      },
+                    },
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                     },
                   }}
                 />
               </Box>
               
               <Box>
-                <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                   Department (Read-only)
                 </Typography>
                 <TextField
@@ -495,7 +586,18 @@ export default function SettingPage() {
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
                       fontSize: '14px',
-                      bgcolor: 'action.disabledBackground',
+                      bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'action.disabledBackground',
+                      '& input': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      },
+                      '& fieldset': {
+                        borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                      },
+                    },
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                      color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                     },
                   }}
                 />
@@ -503,7 +605,7 @@ export default function SettingPage() {
               
               {department && department.offeredPrograms && department.offeredPrograms.length > 0 && (
                 <Box>
-                  <Typography variant="body2" fontWeight="500" color="text.secondary" mb={1}>
+                  <Typography variant="body2" fontWeight="500" color={darkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} mb={1}>
                     Offered Programs (Read-only)
                   </Typography>
                   <TextField
@@ -518,7 +620,22 @@ export default function SettingPage() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
                         fontSize: '14px',
-                        bgcolor: 'action.disabledBackground',
+                        bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'action.disabledBackground',
+                        '& input': {
+                          WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                          color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        },
+                        '& textarea': {
+                          WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                          color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        },
+                        '& fieldset': {
+                          borderColor: darkMode ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                        },
+                      },
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                       },
                     }}
                   />

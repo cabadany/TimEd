@@ -1408,14 +1408,19 @@ export default function AccountPage() {
                 displayEmpty
                 size="small"
                 sx={{
-                  bgcolor: '#F8FAFC',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#E2E8F0',
-                  },
+                  borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
+                  color: activeFilter ? '#0288d1' : '#64748B',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  mr: 0.6,
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  py: 0.5,
+                  px: 2
                 }}
               >
-                <MenuItem value="">
-                  <em>All Departments</em>
+                <MenuItem value="" color="white">
+                  <em color="white">All Departments</em>
                 </MenuItem>
                 {departments.map((dept) => (
                   <MenuItem key={dept.departmentId} value={dept.departmentId}>
