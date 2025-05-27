@@ -1924,6 +1924,7 @@ export default function Dashboard() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
             overflow: 'hidden',
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            color: darkMode ? 'white' : 'white',
             p: 3
           }}>
             <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Event Calendar</Typography>

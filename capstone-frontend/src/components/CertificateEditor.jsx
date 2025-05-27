@@ -47,6 +47,7 @@ import {
 } from '@mui/icons-material';
 import '../certificate/certificate.css';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 
 const fontFamilies = [
   'Arial',
@@ -121,6 +122,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   const [certificate, setCertificate] = useState(initialData || defaultCertificate);
   const [activeTab, setActiveTab] = useState(0);
   const certificateRef = useRef(null);
+  const { darkMode } = useTheme();
 
   useEffect(() => {
     if (initialData) {
@@ -889,6 +891,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               lineHeight: 1.6,
               fontStyle: 'italic',
               position: 'relative',
+               color:'#1e1e1e'
             }}
           >
             {certificate.description}
@@ -901,6 +904,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             borderRadius: '4px',
             display: 'inline-block',
             margin: '0 auto',
+            color:'#1e1e1e'
           }}>
             <Typography 
               variant="body2"
@@ -1026,36 +1030,70 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column',
+      bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+    }}>
       {/* Header */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         p: 2, 
-        borderBottom: '1px solid #eee' 
+        borderBottom: '1px solid',
+        borderColor: darkMode ? '#333333' : '#E2E8F0',
+        bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
       }}>
-        <Typography variant="h6">Certificate Template Editor</Typography>
+        <Typography variant="h6" sx={{ 
+          color: darkMode ? '#f5f5f5' : 'inherit'
+        }}>
+          Certificate Template Editor
+        </Typography>
         <Box>
           {onApply && (
             <Button 
               variant="outlined" 
               startIcon={<BrandingWatermark />} 
               onClick={handleApply}
-              sx={{ mr: 1 }}
+              sx={{
+                mr: 1,
+                borderColor: darkMode ? '#555555' : '#E2E8F0',
+                color: darkMode ? '#90caf9' : '#0288d1',
+                '&:hover': {
+                  borderColor: darkMode ? '#90caf9' : '#0288d1',
+                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                }
+              }}
             >
-              APPLY TEMPLATE
+              Apply Template
             </Button>
           )}
           <Button 
             variant="contained" 
             startIcon={<Save />} 
             onClick={handleSave}
-            sx={{ mr: 1 }}
+            sx={{
+              mr: 1,
+              bgcolor: darkMode ? '#90caf9' : '#0288d1',
+              color: darkMode ? '#1e1e1e' : '#ffffff',
+              '&:hover': {
+                bgcolor: darkMode ? '#42a5f5' : '#0277bd'
+              }
+            }}
           >
-            SAVE TEMPLATE
+            Save Template
           </Button>
-          <IconButton onClick={onClose}>
+          <IconButton 
+            onClick={onClose}
+            sx={{ 
+              color: darkMode ? '#aaaaaa' : '#64748B',
+              '&:hover': {
+                bgcolor: darkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+              }
+            }}
+          >
             <Close />
           </IconButton>
         </Box>
@@ -1067,7 +1105,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         flexDirection: 'row', 
         flex: 1, 
         overflow: 'hidden',
-        height: 'calc(100% - 60px)'
+        height: 'calc(100% - 60px)',
+        bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
       }}>
         {/* Left column - Certificate Preview */}
         <Box sx={{ 
@@ -1076,7 +1115,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRight: '1px solid #eee'
+          borderRight: '1px solid',
+          borderColor: darkMode ? '#333333' : '#E2E8F0',
+          bgcolor: darkMode ? '#2d2d2d' : '#f8fafc',
+             color: darkMode ? '#2d2d2d' : '#f8fafc'
         }}>
           <Paper 
             elevation={3} 
@@ -1085,7 +1127,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               width: '100%',
               maxHeight: '100%',
               display: 'flex',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+              border: '1px solid',
+              borderColor: darkMode ? '#333333' : '#E2E8F0'
             }}
           >
             <CertificatePreview />
@@ -1097,28 +1142,72 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           width: '55%', 
           display: 'flex', 
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
         }}>
           {/* Tabs for editing */}
-          <Box sx={{ px: 2, pt: 2 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-            >
-              <Tab label="Content" icon={<TextFormat />} iconPosition="start" />
-              <Tab label="Style" icon={<ColorLens />} iconPosition="start" />
-              <Tab label="Images" icon={<BrandingWatermark />} iconPosition="start" />
-              <Tab label="Signatories" icon={<Edit />} iconPosition="start" />
-            </Tabs>
-          </Box>
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange}
+            sx={{
+              borderBottom: '1px solid',
+              borderColor: darkMode ? '#333333' : '#E2E8F0',
+              '& .MuiTab-root': {
+                color: darkMode ? '#aaaaaa' : '#64748B',
+                '&.Mui-selected': {
+                  color: darkMode ? '#90caf9' : '#0288d1'
+                }
+              },
+              '& .MuiTabs-indicator': {
+                bgcolor: darkMode ? '#90caf9' : '#0288d1'
+              }
+            }}
+          >
+            <Tab 
+              label="Content" 
+              sx={{ 
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }} 
+            />
+            <Tab 
+              label="Style" 
+              sx={{ 
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }} 
+            />
+            <Tab 
+              label="Images" 
+              sx={{ 
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }} 
+            />
+          </Tabs>
 
-          {/* Tab panels */}
+          {/* Tab content area with scrolling */}
           <Box sx={{ 
             flex: 1, 
-            p: 2, 
             overflow: 'auto',
-            height: 'calc(100% - 48px)'
+            p: 2,
+            bgcolor: darkMode ? '#2d2d2d' : '#f8fafc',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: darkMode ? '#1e1e1e' : '#f1f1f1',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: darkMode ? '#555555' : '#cbd5e1',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: darkMode ? '#777777' : '#94a3b8',
+            }
           }}>
             {activeTab === 0 && (
               <Grid container spacing={2}>
@@ -1130,6 +1219,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     onChange={(e) => handleTextChange('title', e.target.value)}
                     variant="outlined"
                     size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                        '& fieldset': {
+                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: darkMode ? '#aaaaaa' : '#64748B',
+                        '&.Mui-focused': {
+                          color: darkMode ? '#90caf9' : '#0288d1',
+                        },
+                      },
+                      '& input': {
+                        color: darkMode ? '#f5f5f5' : 'inherit',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -1211,11 +1323,21 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
             {activeTab === 1 && (
               <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>Style Settings</Typography>
+                <Typography variant="h6" sx={{ 
+                  mb: 2, 
+                  fontWeight: 500,
+                  color: darkMode ? '#f5f5f5' : 'inherit'
+                }}>
+                  Style Settings
+                </Typography>
                 
-                {/* Color settings */}
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Colors</Typography>
+                  <Typography variant="subtitle1" sx={{ 
+                    mb: 1,
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    Colors
+                  </Typography>
                   
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
@@ -1225,6 +1347,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         label="Text Color"
                         value={certificate.textColor || '#000000'}
                         onChange={(e) => handleColorChange('textColor', e.target.value)}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            '& fieldset': {
+                              borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: darkMode ? '#555555' : '#CBD5E1',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& .MuiInputLabel-root': {
+                            color: darkMode ? '#aaaaaa' : '#64748B',
+                            '&.Mui-focused': {
+                              color: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& input': {
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                          },
+                        }}
                         InputProps={{
                           startAdornment: (
                             <Box
@@ -1233,7 +1378,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                                 height: 20,
                                 mr: 1,
                                 bgcolor: certificate.textColor || '#000000',
-                                border: '1px solid #ddd',
+                                border: '1px solid',
+                                borderColor: darkMode ? '#555555' : '#ddd',
                                 borderRadius: '4px'
                               }}
                             />
@@ -1249,6 +1395,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         label="Header Color"
                         value={certificate.headerColor || '#000000'}
                         onChange={(e) => handleColorChange('headerColor', e.target.value)}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            '& fieldset': {
+                              borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: darkMode ? '#555555' : '#CBD5E1',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& .MuiInputLabel-root': {
+                            color: darkMode ? '#aaaaaa' : '#64748B',
+                            '&.Mui-focused': {
+                              color: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& input': {
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                          },
+                        }}
                         InputProps={{
                           startAdornment: (
                             <Box
@@ -1257,7 +1426,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                                 height: 20,
                                 mr: 1,
                                 bgcolor: certificate.headerColor || '#000000',
-                                border: '1px solid #ddd',
+                                border: '1px solid',
+                                borderColor: darkMode ? '#555555' : '#ddd',
                                 borderRadius: '4px'
                               }}
                             />
@@ -1273,6 +1443,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         label="Background Color"
                         value={certificate.backgroundColor || '#ffffff'}
                         onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            '& fieldset': {
+                              borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: darkMode ? '#555555' : '#CBD5E1',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& .MuiInputLabel-root': {
+                            color: darkMode ? '#aaaaaa' : '#64748B',
+                            '&.Mui-focused': {
+                              color: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          },
+                          '& input': {
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                          },
+                        }}
                         InputProps={{
                           startAdornment: (
                             <Box
@@ -1281,7 +1474,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                                 height: 20,
                                 mr: 1,
                                 bgcolor: certificate.backgroundColor || '#ffffff',
-                                border: '1px solid #ddd',
+                                border: '1px solid',
+                                borderColor: darkMode ? '#555555' : '#ddd',
                                 borderRadius: '4px'
                               }}
                             />
@@ -1294,19 +1488,64 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
                 {/* Font Settings */}
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Typography</Typography>
+                  <Typography variant="subtitle1" sx={{ 
+                    mb: 1,
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    Typography
+                  </Typography>
                   
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small">
-                        <InputLabel>Font Family</InputLabel>
+                        <InputLabel sx={{
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': {
+                            color: darkMode ? '#90caf9' : '#0288d1',
+                          },
+                        }}>
+                          Font Family
+                        </InputLabel>
                         <Select
                           value={certificate.fontFamily || 'Times New Roman'}
                           onChange={(e) => handleTextChange('fontFamily', e.target.value)}
                           label="Font Family"
+                          sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#555555' : '#CBD5E1',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: darkMode ? '#aaaaaa' : 'inherit',
+                            },
+                          }}
                         >
                           {fontFamilies.map((font) => (
-                            <MenuItem key={font} value={font} sx={{ fontFamily: font }}>
+                            <MenuItem 
+                              key={font} 
+                              value={font} 
+                              sx={{ 
+                                fontFamily: font,
+                                bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                                color: darkMode ? '#f5f5f5' : 'inherit',
+                                '&:hover': {
+                                  bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                                },
+                                '&.Mui-selected': {
+                                  bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                                  '&:hover': {
+                                    bgcolor: darkMode ? '#404040' : '#E2E8F0',
+                                  },
+                                },
+                              }}
+                            >
                               {font}
                             </MenuItem>
                           ))}
@@ -1318,7 +1557,12 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 
                 {/* Border Settings */}
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Border & Frame</Typography>
+                  <Typography variant="subtitle1" sx={{ 
+                    mb: 1,
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    Border & Frame
+                  </Typography>
                   
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
@@ -1327,241 +1571,55 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           <Switch
                             checked={certificate.showBorder || false}
                             onChange={(e) => handleTextChange('showBorder', e.target.checked)}
-                          />
-                        }
-                        label="Show Border"
-                      />
-                    </Grid>
-                    
-                    {certificate.showBorder && (
-                      <>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            type="number"
-                            size="small"
-                            label="Border Width"
-                            value={certificate.borderWidth || 1}
-                            inputProps={{ min: 0, max: 10 }}
-                            onChange={(e) => handleTextChange('borderWidth', Number(e.target.value))}
-                          />
-                        </Grid>
-                        
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Border Color"
-                            value={certificate.borderColor || '#000000'}
-                            onChange={(e) => handleColorChange('borderColor', e.target.value)}
-                            InputProps={{
-                              startAdornment: (
-                                <Box
-                                  sx={{
-                                    width: 20,
-                                    height: 20,
-                                    mr: 1,
-                                    bgcolor: certificate.borderColor || '#000000',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '4px'
-                                  }}
-                                />
-                              )
+                            sx={{
+                              '& .MuiSwitch-switchBase': {
+                                color: darkMode ? '#aaaaaa' : '#CBD5E1',
+                                '&.Mui-checked': {
+                                  color: darkMode ? '#90caf9' : '#0288d1',
+                                },
+                                '&.Mui-checked + .MuiSwitch-track': {
+                                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.5)' : 'rgba(2, 136, 209, 0.5)',
+                                },
+                              },
+                              '& .MuiSwitch-track': {
+                                bgcolor: darkMode ? '#333333' : '#E2E8F0',
+                              },
                             }}
                           />
-                        </Grid>
-                        
-                        <Grid item xs={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Border Style</InputLabel>
-                            <Select
-                              value={certificate.borderStyle || 'solid'}
-                              onChange={(e) => handleTextChange('borderStyle', e.target.value)}
-                              label="Border Style"
-                            >
-                              <MenuItem value="solid">Solid</MenuItem>
-                              <MenuItem value="dashed">Dashed</MenuItem>
-                              <MenuItem value="dotted">Dotted</MenuItem>
-                              <MenuItem value="double">Double</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                        
-                        <Grid item xs={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Frame Style</InputLabel>
-                            <Select
-                              value={certificate.frameStyle || 'classic'}
-                              onChange={(e) => handleTextChange('frameStyle', e.target.value)}
-                              label="Frame Style"
-                            >
-                              <MenuItem value="none">None</MenuItem>
-                              <MenuItem value="classic">Classic</MenuItem>
-                              <MenuItem value="double">Double</MenuItem>
-                              <MenuItem value="modern">Modern</MenuItem>
-                              <MenuItem value="ornate">Ornate</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                      </>
-                    )}
-                    
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={certificate.showDecorations || false}
-                            onChange={(e) => handleTextChange('showDecorations', e.target.checked)}
-                          />
                         }
-                        label="Show Decorative Elements"
+                        label={
+                          <Typography sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
+                            Show Border
+                          </Typography>
+                        }
                       />
                     </Grid>
-                    
-                    {certificate.showDecorations && (
-                      <Grid item xs={12}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={certificate.decorativeCorners || false}
-                              onChange={(e) => handleTextChange('decorativeCorners', e.target.checked)}
-                            />
-                          }
-                          label="Show Decorative Corners"
-                        />
-                      </Grid>
-                    )}
-
-                    <Grid item xs={12}>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Certificate Embellishments</Typography>
-                    </Grid>
-                    
-                    <Grid item xs={6}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={certificate.showRibbon || false}
-                            onChange={(e) => handleTextChange('showRibbon', e.target.checked)}
-                          />
-                        }
-                        label="Show Ribbon"
-                      />
-                    </Grid>
-                    
-                    {certificate.showRibbon && (
-                      <>
-                        <Grid item xs={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Ribbon Position</InputLabel>
-                            <Select
-                              value={certificate.ribbonPosition || 'bottom-center'}
-                              onChange={(e) => handleTextChange('ribbonPosition', e.target.value)}
-                              label="Ribbon Position"
-                            >
-                              <MenuItem value="bottom-center">Bottom Center</MenuItem>
-                              {/* Can add more positions in the future */}
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                        
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Ribbon Color"
-                            value={certificate.ribbonColor || '#D4AF37'}
-                            onChange={(e) => handleColorChange('ribbonColor', e.target.value)}
-                            InputProps={{
-                              startAdornment: (
-                                <Box
-                                  sx={{
-                                    width: 20,
-                                    height: 20,
-                                    mr: 1,
-                                    bgcolor: certificate.ribbonColor || '#D4AF37',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '4px'
-                                  }}
-                                />
-                              )
-                            }}
-                          />
-                        </Grid>
-                      </>
-                    )}
-                    
-                    <Grid item xs={6}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={certificate.showSeal || false}
-                            onChange={(e) => handleTextChange('showSeal', e.target.checked)}
-                          />
-                        }
-                        label="Show Seal"
-                      />
-                    </Grid>
-                    
-                    {certificate.showSeal && (
-                      <>
-                        <Grid item xs={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Seal Position</InputLabel>
-                            <Select
-                              value={certificate.sealPosition || 'bottom-right'}
-                              onChange={(e) => handleTextChange('sealPosition', e.target.value)}
-                              label="Seal Position"
-                            >
-                              <MenuItem value="bottom-right">Bottom Right</MenuItem>
-                              <MenuItem value="bottom-left">Bottom Left</MenuItem>
-                              <MenuItem value="top-right">Top Right</MenuItem>
-                              <MenuItem value="top-left">Top Left</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                        
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Seal Color"
-                            value={certificate.sealColor || '#C0C0C0'}
-                            onChange={(e) => handleColorChange('sealColor', e.target.value)}
-                            InputProps={{
-                              startAdornment: (
-                                <Box
-                                  sx={{
-                                    width: 20,
-                                    height: 20,
-                                    mr: 1,
-                                    bgcolor: certificate.sealColor || '#C0C0C0',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '4px'
-                                  }}
-                                />
-                              )
-                            }}
-                          />
-                        </Grid>
-                      </>
-                    )}
                   </Grid>
                 </Box>
-                
-                {/* ... other style options ... */}
               </Box>
             )}
 
             {activeTab === 2 && (
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>Background Image</Typography>
+                  <Typography variant="subtitle2" gutterBottom sx={{ 
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    Background Image
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                       variant="outlined"
                       component="label"
                       startIcon={<Upload />}
+                      sx={{
+                        borderColor: darkMode ? '#555555' : '#E2E8F0',
+                        color: darkMode ? '#90caf9' : '#0288d1',
+                        '&:hover': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                          bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                        }
+                      }}
                     >
                       Upload Background
                       <input
@@ -1573,10 +1631,20 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     </Button>
                     {certificate.backgroundImage && (
                       <>
-                        <IconButton onClick={() => handleImageDelete('background')}>
+                        <IconButton 
+                          onClick={() => handleImageDelete('background')}
+                          sx={{
+                            color: darkMode ? '#ef5350' : '#ef5350',
+                            '&:hover': {
+                              bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
+                            }
+                          }}
+                        >
                           <Delete />
                         </IconButton>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{ 
+                          color: darkMode ? '#aaaaaa' : '#64748B'
+                        }}>
                           Opacity:
                         </Typography>
                         <Slider
@@ -1585,7 +1653,19 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           min={0}
                           max={1}
                           step={0.1}
-                          sx={{ width: 100 }}
+                          sx={{
+                            width: 100,
+                            color: darkMode ? '#90caf9' : '#0288d1',
+                            '& .MuiSlider-rail': {
+                              bgcolor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '& .MuiSlider-track': {
+                              bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                            '& .MuiSlider-thumb': {
+                              bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                          }}
                         />
                       </>
                     )}
@@ -1593,12 +1673,24 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>Logo</Typography>
+                  <Typography variant="subtitle2" gutterBottom sx={{ 
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    Logo
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                       variant="outlined"
                       component="label"
                       startIcon={<Upload />}
+                      sx={{
+                        borderColor: darkMode ? '#555555' : '#E2E8F0',
+                        color: darkMode ? '#90caf9' : '#0288d1',
+                        '&:hover': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                          bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                        }
+                      }}
                     >
                       Upload Logo
                       <input
@@ -1610,17 +1702,68 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     </Button>
                     {certificate.logoImage && (
                       <>
-                        <IconButton onClick={() => handleImageDelete('logo')}>
+                        <IconButton 
+                          onClick={() => handleImageDelete('logo')}
+                          sx={{
+                            color: darkMode ? '#ef5350' : '#ef5350',
+                            '&:hover': {
+                              bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
+                            }
+                          }}
+                        >
                           <Delete />
                         </IconButton>
                         <FormControl size="small" sx={{ minWidth: 120 }}>
                           <Select
                             value={certificate.logoPosition}
                             onChange={(e) => handleTextChange('logoPosition', e.target.value)}
+                            sx={{
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkMode ? '#333333' : '#E2E8F0',
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkMode ? '#555555' : '#CBD5E1',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                              '& .MuiSvgIcon-root': {
+                                color: darkMode ? '#aaaaaa' : 'inherit',
+                              },
+                            }}
                           >
-                            <MenuItem value="top-left">Top Left</MenuItem>
-                            <MenuItem value="top-center">Top Center</MenuItem>
-                            <MenuItem value="top-right">Top Right</MenuItem>
+                            <MenuItem value="top-left" sx={{
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                              '&:hover': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                              '&.Mui-selected': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                            }}>Top Left</MenuItem>
+                            <MenuItem value="top-center" sx={{
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                              '&:hover': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                              '&.Mui-selected': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                            }}>Top Center</MenuItem>
+                            <MenuItem value="top-right" sx={{
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                              '&:hover': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                              '&.Mui-selected': {
+                                bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                              },
+                            }}>Top Right</MenuItem>
                           </Select>
                         </FormControl>
                         <TextField
@@ -1629,7 +1772,30 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           value={certificate.logoWidth}
                           onChange={(e) => handleTextChange('logoWidth', Number(e.target.value))}
                           size="small"
-                          sx={{ width: 100 }}
+                          sx={{
+                            width: 100,
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              '& fieldset': {
+                                borderColor: darkMode ? '#333333' : '#E2E8F0',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: darkMode ? '#555555' : '#CBD5E1',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& .MuiInputLabel-root': {
+                              color: darkMode ? '#aaaaaa' : '#64748B',
+                              '&.Mui-focused': {
+                                color: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& input': {
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                            },
+                          }}
                         />
                         <TextField
                           type="number"
@@ -1637,7 +1803,30 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           value={certificate.logoHeight}
                           onChange={(e) => handleTextChange('logoHeight', Number(e.target.value))}
                           size="small"
-                          sx={{ width: 100 }}
+                          sx={{
+                            width: 100,
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                              '& fieldset': {
+                                borderColor: darkMode ? '#333333' : '#E2E8F0',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: darkMode ? '#555555' : '#CBD5E1',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& .MuiInputLabel-root': {
+                              color: darkMode ? '#aaaaaa' : '#64748B',
+                              '&.Mui-focused': {
+                                color: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& input': {
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                            },
+                          }}
                         />
                       </>
                     )}
@@ -1682,27 +1871,101 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>QR Code Settings</Typography>
+                  <Typography variant="subtitle2" gutterBottom sx={{ 
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  }}>
+                    QR Code Settings
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <FormControlLabel
                       control={
                         <Switch
                           checked={certificate.showQRCode}
                           onChange={(e) => handleTextChange('showQRCode', e.target.checked)}
+                          sx={{
+                            '& .MuiSwitch-switchBase': {
+                              color: darkMode ? '#aaaaaa' : '#CBD5E1',
+                              '&.Mui-checked': {
+                                color: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                              '&.Mui-checked + .MuiSwitch-track': {
+                                bgcolor: darkMode ? 'rgba(144, 202, 249, 0.5)' : 'rgba(2, 136, 209, 0.5)',
+                              },
+                            },
+                            '& .MuiSwitch-track': {
+                              bgcolor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                          }}
                         />
                       }
-                      label="Show QR Code"
+                      label={
+                        <Typography sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
+                          Show QR Code
+                        </Typography>
+                      }
                     />
                     {certificate.showQRCode && (
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
                           value={certificate.qrCodePosition}
                           onChange={(e) => handleTextChange('qrCodePosition', e.target.value)}
+                          sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#555555' : '#CBD5E1',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: darkMode ? '#90caf9' : '#0288d1',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: darkMode ? '#aaaaaa' : 'inherit',
+                            },
+                          }}
                         >
-                          <MenuItem value="bottom-right">Bottom Right</MenuItem>
-                          <MenuItem value="bottom-left">Bottom Left</MenuItem>
-                          <MenuItem value="top-right">Top Right</MenuItem>
-                          <MenuItem value="top-left">Top Left</MenuItem>
+                          <MenuItem value="bottom-right" sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '&:hover': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                          }}>Bottom Right</MenuItem>
+                          <MenuItem value="bottom-left" sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '&:hover': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                          }}>Bottom Left</MenuItem>
+                          <MenuItem value="top-right" sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '&:hover': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                          }}>Top Right</MenuItem>
+                          <MenuItem value="top-left" sx={{
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                            '&:hover': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                            },
+                          }}>Top Left</MenuItem>
                         </Select>
                       </FormControl>
                     )}

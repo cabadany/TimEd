@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
+import { useTheme } from '../contexts/ThemeContext';
 import { QrCode2, Download, BrandingWatermark } from '@mui/icons-material';
 import axios from 'axios';
 import {
@@ -294,6 +295,7 @@ const EventCardSkeleton = () => (
 );
 
 export default function EventPage() {
+  const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -1555,7 +1557,7 @@ export default function EventPage() {
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
                       fontSize: '14px',
-                      '& fieldset': {
+                      '& fieldset': {color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
                         borderColor: '#E2E8F0',
                       },
                     },
@@ -1565,6 +1567,7 @@ export default function EventPage() {
                   variant="outlined"
                   onClick={openDepartmentModal}
                   sx={{
+                    
                     borderColor: '#0288d1',
                     color: '#0288d1',
                     '&:hover': {
@@ -1758,8 +1761,7 @@ export default function EventPage() {
                 flexDirection: 'column',
                 justifyContent: 'center', 
                 alignItems: 'center',
-                minHeight: '120px',
-                bgcolor: '#F8FAFC'
+                minHeight: '120px'
               }}>
                 {currentCertificateData ? (
                   <>
@@ -2238,9 +2240,6 @@ export default function EventPage() {
                     px: 2,
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: '#F1F5F9',
-                    },
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
