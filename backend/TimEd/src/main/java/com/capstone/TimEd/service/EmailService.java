@@ -1,7 +1,9 @@
 package com.capstone.TimEd.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamSource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -15,38 +17,30 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendCertificateEmail(String to, String eventId, byte[] certificatePdf) throws MessagingException {
-        System.out.println("Preparing to send certificate email to: " + to);
-        System.out.println("Certificate PDF size: " + (certificatePdf != null ? certificatePdf.length : 0) + " bytes");
+    @Value("${spring.mail.username}")
+    private String fromEmail;
 
-        if (certificatePdf == null || certificatePdf.length == 0) {
-            throw new MessagingException("Certificate PDF is empty or null");
-        }
-
+    public void sendCertificateEmail(String toEmail, String eventId, byte[] certificatePdf) {
         try {
+            System.out.println("Preparing to send email to " + toEmail);
+
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            helper.setTo(to);
-            helper.setFrom("timedsystemcit@gmail.com");
-            helper.setSubject("Certificate of Attendance");
-            helper.setText("Dear Faculty Member,\n\n" +
-                    "Please find attached your Certificate of Attendance for the event.\n\n" +
-                    "This certificate has been automatically generated and sent by the TimEd system.\n\n" +
-                    "Best regards,\nTimEd Team");
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("Your Certificate for Event: " + eventId);
+            helper.setText("Hi,\n\nThank you for attending the event.\n\nPlease find your certificate attached.\n\nBest regards,\nTimEd Team");
 
-            // Attach the customized certificate PDF
-            ByteArrayResource resource = new ByteArrayResource(certificatePdf);
-            helper.addAttachment("Certificate.pdf", resource);
-            System.out.println("Certificate attached successfully");
+            InputStreamSource attachment = new ByteArrayResource(certificatePdf);
+            helper.addAttachment("Certificate.pdf", attachment);
 
             mailSender.send(message);
-            System.out.println("Email sent successfully to: " + to);
-            
+
+            System.out.println("Certificate email sent to " + toEmail);
         } catch (MessagingException e) {
-            System.err.println("Error sending certificate email: " + e.getMessage());
+            System.err.println("Error sending email to " + toEmail + ": " + e.getMessage());
             e.printStackTrace();
-            throw e;
         }
     }
-} 
+}

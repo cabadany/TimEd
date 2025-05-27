@@ -60,6 +60,11 @@ public class AuthService {
                     .setDisplayName(request.getFirstName() + " " + request.getLastName())
                     .setEmailVerified(false);
 
+            // Set photo URL if provided
+            if (request.getProfilePictureUrl() != null && !request.getProfilePictureUrl().isBlank()) {
+                createRequest.setPhotoUrl(request.getProfilePictureUrl());
+            }
+
             UserRecord userRecord = firebaseAuth.createUser(createRequest);
 
             // === Set Custom Claims ===
@@ -73,7 +78,7 @@ public class AuthService {
             // === Handle Department ===
             Department department = null;
             if (request.getDepartmentId() != null && !request.getDepartmentId().isBlank()) {
-                department = departmentService.getDepartment(request.getDepartmentId());  // Use the service to fetch the department by ID
+                department = departmentService.getDepartment(request.getDepartmentId());
                 if (department == null) {
                     return new AuthResponse("Department not found with ID: " + request.getDepartmentId());
                 }
@@ -89,6 +94,7 @@ public class AuthService {
             user.setRole(role);
             user.setPassword(passwordEncoder.encode(request.getPassword())); // Hash the password
             user.setDepartment(department); // Set the department
+            user.setProfilePictureUrl(request.getProfilePictureUrl()); // Set profile picture URL
 
             userService.createUser(user); // This method saves the user in Firestore
 

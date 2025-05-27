@@ -9,6 +9,7 @@ public class RegisterRequest {
     private String schoolId;
     private String password;
     private String role;
+    private String profilePictureUrl;
 
     public RegisterRequest() {}
 
@@ -66,5 +67,13 @@ public class RegisterRequest {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
     }
 }

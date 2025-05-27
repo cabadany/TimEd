@@ -114,7 +114,6 @@ public class EventService {
             
             try {
                 // Query all certificates to find any with this eventId
-                // Sometimes certificates might not be properly linked
                 List<QueryDocumentSnapshot> certificates = firestore.collection("certificates")
                     .whereEqualTo("eventId", eventId)
                     .get()
@@ -126,7 +125,6 @@ public class EventService {
                 // Delete each certificate found
                 for (QueryDocumentSnapshot cert : certificates) {
                     Certificate certificate = cert.toObject(Certificate.class);
-                    // Delete the certificate document
                     certificateService.deleteCertificate(certificate.getId());
                     System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
                     certificatesDeleted++;
@@ -136,28 +134,8 @@ public class EventService {
                 if (certificatesDeleted == 0) {
                     Certificate certificate = certificateService.getCertificateByEventId(eventId);
                     if (certificate != null) {
-                        // If a certificate exists for this event, delete it
                         certificateService.deleteCertificate(certificate.getId());
                         System.out.println("[DEBUG] Deleted certificate with ID: " + certificate.getId() + " for event: " + eventId);
-                        certificatesDeleted++;
-                    } else {
-                        System.out.println("[DEBUG] No certificates found for event: " + eventId);
-                    }
-                }
-                
-                // Check for legacy format with the prefix "Event added successfully with ID: "
-                if (certificatesDeleted == 0) {
-                    String legacyEventId = "Event added successfully with ID: " + eventId;
-                    List<QueryDocumentSnapshot> legacyDocs = firestore.collection("certificates")
-                        .whereEqualTo("eventId", legacyEventId)
-                        .get()
-                        .get()
-                        .getDocuments();
-                    
-                    for (QueryDocumentSnapshot cert : legacyDocs) {
-                        Certificate certificate = cert.toObject(Certificate.class);
-                        certificateService.deleteCertificate(certificate.getId());
-                        System.out.println("[DEBUG] Deleted legacy certificate with ID: " + certificate.getId() + " for event: " + eventId);
                         certificatesDeleted++;
                     }
                 }
@@ -167,20 +145,45 @@ public class EventService {
                 e.printStackTrace();
             }
             
-            // Delete the event from Firestore using the eventId
-            System.out.println("[DEBUG] Deleting event document: " + eventId);
-            ApiFuture<WriteResult> result = firestore.collection("events")
-                    .document(eventId)
-                    .delete();
-                    
-            // Wait for the delete operation to complete
-            WriteResult writeResult = result.get();
-            System.out.println("[DEBUG] Event deleted at: " + writeResult.getUpdateTime());
-
+            // Get the event document reference
+            DocumentReference eventRef = firestore.collection("events").document(eventId);
+            
+            // Use batch write for better performance and atomicity
+            WriteBatch batch = firestore.batch();
+            
+            // 1. Delete all attendees records for this event
+            CollectionReference attendeesRef = eventRef.collection("attendees");
+            ApiFuture<QuerySnapshot> attendeesFuture = attendeesRef.get();
+            List<QueryDocumentSnapshot> attendees = attendeesFuture.get().getDocuments();
+            
+            System.out.println("[DEBUG] Found " + attendees.size() + " attendees to delete for event: " + eventId);
+            
+            // Add delete operations for all attendees
+            for (QueryDocumentSnapshot attendee : attendees) {
+                batch.delete(attendee.getReference());
+                
+                // Also remove this event from the user's attendedEvents collection
+                String userId = attendee.getId();
+                DocumentReference userEventRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("attendedEvents")
+                    .document(eventId);
+                
+                batch.delete(userEventRef);
+            }
+            
+            // 2. Delete the event document itself
+            batch.delete(eventRef);
+            
+            // Commit all delete operations
+            batch.commit().get();
+            
+            System.out.println("[DEBUG] Event and all associated data deleted successfully");
+            
             if (certificatesDeleted > 0) {
-                return "Event and " + certificatesDeleted + " associated certificate(s) deleted successfully";
+                return "Event, " + attendees.size() + " attendee records, and " + certificatesDeleted + " associated certificate(s) deleted successfully";
             } else {
-                return "Event deleted successfully (no certificates found)";
+                return "Event and " + attendees.size() + " attendee records deleted successfully (no certificates found)";
             }
             
         } catch (Exception e) {
@@ -365,8 +368,10 @@ public class EventService {
                     event.getStatus(),
                     formattedDate,
                     event.getDuration(),
-                    event.getDepartmentId(),
-                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"  // Use department name
+                    event.getDepartmentId(),    
+                    event.getDescription(),
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"  // Use department name,
+                
                 );
 
                 eventDtos.add(eventDto);  // Add the event DTO to the list
@@ -444,7 +449,8 @@ public class EventService {
                     formattedDate,
                     event.getDuration(),
                     event.getDepartmentId(),
-                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department"
+                    event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
+                    event.getDescription()
                 );
                 
                 eventDtos.add(eventDto);
@@ -516,7 +522,9 @@ public class EventService {
                         event.getStatus(),
                         formattedDate,
                         event.getDuration(),
-                        event.getDepartmentId()
+                        event.getDepartmentId(),
+                        event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
+                        event.getDescription()
                     );
                     
                     eventDtos.add(eventDto);

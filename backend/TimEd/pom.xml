@@ -29,9 +29,7 @@
 	<properties>
 		<java.version>17</java.version>
 	</properties>
-		<dependencies>
-
-
+	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
@@ -47,7 +45,8 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-crypto</artifactId>
 		</dependency>
-<!-- PDF Generation -->
+
+		<!-- PDF Generation -->
 		<dependency>
 			<groupId>com.itextpdf</groupId>
 			<artifactId>itext7-core</artifactId>
@@ -60,6 +59,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -70,16 +70,19 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.2.0</version>
 		</dependency>
-<dependency>
-    <groupId>com.google.zxing</groupId>
-    <artifactId>core</artifactId>
-    <version>3.5.2</version>
-</dependency>
-<dependency>
-    <groupId>com.google.zxing</groupId>
-    <artifactId>javase</artifactId>
-    <version>3.5.2</version>
-</dependency>
+
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.2</version>
+		</dependency>
+
 		<dependency>
 			<groupId>com.google.cloud</groupId>
 			<artifactId>google-cloud-firestore</artifactId>
@@ -97,14 +100,14 @@
 			<artifactId>jakarta.mail</artifactId>
 			<version>2.0.2</version>
 		</dependency>
-		
+
 		<!-- Jakarta Activation -->
 		<dependency>
 			<groupId>jakarta.activation</groupId>
 			<artifactId>jakarta.activation-api</artifactId>
 			<version>2.1.2</version>
 		</dependency>
-		
+
 		<!-- Spring Context Support -->
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -112,13 +115,6 @@
 			<version>6.0.11</version>
 		</dependency>
 	</dependencies>
-<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>itext7-core</artifactId>
-			<version>7.2.5</version>
-			<type>pom</type>
-		</dependency>
-
 
 	<build>
 		<plugins>
@@ -128,5 +124,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

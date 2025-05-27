@@ -705,60 +705,50 @@ export default function SettingPage() {
               }}
             >
               {[
-                { 
-                  name: 'Cabana, Danisse', 
+                 {
+                  name: 'Cabana, Danisse',
                   firstName: 'Danisse',
                   lastName: 'Cabana',
-                  id: 'null', 
-                  role: 'null', 
-                  avatar: 'D',
-                  image: 'https://randomuser.me/api/portraits/women/44.jpg', 
-                  description: 'Team member specializing in frontend development with a focus on creating intuitive user interfaces.',
-                  social: { github: '#', linkedin: '#', email: '#' }
+                  role: 'Mobile Backend Developer',
+                  image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F494828260_646748648390700_2831467056740054150_n.jpg?alt=media&token=d613d9b2-88ff-4c59-9c3a-2d5f1825f3da',
+                  description: 'Backend developer focusing on mobile app integration, database connectivity, and secure API development for seamless mobile experiences.',
+                  skills: ['Firebase', 'Spring Boot', 'RESTful APIs', 'Mobile Integration', 'Authentication', 'Database Management']
                 },
-                { 
-                  name: 'Tumungha, Alexa', 
+                {
+                  name: 'Tumungha, Alexa',
                   firstName: 'Alexa',
                   lastName: 'Tumungha',
-                  id: 'null', 
-                  role: 'null', 
-                  avatar: 'A',
+                  role: 'Project Manager',
                   image: 'https://randomuser.me/api/portraits/women/68.jpg',
-                  description: 'Expert in UX/UI design principles with experience in creating responsive web applications.',
-                  social: { github: '#', linkedin: '#', email: '#' }
+                  description: 'Organized and goal-driven manager with expertise in managing project timelines, coordinating teams, and ensuring successful project delivery.',
+                  skills: ['Project Management', 'Scrum', 'Agile Methodologies', 'Team Leadership', 'Jira', 'Communication']
                 },
-                { 
-                  name: 'Navaroo, Mikhail James', 
+                {
+                  name: 'Navaroo, Mikhail James',
                   firstName: 'Mikhail James',
                   lastName: 'Navaroo',
-                  id: 'null', 
-                  role: 'null', 
-                  avatar: 'M',
-                  image: 'https://randomuser.me/api/portraits/men/32.jpg',
-                  description: 'Skilled backend developer focused on creating efficient and scalable system architecture.',
-                  social: { github: '#', linkedin: '#', email: '#' }
+                  role: 'Mobile Frontend Developer',
+                  image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F495270598_1925613518207533_3638793039034373708_n.png?alt=media&token=d7aaf893-9208-4f51-b771-c9838034ffdc',
+                  description: 'Frontend developer focused on building intuitive, responsive mobile applications with attention to detail and performance.',
+                  skills: ['React Native', 'JavaScript', 'UI Components', 'Mobile Design Patterns', 'Expo', 'CSS-in-JS']
                 },
-                { 
-                  name: 'Largo, John Wayne', 
+                {
+                  name: 'Largo, John Wayne',
                   firstName: 'John Wayne',
                   lastName: 'Largo',
-                  id: 'null', 
-                  role: 'null', 
-                  avatar: 'J',
-                  image: 'https://randomuser.me/api/portraits/men/45.jpg',
-                  description: 'Full-stack developer with expertise in database design and system integrations.',
-                  social: { github: '#', linkedin: '#', email: '#' }
+                  role: 'Web Backend Developer',
+                  image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F434168392_2189176254770061_5356900714852223221_n.jpg?alt=media&token=9410fa9a-fd06-40e7-bbb3-5e53aab0262d',
+                  description: 'Backend specialist for web systems, focused on building scalable infrastructure and secure APIs with modern tech stack.',
+                  skills: ['Spring Boot', 'Firebase', 'PostgreSQL', 'JWT Authentication', 'Docker', 'API Security']
                 },
-                { 
-                  name: 'Gemongala, Clark', 
+                {
+                  name: 'Gemongala, Clark',
                   firstName: 'Clark',
                   lastName: 'Gemongala',
-                  id: 'null', 
-                  role: 'null', 
-                  avatar: 'C',
-                  image: 'https://randomuser.me/api/portraits/men/94.jpg',
-                  description: 'Project member with a passion for educational technology and innovative solutions.',
-                  social: { github: '#', linkedin: '#', email: '#' }
+                  role: 'Web Frontend Developer',
+                  image: 'https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/AboutusImage%2F126269967.jfif?alt=media&token=0079cc0e-5fcc-41c6-b131-d2832f359eb1',
+                  description: 'Frontend developer with strong attention to responsive design, user experience, and clean code implementation for web platforms.',
+                  skills: ['React.js', 'HTML5', 'CSS3', 'Tailwind CSS', 'JavaScript', 'Version Control']
                 }
               ].map((member, index) => (
                 <Box 
@@ -1064,12 +1054,7 @@ export default function SettingPage() {
               </Paper>
               
               <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <School fontSize="small" sx={{ color: 'primary.main', mr: 1.5 }} />
-                  <Typography variant="body1" color="text.secondary" fontWeight="500">
-                    School ID: {selectedMember.id}
-                  </Typography>
-                </Box>
+                
                 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Work fontSize="small" sx={{ color: 'primary.main', mr: 1.5 }} />
