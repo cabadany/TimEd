@@ -19,7 +19,6 @@ import de.hdodenhof.circleimageview.CircleImageView
 
 class ProfileActivity : AppCompatActivity() {
 
-    private lateinit var editButton: Button
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button
     private lateinit var logoutText: TextView
@@ -34,7 +33,6 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
 
-        editButton = findViewById(R.id.btn_edit_profile)
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
         logoutText = findViewById(R.id.logout_text)
@@ -61,16 +59,12 @@ class ProfileActivity : AppCompatActivity() {
             }, 50)
         }
 
-        editButton.setOnClickListener {
-            startActivity(Intent(this, EditProfileActivity::class.java))
-        }
-
         changePasswordButton.setOnClickListener {
             startActivity(Intent(this, ChangePasswordActivity::class.java))
         }
 
         attendanceSheetButton.setOnClickListener {
-            showAttendanceDownloadDialog()
+            startActivity(Intent(this, AttendanceSheetActivity::class.java))
         }
 
         logoutText.setOnClickListener {
@@ -101,8 +95,7 @@ class ProfileActivity : AppCompatActivity() {
 
                 val firstName = document.getString("firstName") ?: ""
                 val lastName = document.getString("lastName") ?: ""
-                val departmentMap = document.get("department")
-                val departmentName = if (departmentMap is Map<*, *>) departmentMap["name"].toString() else "N/A"
+                val departmentId = document.getString("departmentId") ?: ""
                 val idNumber = document.getString("schoolId") ?: "N/A"
                 val email = document.getString("email") ?: "No email"
                 val profilePictureUrl = document.getString("profilePictureUrl")
@@ -110,8 +103,27 @@ class ProfileActivity : AppCompatActivity() {
                 teacherName.text = "$firstName $lastName"
                 teacherId.text = idNumber
                 profileEmail.text = email
-                profileDepartment.text = departmentName
 
+                // Fetch department name using departmentId
+                if (departmentId.isNotEmpty()) {
+                    firestore.collection("departments")
+                        .document(departmentId)
+                        .get()
+                        .addOnSuccessListener { deptDoc ->
+                            if (deptDoc.exists()) {
+                                profileDepartment.text = deptDoc.getString("name") ?: "N/A"
+                            } else {
+                                profileDepartment.text = "N/A"
+                            }
+                        }
+                        .addOnFailureListener {
+                            profileDepartment.text = "N/A"
+                        }
+                } else {
+                    profileDepartment.text = "N/A"
+                }
+
+                // Load profile image logic
                 val timeLogsRef = com.google.firebase.database.FirebaseDatabase.getInstance()
                     .getReference("timeLogs").child(userId)
 

@@ -30,6 +30,7 @@
             android:focusable="true"
             android:padding="12dp"
             app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
     <!-- Title -->
@@ -44,7 +45,7 @@
             android:padding="8dp"
             android:text="Event Records"
             android:textAlignment="center"
-            android:textColor="@color/maroon"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="30sp"
             android:textStyle="bold"
             android:shadowColor="#33000000"
@@ -60,7 +61,7 @@
             android:layout_centerInParent="true"
             android:visibility="gone"
             style="?android:attr/progressBarStyleLarge"
-            android:indeterminateTint="@color/maroon" />
+            android:indeterminateTint="@color/primary_medium_blue" />
 
     <!-- SwipeRefreshLayout for RecyclerView and Empty Message -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -92,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:text="No event logs found."
                     android:textSize="16sp"
-                    android:textColor="#888888"
+                    android:textColor="@color/neutral_text_gray"
                     android:layout_centerInParent="true"
                     android:visibility="gone"
                     android:fontFamily="@font/roboto_medium"

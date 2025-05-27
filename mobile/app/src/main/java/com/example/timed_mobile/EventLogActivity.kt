@@ -48,16 +48,13 @@ class EventLogActivity : AppCompatActivity() {
 
         backButton.setOnClickListener { finish() }
 
-        adapter = EventLogAdapter() { eventLog ->
-            if (eventLog.showTimeOutButton) {
-                val intent = Intent(this, TimeOutActivity::class.java).apply {
-                    putExtra("userId", intent.getStringExtra("userId"))
-                    putExtra("eventId", eventLog.eventId)
-                    putExtra("eventName", eventLog.eventName)
-                }
-                startActivity(intent)
+        adapter = EventLogAdapter(
+            onTimeOutClick = { log -> /* not needed anymore */ },
+            onTimeOutConfirmed = {
+                fetchEventLogs() // This will reload updated data
             }
-        }
+        )
+
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
@@ -127,7 +124,8 @@ class EventLogActivity : AppCompatActivity() {
                                             eventName = eventName,
                                             timeInTimestamp = timestamp,
                                             status = if (hasTimedOut) "Timed-Out" else "Timed-In",
-                                            showTimeOutButton = !hasTimedOut && isStillActive
+                                            showTimeOutButton = !hasTimedOut && isStillActive,
+                                            userId = userId
                                         )
                                     )
                                 }

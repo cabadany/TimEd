@@ -6,11 +6,14 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.firestore.FirebaseFirestore
 
 class EventDetailActivity : AppCompatActivity() {
 
     private lateinit var backButton: ImageView
+    private lateinit var descriptionView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,48 +23,41 @@ class EventDetailActivity : AppCompatActivity() {
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
 
-        // Initialize the class member 'backButton'
-        backButton = findViewById<ImageView>(R.id.icon_back_button)
-
-        // Set the OnClickListener on the initialized class member 'backButton'
+        backButton = findViewById(R.id.icon_back_button)
         backButton.setOnClickListener { view ->
             val drawable = (view as ImageView).drawable
             if (drawable is AnimatedVectorDrawable) {
                 drawable.start()
-                // Delay finish until animation can play
-                view.postDelayed({
-                    finish()
-                }, 150)
+                view.postDelayed({ finish() }, 150)
             } else {
                 finish()
             }
         }
 
-        // Get references to views
         val titleView = findViewById<TextView>(R.id.detail_event_title)
         val dateView = findViewById<TextView>(R.id.detail_event_date)
         val statusView = findViewById<TextView>(R.id.detail_event_status)
-        val descriptionView = findViewById<TextView>(R.id.detail_event_description)
+        descriptionView = findViewById(R.id.detail_event_description)
         val timeInButton = findViewById<Button>(R.id.detail_time_in_button)
-        val backButton = findViewById<ImageView>(R.id.icon_back_button)
 
-        // Get event data from intent
         val title = intent.getStringExtra("eventTitle") ?: "No Title Provided"
         val date = intent.getStringExtra("eventDate") ?: "No Date Provided"
         val status = intent.getStringExtra("eventStatus") ?: "Unknown"
-        val description = intent.getStringExtra("eventDescription") ?: "No Description Available"
+        val description = intent.getStringExtra("eventDescription") ?: ""
 
-        // Display event data in views
         titleView.text = title
         dateView.text = date
         statusView.text = "Status: $status"
-        descriptionView.text = description
 
-        // Conditionally show/hide the Time In button
+        if (description.isNotBlank()) {
+            descriptionView.text = description
+        } else {
+            fetchEventDescriptionFromFirestore(title)
+        }
+
         if (status.lowercase() == "ongoing") {
             timeInButton.visibility = Button.VISIBLE
             timeInButton.setOnClickListener {
-                // 🛠️ Fix: Fetch user session from SharedPreferences
                 val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
                 val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
                 val email = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
@@ -72,6 +68,7 @@ class EventDetailActivity : AppCompatActivity() {
                     putExtra("email", email)
                     putExtra("firstName", firstName)
                     putExtra("eventTitle", title)
+                    putExtra("eventDescription", description)
                 }
                 startActivity(intent)
             }
@@ -79,9 +76,26 @@ class EventDetailActivity : AppCompatActivity() {
             timeInButton.visibility = Button.GONE
         }
 
-        // Handle back button click
-        backButton.setOnClickListener {
-            finish()
-        }
+        // Redundant backButton reassignment removed since it’s already handled above
+    }
+
+    private fun fetchEventDescriptionFromFirestore(title: String) {
+        FirebaseFirestore.getInstance().collection("events")
+            .whereEqualTo("eventName", title)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { result ->
+                if (!result.isEmpty) {
+                    val doc = result.documents.first()
+                    val fetchedDescription = doc.getString("description") ?: "No description available"
+                    descriptionView.text = fetchedDescription
+                } else {
+                    descriptionView.text = "Description not found."
+                }
+            }
+            .addOnFailureListener {
+                descriptionView.text = "Error loading description."
+                Toast.makeText(this, "Failed to load description", Toast.LENGTH_SHORT).show()
+            }
     }
 }

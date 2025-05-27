@@ -21,8 +21,10 @@
     <ImageView
             android:id="@+id/bottom_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="250dp"
             android:scaleType="fitXY"
+            android:rotation="180"
+            android:scaleX="-1"
             android:src="@drawable/animated_wave_bottom"
             android:layout_alignParentBottom="true"
             android:importantForAccessibility="no" />
@@ -45,17 +47,17 @@
                 android:layout_width="120dp"
                 android:layout_height="120dp"
                 android:src="@drawable/ic_check_circle"
-                app:tint="@color/maroon"
+                app:tint="@color/primary_deep_blue"
                 android:layout_marginBottom="24dp"
-                />
+                android:contentDescription="@string/content_desc_check_circle" />
 
         <TextView
                 android:id="@+id/final_step_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="You're Ready to Go!"
+                android:text="@string/final_step_title_text"
                 android:textSize="26sp"
-                android:textColor="@color/maroon"
+                android:textColor="@color/primary_deep_blue"
                 android:fontFamily="@font/league_spartan_bold"
                 android:textAlignment="center"
                 android:layout_marginBottom="12dp" />
@@ -64,9 +66,9 @@
                 android:id="@+id/final_step_message"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Start managing your class attendance with ease. WILDTIMed is here to support you. Let's begin!"
+                android:text="@string/final_step_message_text"
                 android:textSize="15sp"
-                android:textColor="@color/dark_gray"
+                android:textColor="@color/neutral_text_gray"
                 android:textAlignment="center"
                 android:layout_marginBottom="32dp"
                 android:lineSpacingMultiplier="1.2" />
@@ -76,9 +78,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:minWidth="200dp"
-                android:text="Let's Go!"
-                android:backgroundTint="@color/yellow_gold"
-                android:textColor="@color/maroon"
+                android:text="@string/button_lets_go"
+                android:backgroundTint="@color/accent_coral"
+                android:textColor="@color/white"
                 android:paddingStart="32dp"
                 android:paddingEnd="32dp"
                 android:paddingTop="12dp"

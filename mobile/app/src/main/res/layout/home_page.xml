@@ -52,7 +52,7 @@
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:clickable="true"
                             android:focusable="true"
-                            app:tint="@color/maroon" />
+                            app:tint="@color/accent_coral" />
 
                     <!-- Title Name -->
                     <TextView
@@ -69,8 +69,8 @@
                             android:shadowDx="1"
                             android:shadowDy="1"
                             android:shadowRadius="2"
-                            android:text="WILDTIMed"
-                            android:textColor="#8B0000"
+                            android:text="TimEd"
+                            android:textColor="@color/primary_deep_blue"
                             android:textSize="38sp"
                             android:textStyle="bold" />
 
@@ -103,6 +103,7 @@
                                     android:layout_height="36dp"
                                     android:layout_margin="6dp"
                                     android:background="@drawable/circle_background"
+                                    android:src="@drawable/ic_profile"
                                     android:clipToOutline="true"
                                     android:contentDescription="Profile Image"
                                     android:elevation="4dp"
@@ -128,26 +129,21 @@
                                             android:ellipsize="end"
                                             android:singleLine="true"
                                             android:text="Hi, Username"
-                                            android:textColor="@color/maroon"
+                                            android:textColor="@color/primary_deep_blue"
                                             android:textSize="18sp"
                                             android:textStyle="bold" />
 
+                                    <!-- Attendance status badge - colors are typically status-specific -->
                                     <TextView
                                             android:id="@+id/attendance_status_badge"
                                             android:layout_width="wrap_content"
                                             android:layout_height="wrap_content"
                                             android:layout_marginStart="8dp"
-                                            android:background="@drawable/attendance_badge_on_time"
-                                            android:paddingStart="10dp"
-                                            android:paddingTop="3dp"
-                                            android:paddingEnd="10dp"
-                                            android:paddingBottom="3dp"
                                             android:text="On Time"
-                                            android:textColor="@color/white"
+                                            android:textColor="@color/attendance_green"
                                             android:textSize="12sp"
                                             android:textStyle="bold"
-                                            android:visibility="visible"
-                                            tools:visibility="visible" />
+                                            android:visibility="gone" />
                                 </LinearLayout>
 
                                 <TextView
@@ -158,23 +154,25 @@
                                         android:ellipsize="end"
                                         android:singleLine="true"
                                         android:text="ID: 123456 • CITE"
-                                        android:textColor="#666666"
+                                        android:textColor="@color/neutral_text_gray"
                                         android:textSize="13sp" />
 
                                 <Spinner
-                                    android:id="@+id/status_spinner"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="8dp"
-                                    android:layout_marginTop="4dp"
-                                    android:paddingStart="10dp"
-                                    android:paddingTop="3dp"
-                                    android:paddingEnd="10dp"
-                                    android:paddingBottom="3dp"
-                                    android:textAlignment="center"
-                                    android:spinnerMode="dropdown"
-                                    app:layout_constraintStart_toEndOf="@id/profile_image_placeholder"
-                                    app:layout_constraintTop_toBottomOf="@id/greeting_name" />
+                                        android:id="@+id/status_spinner"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginStart="8dp"
+                                        android:layout_marginTop="4dp"
+                                        android:paddingStart="10dp"
+                                        android:paddingTop="3dp"
+                                        android:paddingEnd="10dp"
+                                        android:paddingBottom="3dp"
+                                        android:textAlignment="center"
+                                        android:textColor="@color/neutral_text_gray"
+                                        android:backgroundTint="@color/primary_light_sky"
+                                        android:spinnerMode="dropdown"
+                                        app:layout_constraintStart_toEndOf="@id/profile_image_placeholder"
+                                        app:layout_constraintTop_toBottomOf="@id/greeting_name" />
                             </LinearLayout>
 
                             <ImageView
@@ -187,7 +185,7 @@
                                     android:contentDescription="Open navigation menu"
                                     android:focusable="true"
                                     android:src="@drawable/ic_menu"
-                                    app:tint="@color/maroon" />
+                                    app:tint="@color/primary_medium_blue" />
                         </LinearLayout>
                     </androidx.cardview.widget.CardView>
 
@@ -215,7 +213,7 @@
                                 android:layout_weight="1"
                                 android:text="Upcoming"
                                 android:textColor="@color/filter_button_text_selector"
-                                android:backgroundTint="@color/white"
+                                android:backgroundTint="@color/filter_button_background_selector"
                                 android:layout_marginStart="2dp"
                                 android:layout_marginEnd="2dp"
                                 android:paddingStart="4dp"
@@ -236,7 +234,7 @@
                                 android:layout_weight="1"
                                 android:text="Ongoing"
                                 android:textColor="@color/filter_button_text_selector"
-                                android:backgroundTint="@color/white"
+                                android:backgroundTint="@color/filter_button_background_selector"
                                 android:layout_marginStart="2dp"
                                 android:layout_marginEnd="2dp"
                                 android:paddingStart="4dp"
@@ -257,7 +255,7 @@
                                 android:layout_weight="1"
                                 android:text="Ended"
                                 android:textColor="@color/filter_button_text_selector"
-                                android:backgroundTint="@color/white"
+                                android:backgroundTint="@color/filter_button_background_selector"
                                 android:layout_marginStart="2dp"
                                 android:layout_marginEnd="2dp"
                                 android:paddingStart="4dp"
@@ -278,7 +276,7 @@
                                 android:layout_weight="1"
                                 android:text="Cancelled"
                                 android:textColor="@color/filter_button_text_selector"
-                                android:backgroundTint="@color/white"
+                                android:backgroundTint="@color/filter_button_background_selector"
                                 android:layout_marginStart="2dp"
                                 android:layout_marginEnd="2dp"
                                 android:paddingStart="4dp"
@@ -302,7 +300,7 @@
                             android:layout_centerHorizontal="true"
                             android:layout_marginBottom="12dp"
                             android:text="Send a Excuse Letter"
-                            android:textColor="@color/maroon"
+                            android:textColor="@color/primary_medium_blue"
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:clickable="true"
@@ -319,10 +317,10 @@
                             android:layout_marginBottom="6dp"
                             android:layout_marginStart="48dp"
                             android:layout_marginEnd="48dp"
-                            android:backgroundTint="@color/maroon"
+                            android:backgroundTint="@color/primary_medium_blue"
                             android:elevation="6dp"
                             android:text="Time - Out"
-                            android:textColor="@color/yellow_gold"
+                            android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold"
                             app:cornerRadius="10dp"
@@ -337,10 +335,10 @@
                             android:layout_marginBottom="4dp"
                             android:layout_marginStart="48dp"
                             android:layout_marginEnd="48dp"
-                            android:backgroundTint="@color/yellow_gold"
+                            android:backgroundTint="@color/accent_coral"
                             android:elevation="6dp"
                             android:text="Time - In"
-                            android:textColor="@color/maroon"
+                            android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold"
                             app:cornerRadius="10dp"
@@ -356,7 +354,7 @@
                             android:layout_marginBottom="10dp"
                             android:text="Mark your attendance for today:"
                             android:textSize="14sp"
-                            android:textColor="@color/black"
+                            android:textColor="@color/neutral_text_gray"
                             android:textStyle="bold" />
 
                     <!-- Event box List (Design Image) -->
@@ -377,7 +375,7 @@
                             android:scaleType="fitXY"
                             app:srcCompat="@drawable/event_box_list" />
 
-                    <!-- Event List (RecyclerView on top of the ImageView) -->
+                    <!-- Event List RecyclerView -->
                     <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/recycler_events"
                             android:layout_width="match_parent"
@@ -390,6 +388,22 @@
                             tools:listitem="@layout/event_card"
                             android:clipToPadding="true"
                             android:background="@android:color/transparent" />
+
+                    <!-- Message shown when no events are available (inside the same box) -->
+                    <TextView
+                            android:id="@+id/no_events_message"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignStart="@id/event_box_list"
+                            android:layout_alignEnd="@id/event_box_list"
+                            android:layout_alignTop="@id/event_box_list"
+                            android:layout_alignBottom="@id/event_box_list"
+                            android:gravity="center"
+                            android:textAlignment="center"
+                            android:text="No events at the moment."
+                            android:textColor="@color/medium_gray"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
 
                     <!-- Tutorial Overlay - MOVED TO BE THE LAST CHILD for correct Z-ordering -->
                     <FrameLayout
@@ -412,8 +426,11 @@
             android:id="@+id/navigation_view"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_gravity="start"
+            android:layout_gravity="end"
+            app:headerLayout="@layout/nav_header"
             app:menu="@menu/drawer_menu"
-            app:headerLayout="@layout/nav_header" />
+            app:itemIconTint="@color/nav_item_icon_tint_selector"
+            app:itemTextColor="@color/nav_item_text_color_selector"
+            app:itemBackground="@android:color/transparent" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

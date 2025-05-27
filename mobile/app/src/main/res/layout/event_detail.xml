@@ -30,9 +30,11 @@
                 android:layout_marginTop="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:padding="8dp"
+                android:padding="12dp"
                 android:contentDescription="Back"
-                app:srcCompat="@drawable/ic_back_button" />
+                app:srcCompat="@drawable/ic_back_button"
+                app:tint="@color/white"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
         <!-- Event Title -->
         <TextView
@@ -44,7 +46,14 @@
                 android:text="Event Title"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="@color/maroon" />
+                android:textColor="@color/primary_deep_blue"
+                android:shadowColor="#33000000"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:gravity="center_horizontal" />
 
         <!-- Time In Button -->
         <Button
@@ -55,9 +64,9 @@
                 android:layout_marginStart="48dp"
                 android:layout_marginEnd="48dp"
                 android:layout_marginBottom="32dp"
-                android:backgroundTint="@color/yellow_gold"
+                android:backgroundTint="@color/accent_coral"
                 android:text="Time In"
-                android:textColor="@color/maroon"
+                android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 app:cornerRadius="12dp"
@@ -89,7 +98,7 @@
                         android:layout_marginTop="12dp"
                         android:text="Event Date"
                         android:textSize="16sp"
-                        android:textColor="@color/black" />
+                        android:textColor="@color/neutral_text_gray" />
 
                 <!-- Event Status -->
                 <TextView
@@ -100,7 +109,7 @@
                         android:layout_marginTop="8dp"
                         android:text="Status: Ongoing"
                         android:textSize="16sp"
-                        android:textColor="@color/black" />
+                        android:textColor="@color/neutral_text_gray" />
 
                 <!-- Event Description -->
                 <TextView
@@ -112,7 +121,7 @@
                         android:layout_marginEnd="24dp"
                         android:text="Description will appear here."
                         android:textSize="14sp"
-                        android:textColor="@color/black"
+                        android:textColor="@color/neutral_text_gray"
                         android:padding="12dp"
                         android:textAlignment="center" />
             </LinearLayout>
@@ -127,6 +136,9 @@
             android:layout_height="match_parent"
             android:layout_gravity="start"
             app:menu="@menu/drawer_menu"
-            app:headerLayout="@layout/nav_header" />
+            app:headerLayout="@layout/nav_header"
+            app:itemIconTint="@color/nav_item_icon_tint_selector"
+            app:itemTextColor="@color/nav_item_text_color_selector"
+            app:itemBackground="@android:color/transparent" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

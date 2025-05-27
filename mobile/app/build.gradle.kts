@@ -92,6 +92,11 @@ dependencies {
 
     implementation ("org.mindrot:jbcrypt:0.4")
 
+    implementation ("com.google.firebase:firebase-database:20.3.0")
+    implementation ("androidx.core:core:1.12.0")
+
+    implementation ("androidx.exifinterface:exifinterface:1.3.6")
+
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

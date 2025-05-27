@@ -18,15 +18,15 @@
             android:layout_height="60dp"
             android:layout_marginBottom="16dp"
             app:srcCompat="@drawable/ic_success"
-            android:contentDescription="Success" />
+            android:contentDescription="@string/popup_success_icon_desc" />
 
     <TextView
             android:id="@+id/popup_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Successfully Timed - Out"
-            android:textColor="@color/black"
+            android:text="@string/popup_title_timed_out_success"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="18sp"
             android:textStyle="bold"
             android:fontFamily="@font/roboto_bold"
@@ -37,8 +37,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Thank you. It has been recorded."
-            android:textColor="@color/dark_gray"
+            android:text="@string/popup_message_recorded_success"
+            android:textColor="@color/neutral_text_gray"
             android:textSize="15sp"
             android:fontFamily="@font/roboto_medium"
             android:layout_marginBottom="20dp" />
@@ -50,9 +50,9 @@
             android:paddingStart="30dp"
             android:paddingEnd="30dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/maroon"
-            android:text="OK"
-            android:textColor="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
+            android:text="@string/popup_button_ok"
+            android:textColor="@color/white"
             android:textSize="14sp"
             android:fontFamily="@font/roboto_medium"
             app:cornerRadius="8dp"

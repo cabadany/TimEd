@@ -30,9 +30,9 @@
             android:allowBackup="true"
             android:dataExtractionRules="@xml/data_extraction_rules"
             android:fullBackupContent="@xml/backup_rules"
-            android:icon="@mipmap/ic_launcher"
-            android:label="@string/app_name"
-            android:roundIcon="@mipmap/ic_launcher_round"
+            android:icon="@drawable/timeed_logo"
+            android:label="TimEd"
+            android:roundIcon="@drawable/timeed_logo"
             android:supportsRtl="true"
             android:theme="@style/Theme.TimEd"
             tools:targetApi="26">
@@ -211,5 +211,11 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".AttendanceSheetActivity"
+            android:theme="@style/Theme.TimEd"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

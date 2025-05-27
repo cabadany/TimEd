@@ -89,7 +89,9 @@ class TimeOutActivity : AppCompatActivity() {
             "type" to "TimeOut",
             "email" to userEmail,
             "firstName" to userFirstName,
-            "userId" to userId
+            "userId" to userId,
+            "status" to "Off Duty", // ✅ Optional, but good to keep it consistent
+            "attendanceBadge" to "Timed-Out" // ✅ 🔥 This is what was missing!
         )
 
         dbRef.push().setValue(log)
@@ -101,5 +103,4 @@ class TimeOutActivity : AppCompatActivity() {
                     .show()
             }
     }
-
 }

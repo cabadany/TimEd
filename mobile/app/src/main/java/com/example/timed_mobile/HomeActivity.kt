@@ -42,6 +42,13 @@ import android.app.Dialog
 import android.view.ViewGroup
 import kotlin.math.abs
 import androidx.core.view.isVisible
+import com.google.firebase.firestore.DocumentReference
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
+import androidx.core.app.NotificationCompat
 
 class HomeActivity : AppCompatActivity() {
 
@@ -73,7 +80,7 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var greetingCardNavIcon: ImageView
     private lateinit var tutorialOverlay: FrameLayout
-
+    private lateinit var noEventsMessage: TextView
 
     private var currentTutorialPopupWindow: PopupWindow? = null
     private val allEvents = mutableListOf<EventModel>()
@@ -96,8 +103,22 @@ class HomeActivity : AppCompatActivity() {
                 val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
                 if (isTimedIn) {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
+
+                    // ✅ Automatically update status to On Duty
+                    updateUserStatus("On Duty")
+                    updateTimeLogsStatus("On Duty")
+
+                    // ✅ Refresh visual indicators
                     loadTodayTimeInPhoto()
                     updateSidebarProfileImage()
+                    evaluateAndDisplayAttendanceBadge()
+
+                    // ✅ Force update spinner visually
+                    val index = statusOptions.indexOf("On Duty")
+                    if (index != -1) {
+                        isUserChangingStatus = false
+                        statusSpinner.setSelection(index)
+                    }
                 }
             }
         }
@@ -133,8 +154,8 @@ class HomeActivity : AppCompatActivity() {
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
         greetingCardNavIcon.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
-            else drawerLayout.openDrawer(GravityCompat.START)
+            if (drawerLayout.isDrawerOpen(GravityCompat.END)) drawerLayout.closeDrawer(GravityCompat.END)
+            else drawerLayout.openDrawer(GravityCompat.END)
         }
 
         greetingName = findViewById(R.id.greeting_name)
@@ -150,6 +171,7 @@ class HomeActivity : AppCompatActivity() {
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
 
         btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
+        noEventsMessage = findViewById(R.id.no_events_message)
 
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
@@ -206,15 +228,23 @@ class HomeActivity : AppCompatActivity() {
         val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
         usersRef.get().addOnSuccessListener { doc ->
             val fullName = userFirstName ?: "User"
-            val deptObj = doc.get("department")
-            val abbreviation = if (deptObj is Map<*, *>) {
-                deptObj["abbreviation"]?.toString() ?: "N/A"
-            } else {
-                "N/A"
-            }
-
             greetingName.text = "Hi, $fullName"
-            greetingDetails.text = "$idNumber • $abbreviation"
+
+            val departmentId = doc.getString("departmentId")
+            if (!departmentId.isNullOrEmpty()) {
+                FirebaseFirestore.getInstance().collection("departments")
+                    .document(departmentId)
+                    .get()
+                    .addOnSuccessListener { deptDoc ->
+                        val abbreviation = deptDoc.getString("abbreviation") ?: "N/A"
+                        greetingDetails.text = "$idNumber • $abbreviation"
+                    }
+                    .addOnFailureListener {
+                        greetingDetails.text = "$idNumber • N/A"
+                    }
+            } else {
+                greetingDetails.text = "$idNumber • N/A"
+            }
         }
 
         loadTodayTimeInPhoto()
@@ -374,37 +404,51 @@ class HomeActivity : AppCompatActivity() {
 
         val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
 
-        realtimeRef.orderByChild("timestamp").limitToLast(1)
+        realtimeRef.orderByChild("timestamp").limitToLast(10) // grab last few records just in case
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    var overrideStatus: String? = null
+                    var latestTimeIn: Long? = null
+                    var latestTimeOut: Long? = null
+
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
 
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
-
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            overrideStatus = "On Duty"
+                        if (type == "TimeIn" && timestamp != null) {
+                            if (latestTimeIn == null || timestamp > latestTimeIn) {
+                                latestTimeIn = timestamp
+                            }
+                        } else if (type == "TimeOut" && timestamp != null) {
+                            if (latestTimeOut == null || timestamp > latestTimeOut) {
+                                latestTimeOut = timestamp
+                            }
                         }
+                    }
+
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    val statusFromLogs: String = when {
+                        latestTimeOut != null && latestTimeOut >= todayStart &&
+                                (latestTimeIn == null || latestTimeOut > latestTimeIn) -> "Off Duty"
+                        latestTimeIn != null && latestTimeIn >= todayStart -> "On Duty"
+                        else -> "Off Duty"
                     }
 
                     firestore.collection("users").document(userId)
                         .get()
                         .addOnSuccessListener { doc ->
-                            val currentStatus = overrideStatus ?: doc.getString("status") ?: "Off Duty"
+                            val currentStatus = doc.getString("status") ?: statusFromLogs
 
-                            if (!doc.contains("status")) {
-                                firestore.collection("users").document(userId)
-                                    .update("status", currentStatus)
-                            }
+                            // Update Firestore if not yet stored
+                            firestore.collection("users").document(userId)
+                                .update("status", statusFromLogs)
 
-                            val index = statusOptions.indexOf(currentStatus)
+                            val index = statusOptions.indexOf(statusFromLogs)
                             if (index != -1) {
                                 isUserChangingStatus = false
                                 statusSpinner.setSelection(index)
@@ -457,6 +501,7 @@ class HomeActivity : AppCompatActivity() {
         } else {
             loadTodayTimeInPhoto()
             updateSidebarProfileImage()
+            evaluateAndDisplayAttendanceBadge()
         }
     }
 
@@ -603,6 +648,36 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendEventNotification(title: String, message: String) {
+        val channelId = "event_channel_id"
+        val notificationId = System.currentTimeMillis().toInt()
+
+        val intent = Intent(this, HomeActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification) // Create this icon in drawable
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Event Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        notificationManager.notify(notificationId, builder.build())
+    }
+
     private fun setupNavigationDrawer() {
         val headerView = navigationView.getHeaderView(0)
         val sidebarName = headerView.findViewById<TextView>(R.id.sidebar_user_name)
@@ -610,13 +685,30 @@ class HomeActivity : AppCompatActivity() {
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
 
         sidebarName.text = userFirstName ?: "User"
-        sidebarDetails.text = "$idNumber • $department"
+        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId!!)
+        usersRef.get().addOnSuccessListener { userDoc ->
+            val departmentId = userDoc.getString("departmentId")
+            if (!departmentId.isNullOrEmpty()) {
+                FirebaseFirestore.getInstance().collection("departments")
+                    .document(departmentId)
+                    .get()
+                    .addOnSuccessListener { deptDoc ->
+                        val abbreviation = deptDoc.getString("abbreviation") ?: "N/A"
+                        sidebarDetails.text = "$idNumber • $abbreviation"
+                    }
+                    .addOnFailureListener {
+                        sidebarDetails.text = "$idNumber • N/A"
+                    }
+            } else {
+                sidebarDetails.text = "$idNumber • N/A"
+            }
+        }
         sidebarEmail.text = userEmail ?: ""
 
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_home -> {
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_event_log -> {
@@ -626,7 +718,7 @@ class HomeActivity : AppCompatActivity() {
                     val intent = Intent(this, EventLogActivity::class.java)
                     intent.putExtra("userId", userId)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_excuse_letter -> {
@@ -638,14 +730,14 @@ class HomeActivity : AppCompatActivity() {
                         putExtra("department", department)
                     }
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_excuse_letter_history -> {
                     val intent = Intent(this, ExcuseLetterHistoryActivity::class.java)
                     intent.putExtra("userId", userId)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_profile -> {
@@ -657,7 +749,7 @@ class HomeActivity : AppCompatActivity() {
                         putExtra("department", department)
                     }
                     startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
                 R.id.nav_logout -> {
@@ -769,34 +861,17 @@ class HomeActivity : AppCompatActivity() {
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null) ?: return
 
-        // Step 1: Get the user's departmentId from nested "department" object
         FirebaseFirestore.getInstance().collection("users")
             .document(userId)
             .get()
             .addOnSuccessListener { userDoc ->
                 val department = userDoc.get("department")
-                Log.d("DEBUG", "Raw department field: $department")
-                Log.d("DEBUG", "Full user document: ${userDoc.data}")
-
-                val departmentId: String?
-                val departmentName: String?
-
-                if (department is Map<*, *>) {
-                    departmentId = department["departmentId"]?.toString()
-                    departmentName = department["name"]?.toString()
-                } else {
-                    departmentId = null
-                    departmentName = null
-                }
-
+                val departmentId: String? = if (department is Map<*, *>) department["departmentId"]?.toString() else null
                 if (departmentId.isNullOrEmpty()) {
                     Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
                 }
 
-                Log.d("HomeActivity", "User's departmentId: $departmentId")
-
-                // Step 2: Now load events for this departmentId
                 firestore.collection("events")
                     .whereEqualTo("departmentId", departmentId)
                     .get()
@@ -810,11 +885,21 @@ class HomeActivity : AppCompatActivity() {
                                 val duration = doc.getString("duration") ?: "1:00:00"
                                 val date = doc.getTimestamp("date")?.toDate() ?: continue
                                 val dateFormatted = formatter.format(date)
-                                val status = doc.getString("status") ?: "upcoming" // <-- Add this line
+                                val status = doc.getString("status") ?: "upcoming"
+
+                                // 🔔 Notifications
+                                val now = Date()
+                                val timeDiff = date.time - now.time
+                                if (status.equals("upcoming", ignoreCase = true) && timeDiff in 1..(24 * 60 * 60 * 1000)) {
+                                    sendEventNotification("Upcoming Event", "There's an upcoming event on $dateFormatted.")
+                                }
+                                if (status.equals("cancelled", ignoreCase = true)) {
+                                    sendEventNotification("Event Cancelled", "Event on $dateFormatted has been cancelled.")
+                                }
 
                                 allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
                             } catch (e: Exception) {
-                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                                Log.e("FirestoreEvents", "Skipping event due to error: \${e.message}", e)
                             }
                         }
 
@@ -822,12 +907,12 @@ class HomeActivity : AppCompatActivity() {
                         updateFilterButtonStates(btnUpcoming)
                     }
                     .addOnFailureListener {
-                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
+                        Log.e("Firestore", "Failed to load events: \${it.message}", it)
                         Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener {
-                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
+                Log.e("Firestore", "Failed to fetch user document: \${it.message}", it)
                 Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
             }
     }
@@ -875,15 +960,18 @@ class HomeActivity : AppCompatActivity() {
                     val seconds = durationParts[2].toIntOrNull() ?: 0
                     (hours * 3600 + minutes * 60 + seconds) * 1000L
                 }
+
                 2 -> {
                     val hours = durationParts[0].toIntOrNull() ?: 0
                     val minutes = durationParts[1].toIntOrNull() ?: 0
                     (hours * 3600 + minutes * 60) * 1000L
                 }
+
                 1 -> {
                     val minutes = durationParts[0].toIntOrNull() ?: 0
                     (minutes * 60) * 1000L
                 }
+
                 else -> 3600000L
             }
 
@@ -914,6 +1002,14 @@ class HomeActivity : AppCompatActivity() {
         )
 
         recyclerEvents.adapter = EventAdapter(sorted)
+
+        val readableStatus = statusFilter?.replaceFirstChar { it.uppercaseChar() } ?: "Selected"
+        if (sorted.isEmpty()) {
+            noEventsMessage.visibility = View.VISIBLE
+            noEventsMessage.text = "No $readableStatus event/s at the moment."
+        } else {
+            noEventsMessage.visibility = View.GONE
+        }
     }
 
     private fun statusOrder(status: String): Int {
@@ -926,8 +1022,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START)
+        if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
+            drawerLayout.closeDrawer(GravityCompat.END)
         } else if (currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing) {
             // If a tutorial step popup is showing, handle back press to cancel the tour
             currentTutorialPopupWindow?.dismiss() // Dismiss the popup (will trigger its OnDismissListener)
@@ -1170,24 +1266,66 @@ class HomeActivity : AppCompatActivity() {
 
     private fun updateAttendanceBadge(status: String) {
         attendanceStatusBadge.visibility = View.VISIBLE
+        writeAttendanceStatusToRealtime(status) // ✅ Only this, no recursion
 
         when (status.trim().lowercase()) {
             "on time" -> {
                 attendanceStatusBadge.text = "On Time"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_on_time)
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_green))
+                attendanceStatusBadge.background = null
             }
             "late" -> {
                 attendanceStatusBadge.text = "Late"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_late)
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_yellow))
+                attendanceStatusBadge.background = null
+            }
+            "absent" -> {
+                attendanceStatusBadge.text = "Absent"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_red))
+                attendanceStatusBadge.background = null
             }
             "not timed-in" -> {
-                attendanceStatusBadge.text = "Not Timed-In"
-                attendanceStatusBadge.background = ContextCompat.getDrawable(this, R.drawable.attendance_badge_default)
+                attendanceStatusBadge.text = "Has not Timed-In"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray))
+                attendanceStatusBadge.background = null
             }
-            else -> {
-                attendanceStatusBadge.visibility = View.GONE
+            "timed-out" -> {
+                attendanceStatusBadge.text = "Timed-Out"
+                attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray))
+                attendanceStatusBadge.background = null
             }
+            else -> attendanceStatusBadge.visibility = View.GONE
         }
+    }
+
+    private fun writeAttendanceStatusToRealtime(status: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+
+        ref.orderByChild("timestamp").limitToLast(1)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        if (timestamp >= todayStart) {
+                            child.ref.child("attendanceBadge").setValue(status)
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to write badge to Realtime DB: ${error.message}")
+                }
+            })
     }
 
     private fun evaluateAndDisplayAttendanceBadge() {
@@ -1195,47 +1333,125 @@ class HomeActivity : AppCompatActivity() {
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
 
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1)
+        val now = Calendar.getInstance()
+        val currentTime = now.timeInMillis
+
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val cutoff9am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 9)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val cutoff10am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 10)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        ref.orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-
-                    val cutoffTime = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 9)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-
-                    var foundTimeIn = false
+                    var timeInTimestamp: Long? = null
+                    var timeOutTimestamp: Long? = null
+                    var timeInSnapshot: DataSnapshot? = null
+                    var timeOutSnapshot: DataSnapshot? = null
 
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
 
-                        if (type == "TimeIn" && timestamp >= todayStart) {
-                            foundTimeIn = true
-                            if (timestamp <= cutoffTime) {
-                                updateAttendanceBadge("On Time")
-                            } else {
-                                updateAttendanceBadge("Late")
-                            }
-                            break
+                        if (type == "TimeIn" && timestamp != null) {
+                            timeInTimestamp = timestamp
+                            timeInSnapshot = child
+                        } else if (type == "TimeOut" && timestamp != null) {
+                            timeOutTimestamp = timestamp
+                            timeOutSnapshot = child
                         }
                     }
 
-                    if (!foundTimeIn) {
-                        updateAttendanceBadge("Not Timed-In")
+                    if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
+                        updateUserStatus("Off Duty")
+
+                        var badge: String? = null
+                        for (child in snapshot.children) {
+                            val type = child.child("type").getValue(String::class.java)
+                            val badgeValue = child.child("attendanceBadge").getValue(String::class.java)
+                            if ((type == "TimeIn" || type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
+                                badge = badgeValue
+                                break
+                            }
+                        }
+
+                        if (!badge.isNullOrEmpty()) {
+                            updateAttendanceBadge(badge)
+                        } else if (timeInTimestamp != null) {
+                            val fallback = when {
+                                timeInTimestamp < cutoff9am -> "On Time"
+                                timeInTimestamp < cutoff10am -> "Late"
+                                else -> "Absent"
+                            }
+                            updateAttendanceBadge(fallback)
+                            timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
+                        } else {
+                            attendanceStatusBadge.visibility = View.GONE
+                        }
+                    } else if (timeInTimestamp != null) {
+                        val badge = timeInSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                        if (!badge.isNullOrEmpty()) {
+                            updateAttendanceBadge(badge)
+                        } else {
+                            val fallback = when {
+                                timeInTimestamp < cutoff9am -> "On Time"
+                                timeInTimestamp < cutoff10am -> "Late"
+                                else -> "Absent"
+                            }
+                            updateAttendanceBadge(fallback)
+                            timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
+                        }
+                    } else {
+                        val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
+                        val excuseRef = FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId)
+
+                        excuseRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(excuseSnapshot: DataSnapshot) {
+                                var matched = false
+                                for (doc in excuseSnapshot.children) {
+                                    val date = doc.child("date").getValue(String::class.java)
+                                    val status = doc.child("status").getValue(String::class.java)
+                                    if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) {
+                                        matched = true
+                                        break
+                                    }
+                                }
+
+                                if (matched) {
+                                    updateAttendanceBadge("Absent")
+                                    // Optional: Write this badge to the latest excuse-linked node if needed
+                                } else if (currentTime > cutoff10am) {
+                                    updateAttendanceBadge("Has not Timed-In")
+                                } else {
+                                    attendanceStatusBadge.visibility = View.GONE
+                                }
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                updateAttendanceBadge("Has not Timed-In")
+                            }
+                        })
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    updateAttendanceBadge("Not Timed-In")
+                    updateAttendanceBadge("Has not Timed-In")
                 }
             })
     }

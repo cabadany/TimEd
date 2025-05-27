@@ -4,14 +4,15 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         tools:context=".TimeInActivity">
 
     <!-- White background that fills the entire screen -->
     <View
-            android:id="@+id/background"
+            android:id="@+id/background_fill"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FFFFFF" />
+            android:background="@color/white" />
 
     <!-- Top wave animation - adjustable height for different screen sizes -->
     <ImageView
@@ -22,7 +23,8 @@
             android:adjustViewBounds="true"
             android:maxHeight="350dp"
             android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_top" />
+            android:src="@drawable/animated_wave_top"
+            android:importantForAccessibility="no"/>
 
     <!-- Back Button - improved tap target -->
     <ImageView
@@ -34,10 +36,11 @@
             android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
             android:clickable="true"
-            android:contentDescription="Back button"
+            android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
             android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button" />
+            app:srcCompat="@drawable/ic_back_button"
+            app:tint="@color/white"/>
 
     <!-- Title Name - positioned below back button, not fixed to top -->
     <TextView
@@ -53,8 +56,8 @@
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
-            android:text="WILDTIMed"
-            android:textColor="#8B0000"
+            android:text="@string/app_title_timed"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="42sp"
             android:textStyle="bold" />
 
@@ -66,13 +69,12 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_bold"
+            android:fontFamily="@font/roboto_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
-            android:text="Position your face in the camera view"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:text="@string/timein_instruction_position_face"
+            android:textColor="@color/neutral_text_gray"
+            android:textSize="16sp" />
 
     <!-- Camera Box - now using percentage-based dimensions for better adaptability -->
     <androidx.cardview.widget.CardView
@@ -93,8 +95,9 @@
                 android:id="@+id/camera_preview_placeholder"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#DDDDDD"
-                android:scaleType="centerCrop" />
+                android:background="@color/light_gray"
+                android:scaleType="centerCrop"
+                android:contentDescription="Camera preview area"/>
 
         <com.example.timed_mobile.FaceBoxOverlay
                 android:id="@+id/face_box_overlay"
@@ -111,9 +114,10 @@
             android:layout_centerHorizontal="true"
             android:layout_marginBottom="8dp"
             android:clickable="true"
-            android:contentDescription="QR Scanner Button"
+            android:contentDescription="@string/content_desc_qr_scanner_button"
             android:focusable="true"
             app:srcCompat="@drawable/ic_qr_scanner"
+            app:tint="@color/primary_medium_blue"
             android:stateListAnimator="@animator/button_scale_animator"/>
 
     <!-- QR Scanner reminder text -->
@@ -125,13 +129,12 @@
             android:layout_marginStart="32dp"
             android:layout_marginBottom="24dp"
             android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_bold"
+            android:fontFamily="@font/roboto_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
-            android:text="Click here for QR Scan Event"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:text="@string/timein_qr_scan_event_reminder"
+            android:textColor="@color/neutral_text_gray"
+            android:textSize="16sp" />
 
     <!-- Time-In Button - anchored to bottom with consistent margins -->
     <Button
@@ -142,15 +145,16 @@
             android:layout_marginStart="40dp"
             android:layout_marginEnd="40dp"
             android:layout_marginBottom="32dp"
-            android:backgroundTint="@color/yellow_gold"
+            android:backgroundTint="@color/accent_coral"
             android:elevation="6dp"
             android:fontFamily="@font/roboto_medium"
             android:minHeight="50dp"
             android:padding="12dp"
-            android:text="Time - In"
-            android:textColor="@color/maroon"
+            android:text="@string/button_time_in"
+            android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:cornerRadius="8dp" />
+            app:cornerRadius="8dp"
+            android:stateListAnimator="@animator/button_scale_animator"/>
 
 </RelativeLayout>
