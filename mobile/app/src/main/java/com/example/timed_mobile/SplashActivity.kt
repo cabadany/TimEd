@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -19,6 +20,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import android.animation.AnimatorInflater
+import android.animation.Animator
 
 class SplashActivity : AppCompatActivity() {
 
@@ -51,6 +54,22 @@ class SplashActivity : AppCompatActivity() {
 
         logo.startAnimation(zoomIn)
 
+        val iconContainers = listOf(
+            R.id.float_event_container,
+            R.id.float_form_container,
+            R.id.float_users_container,
+            R.id.float_chart_container,
+            R.id.float_clock_container,
+            R.id.float_verified_container
+        )
+
+        for (id in iconContainers) {
+            val view = findViewById<View>(id)
+            val animator = AnimatorInflater.loadAnimator(this, R.animator.floating_icon_motion)
+            animator.setTarget(view)
+            animator.start()
+        }
+
         Handler(Looper.getMainLooper()).postDelayed({
             appName.alpha = 1f
             appName.startAnimation(fadeIn)
@@ -62,9 +81,9 @@ class SplashActivity : AppCompatActivity() {
 
                 Handler(Looper.getMainLooper()).postDelayed({
                     checkUserSessionAndProceed()
-                }, 1500)
-            }, 500)
-        }, 800)
+                }, 5000)
+            }, 1000)
+        }, 1200)
     }
 
     private fun checkUserSessionAndProceed() {
@@ -90,7 +109,10 @@ class SplashActivity : AppCompatActivity() {
                 startActivity(intent)
                 finishAndFade()
             } else {
-                Log.e(TAG, "User logged in (SharedPreferences) but userId is null. Navigating to Login.")
+                Log.e(
+                    TAG,
+                    "User logged in (SharedPreferences) but userId is null. Navigating to Login."
+                )
                 clearLoginDataAndNavigateToLogin()
             }
         } else {
@@ -147,7 +169,11 @@ class SplashActivity : AppCompatActivity() {
                     startAnimations()
                 }
             } else {
-                Toast.makeText(this, "Location permission denied. Some features might be limited.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Location permission denied. Some features might be limited.",
+                    Toast.LENGTH_LONG
+                ).show()
                 Log.w(TAG, "Location permission denied. Proceeding to user session check.")
                 Handler(Looper.getMainLooper()).postDelayed({
                     checkUserSessionAndProceed()
@@ -167,7 +193,11 @@ class SplashActivity : AppCompatActivity() {
             }
             .setNegativeButton("Continue without") { dialog, _ ->
                 dialog.dismiss()
-                Toast.makeText(this, "Proceeding without location-based features.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Proceeding without location-based features.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 checkUserSessionAndProceed()
             }
             .show()
