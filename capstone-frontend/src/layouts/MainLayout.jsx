@@ -226,10 +226,10 @@ const MainLayout = ({ children, title }) => {
           position: 'relative'
         }}>
           <img 
-            src="/timed 1.png" 
+            src="/timeed.png" 
             alt="TimeED Logo" 
             style={{ 
-              height: collapsed ? 40 : 80,
+              height: collapsed ? 40 : 100,
               transition: 'height 0.3s ease'
             }} 
             className="logo-image"

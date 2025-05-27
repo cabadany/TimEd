@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   Box,
   Typography,
@@ -59,6 +60,7 @@ const AttendanceModal = memo(({
   formatTimeoutStatus,
   eventId
 }) => {
+  const { darkMode } = useTheme();
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [allUsers, setAllUsers] = useState([]);
   const [modalFilteredUsers, setModalFilteredUsers] = useState([]);
@@ -171,7 +173,7 @@ const AttendanceModal = memo(({
           width: '90%',
           maxWidth: 900,
           maxHeight: '90vh',
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
           borderRadius: '12px',
           overflow: 'hidden',
@@ -183,18 +185,20 @@ const AttendanceModal = memo(({
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            borderBottom: '1px solid #E2E8F0',
-            bgcolor: '#F8FAFC'
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#1e1e1e' : '#F8FAFC'
           }}>
-            <Typography variant="h6" fontWeight="600" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#1E293B' }}>
-              <ManageAccounts sx={{ color: '#0288d1' }} /> 
+            <Typography variant="h6" fontWeight="600" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: darkMode ? '#f5f5f5' : '#1E293B' }}>
+              <ManageAccounts sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} /> 
               Manage Event Attendance
             </Typography>
             <IconButton 
               onClick={onClose} 
               sx={{ 
-                bgcolor: '#F1F5F9', 
-                '&:hover': { bgcolor: '#E2E8F0' },
+                bgcolor: darkMode ? '#333333' : '#F1F5F9', 
+                color: darkMode ? '#f5f5f5' : 'inherit',
+                '&:hover': { bgcolor: darkMode ? '#404040' : '#E2E8F0' },
                 transition: 'all 0.2s ease',
               }}
             >
@@ -202,7 +206,7 @@ const AttendanceModal = memo(({
             </IconButton>
           </Box>
           
-          <Box sx={{ p: 2.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#FFFFFF' }}>
+          <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: darkMode ? '#333333' : '#E2E8F0', bgcolor: darkMode ? '#1e1e1e' : '#FFFFFF' }}>
             <TextField
               placeholder="Search faculty members..."
               variant="outlined"
@@ -212,7 +216,7 @@ const AttendanceModal = memo(({
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search sx={{ color: '#64748B', fontSize: 20 }} />
+                    <Search sx={{ color: darkMode ? '#90caf9' : '#64748B', fontSize: 20 }} />
                   </InputAdornment>
                 ),
               }}
@@ -221,17 +225,18 @@ const AttendanceModal = memo(({
                 maxWidth: '350px',
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  backgroundColor: '#F8FAFC',
-                  '&:hover': {
-                    '& > fieldset': {
-                      borderColor: '#0288d1',
-                    }
+                  backgroundColor: darkMode ? '#333333' : '#F8FAFC',
+                  '& fieldset': {
+                    borderColor: darkMode ? '#404040' : 'inherit',
                   },
-                  '&.Mui-focused': {
-                    '& > fieldset': {
-                      borderColor: '#0288d1',
-                      borderWidth: '1px',
-                    }
+                  '&:hover fieldset': {
+                    borderColor: darkMode ? '#90caf9' : '#0288d1',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: darkMode ? '#90caf9' : '#0288d1',
+                  },
+                  '& input': {
+                    color: darkMode ? '#f5f5f5' : 'inherit',
                   }
                 }
               }}
@@ -241,7 +246,8 @@ const AttendanceModal = memo(({
           <Box sx={{ 
             flex: 1, 
             overflowY: 'auto',
-            p: 0
+            p: 0,
+            bgcolor: darkMode ? '#1e1e1e' : '#FFFFFF'
           }}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
@@ -381,12 +387,13 @@ const AttendanceModal = memo(({
           sx: {
             borderRadius: '12px',
             boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           }
         }}
       >
         <DialogTitle sx={{ 
           borderBottom: '1px solid #E2E8F0', 
-          bgcolor: '#F8FAFC',
+          bgcolor: darkMode ? '#333333' : '#F8FAFC',
           py: 2,
           px: 3
         }}>
@@ -483,6 +490,7 @@ const ImageZoomModal = ({ imageUrl, onClose }) => (
 );
 
 export default function Attendance() {
+  const { darkMode } = useTheme();
   const { eventId } = useParams();
   const navigate = useNavigate();
   
@@ -901,12 +909,13 @@ export default function Attendance() {
       <Box sx={{ 
         py: 1.5, 
         px: 3,
-        bgcolor: 'white', 
-        borderBottom: '1px solid #EAECF0',
+        bgcolor: darkMode ? '#1e1e1e' : 'white', 
+        borderBottom: '1px solid',
+        borderColor: darkMode ? '#333333' : '#EAECF0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        boxShadow: darkMode ? '0 1px 2px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.05)'
       }}>
 
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -934,9 +943,9 @@ export default function Attendance() {
         p: 3, 
         flex: 1, 
         overflow: 'auto', 
-        bgcolor: '#FFFFFF' 
+        bgcolor: darkMode ? '#121212' : '#FFFFFF' 
       }}>
-         <Typography variant="h5" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>
+         <Typography variant="h5" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 3 }}>
               Event Attendance Details
             </Typography>
             
@@ -945,45 +954,47 @@ export default function Attendance() {
               <Grid item xs={12} md={6}>
                 <Card sx={{ 
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid #E2E8F0', 
+                  border: '1px solid',
+                  borderColor: darkMode ? '#333333' : '#E2E8F0', 
                   height: '100%',
                   borderRadius: '12px',
+                  bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
                   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 12px rgba(0,0,0,0.1)'
+                    boxShadow: darkMode ? '0 6px 12px rgba(0,0,0,0.2)' : '0 6px 12px rgba(0,0,0,0.1)'
                   }
                 }}>
                   <CardContent>
-                    <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Event sx={{ color: '#0288d1' }} />
+                    <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Event sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} />
                       Event Information
                     </Typography>
                     
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Event Name</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                           {event?.eventName || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Event ID</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                           {event?.eventId || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Duration</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <AccessTime sx={{ fontSize: 16, color: '#64748B' }} />
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <AccessTime sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
                           {event?.duration || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Date</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <CalendarToday sx={{ fontSize: 16, color: '#64748B' }} />
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <CalendarToday sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
                           {formatEventDate(event?.date)}
                         </Typography>
                       </Grid>
@@ -1012,38 +1023,40 @@ export default function Attendance() {
               <Grid item xs={12} md={6}>
                 <Card sx={{ 
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid #E2E8F0', 
+                  border: '1px solid',
+                  borderColor: darkMode ? '#333333' : '#E2E8F0', 
                   height: '100%',
                   borderRadius: '12px',
+                  bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
                   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 12px rgba(0,0,0,0.1)'
+                    boxShadow: darkMode ? '0 6px 12px rgba(0,0,0,0.2)' : '0 6px 12px rgba(0,0,0,0.1)'
                   }
                 }}>
                   <CardContent>
-                    <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <School sx={{ color: '#0288d1' }} />
+                    <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <School sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} />
                       Hosted by Department
                     </Typography>
                     
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <Typography variant="caption" color="#64748B">Department Name</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                           {department?.name || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Abbreviation</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                           {department?.abbreviation || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="caption" color="#64748B">Number of Faculty</Typography>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Group sx={{ fontSize: 16, color: '#64748B' }} />
+                        <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Group sx={{ fontSize: 16, color: darkMode ? '#90caf9' : '#64748B' }} />
                           {department?.numberOfFaculty || 'N/A'}
                         </Typography>
                       </Grid>
@@ -1075,18 +1088,19 @@ export default function Attendance() {
                 </Card>
               </Grid>
             </Grid>
-            <Button
+          {/*  <Button
                     variant="contained"
                     onClick={handleOpenManageModal}
                     startIcon={<ManageAccounts />}
                     sx={{
-                      backgroundColor: '#0288d1',
+                      backgroundColor: darkMode ? '#90caf9' : '#0288d1',
+                      color: darkMode ? '#1e1e1e' : '#ffffff',
                       '&:hover': {
-                        backgroundColor: '#0277bd'
+                        backgroundColor: darkMode ? '#64b5f6' : '#0277bd'
                       },
                       borderRadius: '8px',
                       whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 8px rgba(2,136,209,0.2)',
+                      boxShadow: darkMode ? '0 4px 8px rgba(144,202,249,0.2)' : '0 4px 8px rgba(2,136,209,0.2)',
                       transition: 'all 0.2s ease-in-out',
                       fontWeight: 600,
                       fontSize: '0.875rem',
@@ -1100,7 +1114,7 @@ export default function Attendance() {
                   >
                     Manage Attendance
                   </Button>
-                  
+                  */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress size={32} sx={{ color: '#0288d1' }} />
@@ -1144,8 +1158,8 @@ export default function Attendance() {
                 gap: 2
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="h6" fontWeight="600" color="#1E293B">
-                    <Group sx={{ color: '#0288d1', mr: 1, verticalAlign: 'middle' }} />
+                  <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
+                    <Group sx={{ color: darkMode ? '#90caf9' : '#0288d1', mr: 1, verticalAlign: 'middle' }} />
                     Faculty Attendees
                   </Typography>
                   <Chip 
@@ -1176,7 +1190,7 @@ export default function Attendance() {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Search sx={{ color: '#64748B', fontSize: 20 }} />
+                          <Search sx={{ color: darkMode ? '#90caf9' : '#64748B', fontSize: 20 }} />
                         </InputAdornment>
                       ),
                     }}
@@ -1184,7 +1198,7 @@ export default function Attendance() {
                       width: { xs: '100%', sm: '250px' },
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '8px',
-                        backgroundColor: '#F8FAFC'
+                        backgroundColor: darkMode ? '#333333' : '#F8FAFC'
                       }
                     }}
                   />
@@ -1196,11 +1210,21 @@ export default function Attendance() {
               <TableContainer 
                 component={Paper} 
                 sx={{ 
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)', 
-                  border: '1px solid #E2E8F0',
+                  boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.08)', 
+                  border: '1px solid',
+                  borderColor: darkMode ? '#333333' : '#E2E8F0',
                   borderRadius: '12px',
                   overflow: 'hidden',
-                  maxHeight: 'calc(100vh - 400px)'
+                  maxHeight: 'calc(100vh - 400px)',
+                  bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
+                  '& .MuiTableCell-root': {
+                    borderColor: darkMode ? '#333333' : 'inherit',
+                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  },
+                  '& .MuiTableHead-root .MuiTableCell-root': {
+                    bgcolor: darkMode ? '#333333' : '#F8FAFC',
+                    color: darkMode ? '#90caf9' : '#475569'
+                  }
                 }}
               >
                 {filteredAttendees.length === 0 ? (

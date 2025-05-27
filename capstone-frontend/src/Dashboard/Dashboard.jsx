@@ -1381,7 +1381,6 @@ export default function Dashboard() {
                                       width: 40,
                                       height: 40,
                                       borderRadius: '50%',
-                                      bgcolor: 'grey.300',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
