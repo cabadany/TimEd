@@ -35,6 +35,7 @@
     <string name="welcome_message_text">Hello Professor! TimEd is here to simplify your daily tasks, starting with efficient attendance tracking. Let\'s get you set up.</string>
     <string name="button_get_started">Get Started</string>
 
+    <string name="desc_feature_icon_time_tracking">Icon representing time tracking feature</string>
 
     //New User Final Step Page
     <string name="final_step_title_text">You\'re Ready to Go!</string>
