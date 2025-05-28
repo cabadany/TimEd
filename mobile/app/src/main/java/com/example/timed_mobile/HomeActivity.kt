@@ -149,6 +149,9 @@ class HomeActivity : AppCompatActivity() {
             shouldConsumeTouch
         }
 
+
+
+
         drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
@@ -176,6 +179,57 @@ class HomeActivity : AppCompatActivity() {
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
         statusSpinner.adapter = statusAdapter
+
+
+        val greetingCardView = findViewById<androidx.cardview.widget.CardView>(R.id.greeting_card)
+        val filterButtonsLayout = findViewById<LinearLayout>(R.id.filter_buttons)
+
+        val attendancePromptView: TextView? = try {
+            findViewById(R.id.attendance_prompt)
+        } catch (e: Exception) {
+            null // Handle if the view doesn't exist to prevent crashes
+        }
+
+        // Load animations
+        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        val animFadeInContent = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        val animSlideUpFadeInBottom = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+
+        // Apply animations with staggered delays
+
+        // 1. Greeting Card
+        greetingCardView.startAnimation(animSlideDownFadeIn)
+
+        // 2. Filter Buttons (delay slightly after greeting card)
+        val animSlideDownFilters = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideDownFilters.startOffset = 200L // 200ms delay
+        filterButtonsLayout.startAnimation(animSlideDownFilters)
+
+        // 3. Event List (RecyclerView)
+        val animFadeInRecycler = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        animFadeInRecycler.startOffset = 400L // 400ms delay
+        recyclerEvents.startAnimation(animFadeInRecycler)
+
+        // 4. Bottom elements - animate them with slight staggers
+        val baseDelayBottom = 600L
+
+        attendancePromptView?.let {
+            val animSlideUpPrompt = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+            animSlideUpPrompt.startOffset = baseDelayBottom
+            it.startAnimation(animSlideUpPrompt)
+        }
+
+        val animSlideUpTimeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpTimeIn.startOffset = baseDelayBottom + (if (attendancePromptView != null) 100L else 0L)
+        btnTimeIn.startAnimation(animSlideUpTimeIn)
+
+        val animSlideUpTimeOut = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpTimeOut.startOffset = baseDelayBottom + (if (attendancePromptView != null) 200L else 100L)
+        btnTimeOut.startAnimation(animSlideUpTimeOut)
+
+        val animSlideUpExcuseLetter = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpExcuseLetter.startOffset = baseDelayBottom + (if (attendancePromptView != null) 300L else 200L)
+        excuseLetterText.startAnimation(animSlideUpExcuseLetter)
 
         // Setup for btn_help
         btnHelp.setOnClickListener {

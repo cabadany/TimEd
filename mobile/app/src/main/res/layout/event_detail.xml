@@ -34,7 +34,7 @@
             android:contentDescription="@string/content_desc_back"
             app:srcCompat="@drawable/ic_back_button"
             app:tint="@color/white"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:background="@drawable/ripple_icon_back_button" />
 
     <!-- Event Title -->
     <TextView
