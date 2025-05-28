@@ -96,6 +96,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var attendanceStatusBadge: TextView
 
     private lateinit var btnHelp: ImageView
+    private lateinit var profileImagePlaceholder: ImageView // Declare profileImagePlaceholder
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -175,6 +176,8 @@ class HomeActivity : AppCompatActivity() {
 
         btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
         noEventsMessage = findViewById(R.id.no_events_message)
+        profileImagePlaceholder = findViewById(R.id.profile_image_placeholder) // Initialize profileImagePlaceholder
+
 
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
@@ -307,6 +310,23 @@ class HomeActivity : AppCompatActivity() {
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
+
+        // --- START OF PROFILE NAVIGATION SETUP ---
+        val profileClickListener = View.OnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+                putExtra("idNumber", idNumber)
+                putExtra("department", department) // Assuming department string is what ProfileActivity expects
+            }
+            startActivity(intent)
+        }
+
+        profileImagePlaceholder.setOnClickListener(profileClickListener)
+        greetingName.setOnClickListener(profileClickListener)
+        // --- END OF PROFILE NAVIGATION SETUP ---
+
 
         swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
         swipeRefreshLayout.setOnRefreshListener {
@@ -902,7 +922,7 @@ class HomeActivity : AppCompatActivity() {
             val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
-                putExtra("email", userEmail)
+                // putExtra("email", userEmail) // Duplicate email extra
                 putExtra("firstName", userFirstName)
                 putExtra("idNumber", idNumber)
                 putExtra("department", department)
@@ -953,7 +973,7 @@ class HomeActivity : AppCompatActivity() {
 
                                 allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
                             } catch (e: Exception) {
-                                Log.e("FirestoreEvents", "Skipping event due to error: \${e.message}", e)
+                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
                             }
                         }
 
@@ -961,12 +981,12 @@ class HomeActivity : AppCompatActivity() {
                         updateFilterButtonStates(btnUpcoming)
                     }
                     .addOnFailureListener {
-                        Log.e("Firestore", "Failed to load events: \${it.message}", it)
+                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
                         Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener {
-                Log.e("Firestore", "Failed to fetch user document: \${it.message}", it)
+                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
                 Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
             }
     }

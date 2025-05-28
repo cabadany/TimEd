@@ -116,4 +116,8 @@
     <string name="content_desc_event_date_icon">Event date icon</string>
     <string name="content_desc_event_status_icon">Event status icon</string>
     <string name="content_desc_description_icon">Description icon</string>
+
+    <string name="event_log_title_text">Event Records</string>
+    <string name="event_log_empty_data">No event logs found.</string>
+    <string name="content_desc_back_button_event_log">Back</string>
 </resources>
