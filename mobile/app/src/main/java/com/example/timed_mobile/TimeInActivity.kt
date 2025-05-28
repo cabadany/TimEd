@@ -90,22 +90,12 @@ class TimeInActivity : AppCompatActivity() {
 
         backButton.setOnClickListener { finish() }
 
-        findViewById<ImageView>(R.id.icon_qr_scanner).setOnClickListener {
-            Intent(this, TimeInEventActivity::class.java).apply {
-                putExtra("userId", userId)
-                putExtra("email", userEmail)
-                putExtra("firstName", userFirstName)
-            }.also { startActivity(it) }
-        }
-
-        // Debug current authentication state
         val auth = FirebaseAuth.getInstance()
         val currentUser = auth.currentUser
 
         if (currentUser != null) {
             Log.d(TAG, "Firebase Auth: User IS authenticated. UID: ${currentUser.uid}")
             isAuthenticated = true
-            // ❌ Do NOT override userId
         } else {
             Log.e(TAG, "Firebase Auth: User is NOT authenticated")
             signInAnonymouslyForStorage { success ->
@@ -118,7 +108,6 @@ class TimeInActivity : AppCompatActivity() {
             }
         }
 
-        // Debug auth state and userId mismatch
         Log.d(TAG, "Authentication state - isAuthenticated: $isAuthenticated, userId: $userId, " +
                 "firebaseUID: ${currentUser?.uid}")
 
@@ -139,15 +128,12 @@ class TimeInActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Recheck current authentication state
             val currentAuth = FirebaseAuth.getInstance()
             val user = currentAuth.currentUser
 
             if (user == null) {
-                // Not authenticated with Firebase Auth, try anonymous auth
                 signInAnonymouslyForStorage { success ->
                     if (success) {
-                        // Now we're authenticated, proceed with the original action
                         val firebaseUser = FirebaseAuth.getInstance().currentUser
                         if (firebaseUser != null) {
                             checkAndCapturePhoto(userId ?: firebaseUser.uid)
@@ -161,7 +147,6 @@ class TimeInActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // We have a Firebase Auth user, proceed
             checkAndCapturePhoto(userId ?: user.uid)
         }
     }
@@ -181,7 +166,6 @@ class TimeInActivity : AppCompatActivity() {
     }
 
     private fun signInAnonymouslyForStorage(callback: ((Boolean) -> Unit)? = null) {
-        // Display a progress dialog
         val progressDialog = AlertDialog.Builder(this)
             .setTitle("Authenticating")
             .setMessage("Please wait...")
@@ -194,7 +178,6 @@ class TimeInActivity : AppCompatActivity() {
                 Log.d(TAG, "Anonymous auth success")
                 isAuthenticated = true
 
-                // Link this anonymous account with the userId if available
                 if (!userId.isNullOrEmpty()) {
                     // Here you would typically link the anonymous account with the userId
                     // This depends on your authentication setup

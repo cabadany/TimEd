@@ -1,62 +1,200 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="@drawable/splash_background">
 
-    <!-- Top wave -->
-    <View
-        android:id="@+id/top_wave"
-        android:layout_width="match_parent"
-        android:layout_height="250dp"
-        android:paddingBottom="-100dp"
-        android:layout_alignParentTop="true"
-        android:background="@drawable/wave_top_design" />
-
-    <!-- Bottom wave -->
-    <View
-        android:id="@+id/bottom_wave"
-        android:layout_width="match_parent"
-        android:layout_height="250dp"
-        android:layout_alignParentBottom="true"
-        android:background="@drawable/wave_bottom_design" />
-
+    <!-- Logo -->
     <ImageView
         android:id="@+id/splash_logo"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
-        android:layout_marginTop="-40dp"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
         android:src="@drawable/timeed_logo"
-        android:contentDescription="App Logo" />
+        android:contentDescription="App Logo"
+        android:scaleType="fitCenter"
+        android:layout_marginTop="160dp"
+        android:elevation="8dp"
+        android:shadowColor="#803538CD"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="12"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Floating Icons Around Logo (Scattered Style) -->
+    <FrameLayout
+        android:id="@+id/float_event_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="145dp"
+        android:layout_marginStart="50dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_event"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_event"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/float_form_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="180dp"
+        android:layout_marginEnd="50dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_form"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_form"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/float_users_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="220dp"
+        android:layout_marginStart="30dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_users"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_users"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/float_chart_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="230dp"
+        android:layout_marginEnd="30dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_report"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_chart"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/float_clock_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="275dp"
+        android:layout_marginStart="60dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_clock"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_clock"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/float_verified_container"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="275dp"
+        android:layout_marginEnd="60dp"
+        android:background="@drawable/circle_bg_white_shadow"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/icon_verified"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_verified"
+            android:shadowColor="#553538CD"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8" />
+    </FrameLayout>
 
     <!-- App Name -->
     <TextView
         android:id="@+id/splash_app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/splash_logo"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:fontFamily="@font/league_spartan_bold"
-        android:text="Welcome to TimeEd"
-        android:textColor="#475569"
-        android:textSize="36sp"
+        android:text="Smarter Attendance \nStarts Here"
+        android:textColor="#37474F"
+        android:textSize="30dp"
         android:textStyle="bold"
-        android:alpha="0" />
+        android:textAlignment="center"
+        android:fontFamily="@font/league_spartan_bold"
+        android:alpha="0"
+        android:shadowColor="#803538CD"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="8"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/splash_logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Loading indicator -->
+    <!-- Progress -->
     <ProgressBar
         android:id="@+id/splash_progress"
-        style="@style/Widget.AppCompat.ProgressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/splash_app_name"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:indeterminateTint="#039be5"
-        android:alpha="0" />
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="160dp"
+        android:alpha="0"
+        android:indeterminateTint="#37474F"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/splash_app_name" />
 
-</RelativeLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

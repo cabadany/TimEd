@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+        android:color="?android:attr/colorControlHighlight">
+    <item android:id="@android:id/mask"
+            android:drawable="@drawable/ic_back_arrow_mask_shape" /> <!-- Use the new static mask -->
+</ripple>
