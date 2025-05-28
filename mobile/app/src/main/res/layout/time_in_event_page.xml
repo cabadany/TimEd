@@ -41,7 +41,7 @@
             android:focusable="true"
             android:padding="8dp"
             app:srcCompat="@drawable/ic_back_button"
-            app:tint="@color/white"
+            android:background="@drawable/ripple_icon_back_button"
             android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Title Name -->

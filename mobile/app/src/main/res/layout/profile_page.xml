@@ -231,6 +231,6 @@
             android:focusable="true"
             android:contentDescription="Back button"
             app:srcCompat="@drawable/ic_back_button"
-            app:tint="@color/white"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:background="@drawable/ripple_icon_back_button"
+            android:stateListAnimator="@animator/button_scale_animator" />
 </RelativeLayout>

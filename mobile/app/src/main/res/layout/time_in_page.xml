@@ -37,7 +37,9 @@
             android:contentDescription="Back button"
             android:focusable="true"
             android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button" />
+            app:srcCompat="@drawable/ic_back_button"
+            android:background="@drawable/ripple_icon_back_button"
+            android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Title Name - positioned below back button, not fixed to top -->
     <TextView
