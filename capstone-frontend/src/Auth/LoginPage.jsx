@@ -116,20 +116,20 @@ function LoginPage() {
     setUserInfoLoading(true);
     try {
       // First, try to get the user's email using the existing endpoint
-      const response = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+      const response = await axios.get('https://timed-utd9.onrender.com/api/auth/auth/email-by-schoolId', {
         params: { schoolId: idNumber }
       });
       
       if (response.data) {
         try {
           // Get the user's login info first
-          const loginResponse = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+          const loginResponse = await axios.post('https://timed-utd9.onrender.com/api/auth/login-by-schoolId', {
             schoolId: idNumber
           });
           
           if (loginResponse.data && loginResponse.data.userId) {
             // Now use the userId to get full user details
-            const userDetailsResponse = await axios.get(`http://localhost:8080/api/user/getUser/${loginResponse.data.userId}`, {
+            const userDetailsResponse = await axios.get(`https://timed-utd9.onrender.com/api/user/getUser/${loginResponse.data.userId}`, {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
                 'Content-Type': 'application/json'
@@ -216,7 +216,7 @@ function LoginPage() {
   
     try {
       // 🔄 Get email from backend using schoolId
-      const emailResponse = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+      const emailResponse = await axios.get('https://timed-utd9.onrender.com/api/auth/auth/email-by-schoolId', {
         params: { schoolId: idNumber }
       });
   
@@ -229,7 +229,7 @@ function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
   
       // 🔓 If login success, call backend to get user role & token (now including password)
-      const response = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+      const response = await axios.post('https://timed-utd9.onrender.com/api/auth/login-by-schoolId', {
         schoolId: idNumber
       });
 

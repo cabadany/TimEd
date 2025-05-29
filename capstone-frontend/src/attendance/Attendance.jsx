@@ -85,7 +85,7 @@ const AttendanceModal = memo(({
   const fetchAllUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8080/api/user/getAll');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
       
       // Create a map of existing attendees by userId for quick lookup
       const attendeeMap = new Map();
@@ -541,7 +541,7 @@ export default function Attendance() {
   // Helper to fetch user details by userId
   const fetchUserById = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
+      const response = await axios.get(`https://timed-utd9.onrender.com/api/user/getUser/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user by ID:', userId, error);
@@ -556,7 +556,7 @@ export default function Attendance() {
       try {
         setLoading(true);
         // Fetch all events to find the specific one
-        const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
+        const eventsResponse = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
         const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
         if (!foundEvent) {
           throw new Error('Event not found');
@@ -564,12 +564,12 @@ export default function Attendance() {
         setEvent(foundEvent);
         // Fetch department details
         if (foundEvent.departmentId) {
-          const departmentsResponse = await axios.get('http://localhost:8080/api/departments');
+          const departmentsResponse = await axios.get('https://timed-utd9.onrender.com/api/departments');
           const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
           setDepartment(foundDepartment);
         }
         // Fetch attendees
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
         let attendeesData = attendeesResponse.data;
         // Fetch user details for each attendee to get profilePictureUrl
         const attendeesWithProfile = await Promise.all(attendeesData.map(async (att) => {
@@ -640,7 +640,7 @@ export default function Attendance() {
   const handleManualTimeIn = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timein`);
+      const response = await axios.post(`https://timed-utd9.onrender.com/api/attendance/${eventId}/${userId}/manual/timein`);
       
       if (response.status === 200) {
         if (response.data.includes("already timed in")) {
@@ -653,7 +653,7 @@ export default function Attendance() {
         }
 
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         
@@ -693,11 +693,11 @@ export default function Attendance() {
   const handleManualTimeOut = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timeout`);
+      const response = await axios.post(`https://timed-utd9.onrender.com/api/attendance/${eventId}/${userId}/manual/timeout`);
       
       if (response.status === 200) {
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         

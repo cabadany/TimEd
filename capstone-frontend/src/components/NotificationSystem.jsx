@@ -45,7 +45,7 @@ const NotificationSystem = () => {
   // Fetch recent events for notifications
   const fetchRecentEvents = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/events/getAll');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
       const allEvents = response.data;
       
       // Sort events by date created/added (most recent first)

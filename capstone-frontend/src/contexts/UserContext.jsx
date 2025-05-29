@@ -65,7 +65,7 @@ export const UserProvider = ({ children }) => {
       
       try {
         // Fetch user data from the API - fixed endpoint to match backend controller
-        const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
+        const response = await axios.get(`https://timed-utd9.onrender.com/api/user/getUser/${userId}`);
         setUser(response.data);
         
         // Check if user has a profile picture URL
@@ -126,7 +126,7 @@ export const UserProvider = ({ children }) => {
       const userId = localStorage.getItem('userId');
       if (userId) {
         try {
-          await axios.put(`http://localhost:8080/api/user/updateProfilePicture/${userId}`, {
+          await axios.put(`https://timed-utd9.onrender.com/api/user/updateProfilePicture/${userId}`, {
             profilePictureUrl: url
           });
         } catch (error) {

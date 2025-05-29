@@ -23,7 +23,7 @@ export default function QRJoin() {
           ? parts[2]
           : rawParam;
 
-        const timeInResponse = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}`);
+        const timeInResponse = await axios.post(`https://timed-utd9.onrender.com/api/attendance/${eventId}/${userId}`);
         if (isMounted) {
           if (timeInResponse.data.includes("Already timed in")) {
             setError("You have already timed in for this event and received a certificate.");

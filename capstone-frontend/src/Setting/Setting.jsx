@@ -93,7 +93,7 @@ export default function SettingPage() {
         if (storedUserId) {
           setUserId(storedUserId); // Set the userId state immediately
           
-          const response = await axios.get(`http://localhost:8080/api/user/getUser/${storedUserId}`);
+          const response = await axios.get(`https://timed-utd9.onrender.com/api/user/getUser/${storedUserId}`);
           console.log("Response Status:", response.status);
           console.log("Response Data:", response.data); // Log the fetched user data
           
@@ -114,7 +114,7 @@ export default function SettingPage() {
             if (userData.departmentId) {
               try {
                 console.log("Fetching department with ID:", userData.departmentId);
-                const deptResponse = await axios.get(`http://localhost:8080/api/departments/${userData.departmentId}`);
+                const deptResponse = await axios.get(`https://timed-utd9.onrender.com/api/departments/${userData.departmentId}`);
                 console.log("Department Response Status:", deptResponse.status);
                 console.log("Department Response Data:", deptResponse.data);
                 
@@ -131,7 +131,7 @@ export default function SettingPage() {
                 console.error('Error fetching department by ID:', deptError);
                 // Fallback to fetching all departments if specific endpoint fails
                 try {
-                  const allDeptsResponse = await axios.get(`http://localhost:8080/api/departments`);
+                  const allDeptsResponse = await axios.get(`https://timed-utd9.onrender.com/api/departments`);
                   if (allDeptsResponse.status === 200) {
                     const departments = allDeptsResponse.data;
                     const userDept = departments.find(dept => dept.departmentId === userData.departmentId);
@@ -248,7 +248,7 @@ export default function SettingPage() {
         console.log("User  data being sent:", userData);
         
         // Update user profile in the database
-        const response = await axios.put(`http://localhost:8080/api/user/updateUser/${userIdToUse}`, userData);
+        const response = await axios.put(`https://timed-utd9.onrender.com/api/user/updateUser/${userIdToUse}`, userData);
         
         if (response.status === 200) {
             setSuccessMessage('Profile updated successfully');

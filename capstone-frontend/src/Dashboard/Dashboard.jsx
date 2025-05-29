@@ -175,7 +175,7 @@ export default function Dashboard() {
   
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/departments');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/departments');
       setDepartments(response.data);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -190,7 +190,7 @@ export default function Dashboard() {
       
       // Use the paginated endpoint but with a large size to get all events
       // Use cache buster to prevent caching issues
-      let url = 'http://localhost:8080/api/events/getPaginated';
+      let url = 'https://timed-utd9.onrender.com/api/events/getPaginated';
       const params = { 
         page: 0,
         size: 100, // Get up to 100 events at once
@@ -198,7 +198,7 @@ export default function Dashboard() {
       };
       
       if (startDate || endDate) {
-        url = 'http://localhost:8080/api/events/getByDateRange';
+        url = 'https://timed-utd9.onrender.com/api/events/getByDateRange';
         if (startDate) params.startDate = startDate;
         if (endDate) params.endDate = endDate;
       }
@@ -238,7 +238,7 @@ export default function Dashboard() {
           processedEvent.status = 'Ongoing';
           
           // Update the backend about this status correction using the dedicated endpoint
-          axios.put(`http://localhost:8080/api/events/updateStatus/${event.eventId}`, {
+          axios.put(`https://timed-utd9.onrender.com/api/events/updateStatus/${event.eventId}`, {
             status: 'Ongoing'
           }).catch(error => {
             console.error('Failed to update event status:', error);
@@ -252,7 +252,7 @@ export default function Dashboard() {
           processedEvent.status = 'Ended';
           
           // Update the backend about this status correction using the dedicated endpoint
-          axios.put(`http://localhost:8080/api/events/updateStatus/${event.eventId}`, {
+          axios.put(`https://timed-utd9.onrender.com/api/events/updateStatus/${event.eventId}`, {
             status: 'Ended'
           }).catch(error => {
             console.error('Failed to update event status:', error);
@@ -431,7 +431,7 @@ export default function Dashboard() {
         createdBy: 'Dashboard'
       };
       
-      const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
+      const response = await axios.post('https://timed-utd9.onrender.com/api/events/createEvent', eventData);
       
       if (response.data && response.data.eventId) {
         // Add the new event to the events state
@@ -474,7 +474,7 @@ export default function Dashboard() {
       }
       
       // Save certificate template to the event
-      await axios.post(`http://localhost:8080/api/events/${certificateEvent.eventId}/certificate`, certificateData);
+      await axios.post(`https://timed-utd9.onrender.com/api/events/${certificateEvent.eventId}/certificate`, certificateData);
       setShowCertificateEditor(false);
     } catch (error) {
       console.error('Error saving certificate template:', error);
@@ -485,7 +485,7 @@ export default function Dashboard() {
   const fetchAttendanceLogs = async () => {
     try {
       setLoadingAttendance(true);
-      const response = await axios.get('http://localhost:8080/api/attendance/logs');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/attendance/logs');
       setAttendanceLogs(response.data || []);
       setLoadingAttendance(false);
     } catch (error) {
@@ -674,7 +674,7 @@ export default function Dashboard() {
       const processedUsers = new Set(); // To track unique users
 
       // Get all faculty (excluding admins)
-      const response = await axios.get('http://localhost:8080/api/user/getAll');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
       const facultyList = response.data.filter(user => user.role !== 'ADMIN');
       const totalFaculty = facultyList.length;
 

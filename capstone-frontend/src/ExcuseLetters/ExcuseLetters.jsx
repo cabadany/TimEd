@@ -111,7 +111,7 @@ const ExcuseLetters = () => {
       // Get excuse letters from Firebase and departments from API
       const [excuseSnapshot, departmentsResponse] = await Promise.all([
         get(excuseLettersRef),
-        axios.get('http://localhost:8080/api/departments')
+        axios.get('https://timed-utd9.onrender.com/api/departments')
       ]);
       
       // Create lookup table for departments
@@ -152,7 +152,7 @@ const ExcuseLetters = () => {
                 const letterPromise = (async () => {
                   try {
                     // Get user data by idNumber (schoolId)
-                    const userResponse = await axios.get(`http://localhost:8080/api/user/getBySchoolId/${letter.idNumber}`);
+                    const userResponse = await axios.get(`https://timed-utd9.onrender.com/api/user/getBySchoolId/${letter.idNumber}`);
                     const userData = userResponse.data;
                     console.log('Found user by idNumber:', userData);
                     

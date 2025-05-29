@@ -47,7 +47,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch department count
   const fetchDepartmentCount = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/departments');
+      const response = await axios.get('https://timed-utd9.onrender.com/api/departments');
       if (response.data && Array.isArray(response.data)) {
         setDepartmentCount(response.data.length);
       }
@@ -59,7 +59,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch account count
   const fetchAccountCount = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/user/getAll', {
+      const response = await axios.get('https://timed-utd9.onrender.com/api/user/getAll', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -75,7 +75,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch excuse letter count
   const fetchExcuseLetterCount = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/excuse-letters/getAll', {
+      const response = await axios.get('https://timed-utd9.onrender.com/api/excuse-letters/getAll', {
         params: { page: 0, size: 1000 } // Get a large count to ensure we get all
       });
       if (response.data && response.data.content && Array.isArray(response.data.content)) {

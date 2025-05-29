@@ -211,7 +211,7 @@ const ProfilePicture = ({
       
       // Update the user record in the database
       try {
-        await axios.put(`http://localhost:8080/api/user/updateProfilePicture/${userId}`, {
+        await axios.put(`https://timed-utd9.onrender.com/api/user/updateProfilePicture/${userId}`, {
           profilePictureUrl: downloadUrl
         });
       } catch (apiError) {

@@ -264,7 +264,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       }
 
       const response = await axios.post(
-        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
+        `https://timed-utd9.onrender.com/api/certificates/${certificate.eventId}/images`,
         formData,
         {
           headers: {
@@ -311,7 +311,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       }
 
       await axios.delete(
-        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
+        `https://timed-utd9.onrender.com/api/certificates/${certificate.eventId}/images`,
         { params }
       );
 
