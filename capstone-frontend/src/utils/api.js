@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
   // Auth
   LOGIN_BY_SCHOOL_ID: '/auth/login-by-schoolId',
   EMAIL_BY_SCHOOL_ID: '/auth/auth/email-by-schoolId',
+  REGISTER: '/auth/register',
   
   // Users
   GET_ALL_USERS: '/user/getAll',
@@ -18,6 +19,7 @@ export const API_ENDPOINTS = {
   GET_USER_BY_SCHOOL_ID: (schoolId) => `/user/getBySchoolId/${schoolId}`,
   UPDATE_USER: (userId) => `/user/updateUser/${userId}`,
   UPDATE_PROFILE_PICTURE: (userId) => `/user/updateProfilePicture/${userId}`,
+  DELETE_USER: (userId) => `/user/deleteUser/${userId}`,
   
   // Events
   GET_EVENTS_PAGINATED: '/events/getPaginated',
@@ -42,6 +44,7 @@ export const API_ENDPOINTS = {
   ATTENDANCE_MANUAL_TIME_OUT: (eventId, userId) => `/attendance/${eventId}/${userId}/manual/timeout`,
   GET_ATTENDEES: (eventId) => `/attendance/${eventId}/attendees`,
   GET_ATTENDANCE_LOGS: '/attendance/logs',
+  GET_USER_ATTENDED_EVENTS: (userId) => `/attendance/user/${userId}/attended-events`,
   
   // Certificates
   GET_CERTIFICATES: '/certificates',

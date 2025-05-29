@@ -24,6 +24,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import '../styles/sidebar.css';
 import axios from 'axios';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 const MainLayout = ({ children, title }) => {
   const location = useLocation();
@@ -47,7 +48,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch department count
   const fetchDepartmentCount = async () => {
     try {
-      const response = await axios.get('https://timed-utd9.onrender.com/api/departments');
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
       if (response.data && Array.isArray(response.data)) {
         setDepartmentCount(response.data.length);
       }
@@ -59,7 +60,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch account count
   const fetchAccountCount = async () => {
     try {
-      const response = await axios.get('https://timed-utd9.onrender.com/api/user/getAll', {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -75,7 +76,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch excuse letter count
   const fetchExcuseLetterCount = async () => {
     try {
-      const response = await axios.get('https://timed-utd9.onrender.com/api/excuse-letters/getAll', {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_EXCUSE_LETTERS), {
         params: { page: 0, size: 1000 } // Get a large count to ensure we get all
       });
       if (response.data && response.data.content && Array.isArray(response.data.content)) {

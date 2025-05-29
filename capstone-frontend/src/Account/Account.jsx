@@ -22,9 +22,6 @@ import { ref as dbRef, get, query, orderByChild, limitToLast, onValue } from 'fi
 import * as XLSX from 'xlsx';
 import { useTheme } from '../contexts/ThemeContext';
 
-// Base API URL
-const API_BASE_URL = 'https://timed-utd9.onrender.com/api';
-
 // TabPanel component for tab content
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -251,7 +248,7 @@ export default function AccountPage() {
   const fetchProfessors = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/user/getAll`, {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -271,7 +268,7 @@ export default function AccountPage() {
   const fetchDepartments = async () => {
     setDepartmentsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/departments`, {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -289,7 +286,7 @@ export default function AccountPage() {
   const fetchUserAttendedEvents = async (userId) => {
     setLoadingEvents(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/attendance/user/${userId}/attended-events`);
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER_ATTENDED_EVENTS(userId)));
       setAttendedEvents(response.data);
     } catch (err) {
       console.error('Error fetching attended events:', err);
@@ -399,7 +396,7 @@ export default function AccountPage() {
   const handleAddProfessor = async () => {
     try {
       // First register the user to get their Firebase Auth UID
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, newProfessor, {
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), newProfessor, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -414,7 +411,7 @@ export default function AccountPage() {
           profilePictureUrl = await getDownloadURL(storageRef);
 
           // Update the user's profile picture URL
-          await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${response.data.userId}`, 
+          await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(response.data.userId)), 
             { profilePictureUrl },
             {
               headers: {
@@ -486,7 +483,7 @@ export default function AccountPage() {
         profilePictureUrl
       };
       
-      await axios.put(`${API_BASE_URL}/user/updateUser/${editingProfessor.userId}`, updatePayload, {
+      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_USER(editingProfessor.userId)), updatePayload, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -524,7 +521,7 @@ export default function AccountPage() {
   const handleDeleteProfessor = async (professorId) => {
     if (window.confirm('Are you sure you want to delete this professor?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/user/deleteUser/${professorId}`, {
+        await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_USER(professorId)), {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -1160,7 +1157,7 @@ export default function AccountPage() {
       const downloadURL = await getDownloadURL(storageRef);
       
       // Update the user's profile picture URL in the backend
-      await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${userId}`, {
+      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(userId)), {
         profilePictureUrl: downloadURL
       }, {
         headers: {

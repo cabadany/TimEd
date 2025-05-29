@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import {
   Box,
   Typography,
@@ -109,7 +110,7 @@ export default function DepartmentManagement() {
     const fetchDepartments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('https://timed-utd9.onrender.com/api/departments');
+        const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
         setDepartments(response.data);
         setLoading(false);
       } catch (error) {
@@ -159,7 +160,7 @@ export default function DepartmentManagement() {
         return;
       }
       
-      const response = await axios.post('https://timed-utd9.onrender.com/api/departments', formData);
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_DEPARTMENT), formData);
       
       // Add the new department to the state
       setDepartments([...departments, response.data]);
@@ -181,7 +182,7 @@ export default function DepartmentManagement() {
         return;
       }
       
-      const response = await axios.put(`https://timed-utd9.onrender.com/api/departments/${selectedDepartment.departmentId}`, formData);
+      const response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_DEPARTMENT(selectedDepartment.departmentId)), formData);
       
       // Update the department in the state
       setDepartments(departments.map(dept => 
@@ -389,7 +390,7 @@ export default function DepartmentManagement() {
   // Add this function to handle department deletion
   const handleDeleteDepartment = async () => {
     try {
-      await axios.delete(`https://timed-utd9.onrender.com/api/departments/${departmentToDelete.departmentId}`);
+      await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_DEPARTMENT(departmentToDelete.departmentId)));
       
       // Update the departments list
       setDepartments(departments.filter(dept => dept.departmentId !== departmentToDelete.departmentId));

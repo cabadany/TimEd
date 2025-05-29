@@ -441,7 +441,7 @@ export default function EventPage() {
       if (statusChanged) {
         needsUpdate = true;
         // Make API call with minimal data using dedicated status endpoint
-        axios.put(`https://timed-utd9.onrender.com/api/events/updateStatus/${updatedEvent.eventId}`, {
+        axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(updatedEvent.eventId)), {
           status: updatedEvent.status
         })
           .catch(error => console.error('Error updating event status:', error));
@@ -476,7 +476,7 @@ export default function EventPage() {
     
     try {
       // Add cache buster to avoid caching issues
-      const response = await axios.get('https://timed-utd9.onrender.com/api/events/getPaginated', {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_EVENTS_PAGINATED), {
         params: {
           page: pageNum,
           size: pageSize,
@@ -538,7 +538,7 @@ export default function EventPage() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get('https://timed-utd9.onrender.com/api/departments');
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
       setDepartments(response.data);
       setFilteredDepartments(response.data);
     } catch (error) {
@@ -572,7 +572,7 @@ export default function EventPage() {
       };
       
       setLoading(true);
-      const response = await axios.post('https://timed-utd9.onrender.com/api/events/createEvent', eventData);
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_EVENT), eventData);
       
       // Get the new event ID from the response
       const newEventId = response.data;
@@ -591,13 +591,13 @@ export default function EventPage() {
           };
           
           // Save the certificate template
-          const certificateResponse = await axios.post('https://timed-utd9.onrender.com/api/certificates', certificatePayload);
+          const certificateResponse = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), certificatePayload);
           console.log('Certificate saved successfully:', certificateResponse.data);
           
           // Link the certificate to the event
           if (certificateResponse.data && certificateResponse.data.id) {
             try {
-              await axios.post('https://timed-utd9.onrender.com/api/certificates/linkToEvent', {
+              await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
                 certificateId: certificateResponse.data.id,
                 eventId: newEventId
               });
@@ -656,7 +656,7 @@ export default function EventPage() {
   const deleteEvent = async (eventId) => {
     setLoading(true);
     try {
-      await axios.delete(`https://timed-utd9.onrender.com/api/events/deleteEvent/${eventId}`);
+      await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_EVENT(eventId)));
       
       // Remove event from state
       setEvents(events.filter(event => event.eventId !== eventId));
@@ -704,7 +704,7 @@ export default function EventPage() {
       }
       
       // Make API call to persist changes - use the dedicated status endpoint
-      await axios.put(`https://timed-utd9.onrender.com/api/events/updateStatus/${eventId}`, {
+      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(eventId)), {
         status: newStatus
       });
       
@@ -732,7 +732,7 @@ export default function EventPage() {
         duration: formattedDuration
       };
       
-      await axios.put(`https://timed-utd9.onrender.com/api/events/update/${eventToEdit.eventId}`, updatePayload);
+      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT(eventToEdit.eventId)), updatePayload);
       
       // Update local state
       setEvents(events.map(event => 
@@ -1015,7 +1015,7 @@ export default function EventPage() {
       
       try {
         // Try to fetch an existing certificate
-        const response = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${eventId}`);
+        const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(eventId)));
         console.log('Certificate fetch response:', response);
         
         if (response.data && Object.keys(response.data).length > 0) {
@@ -1089,11 +1089,11 @@ export default function EventPage() {
         if (certificateData.id) {
           // Update existing certificate
           console.log('Updating existing certificate with ID:', certificateData.id);
-          response = await axios.put(`https://timed-utd9.onrender.com/api/certificates/${certificateData.id}`, payload);
+          response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_CERTIFICATE(certificateData.id)), payload);
         } else {
           // Create new certificate
           console.log('Creating new certificate template with eventId:', payload.eventId);
-          response = await axios.post('https://timed-utd9.onrender.com/api/certificates', payload);
+          response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), payload);
         }
         
         console.log('Certificate save response:', response);
@@ -1111,7 +1111,7 @@ export default function EventPage() {
         if (savedCertificateData.id && savedCertificateData.eventId) {
           try {
             console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
-            await axios.post('https://timed-utd9.onrender.com/api/certificates/linkToEvent', {
+            await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
               certificateId: savedCertificateData.id,
               eventId: savedCertificateData.eventId
             });
@@ -1126,7 +1126,7 @@ export default function EventPage() {
         if (savedCertificateData.eventId) {
           try {
             console.log('Verifying certificate was saved correctly for eventId:', savedCertificateData.eventId);
-            const verifyResponse = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${savedCertificateData.eventId}`);
+            const verifyResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(savedCertificateData.eventId)));
             console.log('Certificate verification response:', verifyResponse.data);
           } catch (verifyError) {
             console.error('Certificate verification failed:', verifyError);
@@ -1201,7 +1201,7 @@ export default function EventPage() {
           let existingCertificateId = null;
           
           try {
-            const checkResponse = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${eventForCertificate.eventId}`);
+            const checkResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(eventForCertificate.eventId)));
             
             // Certificate exists if we get data back with an ID
             if (checkResponse.data && checkResponse.data.id) {
@@ -1223,7 +1223,7 @@ export default function EventPage() {
           if (certificateExists && existingCertificateId) {
             // Update existing certificate
             console.log('Apply: Updating existing certificate:', existingCertificateId);
-            response = await axios.put(`https://timed-utd9.onrender.com/api/certificates/${existingCertificateId}`, {
+            response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_CERTIFICATE(existingCertificateId)), {
               ...payload,
               id: existingCertificateId
             });
@@ -1231,14 +1231,14 @@ export default function EventPage() {
           } else {
             // Create new certificate
             console.log('Apply: Creating new certificate for event:', eventForCertificate.eventId);
-            response = await axios.post('https://timed-utd9.onrender.com/api/certificates', payload);
+            response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), payload);
             console.log('Apply: Certificate created successfully:', response.data);
           }
           
           // Try to link certificate to event if we got a valid response
           if (response && response.data && response.data.id) {
             try {
-              await axios.post('https://timed-utd9.onrender.com/api/certificates/linkToEvent', {
+              await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
                 certificateId: response.data.id,
                 eventId: eventForCertificate.eventId
               });
@@ -1357,7 +1357,7 @@ export default function EventPage() {
     try {
       // Delete each selected event
       const deletePromises = selectedEvents.map(eventId => 
-        axios.delete(`https://timed-utd9.onrender.com/api/events/deleteEvent/${eventId}`)
+        axios.delete(getApiUrl(API_ENDPOINTS.DELETE_EVENT(eventId)))
       );
       
       await Promise.all(deletePromises);
@@ -2529,7 +2529,7 @@ export default function EventPage() {
           position: 'relative'
         }}>
           <img 
-            src={`https://timed-utd9.onrender.com/api/events/qr/${currentQrEventId}`} 
+            src={getApiUrl(API_ENDPOINTS.EVENT_QR(currentQrEventId))} 
             alt="Event QR Code" 
             style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
@@ -2591,7 +2591,7 @@ export default function EventPage() {
         // Create an anchor element
         const link = document.createElement('a');
         // Set the href to the QR code URL
-        link.href = `https://timed-utd9.onrender.com/api/events/qr/${currentQrEventId}`;
+        link.href = getApiUrl(API_ENDPOINTS.EVENT_QR(currentQrEventId));
         // Set the download attribute with filename
         link.download = `event-${currentQrEventId}-qr.png`;
         // Append to document, click, and remove
