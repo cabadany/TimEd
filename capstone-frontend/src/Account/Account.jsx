@@ -14,13 +14,15 @@ import {
   Refresh, PeopleAlt, DateRange, FileDownload, ExpandMore, History, ChevronLeft, ChevronRight
 } from '@mui/icons-material';
 import axios from 'axios';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import NotificationSystem from '../components/NotificationSystem';
 import { storage, database } from '../firebase/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ref as dbRef, get, query, orderByChild, limitToLast, onValue } from 'firebase/database';
 import * as XLSX from 'xlsx';
 import { useTheme } from '../contexts/ThemeContext';
+
+// Base API URL
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // TabPanel component for tab content
 function TabPanel(props) {
@@ -248,7 +250,7 @@ export default function AccountPage() {
   const fetchProfessors = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS), {
+      const response = await axios.get(`${API_BASE_URL}/user/getAll`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -268,7 +270,7 @@ export default function AccountPage() {
   const fetchDepartments = async () => {
     setDepartmentsLoading(true);
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS), {
+      const response = await axios.get(`${API_BASE_URL}/departments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -286,7 +288,7 @@ export default function AccountPage() {
   const fetchUserAttendedEvents = async (userId) => {
     setLoadingEvents(true);
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER_ATTENDED_EVENTS(userId)));
+      const response = await axios.get(`${API_BASE_URL}/attendance/user/${userId}/attended-events`);
       setAttendedEvents(response.data);
     } catch (err) {
       console.error('Error fetching attended events:', err);
@@ -396,7 +398,7 @@ export default function AccountPage() {
   const handleAddProfessor = async () => {
     try {
       // First register the user to get their Firebase Auth UID
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), newProfessor, {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, newProfessor, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -411,7 +413,7 @@ export default function AccountPage() {
           profilePictureUrl = await getDownloadURL(storageRef);
 
           // Update the user's profile picture URL
-          await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(response.data.userId)), 
+          await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${response.data.userId}`, 
             { profilePictureUrl },
             {
               headers: {
@@ -483,7 +485,7 @@ export default function AccountPage() {
         profilePictureUrl
       };
       
-      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_USER(editingProfessor.userId)), updatePayload, {
+      await axios.put(`${API_BASE_URL}/user/updateUser/${editingProfessor.userId}`, updatePayload, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -521,7 +523,7 @@ export default function AccountPage() {
   const handleDeleteProfessor = async (professorId) => {
     if (window.confirm('Are you sure you want to delete this professor?')) {
       try {
-        await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_USER(professorId)), {
+        await axios.delete(`${API_BASE_URL}/user/deleteUser/${professorId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -1157,7 +1159,7 @@ export default function AccountPage() {
       const downloadURL = await getDownloadURL(storageRef);
       
       // Update the user's profile picture URL in the backend
-      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(userId)), {
+      await axios.put(`${API_BASE_URL}/user/updateProfilePicture/${userId}`, {
         profilePictureUrl: downloadURL
       }, {
         headers: {

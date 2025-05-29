@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 export default function QRJoin() {
   const { eventId: rawParam } = useParams();
@@ -24,7 +23,7 @@ export default function QRJoin() {
           ? parts[2]
           : rawParam;
 
-        const timeInResponse = await axios.post(getApiUrl(API_ENDPOINTS.ATTENDANCE_TIME_IN(eventId, userId)));
+        const timeInResponse = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}`);
         if (isMounted) {
           if (timeInResponse.data.includes("Already timed in")) {
             setError("You have already timed in for this event and received a certificate.");

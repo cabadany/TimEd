@@ -6,13 +6,14 @@ import { getDatabase } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyANuuJPD7wg8SisClDlm7OQ1tZghvmg80E",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "timed-system.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "timed-system",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "timed-system.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "678688322328",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:678688322328:web:a2f289bcfa58a27eb4a46d",
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://timed-system-default-rtdb.firebaseio.com",
+  apiKey: "AIzaSyANuuJPD7wg8SisClDlm7OQ1tZghvmg80E", // From google-services.json
+  authDomain: "timed-system.firebaseapp.com",
+  projectId: "timed-system", // From FirebaseConfig.java
+  // Update with the correct storage bucket URL from Firebase console
+  storageBucket: "timed-system.firebasestorage.app", // From google-services.json
+  messagingSenderId: "678688322328", // From google-services.json project_number
+  appId: "1:678688322328:web:a2f289bcfa58a27eb4a46d", // From google-services.json
+  databaseURL: "https://timed-system-default-rtdb.firebaseio.com", // Realtime Database URL
 };
 
 // Initialize Firebase
