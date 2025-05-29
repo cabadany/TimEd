@@ -13,6 +13,7 @@ import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,14 +27,19 @@ import java.util.concurrent.ExecutionException;
 @RestController
 @RequestMapping("/api/events")
 public class EventController {
-	 @Autowired
-	    public EventController(EventService eventService, CertificateService certificateService) {
-	        this.eventService = eventService;
-	        this.certificateService = certificateService;
-	    }
-    @Autowired private final Firestore firestore = FirestoreClient.getFirestore();
+    
+    @Value("${app.frontend.base-url}")
+    private String frontendBaseUrl;
+    
+    private final Firestore firestore = FirestoreClient.getFirestore();
     private final EventService eventService;
     private final CertificateService certificateService;
+
+    @Autowired
+    public EventController(EventService eventService, CertificateService certificateService) {
+        this.eventService = eventService;
+        this.certificateService = certificateService;
+    }
 
     @PostMapping("/createEvent")
     public String saveEvent(@RequestBody Event event) throws ExecutionException, InterruptedException {
@@ -73,8 +79,7 @@ public class EventController {
     @GetMapping("/qr/{eventId}")
     public ResponseEntity<byte[]> generateQrCode(@PathVariable String eventId) {
         try {
-            String baseUrl = "localhost:5173/qr-join/";
-            String qrUrl = baseUrl + eventId;
+            String qrUrl = frontendBaseUrl + "/qr-join/" + eventId;
 
             byte[] image = QRCodeGenerator.generateQRCodeImage(qrUrl, 300, 300);
 

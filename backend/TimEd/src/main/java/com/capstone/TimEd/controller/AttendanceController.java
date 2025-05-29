@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,9 @@ import com.google.zxing.qrcode.QRCodeWriter;
 @RestController
 @RequestMapping("/api/attendance")
 public class AttendanceController {
+    @Value("${app.frontend.base-url}")
+    private String frontendBaseUrl;
+
     private final CertificateService certificateService;
     private final EmailService emailService;
     private final FirebaseEmailService firebaseEmailService;
@@ -200,7 +204,7 @@ public ResponseEntity<String> markAttendance(
 
     public String generateEventQrCode(String eventId, String userId) {
         try {
-            String joinUrl = "http://localhost:5173/join-event/" + eventId + "?userId=" + userId;
+            String joinUrl = frontendBaseUrl + "/join-event/" + eventId + "?userId=" + userId;
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(joinUrl, BarcodeFormat.QR_CODE, 300, 300);
 
