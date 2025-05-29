@@ -231,6 +231,22 @@ class TimeInActivity : AppCompatActivity() {
     }
 
     private fun checkAndCapturePhoto(uid: String) {
+        // Time check: Only allow between 9:00 AM and 10:00 AM
+        val now = Calendar.getInstance()
+        val currentHour = now.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(Calendar.MINUTE)
+
+        val isAllowed = (currentHour == 9) || (currentHour == 10 && currentMinute == 0)
+
+        if (!isAllowed) {
+            AlertDialog.Builder(this)
+                .setTitle("Time-In Not Allowed")
+                .setMessage("You can only Time-In between 9:00 AM and 10:00 AM.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+
         checkAlreadyTimedIn(uid) { already ->
             if (already) {
                 AlertDialog.Builder(this)
@@ -240,7 +256,7 @@ class TimeInActivity : AppCompatActivity() {
                     .show()
                 // Re-enable button if already timed in and no action is taken
                 timeInButton.isEnabled = true
-                timeInButton.text = getString(R.string.button_time_in) // Assuming you have this string resource
+                timeInButton.text = getString(R.string.button_time_in)
             } else {
                 capturePhotoAndUpload(uid)
             }
