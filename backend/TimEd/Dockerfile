@@ -8,13 +8,13 @@ WORKDIR /app
 RUN apk add --no-cache maven
 
 # Copy pom.xml first for better Docker layer caching
-COPY pom.xml .
+COPY backend/TimEd/pom.xml .
 
 # Download dependencies
 RUN mvn dependency:go-offline -B
 
 # Copy source code
-COPY src ./src
+COPY backend/TimEd/src ./src
 
 # Build the application
 RUN mvn clean package -DskipTests
