@@ -17,8 +17,8 @@ import com.google.firebase.storage.FirebaseStorage
 import java.util.*
 import android.app.ProgressDialog
 import android.util.Log
-import android.view.animation.Animation // Added for Animation type
-import android.view.animation.AnimationUtils // Added for AnimationUtils
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
@@ -32,7 +32,7 @@ class ExcuseLetterActivity : AppCompatActivity() {
     private lateinit var submitButton: Button
     private lateinit var backButton: ImageView
     private lateinit var daysAbsentInput: EditText
-    private lateinit var excuseLetterTitle: TextView // Declare for animation target
+    private lateinit var excuseLetterTitle: TextView
 
     private var selectedFileUri: Uri? = null
     private var userId: String? = null
@@ -62,8 +62,6 @@ class ExcuseLetterActivity : AppCompatActivity() {
                 .addOnSuccessListener { setupViews() }
                 .addOnFailureListener {
                     Toast.makeText(this, "Firebase Auth failed", Toast.LENGTH_SHORT).show()
-                    // Consider if setupViews() should still be called or a limited version
-                    // For now, calling it as per original logic
                     setupViews()
                 }
         } else {
@@ -87,13 +85,8 @@ class ExcuseLetterActivity : AppCompatActivity() {
         uploadedFilename = findViewById(R.id.text_uploaded_filename)
         detailsInput = findViewById(R.id.edit_text_details)
         submitButton = findViewById(R.id.btn_submit_excuse)
-        // backButton is already initialized in onCreate, but re-finding is okay or use the class member
-        // backButton = findViewById(R.id.icon_back_button)
         daysAbsentInput = findViewById(R.id.edit_text_days_absent)
-        excuseLetterTitle = findViewById(R.id.excuse_letter_title) // Initialize the title TextView
-
-        // Re-set back button listener if needed, or ensure it's correctly set in onCreate
-        // backButton.setOnClickListener { ... } // Original listener in onCreate should suffice
+        excuseLetterTitle = findViewById(R.id.excuse_letter_title)
 
         datePicker.setOnClickListener { showDatePickerDialog() }
 
@@ -105,48 +98,39 @@ class ExcuseLetterActivity : AppCompatActivity() {
         uploadButton.setOnClickListener { selectFile() }
         submitButton.setOnClickListener { checkAndSubmit() }
 
-        // --- START OF ENTRY ANIMATION CODE ---
-        // Load animations
         val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
         val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
         val animSlideUpFormElement = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_form_element)
         val animSlideUpButton = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
 
-        // Helper function to apply animation with delay
         fun animateView(view: View, animationResource: Int, delay: Long) {
             val anim = AnimationUtils.loadAnimation(view.context, animationResource)
             anim.startOffset = delay
             view.startAnimation(anim)
         }
 
-        var currentDelay = 50L // Initial delay before first animation
+        var currentDelay = 50L
 
-        // 1. Back Button
         animateView(backButton, R.anim.fade_in, currentDelay)
         currentDelay += 100L
 
-        // 2. Title
         animateView(excuseLetterTitle, R.anim.slide_down_fade_in, currentDelay)
         currentDelay += 150L
 
-        // 3. Form Elements (staggered)
         val formElementsToAnimate = listOf(
             datePicker,
             daysAbsentInput,
             reasonSpinner,
             detailsInput,
             uploadButton
-            // uploadedFilename can also be animated if desired, perhaps after uploadButton
         )
 
         formElementsToAnimate.forEach { view ->
             animateView(view, R.anim.slide_up_fade_in_form_element, currentDelay)
-            currentDelay += 100L // Stagger for each form element
+            currentDelay += 100L
         }
 
-        // 4. Submit Button (appears last)
         animateView(submitButton, R.anim.slide_up_fade_in_bottom, currentDelay)
-        // --- END OF ENTRY ANIMATION CODE ---
     }
 
     private fun showDatePickerDialog() {
@@ -185,6 +169,35 @@ class ExcuseLetterActivity : AppCompatActivity() {
 
         if (date == "Select date" || details.isBlank() || daysAbsent.isBlank()) {
             Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // ✨ Block past dates
+        val dateParts = date.split("/")
+        if (dateParts.size != 3) {
+            Toast.makeText(this, "Invalid date format.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val selectedCalendar = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, dateParts[0].toInt())
+            set(Calendar.MONTH, dateParts[1].toInt() - 1)
+            set(Calendar.YEAR, dateParts[2].toInt())
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        if (selectedCalendar.before(today)) {
+            Toast.makeText(this, "Cannot submit an excuse for a past date.", Toast.LENGTH_SHORT).show()
             return
         }
 
