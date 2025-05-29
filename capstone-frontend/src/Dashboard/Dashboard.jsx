@@ -43,17 +43,21 @@ import {
   EventNote,
   Search,
   InfoOutlined,
-  CheckCircleOutline
+  CheckCircleOutline,
+  Email
 } from '@mui/icons-material';
 import './dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
+import EmailStatusTracker from '../components/EmailStatusTracker';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format, isSameDay } from 'date-fns';
+import AttendanceAnalytics from '../components/AttendanceAnalytics';
+import EventAnalytics from '../components/EventAnalytics';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -1063,13 +1067,53 @@ export default function Dashboard() {
     </Modal>
   );
 
+  // Helper to aggregate attendance by hour
+  const getAttendanceAnalyticsData = (logs) => {
+    const hourMap = {};
+    logs.forEach(log => {
+      if (log.timeIn) {
+        const date = new Date(log.timeIn.timestamp);
+        const hour = date.getHours();
+        const label = `${hour.toString().padStart(2, '0')}:00`;
+        if (!hourMap[label]) hourMap[label] = { time: label, timeInCount: 0, timeOutCount: 0 };
+        hourMap[label].timeInCount++;
+      }
+      if (log.timeOut) {
+        const date = new Date(log.timeOut.timestamp);
+        const hour = date.getHours();
+        const label = `${hour.toString().padStart(2, '0')}:00`;
+        if (!hourMap[label]) hourMap[label] = { time: label, timeInCount: 0, timeOutCount: 0 };
+        hourMap[label].timeOutCount++;
+      }
+    });
+    // Sort by hour
+    return Object.values(hourMap).sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  // Helper to aggregate events by status
+  const getEventAnalyticsData = (events) => {
+    const statusMap = {};
+    events.forEach(event => {
+      const status = event.status || 'Unknown';
+      if (!statusMap[status]) statusMap[status] = 0;
+      statusMap[status]++;
+    });
+    return Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+  };
+
   return (
-    <Box className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
+    <Box 
+      className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}
+      sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}
+    >
       {/* Dashboard Content */}
-      <Box className="dashboard-main">
+      <Box 
+        className="dashboard-main"
+        sx={{ width: '100%', maxWidth: '100%', margin: '0 auto', flex: 1 }}
+      >
         
         {/* Main Tabs */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 4 }}>
           <Tabs 
             value={mainTab} 
             onChange={handleMainTabChange}
@@ -1106,269 +1150,239 @@ export default function Dashboard() {
               icon={<CalendarToday />} 
               iconPosition="start"
             />
+            <Tab 
+              label="Email Status" 
+              icon={<Email />} 
+              iconPosition="start"
+            />
           </Tabs>
         </Box>
 
         {/* Attendance Logs Tab (now Day to Day Attendance Record) */}
         {mainTab === 0 && (
-          <Box sx={{ 
-            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-            borderRadius: '16px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
-            overflow: 'hidden',
-            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
-            p: 3
-          }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h6" fontWeight="600" color="#1E293B">
-                Faculty Day-to-Day Attendance
-              </Typography>
-              
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Select Date"
-                  value={selectedDate}
-                  onChange={(newValue) => {
-                    if (newValue && !isNaN(newValue.getTime())) {
-                      setSelectedDate(newValue);
-                    }
-                  }}
-                  sx={{ width: 200 }}
-                />
-              </LocalizationProvider>
-            </Box>
-
-            {/* Today's Attendance Summary */}
-            <Box sx={{ mb: 4 }}>
-              <Box sx={{ 
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 2
-              }}>
+          <>
+            <AttendanceAnalytics
+              data={getAttendanceAnalyticsData(facultyLogs)}
+              title="Faculty Time-In/Out Distribution"
+            />
+            {/* Existing Attendance UI */}
+            <Box sx={{ 
+              bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+              borderRadius: '8px', 
+              boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+              overflow: 'hidden',
+              border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+              p: 3
+            }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h6" fontWeight="600" color="#1E293B">
-                  Today's Attendance Summary
+                  Faculty Day-to-Day Attendance
                 </Typography>
-              {/*  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Late after: {lateThreshold}
+                
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <DatePicker
+                    label="Select Date"
+                    value={selectedDate}
+                    onChange={(newValue) => {
+                      if (newValue && !isNaN(newValue.getTime())) {
+                        setSelectedDate(newValue);
+                      }
+                    }}
+                    sx={{ width: 200 }}
+                  />
+                </LocalizationProvider>
+              </Box>
+
+              {/* Today's Attendance Summary */}
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ 
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2
+                }}>
+                  <Typography variant="h6" fontWeight="600" color="#1E293B">
+                    Today's Attendance Summary
                   </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<AccessTime />}
-                    onClick={() => setShowLateThresholdModal(true)}
+                {/*  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Late after: {lateThreshold}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AccessTime />}
+                      onClick={() => setShowLateThresholdModal(true)}
+                      sx={{
+                        textTransform: 'none',
+                        borderColor: '#E2E8F0',
+                        color: '#64748B'
+                      }}
+                    >
+                      Change Time
+                    </Button>
+                  </Box>*/}
+                </Box>
+
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2,
+                  mb: 4
+                }}>
+                  {/* Present Card */}
+                  <Paper
+                    elevation={0}
                     sx={{
-                      textTransform: 'none',
-                      borderColor: '#E2E8F0',
-                      color: '#64748B'
+                      flex: 1,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: '#F0FDF4',
+                      border: '1px solid #BBF7D0'
                     }}
                   >
-                    Change Time
-                  </Button>
-                </Box>*/}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle2" color="#15803D">On Time</Typography>
+                      <Tooltip title="Faculty who timed in before the late threshold" arrow>
+                        <InfoOutlined sx={{ color: '#15803D', fontSize: 16 }} />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="h4" color="#166534" fontWeight="bold">
+                      {attendanceStats.present}
+                    </Typography>
+                  </Paper>
+
+                  {/* Late Card */}
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      flex: 1,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: '#FEF3C7',
+                      border: '1px solid #FDE68A',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(234, 179, 8, 0.2)'
+                      }
+                    }}
+                    onClick={getLateAttendanceDetails}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle2" color="#B45309">Late</Typography>
+                      <Tooltip title={`Click to view late faculty members`} arrow>
+                        <InfoOutlined sx={{ color: '#B45309', fontSize: 16 }} />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="h4" color="#92400E" fontWeight="bold">
+                      {attendanceStats.late}
+                    </Typography>
+                  </Paper>
+
+                  {/* No Time-in Card */}
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      flex: 1,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: '#FEE2E2',
+                      border: '1px solid #FECACA',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                      }
+                    }}
+                    onClick={getNoTimeInDetails}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle2" color="#B91C1C">No Time-in</Typography>
+                      <Tooltip title="Click to view faculty without time-in" arrow>
+                        <InfoOutlined sx={{ color: '#B91C1C', fontSize: 16 }} />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="h4" color="#991B1B" fontWeight="bold">
+                      {attendanceStats.absent}
+                    </Typography>
+                  </Paper>
+                </Box>
               </Box>
 
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 2,
-                mb: 4
-              }}>
-                {/* Present Card */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: '#F0FDF4',
-                    border: '1px solid #BBF7D0'
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="subtitle2" color="#15803D">On Time</Typography>
-                    <Tooltip title="Faculty who timed in before the late threshold" arrow>
-                      <InfoOutlined sx={{ color: '#15803D', fontSize: 16 }} />
-                    </Tooltip>
-                  </Box>
-                  <Typography variant="h4" color="#166534" fontWeight="bold">
-                    {attendanceStats.present}
-                  </Typography>
-                </Paper>
-
-                {/* Late Card */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: '#FEF3C7',
-                    border: '1px solid #FDE68A',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.2)'
-                    }
-                  }}
-                  onClick={getLateAttendanceDetails}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="subtitle2" color="#B45309">Late</Typography>
-                    <Tooltip title={`Click to view late faculty members`} arrow>
-                      <InfoOutlined sx={{ color: '#B45309', fontSize: 16 }} />
-                    </Tooltip>
-                  </Box>
-                  <Typography variant="h4" color="#92400E" fontWeight="bold">
-                    {attendanceStats.late}
-                  </Typography>
-                </Paper>
-
-                {/* No Time-in Card */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: '#FEE2E2',
-                    border: '1px solid #FECACA',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                    }
-                  }}
-                  onClick={getNoTimeInDetails}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="subtitle2" color="#B91C1C">No Time-in</Typography>
-                    <Tooltip title="Click to view faculty without time-in" arrow>
-                      <InfoOutlined sx={{ color: '#B91C1C', fontSize: 16 }} />
-                    </Tooltip>
-                  </Box>
-                  <Typography variant="h4" color="#991B1B" fontWeight="bold">
-                    {attendanceStats.absent}
-                  </Typography>
-                </Paper>
-              </Box>
-            </Box>
-
-            {/* Time-in/out Table */}
-            {loadingFacultyLogs ? (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Photo</TableCell>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Entry #</TableCell>
-                      <TableCell>Time In</TableCell>
-                      <TableCell>Time Out</TableCell>
-                      <TableCell>Duration</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRowsSkeleton />
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : error && error.includes("faculty logs") ? (
-              <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
-                <Typography>{error}</Typography>
-              </Box>
-            ) : facultyLogs.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography>No attendance records found for this date</Typography>
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {facultyLogs.map((entry) => {
-                      const duration = calculateDuration(entry.timeIn, entry.timeOut);
-                      
-                      return (
-                        <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                              {/* Time In Photo */}
-                              {entry.timeIn?.imageUrl ? (
-                                <Box
-                                  component="img"
-                                  src={entry.timeIn.imageUrl}
-                                  alt={`${entry.firstName}'s time-in photo`}
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    cursor: 'pointer',
-                                    border: '2px solid #4caf50',
-                                    '&:hover': {
-                                      opacity: 0.8,
-                                      transform: 'scale(1.1)',
-                                      transition: 'all 0.2s ease-in-out'
-                                    }
-                                  }}
-                                  onClick={() => setZoomImage(entry.timeIn.imageUrl)}
-                                />
-                              ) : (
-                                <Box
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: '50%',
-                                    bgcolor: 'grey.300',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '2px solid #4caf50'
-                                  }}
-                                >
-                                  <Typography variant="body2" color="text.secondary">
-                                    IN
-                                  </Typography>
-                                </Box>
-                              )}
-                              
-                              {/* Time Out Photo */}
-                              {entry.timeOut?.imageUrl ? (
-                                <Box
-                                  component="img"
-                                  src={entry.timeOut.imageUrl}
-                                  alt={`${entry.firstName}'s time-out photo`}
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    cursor: 'pointer',
-                                    border: '2px solid #f44336',
-                                    '&:hover': {
-                                      opacity: 0.8,
-                                      transform: 'scale(1.1)',
-                                      transition: 'all 0.2s ease-in-out'
-                                    }
-                                  }}
-                                  onClick={() => setZoomImage(entry.timeOut.imageUrl)}
-                                />
-                              ) : (
-                                entry.timeOut && (
+              {/* Time-in/out Table */}
+              {loadingFacultyLogs ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Photo</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Entry #</TableCell>
+                        <TableCell>Time In</TableCell>
+                        <TableCell>Time Out</TableCell>
+                        <TableCell>Duration</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRowsSkeleton />
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : error && error.includes("faculty logs") ? (
+                <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
+                  <Typography>{error}</Typography>
+                </Box>
+              ) : facultyLogs.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                  <Typography>No attendance records found for this date</Typography>
+                </Box>
+              ) : (
+                <TableContainer>
+                  <Table>
+                    <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {facultyLogs.map((entry) => {
+                        const duration = calculateDuration(entry.timeIn, entry.timeOut);
+                        
+                        return (
+                          <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                {/* Time In Photo */}
+                                {entry.timeIn?.imageUrl ? (
+                                  <Box
+                                    component="img"
+                                    src={entry.timeIn.imageUrl}
+                                    alt={`${entry.firstName}'s time-in photo`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: '50%',
+                                      objectFit: 'cover',
+                                      cursor: 'pointer',
+                                      border: '2px solid #4caf50',
+                                      '&:hover': {
+                                        opacity: 0.8,
+                                        transform: 'scale(1.1)',
+                                        transition: 'all 0.2s ease-in-out'
+                                      }
+                                    }}
+                                    onClick={() => setZoomImage(entry.timeIn.imageUrl)}
+                                  />
+                                ) : (
                                   <Box
                                     sx={{
                                       width: 40,
@@ -1378,533 +1392,589 @@ export default function Dashboard() {
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      border: '2px solid #f44336'
+                                      border: '2px solid #4caf50'
                                     }}
                                   >
                                     <Typography variant="body2" color="text.secondary">
-                                      OUT
+                                      IN
                                     </Typography>
                                   </Box>
-                                )
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{entry.firstName}</TableCell>
-                          <TableCell>{entry.email}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={`Entry ${entry.entryNumber}`}
-                              size="small"
-                              color="info"
-                              variant="outlined"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Tooltip title="Time In" arrow>
-                                <Chip 
-                                  label={entry.timeIn.time}
-                                  color="success"
-                                  size="small"
-                                  variant="outlined"
-                                  icon={<AccessTime sx={{ fontSize: 16 }} />}
-                                />
-                              </Tooltip>
-                              <Chip
-                                label={entry.attendanceBadge}
-                                size="small"
-                                color={
-                                  entry.attendanceBadge === 'On Time' ? 'success' :
-                                  entry.attendanceBadge === 'Late' ? 'warning' :
-                                  'error'
-                                }
-                                variant="outlined"
-                              />
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
+                                )}
+                                
+                                {/* Time Out Photo */}
+                                {entry.timeOut?.imageUrl ? (
+                                  <Box
+                                    component="img"
+                                    src={entry.timeOut.imageUrl}
+                                    alt={`${entry.firstName}'s time-out photo`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: '50%',
+                                      objectFit: 'cover',
+                                      cursor: 'pointer',
+                                      border: '2px solid #f44336',
+                                      '&:hover': {
+                                        opacity: 0.8,
+                                        transform: 'scale(1.1)',
+                                        transition: 'all 0.2s ease-in-out'
+                                      }
+                                    }}
+                                    onClick={() => setZoomImage(entry.timeOut.imageUrl)}
+                                  />
+                                ) : (
+                                  entry.timeOut && (
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        border: '2px solid #f44336'
+                                      }}
+                                    >
+                                      <Typography variant="body2" color="text.secondary">
+                                        OUT
+                                      </Typography>
+                                    </Box>
+                                  )
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{entry.firstName}</TableCell>
+                            <TableCell>{entry.email}</TableCell>
+                            <TableCell>
                               <Chip 
-                                label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
-                                color={entry.timeOut ? "error" : "warning"}
+                                label={`Entry ${entry.entryNumber}`}
                                 size="small"
+                                color="info"
                                 variant="outlined"
-                                icon={<AccessTime sx={{ fontSize: 16 }} />}
                               />
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell>
-                            {duration ? (
-                              <Tooltip title="Total Duration" arrow>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Tooltip title="Time In" arrow>
+                                  <Chip 
+                                    label={entry.timeIn.time}
+                                    color="success"
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                  />
+                                </Tooltip>
+                                <Chip
+                                  label={entry.attendanceBadge}
+                                  size="small"
+                                  color={
+                                    entry.attendanceBadge === 'On Time' ? 'success' :
+                                    entry.attendanceBadge === 'Late' ? 'warning' :
+                                    'error'
+                                  }
+                                  variant="outlined"
+                                />
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
                                 <Chip 
-                                  label={duration}
-                                  color="primary"
+                                  label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
+                                  color={entry.timeOut ? "error" : "warning"}
                                   size="small"
                                   variant="outlined"
                                   icon={<AccessTime sx={{ fontSize: 16 }} />}
                                 />
                               </Tooltip>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                In Progress
-                              </Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            
-            {/* Image Zoom Modal */}
-            <ImageZoomModal 
-              imageUrl={zoomImage}
-              onClose={() => setZoomImage(null)}
-            />
-          </Box>
+                            </TableCell>
+                            <TableCell>
+                              {duration ? (
+                                <Tooltip title="Total Duration" arrow>
+                                  <Chip 
+                                    label={duration}
+                                    color="primary"
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                  />
+                                </Tooltip>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  In Progress
+                                </Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              
+              {/* Image Zoom Modal */}
+              <ImageZoomModal 
+                imageUrl={zoomImage}
+                onClose={() => setZoomImage(null)}
+              />
+            </Box>
+          </>
         )}
         
         {/* Event Summary */}
         {mainTab === 1 && (
           <>
-            {/* Event Summary Cards */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 2 }}>Event Summary</Typography>
-              {loading ? (
-                <Grid container spacing={2}>
-                  {[1, 2, 3, 4].map((_, index) => (
-                    <Grid item xs={6} sm={3} md={3} key={index}>
-                      <Card sx={{ 
-                        borderRadius: '10px', 
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                        bgcolor: darkMode ? 'var(--card-bg)' : 'white'
-                      }}>
-                        <CardContent sx={{ p: 1.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <Skeleton variant="circular" width={16} height={16} sx={{ mr: 1 }} />
-                            <Skeleton variant="text" width={100} />
-                          </Box>
-                          <Skeleton variant="rectangular" width={50} height={30} />
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Grid container spacing={2}>
-                  <Grid item xs={6} sm={3} md={3}>
-                    <Card className="stat-card" sx={{ 
-                      borderRadius: '10px', 
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
-                      background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
-                      transition: 'all 0.2s ease',
-                      height: '100%',
-                      '&:hover': {
-                        transform: 'translateY(-3px)',
-                        boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
-                      }
-                    }}>
-                      <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Box className="stat-icon" sx={{ 
-                          background: darkMode ? 'var(--accent-light)' : 'rgba(65, 105, 225, 0.1)', 
-                          color: darkMode ? 'var(--accent-color)' : 'royalblue',
-                          borderRadius: '8px',
-                          width: '36px',
-                          height: '36px',
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <CalendarToday fontSize="small" />
-                        </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Total Events</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, color: darkMode ? 'var(--accent-color)' : 'royalblue', mb: 0, mt: 'auto' }}>{totalEvents}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3} md={3}>
-                    <Card className="stat-card" sx={{ 
-                      borderRadius: '10px', 
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
-                      background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f9f8ff 0%, #ffffff 100%)',
-                      transition: 'all 0.2s ease',
-                      height: '100%',
-                      '&:hover': {
-                        transform: 'translateY(-3px)',
-                        boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
-                      }
-                    }}>
-                      <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Box className="stat-icon" sx={{ 
-                          background: darkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)', 
-                          color: 'orange',
-                          borderRadius: '8px',
-                          width: '36px',
-                          height: '36px',
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <AccessTime fontSize="small" />
-                        </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Upcoming Events</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, color: 'orange', mb: 0, mt: 'auto' }}>
-                          {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3} md={3}>
-                    <Card className="stat-card" sx={{ 
-                      borderRadius: '10px', 
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
-                      background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8feff 0%, #ffffff 100%)',
-                      transition: 'all 0.2s ease',
-                      height: '100%',
-                      '&:hover': {
-                        transform: 'translateY(-3px)',
-                        boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
-                      }
-                    }}>
-                      <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Box className="stat-icon" sx={{ 
-                          background: darkMode ? 'rgba(0, 150, 136, 0.15)' : 'rgba(0, 150, 136, 0.1)', 
-                          color: 'teal',
-                          borderRadius: '8px',
-                          width: '36px',
-                          height: '36px',
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <Group fontSize="small" />
-                        </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Ongoing Events</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, color: 'teal', mb: 0, mt: 'auto' }}>
-                          {events.filter(event => event.status === 'Ongoing').length}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3} md={3}>
-                    <Card className="stat-card" sx={{ 
-                      borderRadius: '10px', 
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
-                      background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8f8fc 0%, #ffffff 100%)',
-                      transition: 'all 0.2s ease',
-                      height: '100%',
-                      '&:hover': {
-                        transform: 'translateY(-3px)',
-                        boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
-                      }
-                    }}>
-                      <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Box className="stat-icon" sx={{ 
-                          background: darkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)', 
-                          color: 'green',
-                          borderRadius: '8px',
-                          width: '36px',
-                          height: '36px',
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <CalendarToday fontSize="small" />
-                        </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Completed Events</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, color: 'green', mb: 0, mt: 'auto' }}>
-                          {events.filter(event => 
-                            event.status.toLowerCase().includes('completed') || 
-                            event.status.toLowerCase().includes('ended')
-                          ).length}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-              )}
-            </Box>
-
-            {/* Filter and Table Section */}
+            <EventAnalytics
+              data={getEventAnalyticsData(events)}
+              title="Event Status Distribution"
+            />
+            {/* Existing Event Summary UI */}
             <Box sx={{ 
+              padding:'10px',
               bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-              borderRadius: '16px', 
+              borderRadius: '8px', 
               boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
               overflow: 'hidden',
               border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)'
             }}>
-              {/* Tab and Filter Section */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                p: { xs: 2, md: 3 }, 
-                borderBottom: '1px solid', 
-                borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
-                flexDirection: { xs: 'column', md: 'row' },
-                gap: { xs: 2, md: 0 }
-              }}>
-                <Tabs 
-                  value={activeTab} 
-                  onChange={handleTabChange}
-                  sx={{ 
-                    '& .MuiTab-root': { 
-                      minWidth: { xs: 80, md: 100 }, 
-                      textTransform: 'none',
-                      fontSize: '14px',
-                      fontWeight: 500
-                    },
-                    '& .Mui-selected': {
-                      color: darkMode ? 'var(--accent-color)' : 'royalblue',
-                      fontWeight: 600
-                    },
-                    '& .MuiTabs-indicator': {
-                      backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue'
-                    }
-                  }}
-                >
-                  <Tab label="All Events" />
-                  <Tab label="Upcoming" />
-                  <Tab label="Ongoing" />
-                  <Tab label="Past Events" />
-                </Tabs>
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 2,
-                  flexWrap: { xs: 'wrap', md: 'nowrap' },
-                  width: { xs: '100%', md: 'auto' },
-                  justifyContent: { xs: 'center', md: 'flex-end' }
-                }}>
-                  <TextField
-                    type="date"
-                    size="small"
-                    label="Date From"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '8px',
-                        '&:hover fieldset': {
-                          borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                        },
-                      }
-                    }}
-                  />
-                  <TextField
-                    type="date"
-                    size="small"
-                    label="To"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '8px',
-                        '&:hover fieldset': {
-                          borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                        },
-                      }
-                    }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    size="small"
-                    onClick={handleDateFilterChange}
-                    sx={{ 
-                      textTransform: 'none', 
-                      borderRadius: '8px',
-                      backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        backgroundColor: darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)',
-                        boxShadow: darkMode ? '0 4px 12px rgba(107, 110, 247, 0.25)' : '0 4px 12px rgba(65, 105, 225, 0.25)',
-                      }
-                    }}
-                  >
-                    Apply Filter
-                  </Button>
-                  <Button 
-                    variant="outlined" 
-                    size="small"
-                    onClick={handleClearDateFilter}
-                    sx={{ 
-                      textTransform: 'none',
-                      borderRadius: '8px',
-                      borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                      color: 'text.secondary',
-                      '&:hover': {
-                        borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
-                        backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
-                      }
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </Box>
+              {/* ...rest of event summary UI... */}
+              {/* Event Summary Cards */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 2 }}>Event Summary</Typography>
+                {loading ? (
+                  <Grid container spacing={2}>
+                    {[1, 2, 3, 4].map((_, index) => (
+                      <Grid item xs={6} sm={3} md={3} key={index}>
+                        <Card sx={{ 
+                          borderRadius: '10px', 
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                          bgcolor: darkMode ? 'var(--card-bg)' : 'white'
+                        }}>
+                          <CardContent sx={{ p: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Skeleton variant="circular" width={16} height={16} sx={{ mr: 1 }} />
+                              <Skeleton variant="text" width={100} />
+                            </Box>
+                            <Skeleton variant="rectangular" width={50} height={30} />
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3} md={3}>
+                      <Card className="stat-card" sx={{ 
+                        borderRadius: '10px', 
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                        background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
+                        transition: 'all 0.2s ease',
+                        height: '100%',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                        }
+                      }}>
+                        <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Box className="stat-icon" sx={{ 
+                            background: darkMode ? 'var(--accent-light)' : 'rgba(65, 105, 225, 0.1)', 
+                            color: darkMode ? 'var(--accent-color)' : 'royalblue',
+                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CalendarToday fontSize="small" />
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Total Events</Typography>
+                          <Typography variant="h4" sx={{ fontWeight: 700, color: darkMode ? 'var(--accent-color)' : 'royalblue', mb: 0, mt: 'auto' }}>{totalEvents}</Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3} md={3}>
+                      <Card className="stat-card" sx={{ 
+                        borderRadius: '10px', 
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                        background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f9f8ff 0%, #ffffff 100%)',
+                        transition: 'all 0.2s ease',
+                        height: '100%',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                        }
+                      }}>
+                        <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Box className="stat-icon" sx={{ 
+                            background: darkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)', 
+                            color: 'orange',
+                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <AccessTime fontSize="small" />
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Upcoming Events</Typography>
+                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'orange', mb: 0, mt: 'auto' }}>
+                            {events.filter(event => event.status.toLowerCase().includes('upcoming')).length}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3} md={3}>
+                      <Card className="stat-card" sx={{ 
+                        borderRadius: '10px', 
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                        background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8feff 0%, #ffffff 100%)',
+                        transition: 'all 0.2s ease',
+                        height: '100%',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                        }
+                      }}>
+                        <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Box className="stat-icon" sx={{ 
+                            background: darkMode ? 'rgba(0, 150, 136, 0.15)' : 'rgba(0, 150, 136, 0.1)', 
+                            color: 'teal',
+                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Group fontSize="small" />
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Ongoing Events</Typography>
+                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'teal', mb: 0, mt: 'auto' }}>
+                            {events.filter(event => event.status === 'Ongoing').length}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3} md={3}>
+                      <Card className="stat-card" sx={{ 
+                        borderRadius: '10px', 
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                        background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8f8fc 0%, #ffffff 100%)',
+                        transition: 'all 0.2s ease',
+                        height: '100%',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: darkMode ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 15px rgba(0,0,0,0.08)'
+                        }
+                      }}>
+                        <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Box className="stat-icon" sx={{ 
+                            background: darkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)', 
+                            color: 'green',
+                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CalendarToday fontSize="small" />
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Completed Events</Typography>
+                          <Typography variant="h4" sx={{ fontWeight: 700, color: 'green', mb: 0, mt: 'auto' }}>
+                            {events.filter(event => 
+                              event.status.toLowerCase().includes('completed') || 
+                              event.status.toLowerCase().includes('ended')
+                            ).length}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
               </Box>
-              
-              {/* Events Table */}
-              {loading ? (
-                <TableContainer>
-                  <Table sx={{ minWidth: 650 }}>
-                    <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <TableRowsSkeleton />
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ) : eventError ? (
-                <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
-                  <Typography>{eventError}</Typography>
-                </Box>
-              ) : currentEvents.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                  <Typography>No events found</Typography>
-                </Box>
-              ) : (
-                <TableContainer>
-                  <Table sx={{ minWidth: 650 }}>
-                    <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {currentEvents.map((event) => (
-                        <TableRow key={event.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                          <TableCell component="th" scope="row" sx={{ fontWeight: 500, color: darkMode ? 'var(--accent-color)' : 'primary.main' }}>
-                            {event.id}
-                          </TableCell>
-                          <TableCell>{event.name}</TableCell>
-                          <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
-                          <TableCell>{event.date}</TableCell>
-                          <TableCell>{event.duration}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={event.status} 
-                              size="small" 
-                              className={`status-chip ${getStatusClass(event.status)}`}
-                              variant="outlined"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Tooltip title="View Details">
-                              <IconButton 
-                                size="small" 
-                                color="primary"
-                                onClick={() => handleViewEvent(event)}
-                              >
-                                <Visibility fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-              
-              {/* Pagination Controls */}
-              {activeTab !== 4 && (
+
+              {/* Filter and Table Section */}
+              <Box sx={{ 
+                bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+                borderRadius: '8px', 
+                boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+                overflow: 'hidden',
+                border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)'
+              }}>
+                {/* Tab and Filter Section */}
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center', 
                   p: { xs: 2, md: 3 }, 
-                  borderTop: '1px solid', 
+                  borderBottom: '1px solid', 
                   borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
-                  bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
+                  flexDirection: { xs: 'column', md: 'row' },
+                  gap: { xs: 2, md: 0 }
                 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
-                  </Typography>
+                  <Tabs 
+                    value={activeTab} 
+                    onChange={handleTabChange}
+                    sx={{ 
+                      '& .MuiTab-root': { 
+                        minWidth: { xs: 80, md: 100 }, 
+                        textTransform: 'none',
+                        fontSize: '14px',
+                        fontWeight: 500
+                      },
+                      '& .Mui-selected': {
+                        color: darkMode ? 'var(--accent-color)' : 'royalblue',
+                        fontWeight: 600
+                      },
+                      '& .MuiTabs-indicator': {
+                        backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue'
+                      }
+                    }}
+                  >
+                    <Tab label="All Events" />
+                    <Tab label="Upcoming" />
+                    <Tab label="Ongoing" />
+                    <Tab label="Past Events" />
+                  </Tabs>
                   
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
-                      Page {currentPage} of {totalPages || 1}
-                    </Typography>
-                    <Button
-                      variant="outlined"
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 2,
+                    flexWrap: { xs: 'wrap', md: 'nowrap' },
+                    width: { xs: '100%', md: 'auto' },
+                    justifyContent: { xs: 'center', md: 'flex-end' }
+                  }}>
+                    <TextField
+                      type="date"
                       size="small"
-                      startIcon={<ChevronLeft />}
-                      onClick={handlePreviousPage}
-                      disabled={currentPage === 1 || totalPages === 0}
+                      label="Date From"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
                       sx={{ 
-                        minWidth: { xs: 40, md: 100 }, 
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '8px',
+                          '&:hover fieldset': {
+                            borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                          },
+                        }
+                      }}
+                    />
+                    <TextField
+                      type="date"
+                      size="small"
+                      label="To"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '8px',
+                          '&:hover fieldset': {
+                            borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                          },
+                        }
+                      }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      size="small"
+                      onClick={handleDateFilterChange}
+                      sx={{ 
                         textTransform: 'none', 
-                        mr: 1,
                         borderRadius: '8px',
-                        borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
-                        color: 'text.secondary',
-                        px: { xs: 1, md: 2 },
+                        backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
+                        boxShadow: 'none',
                         '&:hover': {
-                          borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
-                          backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
-                        },
-                        '&.Mui-disabled': {
-                          borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                          backgroundColor: darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)',
+                          boxShadow: darkMode ? '0 4px 12px rgba(107, 110, 247, 0.25)' : '0 4px 12px rgba(65, 105, 225, 0.25)',
                         }
                       }}
                     >
-                      <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-                        Previous
-                      </Box>
+                      Apply Filter
                     </Button>
-                    <Button
-                      variant="outlined"
+                    <Button 
+                      variant="outlined" 
                       size="small"
-                      endIcon={<ChevronRight />}
-                      onClick={handleNextPage}
-                      disabled={currentPage === totalPages || totalPages === 0}
+                      onClick={handleClearDateFilter}
                       sx={{ 
-                        minWidth: { xs: 40, md: 100 }, 
                         textTransform: 'none',
                         borderRadius: '8px',
                         borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
                         color: 'text.secondary',
-                        px: { xs: 1, md: 2 },
                         '&:hover': {
                           borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
                           backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
-                        },
-                        '&.Mui-disabled': {
-                          borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
                         }
                       }}
                     >
-                      <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-                        Next
-                      </Box>
+                      Clear
                     </Button>
                   </Box>
                 </Box>
-              )}
+                
+                {/* Events Table */}
+                {loading ? (
+                  <TableContainer>
+                    <Table sx={{ minWidth: 650 }}>
+                      <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRowsSkeleton />
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : eventError ? (
+                  <Box sx={{ p: 3, textAlign: 'center', color: 'error.main' }}>
+                    <Typography>{eventError}</Typography>
+                  </Box>
+                ) : currentEvents.length === 0 ? (
+                  <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                    <Typography>No events found</Typography>
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table sx={{ minWidth: 650 }}>
+                      <TableHead sx={{ bgcolor: darkMode ? 'var(--table-header-bg)' : 'rgba(0,0,0,0.02)' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event ID</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Event Name</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {currentEvents.map((event) => (
+                          <TableRow key={event.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
+                            <TableCell component="th" scope="row" sx={{ fontWeight: 500, color: darkMode ? 'var(--accent-color)' : 'primary.main' }}>
+                              {event.id}
+                            </TableCell>
+                            <TableCell>{event.name}</TableCell>
+                            <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
+                            <TableCell>{event.date}</TableCell>
+                            <TableCell>{event.duration}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={event.status} 
+                                size="small" 
+                                className={`status-chip ${getStatusClass(event.status)}`}
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Tooltip title="View Details">
+                                <IconButton 
+                                  size="small" 
+                                  color="primary"
+                                  onClick={() => handleViewEvent(event)}
+                                >
+                                  <Visibility fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+                
+                {/* Pagination Controls */}
+                {activeTab !== 4 && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    p: { xs: 2, md: 3 }, 
+                    borderTop: '1px solid', 
+                    borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
+                    bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
+                  }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
+                        Page {currentPage} of {totalPages || 1}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<ChevronLeft />}
+                        onClick={handlePreviousPage}
+                        disabled={currentPage === 1 || totalPages === 0}
+                        sx={{ 
+                          minWidth: { xs: 40, md: 100 }, 
+                          textTransform: 'none', 
+                          mr: 1,
+                          borderRadius: '8px',
+                          borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                          color: 'text.secondary',
+                          px: { xs: 1, md: 2 },
+                          '&:hover': {
+                            borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                            backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                          },
+                          '&.Mui-disabled': {
+                            borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                          Previous
+                        </Box>
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        endIcon={<ChevronRight />}
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        sx={{ 
+                          minWidth: { xs: 40, md: 100 }, 
+                          textTransform: 'none',
+                          borderRadius: '8px',
+                          borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                          color: 'text.secondary',
+                          px: { xs: 1, md: 2 },
+                          '&:hover': {
+                            borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                            backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                          },
+                          '&.Mui-disabled': {
+                            borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                          Next
+                        </Box>
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
             </Box>
           </>
         )}
@@ -1913,10 +1983,11 @@ export default function Dashboard() {
         {mainTab === 2 && (
           <Box sx={{ 
             bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-            borderRadius: '16px', 
+            borderRadius: '8px', 
             boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
             overflow: 'hidden',
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            color: darkMode ? 'white' : 'white',
             p: 3
           }}>
             <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Event Calendar</Typography>
@@ -1934,6 +2005,24 @@ export default function Dashboard() {
                 onOpenCertificateEditor={handleOpenCertificateEditor}
               />
             )}
+          </Box>
+        )}
+
+        {/* Email Status Tab */}
+        {mainTab === 3 && (
+          <Box sx={{ 
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+            borderRadius: '8px', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            overflow: 'hidden',
+            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            p: 3
+          }}>
+            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Certificate Email Status</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Monitor the delivery status of certificate emails sent via Firebase Extensions
+            </Typography>
+            <EmailStatusTracker />
           </Box>
         )}
       </Box>

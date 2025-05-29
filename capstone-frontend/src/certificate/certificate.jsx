@@ -62,6 +62,7 @@ import {
 } from '@mui/icons-material';
 import './certificate.css';
 import CertificateEditor from '../components/CertificateEditor';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Separate Modal Component with its own state
 const AttendanceModal = memo(({ 
@@ -453,6 +454,7 @@ const AttendanceModal = memo(({
 export default function Certificate() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
   
   const [event, setEvent] = useState(null);
   const [department, setDepartment] = useState(null);
@@ -1288,7 +1290,8 @@ export default function Certificate() {
               fontSize: '18px',
               letterSpacing: '1px',
               lineHeight: 1.2,
-              mb: 0.5
+              mb: 0.5,
+             
             }}
           >
             {certificate.title || 'CERTIFICATE'}
@@ -1301,7 +1304,7 @@ export default function Certificate() {
               fontSize: '13px',
               letterSpacing: '1px',
               mb: 1.5,
-              lineHeight: 1
+              lineHeight: 1,
             }}
           >
             {certificate.subtitle || 'OF ACHIEVEMENT'}
@@ -1468,7 +1471,13 @@ export default function Certificate() {
   // If we're on the certificates page
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Paper elevation={1} sx={{ p: 3, borderRadius: '12px' }}>
+      <Paper elevation={1} sx={{ 
+        p: 3, 
+        borderRadius: '12px',
+        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+        border: '1px solid',
+        borderColor: darkMode ? '#333333' : '#E2E8F0'
+      }}>
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -1477,7 +1486,10 @@ export default function Certificate() {
           flexWrap: 'wrap',
           gap: 2
         }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, color: '#1E293B' }}>
+          <Typography variant="h5" sx={{ 
+            fontWeight: 600, 
+            color: darkMode ? '#f5f5f5' : '#1E293B' 
+          }}>
             Certificate Templates
           </Typography>
           
@@ -1490,7 +1502,7 @@ export default function Certificate() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search sx={{ color: '#64748B', fontSize: 20 }} />
+                  <Search sx={{ color: darkMode ? '#aaaaaa' : '#64748B', fontSize: 20 }} />
                 </InputAdornment>
               ),
             }}
@@ -1498,8 +1510,24 @@ export default function Certificate() {
               width: { xs: '100%', sm: '250px' },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
-                backgroundColor: '#F8FAFC',
-              }
+                backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                '& fieldset': {
+                  borderColor: darkMode ? '#333333' : '#E2E8F0',
+                },
+                '&:hover fieldset': {
+                  borderColor: darkMode ? '#555555' : '#CBD5E1',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: darkMode ? '#90caf9' : '#0288d1',
+                },
+                '& input': {
+                  color: darkMode ? '#f5f5f5' : 'inherit',
+                  '&::placeholder': {
+                    color: darkMode ? '#aaaaaa' : '#64748B',
+                    opacity: 1,
+                  },
+                },
+              },
             }}
           />
         </Box>
@@ -1515,32 +1543,30 @@ export default function Certificate() {
           ) : filteredCertificates.length === 0 ? (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 6, 
-              border: '1px dashed #CBD5E1', 
-              borderRadius: '8px',
-              bgcolor: '#F8FAFC'
+              py: 4,
+              bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+              border: '1px dashed',
+              borderColor: darkMode ? '#333333' : '#CBD5E1',
+              borderRadius: '8px'
             }}>
-              <Typography variant="h6" color="#64748B" gutterBottom>
-                No certificate templates found
-              </Typography>
-              <Typography variant="body2" color="#94A3B8" sx={{ mb: 3 }}>
-                {searchCertQuery ? 'Try a different search term or' : 'Create templates by selecting an event in the Events page'}
-              </Typography>
-              <Button 
-                variant="contained" 
-                startIcon={<Event />}
-                onClick={() => navigate('/event')}
-                sx={{
-                  bgcolor: '#0288d1',
-                  fontWeight: 500,
-                  boxShadow: '0 4px 6px rgba(2,136,209,0.15)',
-                  '&:hover': {
-                    bgcolor: '#0277BD',
-                  }
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  color: darkMode ? '#f5f5f5' : '#64748B',
+                  mb: 1
                 }}
               >
-                Go to Events
-              </Button>
+                No certificate templates found
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: darkMode ? '#aaaaaa' : '#94A3B8',
+                  mb: 3
+                }}
+              >
+                {searchCertQuery ? 'Try a different search term or' : 'Create templates by selecting an event in the Events page'}
+              </Typography>
             </Box>
           ) : (
             <>
@@ -1553,9 +1579,14 @@ export default function Certificate() {
                         borderRadius: '12px', 
                         overflow: 'hidden',
                         transition: 'all 0.3s ease',
+                        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                        border: '1px solid',
+                        borderColor: darkMode ? '#333333' : '#E2E8F0',
                         '&:hover': {
                           transform: 'translateY(-8px)',
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.08)'
+                          boxShadow: darkMode 
+                            ? '0 10px 25px rgba(0,0,0,0.3)'
+                            : '0 10px 25px rgba(0,0,0,0.08)'
                         }
                       }}
                     >
@@ -1571,7 +1602,7 @@ export default function Certificate() {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            color: '#1E293B'
+                            color: darkMode ? '#f5f5f5' : '#1E293B'
                           }}
                         >
                           {certificate.title || 'Certificate Template'}
@@ -1595,30 +1626,37 @@ export default function Certificate() {
                         
                         <Box sx={{ 
                           display: 'flex', 
-                          justifyContent: 'center',
-                          pt: 1,
-                          mt: 1,
-                          borderTop: '1px solid #E2E8F0',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mt: 'auto'
                         }}>
-                          <Button 
-                            fullWidth
-                            variant="contained"
-                            size="medium" 
-                            startIcon={<Edit />}
+                          <Button
+                            variant="outlined"
+                            size="small"
                             onClick={() => openCertificateEditor(certificate)}
                             sx={{
-                              borderRadius: '8px',
-                              bgcolor: '#0288d1',
-                              color: 'white',
-                              fontWeight: 500,
-                              textTransform: 'none',
+                              borderColor: darkMode ? '#555555' : '#E2E8F0',
+                              color: darkMode ? '#90caf9' : '#0288d1',
                               '&:hover': {
-                                bgcolor: '#0277BD',
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                                bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
                               }
                             }}
                           >
                             Edit Template
                           </Button>
+                          
+                          <IconButton
+                            onClick={() => deleteCertificate(certificate.id)}
+                            sx={{ 
+                              color: darkMode ? '#ef5350' : '#ef5350',
+                              '&:hover': {
+                                bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
+                              }
+                            }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
                         </Box>
                       </CardContent>
                     </Card>
@@ -1627,36 +1665,32 @@ export default function Certificate() {
               </Grid>
               
               {/* Pagination */}
-              {totalPages > 1 && (
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  mt: 4,
-                  pt: 2,
-                  borderTop: '1px solid #E2E8F0'
-                }}>
-                  <Stack spacing={2}>
-                    <Pagination 
-                      count={totalPages} 
-                      page={page} 
-                      onChange={handlePageChange}
-                      color="primary"
-                      size="large"
-                      showFirstButton
-                      showLastButton
-                      sx={{
-                        '& .MuiPaginationItem-root': {
-                          fontWeight: 500,
-                        },
-                        '& .Mui-selected': {
-                          bgcolor: '#0288d1 !important',
-                          color: 'white',
-                        }
-                      }}
-                    />
-                  </Stack>
-                </Box>
-              )}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                mt: 4,
+                '& .MuiPaginationItem-root': {
+                  color: darkMode ? '#f5f5f5' : 'inherit',
+                  borderColor: darkMode ? '#333333' : '#E2E8F0',
+                  '&.Mui-selected': {
+                    bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                    color: darkMode ? '#1e1e1e' : '#ffffff',
+                    '&:hover': {
+                      bgcolor: darkMode ? '#42a5f5' : '#0277bd'
+                    }
+                  },
+                  '&:hover': {
+                    bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                  }
+                }
+              }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                />
+              </Box>
             </>
           )}
         </Box>
@@ -1676,11 +1710,15 @@ export default function Certificate() {
           width: '90%',
           maxWidth: 1200,
           height: '90vh',
-          bgcolor: 'background.paper',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+          boxShadow: darkMode 
+            ? '0 8px 32px rgba(0,0,0,0.4)'
+            : '0 8px 32px rgba(0,0,0,0.1)',
           p: 0,
           borderRadius: 2,
-          overflow: 'auto'
+          overflow: 'auto',
+          border: '1px solid',
+          borderColor: darkMode ? '#333333' : '#E2E8F0'
         }}>
           <CertificateEditor 
             initialData={currentCertificateData} 
@@ -1693,15 +1731,22 @@ export default function Certificate() {
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={5000}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
           severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
+          sx={{
+            bgcolor: darkMode 
+              ? snackbar.severity === 'success' ? '#1b5e20' : '#b71c1c'
+              : undefined,
+            color: darkMode ? '#ffffff' : undefined,
+            '& .MuiAlert-icon': {
+              color: darkMode ? '#ffffff' : undefined
+            }
+          }}
         >
           {snackbar.message}
         </Alert>
