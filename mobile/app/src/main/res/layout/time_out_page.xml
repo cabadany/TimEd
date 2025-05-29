@@ -32,11 +32,11 @@
             android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
             android:padding="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:srcCompat="@drawable/ic_back_button"
-            app:tint="@color/white"/>
+            android:background="@drawable/ripple_icon_back_button"
+            android:stateListAnimator="@animator/button_scale_animator"/>
 
     <!-- Title -->
     <TextView

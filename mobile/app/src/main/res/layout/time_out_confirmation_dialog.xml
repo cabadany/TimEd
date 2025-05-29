@@ -35,23 +35,23 @@
             android:gravity="center">
 
         <Button
-                android:id="@+id/btn_no"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="100dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="16dp"
-                android:text="@string/button_no"
-                android:textColor="@color/primary_medium_blue"
-                app:strokeColor="@color/primary_medium_blue"
-                app:cornerRadius="8dp"/>
-
-        <Button
                 android:id="@+id/btn_yes"
                 android:layout_width="100dp"
                 android:layout_height="48dp"
                 android:backgroundTint="@color/accent_coral"
                 android:text="@string/button_yes"
                 android:textColor="@color/white"
+                app:cornerRadius="8dp"
+                android:layout_marginEnd="8dp"/>
+
+        <Button
+                android:id="@+id/btn_no"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="100dp"
+                android:layout_height="48dp"
+                android:text="@string/button_no"
+                android:textColor="@color/primary_medium_blue"
+                app:strokeColor="@color/primary_medium_blue"
                 app:cornerRadius="8dp"/>
     </LinearLayout>
 </LinearLayout>
