@@ -46,7 +46,7 @@ import {
   CheckCircleOutline,
   Email
 } from '@mui/icons-material';
-import './dashboard.css';
+import './Dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
