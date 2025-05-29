@@ -15,6 +15,7 @@ import {
   Notifications,
   CalendarToday
 } from '@mui/icons-material';
+import { formatDateCompactPH } from '../utils/dateUtils';
 
 const NotificationSystem = () => {
   const navigate = useNavigate();
@@ -98,18 +99,6 @@ const NotificationSystem = () => {
     
     return () => clearInterval(interval);
   }, []);
-
-  // Format event date for notifications
-  const formatEventDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   // Navigate to event detail page when clicking on a notification
   const handleNotificationItemClick = (eventId) => {
@@ -248,7 +237,7 @@ const NotificationSystem = () => {
                   </Typography>
                   <Typography variant="caption" color="#64748B" sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                     <CalendarToday sx={{ fontSize: 12, mr: 0.5 }} />
-                    {formatEventDate(event.date)}
+                    {formatDateCompactPH(event.date)}
                   </Typography>
                 </Box>
               </ListItem>

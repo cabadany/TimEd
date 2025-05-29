@@ -76,6 +76,7 @@ import './Event.css';
 import NotificationSystem from '../components/NotificationSystem';
 import CertificateEditor from '../components/CertificateEditor';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
+import { formatDatePH, createLocalDateISO } from '../utils/dateUtils';
 
 // Default certificate template
 const defaultCertificate = {
@@ -559,8 +560,13 @@ export default function EventPage() {
       // Create a Date object from the input
       const dateObj = new Date(date);
       
-      // Format date in ISO format
-      const formattedDate = dateObj.toISOString();
+      // Use utility function to preserve local time
+      const formattedDate = createLocalDateISO(date);
+      
+      if (!formattedDate) {
+        showSnackbar('Invalid date format', 'error');
+        return;
+      }
       
       const eventData = {
         eventName,
@@ -880,24 +886,9 @@ export default function EventPage() {
     return dept ? dept.name : 'Unknown Department';
   }, [departments]);
   
-  // Format date for display
+  // Format date for display - now using utility function
   const formatDate = useCallback((dateString) => {
-    try {
-      const date = new Date(dateString);
-      const options = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      };
-      return date.toLocaleString('en-US', options);
-    } catch (e) {
-      console.error("Date parsing error:", e);
-      return dateString;
-    }
+    return formatDatePH(dateString);
   }, []);
 
   // Format date for backend - reverting to simpler approach that worked before
