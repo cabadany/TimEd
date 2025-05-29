@@ -35,6 +35,7 @@
     <string name="welcome_message_text">Hello Professor! TimEd is here to simplify your daily tasks, starting with efficient attendance tracking. Let\'s get you set up.</string>
     <string name="button_get_started">Get Started</string>
 
+    <string name="desc_feature_icon_time_tracking">Icon representing time tracking feature</string>
 
     //New User Final Step Page
     <string name="final_step_title_text">You\'re Ready to Go!</string>
@@ -98,6 +99,8 @@
     <string name="timein_event_qr_scan_instruction">Aim your camera at a QR code and press SCAN</string>
     <string name="button_start_scanning">Start Scanning</string>
     <string name="button_manual_type_code">Manual Type Code</string>
+    <string name="button_stop_scanning">Stop Scanning</string>
+    <string name="button_take_selfie">Take Selfie</string>
 
     <!-- time_in_event_manual_page.xml -->
     <string name="manual_code_subtitle_text">Manually type the code</string>
@@ -120,4 +123,9 @@
     <string name="event_log_title_text">Event Records</string>
     <string name="event_log_empty_data">No event logs found.</string>
     <string name="content_desc_back_button_event_log">Back</string>
+
+    <string name="popup_title_success_manual_time_in">Successfully Timed In</string>
+    <string name="popup_message_success_manual_time_in">Your attendance for \'%1$s\' has been recorded.</string>
+    <string name="verifying_code_button_text">Verifying...</string>
+    <string name="verify_code_button_text">Verify Code</string>
 </resources>

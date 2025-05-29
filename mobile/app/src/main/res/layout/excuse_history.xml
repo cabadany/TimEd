@@ -29,8 +29,7 @@
             android:focusable="true"
             android:padding="12dp"
             app:srcCompat="@drawable/ic_back_button"
-            app:tint="@color/white"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/ripple_icon_back_button"
             android:stateListAnimator="@animator/button_scale_animator" />
 
     <!-- Title -->

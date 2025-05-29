@@ -6,6 +6,7 @@ import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.animation.AnimationUtils // Added for animations
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -28,6 +29,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
     private lateinit var backButton: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var excuseLetterTitle: TextView // Added for animation target
 
     private val TAG = "ExcuseHistory"
     private val FADE_DURATION = 300L
@@ -40,7 +42,40 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
         val topDrawable = topWave.drawable
         if (topDrawable is AnimatedVectorDrawable) topDrawable.start()
 
+        // Initialize views for animation and functionality
         backButton = findViewById(R.id.icon_back_button)
+        excuseLetterTitle = findViewById(R.id.excuse_letter_title) // Initialize title
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout) // Initialize swipeRefreshLayout
+
+        // --- START OF ENTRY ANIMATION CODE ---
+        // Load animations
+        val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        // Use fade_in_long if available, otherwise fallback to fade_in or adjust as needed
+        val animContentFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in_long)
+
+
+        // Apply animations with staggered delays
+        var currentDelay = 100L
+
+        // 1. Back Button
+        val animBackButtonInstance = AnimationUtils.loadAnimation(this, R.anim.fade_in) // Create a new instance or reuse animFadeIn
+        animBackButtonInstance.startOffset = currentDelay
+        backButton.startAnimation(animBackButtonInstance)
+        currentDelay += 100L
+
+        // 2. Title
+        val animTitleInstance = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in) // Create a new instance or reuse
+        animTitleInstance.startOffset = currentDelay
+        excuseLetterTitle.startAnimation(animTitleInstance)
+        currentDelay += 150L
+
+        // 3. Main Content Area (SwipeRefreshLayout)
+        val animSwipeLayoutInstance = AnimationUtils.loadAnimation(this, R.anim.fade_in_long) // Create a new instance or reuse
+        animSwipeLayoutInstance.startOffset = currentDelay
+        swipeRefreshLayout.startAnimation(animSwipeLayoutInstance)
+        // --- END OF ENTRY ANIMATION CODE ---
+
 
         backButton.setOnClickListener { view ->
             val drawable = (view as ImageView).drawable
@@ -53,7 +88,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recycler_excuses)
         emptyText = findViewById(R.id.text_empty)
         progressBar = findViewById(R.id.progress_bar)
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
+        // swipeRefreshLayout is already initialized
 
         recyclerView.layoutManager = LinearLayoutManager(this)
         excuseList = mutableListOf()
@@ -80,6 +115,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
             emptyText.text = "User not authenticated. Please log in."
             emptyText.animate().alpha(1f).setDuration(FADE_DURATION).setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationStart(animation: Animator) {
+                    super.onAnimationStart(animation) // Call super
                     emptyText.visibility = View.VISIBLE
                 }
             })
@@ -109,6 +145,8 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
                             excuseList.add(it)
                         }
                     }
+                    // Sort by submittedAt in descending order (newest first)
+                    excuseList.sortByDescending { it.submittedAt }
                     adapter.notifyDataSetChanged()
                     recyclerView.visibility = View.VISIBLE
                     emptyText.visibility = View.GONE
@@ -118,6 +156,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
                     emptyText.text = "No excuse letters submitted."
                     emptyText.animate().alpha(1f).setDuration(FADE_DURATION).setListener(object : AnimatorListenerAdapter() {
                         override fun onAnimationStart(animation: Animator) {
+                            super.onAnimationStart(animation) // Call super
                             emptyText.visibility = View.VISIBLE
                         }
                     })
@@ -136,6 +175,7 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
                 emptyText.text = "Failed to load data. Swipe to try again."
                 emptyText.animate().alpha(1f).setDuration(FADE_DURATION).setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationStart(animation: Animator) {
+                        super.onAnimationStart(animation) // Call super
                         emptyText.visibility = View.VISIBLE
                     }
                 })
@@ -167,12 +207,20 @@ class ExcuseLetterHistoryActivity : AppCompatActivity() {
                     val title = "Excuse Letter Update"
                     val message = "Your excuse letter has been $newStatus."
                     com.example.timed_mobile.utils.NotificationUtils.showNotification(this@ExcuseLetterHistoryActivity, title, message)
+
+                    // Optionally, refresh the list to show the updated status immediately
+                    // fetchExcuseLetters(isRefreshing = true) // Or a more targeted update
                 }
             }
 
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                // Handle removal if necessary, e.g., update lastKnownStatuses
+                snapshot.key?.let { lastKnownStatuses.remove(it) }
+            }
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "ChildEventListener cancelled: ${error.message}")
+            }
         })
     }
 }

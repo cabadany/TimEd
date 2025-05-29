@@ -33,8 +33,8 @@
             android:padding="12dp"
             android:contentDescription="@string/content_desc_back"
             app:srcCompat="@drawable/ic_back_button"
-            app:tint="@color/white"
-            android:background="@drawable/ripple_icon_back_button" />
+            android:background="@drawable/ripple_icon_back_button"
+            android:stateListAnimator="@animator/button_scale_animator"/>
 
     <!-- Event Title -->
     <TextView

@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -31,6 +35,8 @@ class SplashActivity : AppCompatActivity() {
 
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
     private val TAG = "SplashActivity"
+    // SSIDs are often quoted, ensure they match exactly how the system reports them.
+    private val ALLOWED_WIFI_SSIDS = listOf("\"TIMED-AP2.4G\"", "\"CITU_WILSTUDENT\" ,\"CITI_WILCORPO2.4GHz\"")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,11 +86,96 @@ class SplashActivity : AppCompatActivity() {
                 progressBar.startAnimation(fadeIn)
 
                 Handler(Looper.getMainLooper()).postDelayed({
-                    checkUserSessionAndProceed()
-                }, 5000)
+                    performWifiCheckAndProceed()
+                }, 5000) // Initial delay for animations to complete
             }, 1000)
         }, 1200)
     }
+
+    @Suppress("deprecation") // For WifiInfo.getSSID on older APIs, and NetworkInfo for older APIs
+    private fun isCorrectWifiConnected(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        if (!wifiManager.isWifiEnabled) {
+            Log.w(TAG, "Wi-Fi is disabled.")
+            return false
+        }
+
+        val currentSsid: String?
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Android 10 and above
+            val network = connectivityManager.activeNetwork ?: return false.also { Log.d(TAG, "No active network.") }
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false.also { Log.d(TAG, "No network capabilities.") }
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                val wifiInfo = wifiManager.connectionInfo
+                currentSsid = wifiInfo?.ssid
+                Log.d(TAG, "Current Wi-Fi SSID (API >= Q): $currentSsid")
+            } else {
+                Log.d(TAG, "Not connected to a Wi-Fi network (API >= Q).")
+                return false
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // Android M, N, O, P
+            val network = connectivityManager.activeNetwork ?: return false.also { Log.d(TAG, "No active network.") }
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false.also { Log.d(TAG, "No network capabilities.") }
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                val wifiInfo = wifiManager.connectionInfo
+                currentSsid = wifiInfo?.ssid
+                Log.d(TAG, "Current Wi-Fi SSID (API M-P): $currentSsid")
+            } else {
+                Log.d(TAG, "Not connected to a Wi-Fi network (API M-P).")
+                return false
+            }
+        } else { // Below Android M
+            val networkInfo = connectivityManager.activeNetworkInfo ?: return false.also { Log.d(TAG, "No active network info (legacy).") }
+            if (networkInfo.isConnected && networkInfo.type == ConnectivityManager.TYPE_WIFI) {
+                val wifiInfo = wifiManager.connectionInfo
+                currentSsid = wifiInfo?.ssid
+                Log.d(TAG, "Current Wi-Fi SSID (legacy): $currentSsid")
+            } else {
+                Log.d(TAG, "Not connected to a Wi-Fi network (legacy).")
+                return false
+            }
+        }
+
+        return if (currentSsid != null && ALLOWED_WIFI_SSIDS.contains(currentSsid)) {
+            Log.d(TAG, "Connected to an allowed Wi-Fi SSID: $currentSsid")
+            true
+        } else {
+            Log.d(TAG, "SSID '$currentSsid' is not in the allowed list: $ALLOWED_WIFI_SSIDS")
+            false
+        }
+    }
+
+    private fun performWifiCheckAndProceed() {
+        if (isCorrectWifiConnected()) {
+            Log.d(TAG, "Connected to an allowed Wi-Fi SSID.")
+            checkUserSessionAndProceed()
+        } else {
+            Log.w(TAG, "Not connected to an allowed Wi-Fi SSID. Or Wi-Fi is off/not connected.")
+            showWifiRequiredDialog()
+        }
+    }
+
+    private fun showWifiRequiredDialog() {
+        val allowedSsidsString = ALLOWED_WIFI_SSIDS.joinToString(separator = " or ") { it.replace("\"", "") }
+        AlertDialog.Builder(this)
+            .setTitle("Wi-Fi Connection Required")
+            .setMessage("This application requires a connection to the \"$allowedSsidsString\" Wi-Fi network to function. Please connect to one of the specified Wi-Fi networks and try again.")
+            .setCancelable(false) // User cannot dismiss by tapping outside
+            .setPositiveButton("Retry") { dialog, _ ->
+                dialog.dismiss()
+                // Add a small delay before retrying to allow user to potentially switch Wi-Fi
+                Handler(Looper.getMainLooper()).postDelayed({
+                    performWifiCheckAndProceed()
+                }, 1000)
+            }
+            .setNegativeButton("Exit") { dialog, _ ->
+                dialog.dismiss()
+                finishAffinity() // Exits the application
+            }
+            .show()
+    }
+
 
     private fun checkUserSessionAndProceed() {
         val sharedPreferences = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
@@ -165,18 +256,24 @@ class SplashActivity : AppCompatActivity() {
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "Location permission granted.")
-                if (logo.animation == null) {
+                if (logo.animation == null) { // Ensure animations haven't started
                     startAnimations()
                 }
             } else {
                 Toast.makeText(
                     this,
-                    "Location permission denied. Some features might be limited.",
+                    "Location permission denied. Wi-Fi check might be affected.",
                     Toast.LENGTH_LONG
                 ).show()
-                Log.w(TAG, "Location permission denied. Proceeding to user session check.")
+                Log.w(TAG, "Location permission denied. Proceeding to Wi-Fi check and user session check.")
+                // Still proceed to Wi-Fi check, as it's a primary gate.
+                // The Wi-Fi check itself might fail to get SSID without location on newer Androids.
                 Handler(Looper.getMainLooper()).postDelayed({
-                    checkUserSessionAndProceed()
+                    if (logo.animation == null) { // Ensure animations haven't started if permission was denied quickly
+                        startAnimations() // Start animations, then it will hit performWifiCheckAndProceed
+                    } else {
+                        performWifiCheckAndProceed() // If animations already ran, just check Wi-Fi
+                    }
                 }, 500)
             }
         }
@@ -186,19 +283,21 @@ class SplashActivity : AppCompatActivity() {
     private fun showEnableLocationDialog() {
         AlertDialog.Builder(this)
             .setTitle("Enable Location Services")
-            .setMessage("Location services are needed for an optimal experience. Please enable it in settings.")
+            .setMessage("Location services are needed for an optimal experience and for Wi-Fi scanning on newer Android versions. Please enable it in settings.")
             .setCancelable(false)
             .setPositiveButton("Go to Settings") { _, _ ->
                 startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                // Consider re-checking Wi-Fi after returning from settings, or guiding the user.
+                // For simplicity, current flow relies on user retrying via the Wi-Fi dialog if needed.
             }
             .setNegativeButton("Continue without") { dialog, _ ->
                 dialog.dismiss()
                 Toast.makeText(
                     this,
-                    "Proceeding without location-based features.",
+                    "Proceeding without location. Wi-Fi check might be affected.",
                     Toast.LENGTH_SHORT
                 ).show()
-                checkUserSessionAndProceed()
+                performWifiCheckAndProceed()
             }
             .show()
     }
