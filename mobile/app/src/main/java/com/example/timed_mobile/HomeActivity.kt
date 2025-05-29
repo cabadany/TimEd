@@ -949,10 +949,13 @@ class HomeActivity : AppCompatActivity() {
                     updateFilterButtonStates(btnUpcoming)
                     return@addOnSuccessListener
                 }
+
                 firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
                     .addOnSuccessListener { result ->
                         val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
                         allEvents.clear()
+                        val nowMillis = System.currentTimeMillis()
+
                         for (doc in result) {
                             try {
                                 val title = doc.getString("eventName") ?: continue
@@ -960,23 +963,55 @@ class HomeActivity : AppCompatActivity() {
                                 val date = doc.getTimestamp("date")?.toDate() ?: continue
                                 val dateFormatted = formatter.format(date)
                                 val status = doc.getString("status") ?: "upcoming"
-                                val now = Date()
-                                val timeDiff = date.time - now.time
-                                if (status.equals("upcoming", ignoreCase = true) && timeDiff in 1..(24 * 60 * 60 * 1000)) {
-                                    sendEventNotification("Upcoming Event", "There's an upcoming event on $dateFormatted.")
+
+                                // Duration to milliseconds
+                                val durationParts = duration.split(":")
+                                val durationMillis = when (durationParts.size) {
+                                    3 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L +
+                                            (durationParts[1].toIntOrNull() ?: 0) * 60000L +
+                                            (durationParts[2].toIntOrNull() ?: 0) * 1000L
+                                    2 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L +
+                                            (durationParts[1].toIntOrNull() ?: 0) * 60000L
+                                    1 -> (durationParts[0].toIntOrNull() ?: 0) * 60000L
+                                    else -> 3600000L
                                 }
+
+                                val eventStartMillis = date.time
+                                val eventEndMillis = eventStartMillis + durationMillis
+
+                                // NOTIFICATION LOGIC ONLY
                                 if (status.equals("cancelled", ignoreCase = true)) {
-                                    sendEventNotification("Event Cancelled", "Event on $dateFormatted has been cancelled.")
+                                    sendEventNotification("Event Cancelled", "The event \"$title\" scheduled on $dateFormatted has been cancelled.")
+                                } else if (status.equals("upcoming", ignoreCase = true)) {
+                                    if (eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
+                                        val minutes = ((eventStartMillis - nowMillis) / 60000).toInt()
+                                        sendEventNotification("Event Starting Soon", "\"$title\" starts in $minutes minute(s).")
+                                    } else if (eventStartMillis - nowMillis in (15 * 60 * 1000)..(60 * 60 * 1000)) {
+                                        sendEventNotification("Upcoming Event", "\"$title\" starts at $dateFormatted.")
+                                    }
+                                } else if (nowMillis in eventStartMillis..eventEndMillis) {
+                                    sendEventNotification("Event Started", "\"$title\" is now ongoing.")
+                                } else if (nowMillis > eventEndMillis) {
+                                    sendEventNotification("Event Ended", "\"$title\" has ended.")
                                 }
+
                                 allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
-                            } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
+                            } catch (e: Exception) {
+                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+                            }
                         }
                         showEventsByStatus("upcoming")
                         updateFilterButtonStates(btnUpcoming)
                     }
-                    .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show() }
+                    .addOnFailureListener {
+                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
+                        Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
+                    }
             }
-            .addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show() }
+            .addOnFailureListener {
+                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
+                Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun fetchEventsByDepartmentId(departmentId: String) {
@@ -1222,27 +1257,37 @@ class HomeActivity : AppCompatActivity() {
                     val type = child.child("type").getValue(String::class.java)
                     val timestamp = child.child("timestamp").getValue(Long::class.java)
                     if (type == "TimeIn" && timestamp != null) { timeInTimestamp = timestamp; timeInSnapshot = child }
-                    else if (type == "TimeOut" && timestamp != null) { timeOutTimestamp = timestamp; }
+                    else if (type == "TimeOut" && timestamp != null) { timeOutTimestamp = timestamp }
                 }
+
                 if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
                     updateUserStatus("Off Duty")
                     var badge: String? = null
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
                         val badgeValue = child.child("attendanceBadge").getValue(String::class.java)
-                        if ((type == "TimeIn" || type == "TimeOut") && !badgeValue.isNullOrEmpty()) { badge = badgeValue; break }
+                        if ((type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
+                            badge = badgeValue
+                            break
+                        }
                     }
-                    if (!badge.isNullOrEmpty()) updateAttendanceBadge(badge)
-                    else if (timeInTimestamp != null) {
-                        val fallback = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
-                        updateAttendanceBadge(fallback); timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
-                    } else attendanceStatusBadge.visibility = View.GONE
+                    if (!badge.isNullOrEmpty()) {
+                        updateAttendanceBadge(badge)
+                    } else {
+                        updateAttendanceBadge("Timed-Out")
+                    }
                 } else if (timeInTimestamp != null) {
                     val badge = timeInSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
-                    if (!badge.isNullOrEmpty()) updateAttendanceBadge(badge)
-                    else {
-                        val fallback = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
-                        updateAttendanceBadge(fallback); timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
+                    if (!badge.isNullOrEmpty()) {
+                        updateAttendanceBadge(badge)
+                    } else {
+                        val fallback = when {
+                            timeInTimestamp < cutoff9am -> "On Time"
+                            timeInTimestamp < cutoff10am -> "Late"
+                            else -> "Absent"
+                        }
+                        updateAttendanceBadge(fallback)
+                        timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
                     }
                 } else {
                     val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
@@ -1253,17 +1298,24 @@ class HomeActivity : AppCompatActivity() {
                             for (doc in excuseSnapshot.children) {
                                 val date = doc.child("date").getValue(String::class.java)
                                 val status = doc.child("status").getValue(String::class.java)
-                                if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) { matched = true; break }
+                                if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) {
+                                    matched = true
+                                    break
+                                }
                             }
                             if (matched) updateAttendanceBadge("Absent")
                             else if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In")
                             else attendanceStatusBadge.visibility = View.GONE
                         }
-                        override fun onCancelled(error: DatabaseError) { updateAttendanceBadge("Has not Timed-In") }
+                        override fun onCancelled(error: DatabaseError) {
+                            updateAttendanceBadge("Has not Timed-In")
+                        }
                     })
                 }
             }
-            override fun onCancelled(error: DatabaseError) { updateAttendanceBadge("Has not Timed-In") }
+            override fun onCancelled(error: DatabaseError) {
+                updateAttendanceBadge("Has not Timed-In")
+            }
         })
     }
 }
