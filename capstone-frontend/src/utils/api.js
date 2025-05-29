@@ -32,6 +32,9 @@ export const API_ENDPOINTS = {
   // Departments
   GET_DEPARTMENTS: '/departments',
   GET_DEPARTMENT: (deptId) => `/departments/${deptId}`,
+  CREATE_DEPARTMENT: '/departments',
+  UPDATE_DEPARTMENT: (deptId) => `/departments/${deptId}`,
+  DELETE_DEPARTMENT: (deptId) => `/departments/${deptId}`,
   
   // Attendance
   ATTENDANCE_TIME_IN: (eventId, userId) => `/attendance/${eventId}/${userId}`,
@@ -48,6 +51,7 @@ export const API_ENDPOINTS = {
   DELETE_CERTIFICATE: (certId) => `/certificates/delete/${certId}`,
   LINK_CERTIFICATE_TO_EVENT: '/certificates/linkToEvent',
   CERTIFICATE_IMAGES: (eventId) => `/certificates/${eventId}/images`,
+  CREATE_EVENT_CERTIFICATE: (eventId) => `/events/${eventId}/certificate`,
   
   // Email
   SEND_EMAIL: '/email/send',

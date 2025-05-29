@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
@@ -75,6 +75,7 @@ import {
 import './Event.css';
 import NotificationSystem from '../components/NotificationSystem';
 import CertificateEditor from '../components/CertificateEditor';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 // Default certificate template
 const defaultCertificate = {
