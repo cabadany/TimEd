@@ -19,6 +19,7 @@ import { storage, database } from '../firebase/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ref as dbRef, get, query, orderByChild, limitToLast, onValue } from 'firebase/database';
 import * as XLSX from 'xlsx';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Base API URL
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -111,6 +112,7 @@ const AccountTableSkeleton = () => (
 export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { darkMode } = useTheme();  // Add this line
 
   // Tab state
   const [tabValue, setTabValue] = useState(0);
@@ -1408,14 +1410,19 @@ export default function AccountPage() {
                 displayEmpty
                 size="small"
                 sx={{
-                  bgcolor: '#F8FAFC',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#E2E8F0',
-                  },
+                  borderColor: activeFilter ? '#0288d1' : '#E2E8F0',
+                  color: activeFilter ? '#0288d1' : '#64748B',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  mr: 0.6,
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  py: 0.5,
+                  px: 2
                 }}
               >
-                <MenuItem value="">
-                  <em>All Departments</em>
+                <MenuItem value="" color="white">
+                  <em color="white">All Departments</em>
                 </MenuItem>
                 {departments.map((dept) => (
                   <MenuItem key={dept.departmentId} value={dept.departmentId}>
@@ -1897,7 +1904,6 @@ export default function AccountPage() {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 1,
-                bgcolor: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 borderRadius: 1,
                 px: 2,
@@ -2050,13 +2056,10 @@ export default function AccountPage() {
                         zIndex: 1
                       }} />
                       <Box sx={{
-                        bgcolor: item.status === 'On Duty' ? '#F0FDF4' : 
-                                item.status === 'On Break' ? '#FFF7ED' : 
-                                item.status === 'Off Duty' ? '#FEF2F2' : 
-                                '#F8FAFC',
+                     
                         p: 2,
                         borderRadius: 1,
-                        border: '1px solid',
+                        border: '3px dashed',
                         borderColor: item.status === 'On Duty' ? '#DCFCE7' : 
                                    item.status === 'On Break' ? '#FFEDD5' : 
                                    item.status === 'Off Duty' ? '#FEE2E2' : 
@@ -2221,216 +2224,203 @@ export default function AccountPage() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 500,
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
           p: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0' }}>
-            <Typography variant="h6" fontWeight="600">
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
+          }}>
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               Add New Faculty
             </Typography>
-            <IconButton onClick={() => setShowAddModal(false)}>
+            <IconButton onClick={() => setShowAddModal(false)} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                <Box sx={{ position: 'relative' }}>
-                  <Avatar
-                    src={newProfilePicture ? URL.createObjectURL(newProfilePicture) : ''}
-                    alt="New faculty"
-                    sx={{ 
-                      width: 100, 
-                      height: 100,
-                      mb: 1
-                    }}
-                  />
-                  <input
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="new-profile-picture-upload"
-                    type="file"
-                    onChange={(e) => {
-                      if (e.target.files[0]) {
-                        setNewProfilePicture(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  <label htmlFor="new-profile-picture-upload">
-                    <IconButton
-                      component="span"
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        bgcolor: '#0288d1',
-                        color: 'white',
-                        '&:hover': {
-                          bgcolor: '#0277bd',
-                        },
-                      }}
-                    >
-                      <PhotoCamera fontSize="small" />
-                    </IconButton>
-                  </label>
-                </Box>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  School ID
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="schoolId"
-                  placeholder="Enter school ID (e.g., 22-2220-759)"
-                  value={newProfessor.schoolId}
+              <Typography variant="body2" fontWeight="500" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 1 }}>
+                School ID
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="schoolId"
+                placeholder="Enter school ID (e.g., 22-2220-759)"
+                value={newProfessor.schoolId}
+                onChange={handleInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: darkMode ? '#333333' : '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: darkMode ? '#555555' : '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: darkMode ? '#90caf9' : '#0288d1',
+                    },
+                    '& input': {
+                      color: darkMode ? '#f5f5f5' : 'inherit',
+                    },
+                    '& input::placeholder': {
+                      color: darkMode ? '#aaaaaa' : '#64748B',
+                      opacity: 1,
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                First Name
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="firstName"
+                placeholder="Enter first name"
+                value={newProfessor.firstName}
+                onChange={handleInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Last Name
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="lastName"
+                placeholder="Enter last name"
+                value={newProfessor.lastName}
+                onChange={handleInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Email
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="email"
+                type="email"
+                placeholder="Enter email address"
+                value={newProfessor.email}
+                onChange={handleInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Department
+              </Typography>
+              <FormControl fullWidth>
+                <Select
+                  value={newProfessor.departmentId}
+                  name="departmentId"
                   onChange={handleInputChange}
+                  displayEmpty
                   sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#E2E8F0',
                     },
                   }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  First Name
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="firstName"
-                  placeholder="Enter first name"
-                  value={newProfessor.firstName}
-                  onChange={handleInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Last Name
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="lastName"
-                  placeholder="Enter last name"
-                  value={newProfessor.lastName}
-                  onChange={handleInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Email
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="email"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={newProfessor.email}
-                  onChange={handleInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Department
-                </Typography>
-                <FormControl fullWidth>
-                  <Select
-                    value={newProfessor.departmentId}
-                    name="departmentId"
-                    onChange={handleInputChange}
-                    displayEmpty
-                    sx={{
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#E2E8F0',
-                      },
-                    }}
-                  >
-                    <MenuItem value="" disabled>
-                      <em>Select Department</em>
+                >
+                  <MenuItem value="" disabled>
+                    <em>Select Department</em>
+                  </MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                      {dept.name} ({dept.abbreviation})
                     </MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept.departmentId} value={dept.departmentId}>
-                        {dept.name} ({dept.abbreviation})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Password
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={newProfessor.password}
-                  onChange={handleInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Password
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="password"
+                type="password"
+                placeholder="Enter password"
+                value={newProfessor.password}
+                onChange={handleInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
                     },
-                  }}
-                />
-              </Box>
+                  },
+                }}
+              />
             </Box>
           </Box>
-          <Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: '1px solid #E2E8F0' }}>
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 2, 
+            borderTop: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0'
+          }}>
             <Button 
               variant="outlined" 
               onClick={() => setShowAddModal(false)}
               sx={{
-                borderColor: '#E2E8F0',
-                color: '#64748B',
+                borderColor: darkMode ? '#555555' : '#E2E8F0',
+                color: darkMode ? '#90caf9' : '#64748B',
                 '&:hover': {
-                  borderColor: '#CBD5E1',
-                  bgcolor: 'transparent',
+                  borderColor: darkMode ? '#90caf9' : '#CBD5E1',
+                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'transparent',
                 },
                 textTransform: 'none',
                 fontWeight: 500
@@ -2442,9 +2432,10 @@ export default function AccountPage() {
               variant="contained" 
               onClick={handleAddProfessor}
               sx={{
-                bgcolor: '#0288d1',
+                bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                color: darkMode ? '#1e1e1e' : '#ffffff',
                 '&:hover': {
-                  bgcolor: '#0277bd',
+                  bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                 },
                 textTransform: 'none',
                 fontWeight: 500
@@ -2468,215 +2459,202 @@ export default function AccountPage() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 500,
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
           p: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0' }}>
-            <Typography variant="h6" fontWeight="600">
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
+          }}>
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               Edit Faculty
             </Typography>
-            <IconButton onClick={() => setShowEditModal(false)}>
+            <IconButton onClick={() => setShowEditModal(false)} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                <Box sx={{ position: 'relative' }}>
-                  <Avatar
-                    src={editProfilePicture ? URL.createObjectURL(editProfilePicture) : editingProfessor.profilePictureUrl}
-                    alt={`${editingProfessor.firstName} ${editingProfessor.lastName}`}
-                    sx={{ 
-                      width: 100, 
-                      height: 100,
-                      mb: 1
-                    }}
-                  />
-                  <input
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="edit-profile-picture-upload"
-                    type="file"
-                    onChange={(e) => {
-                      if (e.target.files[0]) {
-                        setEditProfilePicture(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  <label htmlFor="edit-profile-picture-upload">
-                    <IconButton
-                      component="span"
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        bgcolor: '#0288d1',
-                        color: 'white',
-                        '&:hover': {
-                          bgcolor: '#0277bd',
-                        },
-                      }}
-                    >
-                      <PhotoCamera fontSize="small" />
-                    </IconButton>
-                  </label>
-                </Box>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  School ID
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="schoolId"
-                  placeholder="Enter school ID (e.g., 22-2220-759)"
-                  value={editingProfessor.schoolId}
+              <Typography variant="body2" fontWeight="500" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 1 }}>
+                School ID
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="schoolId"
+                placeholder="Enter school ID"
+                value={editingProfessor.schoolId}
+                onChange={handleEditInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: darkMode ? '#333333' : '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: darkMode ? '#555555' : '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: darkMode ? '#90caf9' : '#0288d1',
+                    },
+                    '& input': {
+                      color: darkMode ? '#f5f5f5' : 'inherit',
+                    },
+                    '& input::placeholder': {
+                      color: darkMode ? '#aaaaaa' : '#64748B',
+                      opacity: 1,
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                First Name
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="firstName"
+                placeholder="Enter first name"
+                value={editingProfessor.firstName}
+                onChange={handleEditInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Last Name
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="lastName"
+                placeholder="Enter last name"
+                value={editingProfessor.lastName}
+                onChange={handleEditInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Email
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                name="email"
+                type="email"
+                placeholder="Enter email address"
+                value={editingProfessor.email}
+                onChange={handleEditInputChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Department
+              </Typography>
+              <FormControl fullWidth>
+                <Select
+                  value={editingProfessor.departmentId}
+                  name="departmentId"
                   onChange={handleEditInputChange}
+                  displayEmpty
                   sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#E2E8F0',
                     },
                   }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  First Name
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="firstName"
-                  placeholder="Enter first name"
-                  value={editingProfessor.firstName}
-                  onChange={handleEditInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Last Name
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="lastName"
-                  placeholder="Enter last name"
-                  value={editingProfessor.lastName}
-                  onChange={handleEditInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Email
-                </Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  name="email"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={editingProfessor.email}
-                  onChange={handleEditInputChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& fieldset': {
-                        borderColor: '#E2E8F0',
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Department
-                </Typography>
-                <FormControl fullWidth>
-                  <Select
-                    value={editingProfessor.departmentId}
-                    name="departmentId"
-                    onChange={handleEditInputChange}
-                    displayEmpty
-                    sx={{
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#E2E8F0',
-                      },
-                    }}
-                  >
-                    <MenuItem value="" disabled>
-                      <em>Select Department</em>
+                >
+                  <MenuItem value="" disabled>
+                    <em>Select Department</em>
+                  </MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                      {dept.name} ({dept.abbreviation})
                     </MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept.departmentId} value={dept.departmentId}>
-                        {dept.name} ({dept.abbreviation})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                  Role
-                </Typography>
-                <FormControl fullWidth>
-                  <Select
-                    value={editingProfessor.role}
-                    name="role"
-                    onChange={handleEditInputChange}
-                    sx={{
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#E2E8F0',
-                      },
-                    }}
-                  >
-                    <MenuItem value="USER">User</MenuItem>
-                    <MenuItem value="ADMIN">Admin</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Role
+              </Typography>
+              <FormControl fullWidth>
+                <Select
+                  value={editingProfessor.role}
+                  name="role"
+                  onChange={handleEditInputChange}
+                  sx={{
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#E2E8F0',
+                    },
+                  }}
+                >
+                  <MenuItem value="USER">User</MenuItem>
+                  <MenuItem value="ADMIN">Admin</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
           </Box>
-          <Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: '1px solid #E2E8F0' }}>
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 2, 
+            borderTop: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0'
+          }}>
             <Button 
               variant="outlined" 
               onClick={() => setShowEditModal(false)}
               sx={{
-                borderColor: '#E2E8F0',
-                color: '#64748B',
+                borderColor: darkMode ? '#555555' : '#E2E8F0',
+                color: darkMode ? '#90caf9' : '#64748B',
                 '&:hover': {
-                  borderColor: '#CBD5E1',
-                  bgcolor: 'transparent',
+                  borderColor: darkMode ? '#90caf9' : '#CBD5E1',
+                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'transparent',
                 },
                 textTransform: 'none',
                 fontWeight: 500
@@ -2688,9 +2666,10 @@ export default function AccountPage() {
               variant="contained" 
               onClick={handleUpdateProfessor}
               sx={{
-                bgcolor: '#0288d1',
+                bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                color: darkMode ? '#1e1e1e' : '#ffffff',
                 '&:hover': {
-                  bgcolor: '#0277bd',
+                  bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                 },
                 textTransform: 'none',
                 fontWeight: 500
@@ -2714,84 +2693,76 @@ export default function AccountPage() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 480,
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
           p: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
           <Box sx={{ 
             p: 2, 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            borderBottom: '1px solid #E2E8F0',
-            bgcolor: '#F8FAFC'
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
           }}>
-            <Typography variant="h6" fontWeight="600">
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               Faculty Details
             </Typography>
-            <IconButton onClick={() => setShowViewModal(false)}>
+            <IconButton onClick={() => setShowViewModal(false)} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
           {viewingProfessor && (
-            <Box sx={{ p: 3 }}>
+            <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
               <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar 
                   src={viewingProfessor.profilePictureUrl}
                   sx={{ 
                     width: 64, 
                     height: 64,
-                    bgcolor: '#0288d1',
+                    bgcolor: darkMode ? '#90caf9' : '#0288d1',
                     fontSize: '1.5rem'
                   }}
                 >
                   {viewingProfessor.firstName?.[0]}{viewingProfessor.lastName?.[0]}
                 </Avatar>
                 <Box>
-                  <Typography variant="h6" fontWeight="600">
+                  <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
                     {`${viewingProfessor.firstName} ${viewingProfessor.lastName}`}
                   </Typography>
-                  <Chip 
-                    label={viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Faculty'} 
-                    size="small"
-                    sx={{ 
-                      bgcolor: viewingProfessor.role === 'ADMIN' ? '#EFF6FF' : '#ECFDF5',
-                      color: viewingProfessor.role === 'ADMIN' ? '#3B82F6' : '#10B981',
-                      fontWeight: 500,
-                      fontSize: '0.75rem'
-                    }}
-                  />
                 </Box>
               </Box>
               
-              <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: 2, borderColor: darkMode ? '#333333' : '#E2E8F0' }} />
               
               <Box sx={{ mb: 3 }}>
                 <List disablePadding>
                   <ListItem disablePadding sx={{ mb: 2 }}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Badge fontSize="small" sx={{ color: '#64748B' }} />
+                    <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
+                      <Badge fontSize="small" />
                     </ListItemIcon>
                     <ListItemText 
                       primary={
-                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                        <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           School ID
                         </Typography>
                       }
                       secondary={viewingProfessor.schoolId || 'Not specified'}
-                      secondaryTypographyProps={{ color: '#64748B' }}
+                      secondaryTypographyProps={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                     />
                   </ListItem>
                   
                   <ListItem disablePadding sx={{ mb: 2 }}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Group fontSize="small" sx={{ color: '#64748B' }} />
+                    <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
+                      <Group fontSize="small" />
                     </ListItemIcon>
                     <ListItemText 
                       primary={
-                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                        <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           Department
                         </Typography>
                       }
@@ -2800,22 +2771,22 @@ export default function AccountPage() {
                           ? `${getDepartmentName(viewingProfessor.department.departmentId)} (${getDepartmentAbbreviation(viewingProfessor.department.departmentId)})`
                           : viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Not assigned'
                       }
-                      secondaryTypographyProps={{ color: '#64748B' }}
+                      secondaryTypographyProps={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                     />
                   </ListItem>
                   
                   <ListItem disablePadding sx={{ mb: 2 }}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Email fontSize="small" sx={{ color: '#64748B' }} />
+                    <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
+                      <Email fontSize="small" />
                     </ListItemIcon>
                     <ListItemText 
                       primary={
-                        <Typography variant="body2" fontWeight="600" color="#1E293B">
+                        <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           Email
                         </Typography>
                       }
                       secondary={viewingProfessor.email || 'Not specified'}
-                      secondaryTypographyProps={{ color: '#64748B' }}
+                      secondaryTypographyProps={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                     />
                   </ListItem>
                 </List>
@@ -2837,27 +2808,29 @@ export default function AccountPage() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 700,
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
           p: 0,
           overflow: 'hidden',
           maxHeight: '80vh',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
           <Box sx={{ 
             p: 2, 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            borderBottom: '1px solid #E2E8F0',
-            bgcolor: '#F8FAFC'
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
           }}>
-            <Typography variant="h6" fontWeight="600" color="black">
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               {viewingProfessor ? `Events Attended by ${viewingProfessor.firstName} ${viewingProfessor.lastName}` : 'Attended Events'}
             </Typography>
-            <IconButton onClick={() => setShowAttendedEventsModal(false)}>
+            <IconButton onClick={() => setShowAttendedEventsModal(false)} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
@@ -2882,11 +2855,24 @@ export default function AccountPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Event Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Time</TableCell>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Attendance Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Entry Type</TableCell>
+                      <TableCell sx={{ 
+                        fontWeight: 600, 
+                        backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                        color: darkMode ? '#f5f5f5' : 'inherit',
+                        borderBottom: '1px solid',
+                        borderColor: darkMode ? '#333333' : '#E2E8F0'
+                      }}>
+                        Event Name
+                      </TableCell>
+                      <TableCell sx={{ 
+                        fontWeight: 600, 
+                        backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                        color: darkMode ? '#f5f5f5' : 'inherit',
+                        borderBottom: '1px solid',
+                        borderColor: darkMode ? '#333333' : '#E2E8F0'
+                      }}>
+                        Date
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2894,23 +2880,6 @@ export default function AccountPage() {
                       <TableRow key={event.eventId} sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}>
                         <TableCell>{event.eventName}</TableCell>
                         <TableCell>{formatDate(event.eventDate)}</TableCell>
-                        <TableCell>{`${formatTime(event.timeIn)} - ${formatTime(event.timeOut)}`}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            icon={<CheckCircleOutline fontSize="small" />}
-                            label="Present" 
-                            size="small"
-                            sx={{ 
-                              bgcolor: '#ECFDF5',
-                              color: '#10B981',
-                              fontWeight: 500,
-                              fontSize: '0.75rem'
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 200, backgroundColor: '#F8FAFC' }}>
-                          {event.manualEntry ?'Manual Entry'  : 'QR'}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -2932,41 +2901,44 @@ export default function AccountPage() {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           p: 0,
           borderRadius: 1,
           maxWidth: '90vw',
           maxHeight: '90vh',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
           <Box sx={{ 
             p: 2, 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            borderBottom: '1px solid #E2E8F0'
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
           }}>
-            <Typography variant="h6" fontWeight="600">
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               Profile Picture
             </Typography>
-            <IconButton onClick={() => setShowProfileModal(false)}>
+            <IconButton onClick={() => setShowProfileModal(false)} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
           
           {selectedProfile && (
-            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
               <Avatar
                 src={selectedProfile.profilePictureUrl}
                 alt={`${selectedProfile.firstName} ${selectedProfile.lastName}`}
                 sx={{ 
                   width: 200, 
                   height: 200,
-                  boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+                  boxShadow: darkMode ? '0 0 10px rgba(255,255,255,0.1)' : '0 0 10px rgba(0,0,0,0.1)'
                 }}
               />
-              <Typography variant="h6">
+              <Typography variant="h6" color={darkMode ? '#f5f5f5' : 'inherit'}>
                 {`${selectedProfile.firstName} ${selectedProfile.lastName}`}
               </Typography>
               
@@ -2989,9 +2961,10 @@ export default function AccountPage() {
                     component="span"
                     startIcon={<PhotoCamera />}
                     sx={{
-                      bgcolor: '#0288d1',
+                      bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                      color: darkMode ? '#1e1e1e' : '#ffffff',
                       '&:hover': {
-                        bgcolor: '#0277bd',
+                        bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                       },
                       textTransform: 'none',
                       fontWeight: 500

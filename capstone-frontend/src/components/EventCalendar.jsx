@@ -14,12 +14,14 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlaceIcon from '@mui/icons-material/Place';
+import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 
 const EventCalendar = ({ 
   events, 
   onEventClick
 }) => {
   const theme = useTheme();
+  const { darkMode } = useCustomTheme();
   
   const [isLoading, setIsLoading] = useState(true);
   
@@ -181,7 +183,8 @@ const EventCalendar = ({
         borderRadius: 2, 
         boxShadow: theme => `0 4px 20px 0 ${alpha(theme.palette.grey[500], 0.2)}`,
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        bgcolor: darkMode ? '#1e1e1e' : 'background.paper'
       }}
     >
       {isLoading && (
@@ -191,7 +194,7 @@ const EventCalendar = ({
       )}
     
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight="600" color="primary">Event Calendar</Typography>
+        <Typography variant="h5" fontWeight="600" color={darkMode ? '#f5f5f5' : 'primary'}>Event Calendar</Typography>
       </Box>
       
       <Box sx={{ 
@@ -209,24 +212,24 @@ const EventCalendar = ({
             }
           },
           '& .fc-button-primary': {
-            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-            color: 'primary.main',
+            bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : alpha(theme.palette.primary.main, 0.1),
+            color: darkMode ? '#90caf9' : 'primary.main',
             borderColor: 'transparent',
             '&:hover': {
-              bgcolor: theme => alpha(theme.palette.primary.main, 0.2),
+              bgcolor: darkMode ? 'rgba(144, 202, 249, 0.12)' : alpha(theme.palette.primary.main, 0.2),
               borderColor: 'transparent'
             },
             '&.fc-button-active': {
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
+              bgcolor: darkMode ? '#90caf9' : 'primary.main',
+              color: darkMode ? '#1e1e1e' : 'primary.contrastText',
               '&:hover': {
-                bgcolor: 'primary.dark'
+                bgcolor: darkMode ? '#64b5f6' : 'primary.dark'
               }
             }
           }
         },
         '& .fc-day-today': {
-          bgcolor: theme => alpha(theme.palette.primary.main, 0.05),
+          bgcolor: darkMode ? 'rgba(144, 202, 249, 0.15)' : alpha(theme.palette.primary.main, 0.05),
         },
         '& .fc-event': {
           borderRadius: 1,
@@ -234,14 +237,14 @@ const EventCalendar = ({
           transition: 'transform 0.15s ease-in-out',
           '&:hover': {
             transform: 'translateY(-2px)',
-            boxShadow: theme => `0 4px 8px 0 ${alpha(theme.palette.common.black, 0.1)}`
+            boxShadow: `0 4px 8px 0 ${alpha(theme.palette.common.black, darkMode ? 0.25 : 0.1)}`
           }
         },
         '& .fc-cell-shaded': {
-          bgcolor: theme => alpha(theme.palette.grey[100], 0.3)
+          bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : alpha(theme.palette.grey[100], 0.3)
         },
         '& .fc-daygrid-day-number, & .fc-col-header-cell-cushion': {
-          color: 'text.primary',
+          color: darkMode ? '#f5f5f5' : 'text.primary',
           textDecoration: 'none',
           fontWeight: '500',
           padding: '4px 8px',
@@ -249,7 +252,30 @@ const EventCalendar = ({
         },
         '& .fc-toolbar-title': {
           fontSize: '1.5rem',
-          fontWeight: 600
+          fontWeight: 600,
+          color: darkMode ? '#f5f5f5' : 'text.primary'
+        },
+        '& .fc-col-header': {
+          '& th': {
+            borderColor: darkMode ? '#333333' : 'inherit'
+          }
+        },
+        '& .fc-day': {
+          '&.fc-day-today': {
+            backgroundColor: darkMode ? 'rgba(144, 202, 249, 0.15)' : alpha(theme.palette.primary.main, 0.05)
+          }
+        },
+        '& .fc-scrollgrid': {
+          borderColor: darkMode ? '#333333' : 'inherit'
+        },
+        '& .fc-theme-standard td, & .fc-theme-standard th': {
+          borderColor: darkMode ? '#333333' : 'inherit'
+        },
+        '& .fc-day-other': {
+          '& .fc-daygrid-day-number': {
+            color: darkMode ? '#666666' : '#999999',
+            opacity: 0.7
+          }
         }
       }}>
         <FullCalendar
@@ -280,16 +306,16 @@ const EventCalendar = ({
                 gap: 0.5
               }}>
                 {timeText && (
-                  <Typography variant="caption" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: darkMode ? '#f5f5f5' : 'inherit' }}>
                     <AccessTimeIcon fontSize="inherit" />
                     {timeText}
                   </Typography>
                 )}
-                <Typography variant="body2" fontWeight="medium" noWrap>
+                <Typography variant="body2" fontWeight="medium" noWrap sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
                   {title}
                 </Typography>
                 {info.event.extendedProps.location && (
-                  <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} noWrap>
+                  <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: darkMode ? '#f5f5f5' : 'inherit' }} noWrap>
                     <PlaceIcon fontSize="inherit" />
                     {info.event.extendedProps.location}
                   </Typography>

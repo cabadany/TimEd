@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.capstone.TimEd.service.AttendanceService;
 import com.capstone.TimEd.service.CertificateService;
 import com.capstone.TimEd.service.EmailService;
+import com.capstone.TimEd.service.FirebaseEmailService;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.firebase.cloud.FirestoreClient;
@@ -32,16 +33,19 @@ import com.google.zxing.qrcode.QRCodeWriter;
 public class AttendanceController {
     private final CertificateService certificateService;
     private final EmailService emailService;
+    private final FirebaseEmailService firebaseEmailService;
     private final AttendanceService attendanceService;
 
     @Autowired
     public AttendanceController(
             AttendanceService attendanceService,
             CertificateService certificateService,
-            EmailService emailService) {
+            EmailService emailService,
+            FirebaseEmailService firebaseEmailService) {
         this.attendanceService = attendanceService;
         this.certificateService = certificateService;
         this.emailService = emailService;
+        this.firebaseEmailService = firebaseEmailService;
     }
 
 
@@ -58,6 +62,8 @@ public ResponseEntity<String> markAttendance(
         // Only proceed if the user hasn't already timed in
         if (!result.contains("Already timed in")) {
             try {
+                System.out.println("Processing certificate email for userId: " + userId + " in eventId: " + eventId);
+                
                 List<QueryDocumentSnapshot> attendeeDocs = FirestoreClient.getFirestore()
                         .collection("events")
                         .document(eventId)
@@ -92,9 +98,9 @@ public ResponseEntity<String> markAttendance(
                     System.out.println("Generating certificate for " + firstName + " " + lastName);
                     byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
 
-                    System.out.println("Sending certificate to " + email);
-                    emailService.sendCertificateEmail(email, eventId, certificatePdf);
-                    System.out.println("Certificate email successfully sent to " + email);
+                    System.out.println("Sending certificate via Firebase to " + email);
+                    firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
+                    System.out.println("Certificate email successfully queued via Firebase for " + email);
                 } else {
                     System.err.println("No attendee record found for userId: " + userId);
                     return ResponseEntity.ok(result + " (Note: No attendee record found)");
@@ -144,7 +150,7 @@ public ResponseEntity<String> markAttendance(
 
                     if (userAttendance != null) {
                         byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-                        emailService.sendCertificateEmail(userAttendance.get("email"), eventId, certificatePdf);
+                        firebaseEmailService.sendCertificateEmail(userAttendance.get("email"), eventId, certificatePdf);
                     }
                 }
             } else if ("timeout".equalsIgnoreCase(actionType)) {
@@ -221,7 +227,7 @@ public ResponseEntity<String> markAttendance(
                 for (Map<String, String> attendee : attendees) {
                     if (attendee.get("userId").equals(userId)) {
                         byte[] certificatePdf = certificateService.generateCertificate(attendee, eventId);
-                        emailService.sendCertificateEmail(attendee.get("email"), eventId, certificatePdf);
+                        firebaseEmailService.sendCertificateEmail(attendee.get("email"), eventId, certificatePdf);
                         return ResponseEntity.ok("Certificate sent successfully to user: " + userId);
                     }
                 }
@@ -230,7 +236,7 @@ public ResponseEntity<String> markAttendance(
 
             for (Map<String, String> attendee : attendees) {
                 byte[] certificatePdf = certificateService.generateCertificate(attendee, eventId);
-                emailService.sendCertificateEmail(attendee.get("email"), eventId, certificatePdf);
+                firebaseEmailService.sendCertificateEmail(attendee.get("email"), eventId, certificatePdf);
             }
 
             return ResponseEntity.ok("Certificates sent successfully to all attendees");

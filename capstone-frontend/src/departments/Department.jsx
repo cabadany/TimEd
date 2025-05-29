@@ -64,10 +64,12 @@ import {
 } from '@mui/icons-material';
 import NotificationSystem from '../components/NotificationSystem';
 import './Department.css';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function DepartmentManagement() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { darkMode } = useTheme();
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -293,7 +295,7 @@ export default function DepartmentManagement() {
   };
   
   // Pagination
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
   const filteredDepartments = getFilteredDepartments();
   const pageCount = Math.ceil(filteredDepartments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -632,7 +634,7 @@ export default function DepartmentManagement() {
           
           {/* Pagination Controls */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="#64748B" sx={{ mr: 2 }}>
+            <Typography variant="body2" color={darkMode ? '#aaaaaa' : '#64748B'} sx={{ mr: 2 }}>
               Page {currentPage} of {pageCount || 1}
             </Typography>
             <Button
@@ -641,7 +643,21 @@ export default function DepartmentManagement() {
               startIcon={<ChevronLeft />}
               onClick={handlePreviousPage}
               disabled={currentPage === 1 || pageCount === 0}
-              sx={{ minWidth: 100, textTransform: 'none', mr: 1 }}
+              sx={{ 
+                minWidth: 100, 
+                textTransform: 'none', 
+                mr: 1,
+                borderColor: darkMode ? '#555555' : '#E2E8F0',
+                color: darkMode ? (currentPage === 1 || pageCount === 0 ? '#666666' : '#90caf9') : '#64748B',
+                '&:hover': {
+                  borderColor: darkMode ? '#90caf9' : '#CBD5E1',
+                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'transparent',
+                },
+                '&.Mui-disabled': {
+                  borderColor: darkMode ? '#333333' : '#E2E8F0',
+                  color: darkMode ? '#666666' : 'rgba(0, 0, 0, 0.26)',
+                }
+              }}
             >
               Previous
             </Button>
@@ -651,7 +667,20 @@ export default function DepartmentManagement() {
               endIcon={<ChevronRight />}
               onClick={handleNextPage}
               disabled={currentPage === pageCount || pageCount === 0}
-              sx={{ minWidth: 100, textTransform: 'none' }}
+              sx={{ 
+                minWidth: 100, 
+                textTransform: 'none',
+                borderColor: darkMode ? '#555555' : '#E2E8F0',
+                color: darkMode ? (currentPage === pageCount || pageCount === 0 ? '#666666' : '#90caf9') : '#64748B',
+                '&:hover': {
+                  borderColor: darkMode ? '#90caf9' : '#CBD5E1',
+                  bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'transparent',
+                },
+                '&.Mui-disabled': {
+                  borderColor: darkMode ? '#333333' : '#E2E8F0',
+                  color: darkMode ? '#666666' : 'rgba(0, 0, 0, 0.26)',
+                }
+              }}
             >
               Next
             </Button>
@@ -671,48 +700,54 @@ export default function DepartmentManagement() {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 600,
-          bgcolor: 'background.paper',
+          bgcolor: darkMode ? '#1e1e1e' : 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0' }}>
-            <Typography variant="h6" fontWeight="600">
+          <Box sx={{ 
+            p: 3, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            borderBottom: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0',
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
+          }}>
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               {modalMode === 'view' ? 'Department Details' : 
                modalMode === 'add' ? 'Add New Department' : 'Edit Department'}
             </Typography>
-            <IconButton onClick={handleCloseModal}>
+            <IconButton onClick={handleCloseModal} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
           
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
             {loading && modalMode === 'view' ? (
-              // Skeleton loading for view mode
               <DepartmentModalSkeleton />
             ) : modalMode === 'view' ? (
-              // View Mode
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="#64748B">Department Name</Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                  <Typography variant="caption" color={darkMode ? '#aaaaaa' : '#64748B'}>Department Name</Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                     {selectedDepartment?.name}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="#64748B">Abbreviation</Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                  <Typography variant="caption" color={darkMode ? '#aaaaaa' : '#64748B'}>Abbreviation</Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                     {selectedDepartment?.abbreviation}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="#64748B">Number of Faculty</Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ color: '#1E293B' }}>
+                  <Typography variant="caption" color={darkMode ? '#aaaaaa' : '#64748B'}>Number of Faculty</Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B' }}>
                     {selectedDepartment?.numberOfFaculty}
                   </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="caption" color="#64748B">Programs Offered</Typography>
+                  <Typography variant="caption" color={darkMode ? '#aaaaaa' : '#64748B'}>Programs Offered</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                     {selectedDepartment?.offeredPrograms && selectedDepartment.offeredPrograms.length > 0 ? (
                       selectedDepartment.offeredPrograms.map((program, i) => (
@@ -722,13 +757,14 @@ export default function DepartmentManagement() {
                           size="small" 
                           sx={{ 
                             fontSize: '0.75rem', 
-                            bgcolor: '#E0F2FE',
-                            color: '#0369A1'
+                            bgcolor: darkMode ? '#1e293b' : '#E0F2FE',
+                            color: darkMode ? '#90caf9' : '#0369A1',
+                            border: darkMode ? '1px solid #333333' : 'none'
                           }} 
                         />
                       ))
                     ) : (
-                      <Typography variant="body2" color="#64748B">
+                      <Typography variant="body2" color={darkMode ? '#aaaaaa' : '#64748B'}>
                         No programs offered
                       </Typography>
                     )}
@@ -736,7 +772,6 @@ export default function DepartmentManagement() {
                 </Grid>
               </Grid>
             ) : (
-              // Add/Edit Mode
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
                   <TextField
@@ -747,6 +782,28 @@ export default function DepartmentManagement() {
                     fullWidth
                     required
                     size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        },
+                        '& input': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: darkMode ? '#aaaaaa' : 'inherit',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: darkMode ? '#90caf9' : '#0288d1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -758,6 +815,28 @@ export default function DepartmentManagement() {
                     fullWidth
                     required
                     size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        },
+                        '& input': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: darkMode ? '#aaaaaa' : 'inherit',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: darkMode ? '#90caf9' : '#0288d1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -771,10 +850,32 @@ export default function DepartmentManagement() {
                     required
                     size="small"
                     InputProps={{ inputProps: { min: 0 } }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        },
+                        '& input': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: darkMode ? '#aaaaaa' : 'inherit',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: darkMode ? '#90caf9' : '#0288d1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="caption" color="#64748B" sx={{ mb: 1, display: 'block' }}>
+                  <Typography variant="caption" color={darkMode ? '#aaaaaa' : '#64748B'} sx={{ mb: 1, display: 'block' }}>
                     Programs Offered
                   </Typography>
                   <Box sx={{ display: 'flex', mb: 1 }}>
@@ -784,6 +885,26 @@ export default function DepartmentManagement() {
                       placeholder="Add a program"
                       size="small"
                       fullWidth
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: darkMode ? '#333333' : '#E2E8F0',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: darkMode ? '#555555' : '#CBD5E1',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: darkMode ? '#90caf9' : '#0288d1',
+                          },
+                          '& input': {
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                          },
+                          '& input::placeholder': {
+                            color: darkMode ? '#aaaaaa' : '#64748B',
+                            opacity: 1,
+                          },
+                        },
+                      }}
                     />
                     <Button
                       variant="contained"
@@ -791,9 +912,10 @@ export default function DepartmentManagement() {
                       disabled={newProgram.trim() === ''}
                       sx={{
                         ml: 1,
-                        bgcolor: '#0288d1',
+                        bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                        color: darkMode ? '#1e1e1e' : '#ffffff',
                         '&:hover': {
-                          bgcolor: '#0277bd'
+                          bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                         },
                         textTransform: 'none'
                       }}
@@ -811,13 +933,20 @@ export default function DepartmentManagement() {
                           size="small" 
                           sx={{ 
                             fontSize: '0.75rem', 
-                            bgcolor: '#E0F2FE',
-                            color: '#0369A1'
+                            bgcolor: darkMode ? '#1e293b' : '#E0F2FE',
+                            color: darkMode ? '#90caf9' : '#0369A1',
+                            border: darkMode ? '1px solid #333333' : 'none',
+                            '& .MuiChip-deleteIcon': {
+                              color: darkMode ? '#90caf9' : '#0369A1',
+                              '&:hover': {
+                                color: darkMode ? '#42a5f5' : '#0277bd',
+                              },
+                            },
                           }} 
                         />
                       ))
                     ) : (
-                      <Typography variant="body2" color="#64748B">
+                      <Typography variant="body2" color={darkMode ? '#aaaaaa' : '#64748B'}>
                         No programs added
                       </Typography>
                     )}
@@ -827,22 +956,27 @@ export default function DepartmentManagement() {
             )}
           </Box>
           
-          <Box sx={{ p: 2, bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'flex-end', gap: 1, borderTop: '1px solid #E2E8F0' }}>
-            {loading && modalMode === 'view' ? (
-              // Skeleton loading for view mode buttons
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
-                <Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
-              </Box>
-            ) : modalMode === 'view' ? (
-              // View Mode Actions
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 1, 
+            borderTop: '1px solid',
+            borderColor: darkMode ? '#333333' : '#E2E8F0'
+          }}>
+            {modalMode === 'view' ? (
               <>
                 <Button
                   variant="outlined"
                   onClick={() => handleEditDepartment(selectedDepartment)}
                   sx={{
-                    color: '#64748B',
-                    borderColor: '#CBD5E1',
+                    borderColor: darkMode ? '#555555' : '#CBD5E1',
+                    color: darkMode ? '#90caf9' : '#64748B',
+                    '&:hover': {
+                      borderColor: darkMode ? '#90caf9' : '#94A3B8',
+                      bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : '#F8FAFC',
+                    },
                     textTransform: 'none',
                     fontWeight: 500
                   }}
@@ -853,9 +987,10 @@ export default function DepartmentManagement() {
                   variant="contained"
                   onClick={handleCloseModal}
                   sx={{
-                    backgroundColor: '#0288d1',
+                    bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                    color: darkMode ? '#1e1e1e' : '#ffffff',
                     '&:hover': {
-                      backgroundColor: '#0277bd'
+                      bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                     },
                     textTransform: 'none',
                     fontWeight: 500
@@ -865,14 +1000,17 @@ export default function DepartmentManagement() {
                 </Button>
               </>
             ) : (
-              // Add/Edit Mode Actions
               <>
                 <Button
                   variant="outlined"
                   onClick={handleCloseModal}
                   sx={{
-                    color: '#64748B',
-                    borderColor: '#CBD5E1',
+                    borderColor: darkMode ? '#555555' : '#CBD5E1',
+                    color: darkMode ? '#90caf9' : '#64748B',
+                    '&:hover': {
+                      borderColor: darkMode ? '#90caf9' : '#94A3B8',
+                      bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : '#F8FAFC',
+                    },
                     textTransform: 'none',
                     fontWeight: 500
                   }}
@@ -883,9 +1021,10 @@ export default function DepartmentManagement() {
                   variant="contained"
                   onClick={modalMode === 'add' ? handleSubmitAddDepartment : handleSubmitEditDepartment}
                   sx={{
-                    backgroundColor: '#0288d1',
+                    bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                    color: darkMode ? '#1e1e1e' : '#ffffff',
                     '&:hover': {
-                      backgroundColor: '#0277bd'
+                      bgcolor: darkMode ? '#42a5f5' : '#0277bd',
                     },
                     textTransform: 'none',
                     fontWeight: 500
