@@ -274,10 +274,15 @@ public class EventService {
                 TimeZone serverTimezone = TimeZone.getDefault();
                 System.out.println("Server timezone: " + serverTimezone.getID());
                 
-                // This will help with debugging time conversion issues
-                SimpleDateFormat debugFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                debugFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-                System.out.println("Event date in UTC: " + debugFormat.format(event.getDate()));
+                // Format with Philippines timezone for verification
+                SimpleDateFormat phFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                phFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila"));
+                System.out.println("Event date formatted as Philippines time: " + phFormat.format(event.getDate()));
+                
+                // Also log UTC format for comparison
+                SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                System.out.println("Event date in UTC: " + utcFormat.format(event.getDate()));
             }
             
             // Add event to Firestore and let Firestore generate the document ID

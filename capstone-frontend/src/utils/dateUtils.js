@@ -82,17 +82,31 @@ export const formatDateCompactPH = (dateInput) => {
  */
 export const createLocalDateISO = (dateTimeLocal) => {
   try {
-    const dateObj = new Date(dateTimeLocal);
+    // Parse the datetime-local string directly to avoid timezone issues
+    // Input format: "2025-05-30T20:49" (from datetime-local input)
     
-    // Format preserving the local time as intended by the user
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const hours = String(dateObj.getHours()).padStart(2, '0');
-    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    if (!dateTimeLocal || typeof dateTimeLocal !== 'string') {
+      return null;
+    }
     
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    // Split the date and time parts
+    const [datePart, timePart] = dateTimeLocal.split('T');
+    
+    if (!datePart || !timePart) {
+      return null;
+    }
+    
+    // Parse date parts
+    const [year, month, day] = datePart.split('-');
+    
+    // Parse time parts (add seconds if not present)
+    const timeWithSeconds = timePart.includes(':') && timePart.split(':').length === 2 
+      ? `${timePart}:00` 
+      : timePart;
+    
+    // Return the formatted string directly without Date object conversion
+    return `${year}-${month}-${day}T${timeWithSeconds}`;
+    
   } catch (error) {
     console.error('Error creating local date ISO:', error);
     return null;
