@@ -36,7 +36,7 @@ class SplashActivity : AppCompatActivity() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 123
     private val TAG = "SplashActivity"
     // SSIDs are often quoted, ensure they match exactly how the system reports them.
-    private val ALLOWED_WIFI_SSIDS = listOf("\"TIMED-AP2.4G\"", "\"CITU_WILSTUDENT\" ,\"CITI_WILCORPO2.4GHz\"")
+    private val ALLOWED_WIFI_SSIDS = listOf("\"TIMED-AP2.4G\"", "\"Untrusted Network\"", "\"CITU_WILSTUDENT\"" , "\"CITI_WILCORPO2.4GHz\"")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
