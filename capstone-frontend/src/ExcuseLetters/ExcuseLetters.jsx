@@ -587,7 +587,7 @@ const ExcuseLetters = () => {
         </Typography>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* Create Button */}
+       {/*  
           <Button
             variant="contained"
             color="primary"
@@ -596,7 +596,7 @@ const ExcuseLetters = () => {
             size="small"
           >
             Create Test Letter
-          </Button>
+          </Button>*/}
           
           {/* Status Filter */}
           <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>

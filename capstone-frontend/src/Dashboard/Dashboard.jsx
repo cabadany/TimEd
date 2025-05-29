@@ -147,6 +147,7 @@ export default function Dashboard() {
   const [lateFacultyList, setLateFacultyList] = useState([]);
   const [showNoTimeInModal, setShowNoTimeInModal] = useState(false);
   const [noTimeInList, setNoTimeInList] = useState([]);
+  const [filterType, setFilterType] = useState('single'); // 'single' or 'range'
 
   // Default certificate template
   const defaultCertificate = {
@@ -168,6 +169,9 @@ export default function Dashboard() {
     textColor: '#000000',
     fontFamily: 'Times New Roman'
   };
+
+  const [attendanceStartDate, setAttendanceStartDate] = useState('');
+  const [attendanceEndDate, setAttendanceEndDate] = useState('');
 
   useEffect(() => {
     fetchDepartments();
@@ -1103,6 +1107,119 @@ export default function Dashboard() {
     return Object.entries(statusMap).map(([name, value]) => ({ name, value }));
   };
 
+  // Add this function after fetchFacultyLogs
+  const handleAttendanceDateFilterChange = () => {
+    try {
+      // Validate date range
+      if (attendanceStartDate && attendanceEndDate && 
+          new Date(attendanceStartDate) > new Date(attendanceEndDate)) {
+        setError('Start date cannot be after end date');
+        return;
+      }
+      
+      setLoadingFacultyLogs(true);
+      const db = getDatabase();
+      const logsRef = ref(db, 'timeLogs');
+      
+      onValue(logsRef, (snapshot) => {
+        const dailyLogs = [];
+        
+        snapshot.forEach((userSnapshot) => {
+          const userId = userSnapshot.key;
+          const userEntries = [];
+          
+          userSnapshot.forEach((logSnapshot) => {
+            const log = logSnapshot.val();
+            const logDate = new Date(log.timestamp);
+            
+            // Check if the log date falls within the selected range
+            const isWithinRange = (!attendanceStartDate || logDate >= new Date(attendanceStartDate)) &&
+                                (!attendanceEndDate || logDate <= new Date(new Date(attendanceEndDate).setHours(23, 59, 59)));
+            
+            if (isWithinRange) {
+              userEntries.push({
+                id: logSnapshot.key,
+                userId,
+                ...log,
+                time: format(logDate, 'hh:mm:ss a'),
+                attendanceBadge: log.attendanceBadge || 'Unknown'
+              });
+            }
+          });
+          
+          if (userEntries.length > 0) {
+            userEntries.sort((a, b) => a.timestamp - b.timestamp);
+            
+            const timeInOuts = [];
+            let currentTimeIn = null;
+            
+            userEntries.forEach(entry => {
+              if (entry.type === 'TimeIn') {
+                currentTimeIn = entry;
+              } else if (entry.type === 'TimeOut' && currentTimeIn) {
+                timeInOuts.push({
+                  timeIn: currentTimeIn,
+                  timeOut: entry
+                });
+                currentTimeIn = null;
+              }
+            });
+            
+            if (currentTimeIn) {
+              timeInOuts.push({
+                timeIn: currentTimeIn,
+                timeOut: null
+              });
+            }
+            
+            timeInOuts.forEach((pair, index) => {
+              dailyLogs.push({
+                id: `${pair.timeIn.id}-${index}`,
+                userId: userId,
+                firstName: pair.timeIn.firstName,
+                email: pair.timeIn.email,
+                imageUrl: pair.timeIn.imageUrl,
+                timeIn: pair.timeIn,
+                timeOut: pair.timeOut,
+                entryNumber: index + 1,
+                attendanceBadge: pair.timeIn.attendanceBadge
+              });
+            });
+          }
+        });
+        
+        setFacultyLogs(dailyLogs);
+        setLoadingFacultyLogs(false);
+      }, (error) => {
+        console.error('Error fetching faculty logs:', error);
+        setFacultyLogs([]);
+        setLoadingFacultyLogs(false);
+        setError('Failed to load faculty logs. Please check your permissions or try again later.');
+      });
+    } catch (error) {
+      console.error('Error applying date filter:', error);
+      setError('Failed to apply date filter. Please try again.');
+      setLoadingFacultyLogs(false);
+    }
+  };
+
+  // Add this function after handleAttendanceDateFilterChange
+  const handleClearAttendanceDateFilter = () => {
+    setAttendanceStartDate('');
+    setAttendanceEndDate('');
+    fetchFacultyLogs();
+  };
+
+  // Add this function after handleClearAttendanceDateFilter
+  const toggleFilterType = (type) => {
+    setFilterType(type);
+    // Clear all date filters when switching
+    setSelectedDate(new Date());
+    setAttendanceStartDate('');
+    setAttendanceEndDate('');
+    fetchFacultyLogs();
+  };
+
   return (
     <Box 
       className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}
@@ -1176,23 +1293,167 @@ export default function Dashboard() {
               border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
               p: 3
             }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" fontWeight="600" color="#1E293B">
-                  Faculty Day-to-Day Attendance
-                </Typography>
+              {/* Replace the existing DatePicker in the attendance section with this new filter UI */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: { xs: 'wrap', md: 'nowrap' }, gap: 2 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight="600" color="#1E293B">
+                    Faculty Day-to-Day Attendance
+                  </Typography>
+                  {filterType === 'range' && attendanceStartDate && attendanceEndDate && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Showing records from {format(new Date(attendanceStartDate), 'MMMM d, yyyy')} to {format(new Date(attendanceEndDate), 'MMMM d, yyyy')}
+                    </Typography>
+                  )}
+                </Box>
                 
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Select Date"
-                    value={selectedDate}
-                    onChange={(newValue) => {
-                      if (newValue && !isNaN(newValue.getTime())) {
-                        setSelectedDate(newValue);
-                      }
-                    }}
-                    sx={{ width: 200 }}
-                  />
-                </LocalizationProvider>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2,
+                  flexWrap: { xs: 'wrap', md: 'nowrap' },
+                  alignItems: 'center'
+                }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 1, 
+                    bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', 
+                    borderRadius: '8px',
+                    p: 0.5
+                  }}>
+                    <Button
+                      size="small"
+                      variant={filterType === 'single' ? 'contained' : 'text'}
+                      onClick={() => toggleFilterType('single')}
+                      sx={{ 
+                        textTransform: 'none',
+                        minWidth: 'auto',
+                        px: 2,
+                        backgroundColor: filterType === 'single' ? (darkMode ? 'var(--accent-color)' : 'royalblue') : 'transparent',
+                        color: filterType === 'single' ? 'white' : 'text.secondary',
+                        '&:hover': {
+                          backgroundColor: filterType === 'single' 
+                            ? (darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)')
+                            : (darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+                        }
+                      }}
+                    >
+                      Single Date
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={filterType === 'range' ? 'contained' : 'text'}
+                      onClick={() => toggleFilterType('range')}
+                      sx={{ 
+                        textTransform: 'none',
+                        minWidth: 'auto',
+                        px: 2,
+                        backgroundColor: filterType === 'range' ? (darkMode ? 'var(--accent-color)' : 'royalblue') : 'transparent',
+                        color: filterType === 'range' ? 'white' : 'text.secondary',
+                        '&:hover': {
+                          backgroundColor: filterType === 'range' 
+                            ? (darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)')
+                            : (darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+                        }
+                      }}
+                    >
+                      Date Range
+                    </Button>
+                  </Box>
+
+                  {filterType === 'single' ? (
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label="Select Date"
+                        value={selectedDate}
+                        onChange={(newValue) => {
+                          if (newValue && !isNaN(newValue.getTime())) {
+                            setSelectedDate(newValue);
+                          }
+                        }}
+                        sx={{ width: 200 }}
+                        disabled={filterType !== 'single'}
+                      />
+                    </LocalizationProvider>
+                  ) : (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      gap: 2,
+                      flexWrap: { xs: 'wrap', md: 'nowrap' },
+                      alignItems: 'center'
+                    }}>
+                      <TextField
+                        type="date"
+                        size="small"
+                        label="Date From"
+                        value={attendanceStartDate}
+                        onChange={(e) => setAttendanceStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        disabled={filterType !== 'range'}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '8px',
+                            '&:hover fieldset': {
+                              borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                            },
+                          }
+                        }}
+                      />
+                      <TextField
+                        type="date"
+                        size="small"
+                        label="To"
+                        value={attendanceEndDate}
+                        onChange={(e) => setAttendanceEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        disabled={filterType !== 'range'}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '8px',
+                            '&:hover fieldset': {
+                              borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                            },
+                          }
+                        }}
+                      />
+                      <Button 
+                        variant="contained" 
+                        color="primary"
+                        size="small"
+                        onClick={handleAttendanceDateFilterChange}
+                        disabled={filterType !== 'range' || !attendanceStartDate || !attendanceEndDate}
+                        sx={{ 
+                          textTransform: 'none', 
+                          borderRadius: '8px',
+                          backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
+                          boxShadow: 'none',
+                          '&:hover': {
+                            backgroundColor: darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)',
+                            boxShadow: darkMode ? '0 4px 12px rgba(107, 110, 247, 0.25)' : '0 4px 12px rgba(65, 105, 225, 0.25)',
+                          }
+                        }}
+                      >
+                        Apply Filter
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        onClick={handleClearAttendanceDateFilter}
+                        disabled={filterType !== 'range' || (!attendanceStartDate && !attendanceEndDate)}
+                        sx={{ 
+                          textTransform: 'none',
+                          borderRadius: '8px',
+                          borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                          color: 'text.secondary',
+                          '&:hover': {
+                            borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                            backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                          }
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
               </Box>
 
               {/* Today's Attendance Summary */}
@@ -1322,7 +1583,7 @@ export default function Dashboard() {
                         <TableCell>Photo</TableCell>
                         <TableCell>Name</TableCell>
                         <TableCell>Email</TableCell>
-                        <TableCell>Entry #</TableCell>
+                        <TableCell>Date</TableCell>
                         <TableCell>Time In</TableCell>
                         <TableCell>Time Out</TableCell>
                         <TableCell>Duration</TableCell>
@@ -1349,15 +1610,23 @@ export default function Dashboard() {
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Photo</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Name</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Email</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Entry #</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {facultyLogs.map((entry) => {
-                        const duration = calculateDuration(entry.timeIn, entry.timeOut);
+                      {[...facultyLogs]
+                        .sort((a, b) => {
+                          const dateA = a.timeIn ? new Date(a.timeIn.timestamp) : new Date(0);
+                          const dateB = b.timeIn ? new Date(b.timeIn.timestamp) : new Date(0);
+                          return dateA - dateB; // Ascending order (oldest to newest)
+                        })
+                        .map((entry) => {
+                          const duration = calculateDuration(entry.timeIn, entry.timeOut);
+                          const timeInDate = entry.timeIn ? new Date(entry.timeIn.timestamp) : null;
+                          const formattedDate = timeInDate ? format(timeInDate, 'MMMM d, yyyy') : 'N/A';
                         
                         return (
                           <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
@@ -1449,10 +1718,11 @@ export default function Dashboard() {
                             <TableCell>{entry.email}</TableCell>
                             <TableCell>
                               <Chip 
-                                label={`Entry ${entry.entryNumber}`}
+                                label={formattedDate}
                                 size="small"
-                                color="info"
+                                color="default"
                                 variant="outlined"
+                                icon={<CalendarToday sx={{ fontSize: 16 }} />}
                               />
                             </TableCell>
                             <TableCell>
@@ -1466,16 +1736,6 @@ export default function Dashboard() {
                                     icon={<AccessTime sx={{ fontSize: 16 }} />}
                                   />
                                 </Tooltip>
-                                <Chip
-                                  label={entry.attendanceBadge}
-                                  size="small"
-                                  color={
-                                    entry.attendanceBadge === 'On Time' ? 'success' :
-                                    entry.attendanceBadge === 'Late' ? 'warning' :
-                                    'error'
-                                  }
-                                  variant="outlined"
-                                />
                               </Box>
                             </TableCell>
                             <TableCell>

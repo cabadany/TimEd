@@ -148,7 +148,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToAccounts, 
       path: '/accounts',
       tooltip: 'Accounts',
-      badge: accountCount > 0 ? accountCount : null,
+    //  badge: accountCount > 0 ? accountCount : null,
       group: 'main'
     },
     // Resources group
@@ -167,7 +167,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToDepartment, 
       path: '/department',
       tooltip: 'Departments',
-      badge: departmentCount > 0 ? departmentCount : null,
+    //  badge: departmentCount > 0 ? departmentCount : null,
       group: 'resources'
     },
     {
@@ -176,7 +176,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToExcuseLetters,
       path: '/excuse-letters',
       tooltip: 'Excuse Letters',
-      badge: excuseLetterCount > 0 ? excuseLetterCount : null,
+      //badge: excuseLetterCount > 0 ? excuseLetterCount : null,
       group: 'resources'
     },
     // Profile group

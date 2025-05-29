@@ -551,7 +551,7 @@ export default function DepartmentManagement() {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department Name</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Abbreviation</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>
+              {/*    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>*/}
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Programs Offered</TableCell>
                   <TableCell sx={{ width: 120, bgcolor: '#F8FAFC', textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
@@ -572,7 +572,7 @@ export default function DepartmentManagement() {
                     <TableRow key={department.departmentId} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
                       <TableCell sx={{ fontWeight: 500 }}>{department.name}</TableCell>
                       <TableCell>{department.abbreviation}</TableCell>
-                      <TableCell>{department.numberOfFaculty}</TableCell>
+                     {/* <TableCell>{department.numberOfFaculty}</TableCell>*/}
                       <TableCell>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {department.offeredPrograms && department.offeredPrograms.length > 0 ? (
@@ -842,6 +842,7 @@ export default function DepartmentManagement() {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
+                    disabled={true}
                     name="numberOfFaculty"
                     label="Number of Faculty"
                     type="number"
