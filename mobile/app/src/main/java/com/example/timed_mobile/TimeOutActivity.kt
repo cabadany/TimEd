@@ -15,8 +15,10 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.FirebaseDatabase
+import java.util.Calendar
 
 class TimeOutActivity : AppCompatActivity() {
 
@@ -134,23 +136,69 @@ class TimeOutActivity : AppCompatActivity() {
 
         val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId!!)
 
-        val log = mapOf(
-            "timestamp" to System.currentTimeMillis(),
-            "type" to "TimeOut",
-            "email" to userEmail,
-            "firstName" to userFirstName,
-            "userId" to userId,
-            "status" to "Off Duty",
-            "attendanceBadge" to "Timed-Out"
-        )
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
-        dbRef.push().setValue(log)
-            .addOnSuccessListener {
-                showTimeOutSuccessDialog()
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Failed to log Time-Out: ${e.message}", Toast.LENGTH_LONG)
-                    .show()
-            }
+        dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
+            .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                    var latestTimeIn: Long? = null
+
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
+
+                        if (type == "TimeIn" && timestamp != null) {
+                            if (latestTimeIn == null || timestamp > latestTimeIn) {
+                                latestTimeIn = timestamp
+                            }
+                        }
+                    }
+
+                    if (latestTimeIn == null) {
+                        Toast.makeText(this@TimeOutActivity, "You haven't timed in today.", Toast.LENGTH_LONG).show()
+                        return
+                    }
+
+                    val fiveHoursMillis = 5 * 60 * 60 * 1000
+                    val now = System.currentTimeMillis()
+
+                    if (now - latestTimeIn < fiveHoursMillis) {
+                        val hoursLeft = ((fiveHoursMillis - (now - latestTimeIn)) / (60 * 60 * 1000)).toInt()
+                        AlertDialog.Builder(this@TimeOutActivity)
+                            .setTitle("Too Early to Time-Out")
+                            .setMessage("You can only time-out 5 hours after timing in.\n\nPlease wait about $hoursLeft more hour(s).")
+                            .setPositiveButton("OK", null)
+                            .show()
+                        return
+                    }
+
+                    val log = mapOf(
+                        "timestamp" to now,
+                        "type" to "TimeOut",
+                        "email" to userEmail,
+                        "firstName" to userFirstName,
+                        "userId" to userId,
+                        "status" to "Off Duty",
+                        "attendanceBadge" to "Timed-Out"
+                    )
+
+                    dbRef.push().setValue(log)
+                        .addOnSuccessListener {
+                            showTimeOutSuccessDialog()
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(this@TimeOutActivity, "Failed to log Time-Out: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
+
+                override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                    Toast.makeText(this@TimeOutActivity, "Database error: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            })
     }
 }

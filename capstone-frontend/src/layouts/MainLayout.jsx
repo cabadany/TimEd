@@ -24,7 +24,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import '../styles/sidebar.css';
 import axios from 'axios';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 const MainLayout = ({ children, title }) => {
   const location = useLocation();
@@ -48,7 +47,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch department count
   const fetchDepartmentCount = async () => {
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
+      const response = await axios.get('http://localhost:8080/api/departments');
       if (response.data && Array.isArray(response.data)) {
         setDepartmentCount(response.data.length);
       }
@@ -60,7 +59,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch account count
   const fetchAccountCount = async () => {
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS), {
+      const response = await axios.get('http://localhost:8080/api/user/getAll', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -76,7 +75,7 @@ const MainLayout = ({ children, title }) => {
   // Fetch excuse letter count
   const fetchExcuseLetterCount = async () => {
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_EXCUSE_LETTERS), {
+      const response = await axios.get('http://localhost:8080/api/excuse-letters/getAll', {
         params: { page: 0, size: 1000 } // Get a large count to ensure we get all
       });
       if (response.data && response.data.content && Array.isArray(response.data.content)) {
@@ -148,7 +147,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToAccounts, 
       path: '/accounts',
       tooltip: 'Accounts',
-    //  badge: accountCount > 0 ? accountCount : null,
+      badge: accountCount > 0 ? accountCount : null,
       group: 'main'
     },
     // Resources group
@@ -167,7 +166,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToDepartment, 
       path: '/department',
       tooltip: 'Departments',
-    //  badge: departmentCount > 0 ? departmentCount : null,
+      badge: departmentCount > 0 ? departmentCount : null,
       group: 'resources'
     },
     {
@@ -176,7 +175,7 @@ const MainLayout = ({ children, title }) => {
       onClick: handleNavigateToExcuseLetters,
       path: '/excuse-letters',
       tooltip: 'Excuse Letters',
-      //badge: excuseLetterCount > 0 ? excuseLetterCount : null,
+      badge: excuseLetterCount > 0 ? excuseLetterCount : null,
       group: 'resources'
     },
     // Profile group

@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { storage } from '../firebase/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 // Create the context
 const UserContext = createContext();
@@ -66,7 +65,7 @@ export const UserProvider = ({ children }) => {
       
       try {
         // Fetch user data from the API - fixed endpoint to match backend controller
-        const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(userId)));
+        const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
         setUser(response.data);
         
         // Check if user has a profile picture URL
@@ -127,7 +126,7 @@ export const UserProvider = ({ children }) => {
       const userId = localStorage.getItem('userId');
       if (userId) {
         try {
-          await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(userId)), {
+          await axios.put(`http://localhost:8080/api/user/updateProfilePicture/${userId}`, {
             profilePictureUrl: url
           });
         } catch (error) {

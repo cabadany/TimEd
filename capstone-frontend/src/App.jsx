@@ -45,8 +45,28 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            
             {/* Protected routes with MainLayout */}
+            <Route 
+              path="/department" 
+              element={
+                <ProtectedRoute>
+                  <MainLayout title="Departments">
+                    <Department />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/attendance/:eventId" 
+              element={
+                <ProtectedRoute>
+                  <MainLayout title="Attendance">
+                    <Attendance />
+                  </MainLayout>
+                </ProtectedRoute>
+              } 
+            />
+        
             <Route 
               path="/dashboard" 
               element={
@@ -68,6 +88,17 @@ function App() {
               }
             />
             <Route 
+              path="/qr-join/:eventId" 
+              element={
+                <ProtectedRoute>
+                  <SimpleLayout>
+                    <QRJoin />
+                  </SimpleLayout>
+                </ProtectedRoute>
+              } 
+            />
+            {/* Protected routes with MainLayout */}
+            <Route 
               path="/department" 
               element={
                 <ProtectedRoute>
@@ -86,6 +117,27 @@ function App() {
                   </MainLayout>
                 </ProtectedRoute>
               } 
+            />
+        
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <MainLayout title="Dashboard">
+                    <Dashboard />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/accounts" 
+              element={
+                <ProtectedRoute>
+                  <MainLayout title="Accounts">
+                    <Accounts />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/certificates" 

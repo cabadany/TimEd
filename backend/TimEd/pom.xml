@@ -46,12 +46,6 @@
 			<artifactId>spring-security-crypto</artifactId>
 		</dependency>
 
-		<!-- Spring Security Web -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-
 		<!-- PDF Generation -->
 		<dependency>
 			<groupId>com.itextpdf</groupId>
@@ -69,12 +63,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-
-		<!-- Spring Boot Actuator for health checks -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
 		<dependency>

@@ -29,7 +29,6 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 // import androidx.core.net.toUri // Not used directly, can be removed if not needed elsewhere
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -42,8 +41,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.net.URL
-import java.net.HttpURLConnection
 
 // import android.widget.Toast // Already imported
 // import androidx.camera.core.ImageProxy // Already imported
@@ -87,7 +84,8 @@ class TimeInEventActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_page)
 
-        // Initialize user data first
+        handleDeepLinkIfPresent()
+
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
@@ -104,16 +102,6 @@ class TimeInEventActivity : AppCompatActivity() {
             finish()
             return
         }
-
-        // Ensure Firebase Auth user is authenticated before proceeding
-        ensureFirebaseAuthUser {
-            // Initialize the rest of the activity after authentication
-            initializeActivity()
-        }
-    }
-
-    private fun initializeActivity() {
-        handleDeepLinkIfPresent()
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
@@ -167,26 +155,6 @@ class TimeInEventActivity : AppCompatActivity() {
         }
     }
 
-    private fun ensureFirebaseAuthUser(onComplete: () -> Unit) {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser == null) {
-            Log.d(TAG, "No Firebase Auth user found, signing in anonymously...")
-            FirebaseAuth.getInstance().signInAnonymously()
-                .addOnSuccessListener { authResult ->
-                    Log.d(TAG, "Anonymous sign-in successful: ${authResult.user?.uid}")
-                    onComplete()
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Anonymous sign-in failed", e)
-                    Toast.makeText(this, "Authentication failed. Please try again.", Toast.LENGTH_LONG).show()
-                    finish()
-                }
-        } else {
-            Log.d(TAG, "Firebase Auth user already exists: ${currentUser.uid}")
-            onComplete()
-        }
-    }
-
     private fun sendCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String) {
         Log.d(TAG, "sendCertificateEmail called for event: $eventName, email: $userEmail")
 
@@ -230,6 +198,32 @@ class TimeInEventActivity : AppCompatActivity() {
             }
     }
 
+    private fun triggerCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String, attendanceRecordId: String) {
+        Log.d(TAG, "triggerCertificateEmail called for $eventName, user $userName ($userEmail), record $attendanceRecordId")
+        val db = FirebaseFirestore.getInstance()
+        val emailRequest = hashMapOf(
+            "type" to "event_certificate", // For a generic email sending function
+            "recipientEmail" to userEmail,
+            "recipientName" to userName,
+            "eventId" to eventId,
+            "eventName" to eventName,
+            "attendanceRecordId" to attendanceRecordId,
+            "requestedAt" to FieldValue.serverTimestamp(),
+            "processed" to false // Cloud function will set this to true
+        )
+        db.collection("email_requests") // A collection your Cloud Function listens to
+            .add(emailRequest)
+            .addOnSuccessListener { Log.d(TAG, "Certificate email request created: ${it.id}") }
+            .addOnFailureListener { e -> Log.e(TAG, "Failed to create certificate email request", e) }
+
+        // Also update the attendance record if needed
+        db.collection("attendanceRecords").document(attendanceRecordId)
+            .update("certificateRequested", true, "certificateRequestedAt", FieldValue.serverTimestamp())
+            .addOnSuccessListener { Log.d(TAG, "Attendance record updated for certificate request.") }
+            .addOnFailureListener { e -> Log.e(TAG, "Failed to update attendance record for certificate request.", e) }
+    }
+
+
     private fun handleQrCodeScannedUpdated(qrContent: String) {
         Log.d(TAG, "handleQrCodeScannedUpdated called with: $qrContent")
         if (isQrScanned) {
@@ -238,43 +232,13 @@ class TimeInEventActivity : AppCompatActivity() {
         }
         vibrate()
 
-        // Extract eventId using the same logic as frontend QRJoin.jsx
-        val eventId = if (qrContent.contains("/")) {
-            // Handle URL format like "https://timedsystem.netlify.app/qr-join/L6ViIgyOFgRnSo8OyutU"
-            qrContent.substringAfterLast("/").trim()
-        } else {
-            // Handle the TIMED:EVENT:eventId format like frontend
-            val parts = qrContent.split(":")
-            if (parts.size >= 3 && parts[0] == "TIMED" && parts[1] == "EVENT") {
-                parts[2].trim()
-            } else {
-                qrContent.trim() // Fallback to using the whole content as eventId
-            }
-        }
-        
+        val eventId = qrContent.substringAfterLast("/").trim() // Assuming format like "timed://event/EVENT_ID"
         if (eventId.isEmpty()) {
             showErrorDialog("Invalid QR code format.")
             Log.e(TAG, "Invalid QR code format, eventId is empty from: $qrContent")
             resetForNewScan() // Allow user to try again
             return
         }
-
-        // Ensure we have the userId from SharedPreferences (equivalent to frontend's localStorage)
-        if (userId.isNullOrEmpty()) {
-            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
-            userId = prefs.getString("userId", null)
-            userEmail = prefs.getString("email", null)
-            userFirstName = prefs.getString("firstName", null)
-            
-            if (userId.isNullOrEmpty()) {
-                showErrorDialog("User session not found. Please log in again.")
-                Log.e(TAG, "No userId found in SharedPreferences")
-                finish()
-                return
-            }
-        }
-
-        Log.d(TAG, "Processing QR scan for eventId: $eventId, userId: $userId")
 
         isQrScanned = true // Set flag early to prevent re-entry
         scanButton.isEnabled = false // Disable button during processing
@@ -283,7 +247,7 @@ class TimeInEventActivity : AppCompatActivity() {
         val db = FirebaseFirestore.getInstance()
         val eventDocRef = db.collection("events").document(eventId)
 
-        selfieReminder.text = "Joining event...please wait" // Update UI like frontend
+        selfieReminder.text = "Verifying event..." // Update UI
 
         eventDocRef.get()
             .addOnSuccessListener { document ->
@@ -292,16 +256,34 @@ class TimeInEventActivity : AppCompatActivity() {
                     currentScannedEventId = eventId // Store for later use (e.g., selfie)
                     currentScannedEventName = eventName
 
-                    // Show "Joining event" message for a moment, then proceed to selfie
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        // Skip the duplicate check - let backend handle it
-                        // Directly proceed to selfie mode like frontend after showing joining message
-                        selfieReminder.text = "Event '$eventName' found. Please take a selfie."
-                        scanButton.text = getString(R.string.button_take_selfie)
-                        scanButton.isEnabled = true
-                        shutterButton.visibility = View.VISIBLE
-                        switchToSelfieMode() // Switch to front camera
-                    }, 1500) // Show "Joining event...please wait" for 1.5 seconds
+                    selfieReminder.text = "Checking previous time-in for $eventName..."
+
+                    // Check if already timed in for this event
+                    db.collection("attendanceRecords") // Use the main attendanceRecords collection
+                        .whereEqualTo("userId", userId)
+                        .whereEqualTo("eventId", eventId)
+                        .whereEqualTo("type", "event_time_in")
+                        .limit(1) // We only need to know if one exists
+                        .get()
+                        .addOnSuccessListener { existingRecords ->
+                            if (!existingRecords.isEmpty) {
+                                showErrorDialog("You have already timed in for '$eventName'.")
+                                // Optionally, navigate away or offer to time out
+                                Handler(Looper.getMainLooper()).postDelayed({ finish() }, 3000)
+                            } else {
+                                // Not timed in yet, proceed to selfie
+                                selfieReminder.text = "Event '$eventName' found. Please take a selfie."
+                                scanButton.text = getString(R.string.button_take_selfie)
+                                scanButton.isEnabled = true
+                                shutterButton.visibility = View.VISIBLE
+                                switchToSelfieMode() // Switch to front camera
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            showErrorDialog("Error checking existing records: ${e.message}")
+                            Log.e(TAG, "Error checking existing attendance records", e)
+                            resetForNewScan()
+                        }
                 } else {
                     showErrorDialog("Event with ID '$eventId' not found.")
                     Log.e(TAG, "Event not found for ID: $eventId")
@@ -327,357 +309,54 @@ class TimeInEventActivity : AppCompatActivity() {
             return
         }
 
-        selfieReminder.text = "Processing attendance..." // Update UI
-
-        // First, validate that the user exists in the backend users collection
-        validateUserAndCallAPI(eventIdForLog, selfieUrl, timestampPhoto)
-    }
-    
-    private fun validateUserAndCallAPI(eventId: String, selfieUrl: String, timestamp: String) {
-        Log.d(TAG, "Validating user exists in backend before API call...")
-        selfieReminder.text = "Validating user..."
-        
-        if (userId.isNullOrEmpty()) {
-            Log.e(TAG, "Cannot validate user: userId is null or empty")
-            showErrorDialog("User session error. Please log in again.")
-            return
-        }
-        
-        val db = FirebaseFirestore.getInstance()
-        db.collection("users").document(userId!!)
-            .get()
-            .addOnSuccessListener { userDoc ->
-                if (userDoc.exists()) {
-                    val userEmail = userDoc.getString("email")
-                    val userFirstName = userDoc.getString("firstName")
-                    
-                    Log.d(TAG, "User validation SUCCESS:")
-                    Log.d(TAG, "- User exists in backend")
-                    Log.d(TAG, "- Email: $userEmail")
-                    Log.d(TAG, "- FirstName: $userFirstName")
-                    
-                    // Update local variables with backend data (in case they differ)
-                    this.userEmail = userEmail
-                    this.userFirstName = userFirstName
-                    
-                    // Now call the backend API
-                    callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
-                } else {
-                    Log.e(TAG, "User validation FAILED: User document does not exist in backend")
-                    Log.e(TAG, "Looking for userId: $userId in users collection")
-                    
-                    // User doesn't exist in backend, but they're logged in locally
-                    // This might be a sync issue, but we should still try the API call
-                    Log.w(TAG, "User not found in backend, but trying API call anyway")
-                    callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "User validation ERROR: Failed to check user existence", e)
-                // Even if validation fails, try the API call
-                Log.w(TAG, "Validation failed, but trying API call anyway")
-                callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
-            }
-    }
-
-    private fun callBackendAttendanceAPI(eventId: String, selfieUrl: String, timestamp: String) {
-        // Use the same API endpoint as the frontend: POST /api/attendance/{eventId}/{userId}
-        val apiBaseUrl = "https://timed-utd9.onrender.com/api"
-        val attendanceUrl = "$apiBaseUrl/attendance/$eventId/$userId"
-        
-        // Log detailed information before API call
-        Log.d(TAG, "=== CALLING BACKEND API ===")
-        Log.d(TAG, "API URL: $attendanceUrl")
-        Log.d(TAG, "EventId: $eventId")
-        Log.d(TAG, "UserId: $userId")
-        Log.d(TAG, "UserEmail: $userEmail")
-        Log.d(TAG, "UserFirstName: $userFirstName")
-        Log.d(TAG, "SelfieUrl: $selfieUrl")
-        Log.d(TAG, "========================")
-        
-        selfieReminder.text = "Contacting server..."
-        
-        // Verify all required data is present
-        if (userId.isNullOrEmpty()) {
-            Log.e(TAG, "ERROR: userId is null or empty!")
-            runOnUiThread {
-                showErrorDialog("User session error. Please log in again.")
-            }
-            return
-        }
-        
-        if (eventId.isEmpty()) {
-            Log.e(TAG, "ERROR: eventId is empty!")
-            runOnUiThread {
-                showErrorDialog("Event ID error. Please scan QR code again.")
-            }
-            return
-        }
-        
-        // Create a simple HTTP client request
-        Thread {
-            try {
-                val url = java.net.URL(attendanceUrl)
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.setRequestProperty("Accept", "application/json")
-                connection.connectTimeout = 15000 // Increased timeout
-                connection.readTimeout = 15000 // Increased timeout
-                
-                Log.d(TAG, "Making HTTP POST request to: $attendanceUrl")
-                
-                val responseCode = connection.responseCode
-                val responseMessage = if (responseCode == 200) {
-                    val inputStream = connection.inputStream
-                    inputStream.bufferedReader().use { it.readText() }
-                } else {
-                    val errorStream = connection.errorStream
-                    if (errorStream != null) {
-                        errorStream.bufferedReader().use { it.readText() }
-                    } else {
-                        "HTTP Error: $responseCode"
-                    }
-                }
-                
-                Log.d(TAG, "=== BACKEND API RESPONSE ===")
-                Log.d(TAG, "Response Code: $responseCode")
-                Log.d(TAG, "Response Message: $responseMessage")
-                Log.d(TAG, "==========================")
-                
-                // Handle response on UI thread
-                runOnUiThread {
-                    handleBackendResponse(responseCode, responseMessage, eventId)
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "=== API CALL ERROR ===")
-                Log.e(TAG, "Error calling backend API", e)
-                Log.e(TAG, "Error type: ${e.javaClass.simpleName}")
-                Log.e(TAG, "Error message: ${e.message}")
-                Log.e(TAG, "==================")
-                runOnUiThread {
-                    selfieReminder.text = "Network error. Trying alternative..."
-                    // Fallback to manual Firestore recording
-                    recordAttendanceToFirestore(eventId, selfieUrl, timestamp)
-                }
-            }
-        }.start()
-    }
-    
-    private fun handleBackendResponse(responseCode: Int, responseMessage: String, eventId: String) {
-        when (responseCode) {
-            200 -> {
-                if (responseMessage.contains("Already timed in", ignoreCase = true)) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
-                } else if (responseMessage.contains("No attendee record found", ignoreCase = true)) {
-                    // Attendance was marked but certificate generation failed due to Firestore eventual consistency
-                    // Retry after a short delay
-                    selfieReminder.text = "Attendance recorded. Processing certificate..."
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        retryAttendanceAPI(eventId)
-                    }, 2000) // Wait 2 seconds for Firestore consistency
-                } else {
-                    // Success - attendance recorded and certificate email sent
-                    AlertDialog.Builder(this)
-                        .setTitle("Time-In Recorded")
-                        .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            val resultIntent = Intent()
-                            setResult(RESULT_OK, resultIntent)
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
-                }
-            }
-            else -> {
-                Log.e(TAG, "Backend API error: $responseCode - $responseMessage")
-                selfieReminder.text = "Server error. Trying alternative..."
-                // Fallback to manual recording
-                recordAttendanceToFirestore(eventId, "", "")
-            }
-        }
-    }
-    
-    private fun retryAttendanceAPI(eventId: String) {
-        selfieReminder.text = "Retrying certificate generation..."
-        
-        Log.d(TAG, "=== RETRYING API CALL ===")
-        Log.d(TAG, "EventId: $eventId")
-        Log.d(TAG, "UserId: $userId") 
-        Log.d(TAG, "========================")
-        
-        // Call the backend API again to trigger certificate generation
-        val apiBaseUrl = "https://timed-utd9.onrender.com/api"
-        val attendanceUrl = "$apiBaseUrl/attendance/$eventId/$userId"
-        
-        Thread {
-            try {
-                val url = java.net.URL(attendanceUrl)
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.setRequestProperty("Accept", "application/json")
-                connection.connectTimeout = 15000 // Increased timeout
-                connection.readTimeout = 15000 // Increased timeout
-                
-                Log.d(TAG, "Making RETRY HTTP POST request to: $attendanceUrl")
-                
-                val responseCode = connection.responseCode
-                val responseMessage = if (responseCode == 200) {
-                    val inputStream = connection.inputStream
-                    inputStream.bufferedReader().use { it.readText() }
-                } else {
-                    val errorStream = connection.errorStream
-                    if (errorStream != null) {
-                        errorStream.bufferedReader().use { it.readText() }
-                    } else {
-                        "HTTP Error: $responseCode"
-                    }
-                }
-                
-                Log.d(TAG, "=== RETRY API RESPONSE ===")
-                Log.d(TAG, "Response Code: $responseCode")
-                Log.d(TAG, "Response Message: $responseMessage")
-                Log.d(TAG, "========================")
-                
-                runOnUiThread {
-                    if (responseCode == 200 && responseMessage.contains("Already timed in", ignoreCase = true)) {
-                        // Perfect! This means the attendance record is now found and certificate was processed
-                        Log.d(TAG, "SUCCESS: Retry found attendance record, certificate processed!")
-                        AlertDialog.Builder(this)
-                            .setTitle("Time-In Recorded")
-                            .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
-                            .setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                                val resultIntent = Intent()
-                                setResult(RESULT_OK, resultIntent)
-                                finish()
-                            }
-                            .setCancelable(false)
-                            .show()
-                    } else if (responseMessage.contains("No attendee record found", ignoreCase = true)) {
-                        // Still not found after retry, but consider it successful since attendance was recorded
-                        Log.w(TAG, "WARNING: Still no attendee record found after retry, but treating as success")
-                        AlertDialog.Builder(this)
-                            .setTitle("Time-In Recorded")
-                            .setMessage("Successfully timed in for '${currentScannedEventName}'! Certificate will be processed shortly.")
-                            .setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                                val resultIntent = Intent()
-                                setResult(RESULT_OK, resultIntent)
-                                finish()
-                            }
-                            .setCancelable(false)
-                            .show()
-                    } else {
-                        // Some other response, treat as success
-                        Log.d(TAG, "SUCCESS: Other response received, treating as success")
-                        AlertDialog.Builder(this)
-                            .setTitle("Time-In Recorded")
-                            .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
-                            .setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                                val resultIntent = Intent()
-                                setResult(RESULT_OK, resultIntent)
-                                finish()
-                            }
-                            .setCancelable(false)
-                            .show()
-                    }
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "=== RETRY API ERROR ===")
-                Log.e(TAG, "Error in retry API call", e)
-                Log.e(TAG, "Error type: ${e.javaClass.simpleName}")
-                Log.e(TAG, "Error message: ${e.message}")
-                Log.e(TAG, "=====================")
-                runOnUiThread {
-                    // Even if retry fails, consider the original attendance as successful
-                    AlertDialog.Builder(this)
-                        .setTitle("Time-In Recorded")
-                        .setMessage("Successfully timed in for '${currentScannedEventName}'! Certificate will be processed shortly.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            val resultIntent = Intent()
-                            setResult(RESULT_OK, resultIntent)
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
-                }
-            }
-        }.start()
-    }
-    
-    private fun recordAttendanceToFirestore(eventId: String, selfieUrl: String, timestamp: String) {
-        Log.d(TAG, "Using fallback Firestore recording")
-        
         val record = hashMapOf(
             "userId" to userId,
             "firstName" to userFirstName,
             "email" to userEmail,
-            "eventId" to eventId,
-            "eventName" to currentScannedEventName,
-            "timestamp" to FieldValue.serverTimestamp(),
+            "eventId" to eventIdForLog,
+            "eventName" to eventNameForLog,
+            "timestamp" to FieldValue.serverTimestamp(), // Use server timestamp for consistency
             "selfieUrl" to selfieUrl,
             "type" to "event_time_in",
-            "hasTimedOut" to false
+            "hasTimedOut" to false // Default to false
         )
 
-        val db = FirebaseFirestore.getInstance()
-        val documentId = "${userId}_${eventId}_event_time_in"
-        
-        db.collection("attendanceRecords")
-            .document(documentId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
-                } else {
-                    db.collection("attendanceRecords")
-                        .document(documentId)
-                        .set(record)
-                        .addOnSuccessListener {
-                            Log.d(TAG, "Fallback: Attendance record saved to Firestore")
-                            AlertDialog.Builder(this)
-                                .setTitle("Time-In Recorded")
-                                .setMessage("Successfully timed in for '${currentScannedEventName}'! Processing certificate...")
-                                .setPositiveButton("OK") { dialog, _ ->
-                                    dialog.dismiss()
-                                    finish()
-                                }
-                                .setCancelable(false)
-                                .show()
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e(TAG, "Fallback: Failed to save attendance", e)
-                            showErrorDialog("Failed to save attendance: ${e.message}")
-                        }
+        Log.d(TAG, "Logging to Firestore: $record")
+        selfieReminder.text = "Saving your time-in..." // Update UI
+
+        FirebaseFirestore.getInstance().collection("attendanceRecords")
+            .add(record)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Attendance record added to Firestore with ID: ${documentReference.id}")
+
+                userEmail?.let { email ->
+                    userFirstName?.let { name ->
+                        // Use the new triggerCertificateEmail method
+                        triggerCertificateEmail(eventNameForLog, eventIdForLog, email, name, documentReference.id)
+                    }
                 }
+
+                AlertDialog.Builder(this)
+                    .setTitle("Time-In Recorded")
+                    .setMessage("Attendance for event '$eventNameForLog' saved successfully! A certificate will be sent to your email if applicable.")
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                        val resultIntent = Intent()
+                        // You can put extras if needed by the calling activity
+                        // resultIntent.putExtra("timedInEventId", eventIdForLog)
+                        setResult(RESULT_OK, resultIntent)
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Fallback: Failed to check existing record", e)
-                showErrorDialog("Failed to process attendance: ${e.message}")
+                Log.e(TAG, "Failed to save attendance to Firestore", e)
+                showErrorDialog("Failed to save attendance: ${e.message}")
+                // Re-enable selfie button if save fails? Or reset?
+                scanButton.text = getString(R.string.button_take_selfie)
+                scanButton.isEnabled = true
+                shutterButton.visibility = View.VISIBLE
             }
     }
 
@@ -1039,16 +718,6 @@ class TimeInEventActivity : AppCompatActivity() {
     private fun uploadSelfieToFirebase(photoUri: Uri, timestamp: String) {
         Log.d(TAG, "uploadSelfieToFirebase called with URI: $photoUri")
         val storageRef = FirebaseStorage.getInstance().reference
-        
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser == null) {
-            Log.e(TAG, "User is not authenticated for upload.")
-            Toast.makeText(this, "Authentication error. Please retry.", Toast.LENGTH_SHORT).show()
-            scanButton.isEnabled = true
-            shutterButton.isEnabled = true
-            return
-        }
-        
         val currentUserId = userId ?: run {
             Toast.makeText(this, "User ID missing for upload.", Toast.LENGTH_SHORT).show()
             Log.e(TAG, "uploadSelfieToFirebase: userId is null")
@@ -1056,12 +725,10 @@ class TimeInEventActivity : AppCompatActivity() {
             shutterButton.isEnabled = true
             return
         }
-        
-        // Use Firebase Auth UID for storage path (for security rules) but keep metadata about app userId
-        val firebaseUid = currentUser.uid
-        val selfiePath = "event_selfies/$firebaseUid/selfie_event_${currentScannedEventId}_$timestamp.jpg"
+        // Differentiate event selfies in storage path
+        val selfiePath = "event_selfies/$currentUserId/selfie_event_${currentScannedEventId}_$timestamp.jpg"
         val selfieRef = storageRef.child(selfiePath)
-        Log.d(TAG, "Uploading selfie to: $selfiePath (Firebase UID: $firebaseUid, App User ID: $currentUserId)")
+        Log.d(TAG, "Uploading selfie to: $selfiePath")
 
         selfieRef.putFile(photoUri)
             .addOnSuccessListener {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { parse, format } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
@@ -75,8 +75,6 @@ import {
 import './Event.css';
 import NotificationSystem from '../components/NotificationSystem';
 import CertificateEditor from '../components/CertificateEditor';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
-import { formatDatePH, createLocalDateISO } from '../utils/dateUtils';
 
 // Default certificate template
 const defaultCertificate = {
@@ -442,7 +440,7 @@ export default function EventPage() {
       if (statusChanged) {
         needsUpdate = true;
         // Make API call with minimal data using dedicated status endpoint
-        axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(updatedEvent.eventId)), {
+        axios.put(`http://localhost:8080/api/events/updateStatus/${updatedEvent.eventId}`, {
           status: updatedEvent.status
         })
           .catch(error => console.error('Error updating event status:', error));
@@ -477,7 +475,7 @@ export default function EventPage() {
     
     try {
       // Add cache buster to avoid caching issues
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_EVENTS_PAGINATED), {
+      const response = await axios.get('http://localhost:8080/api/events/getPaginated', {
         params: {
           page: pageNum,
           size: pageSize,
@@ -539,7 +537,7 @@ export default function EventPage() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
+      const response = await axios.get('http://localhost:8080/api/departments');
       setDepartments(response.data);
       setFilteredDepartments(response.data);
     } catch (error) {
@@ -560,13 +558,8 @@ export default function EventPage() {
       // Create a Date object from the input
       const dateObj = new Date(date);
       
-      // Use utility function to preserve local time
-      const formattedDate = createLocalDateISO(date);
-      
-      if (!formattedDate) {
-        showSnackbar('Invalid date format', 'error');
-        return;
-      }
+      // Format date in ISO format
+      const formattedDate = dateObj.toISOString();
       
       const eventData = {
         eventName,
@@ -578,7 +571,7 @@ export default function EventPage() {
       };
       
       setLoading(true);
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_EVENT), eventData);
+      const response = await axios.post('http://localhost:8080/api/events/createEvent', eventData);
       
       // Get the new event ID from the response
       const newEventId = response.data;
@@ -597,13 +590,13 @@ export default function EventPage() {
           };
           
           // Save the certificate template
-          const certificateResponse = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), certificatePayload);
+          const certificateResponse = await axios.post('http://localhost:8080/api/certificates', certificatePayload);
           console.log('Certificate saved successfully:', certificateResponse.data);
           
           // Link the certificate to the event
           if (certificateResponse.data && certificateResponse.data.id) {
             try {
-              await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
                 certificateId: certificateResponse.data.id,
                 eventId: newEventId
               });
@@ -662,7 +655,7 @@ export default function EventPage() {
   const deleteEvent = async (eventId) => {
     setLoading(true);
     try {
-      await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_EVENT(eventId)));
+      await axios.delete(`http://localhost:8080/api/events/deleteEvent/${eventId}`);
       
       // Remove event from state
       setEvents(events.filter(event => event.eventId !== eventId));
@@ -710,7 +703,7 @@ export default function EventPage() {
       }
       
       // Make API call to persist changes - use the dedicated status endpoint
-      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(eventId)), {
+      await axios.put(`http://localhost:8080/api/events/updateStatus/${eventId}`, {
         status: newStatus
       });
       
@@ -738,7 +731,7 @@ export default function EventPage() {
         duration: formattedDuration
       };
       
-      await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT(eventToEdit.eventId)), updatePayload);
+      await axios.put(`http://localhost:8080/api/events/update/${eventToEdit.eventId}`, updatePayload);
       
       // Update local state
       setEvents(events.map(event => 
@@ -886,9 +879,24 @@ export default function EventPage() {
     return dept ? dept.name : 'Unknown Department';
   }, [departments]);
   
-  // Format date for display - now using utility function
+  // Format date for display
   const formatDate = useCallback((dateString) => {
-    return formatDatePH(dateString);
+    try {
+      const date = new Date(dateString);
+      const options = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      };
+      return date.toLocaleString('en-US', options);
+    } catch (e) {
+      console.error("Date parsing error:", e);
+      return dateString;
+    }
   }, []);
 
   // Format date for backend - reverting to simpler approach that worked before
@@ -1006,7 +1014,7 @@ export default function EventPage() {
       
       try {
         // Try to fetch an existing certificate
-        const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(eventId)));
+        const response = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventId}`);
         console.log('Certificate fetch response:', response);
         
         if (response.data && Object.keys(response.data).length > 0) {
@@ -1080,11 +1088,11 @@ export default function EventPage() {
         if (certificateData.id) {
           // Update existing certificate
           console.log('Updating existing certificate with ID:', certificateData.id);
-          response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_CERTIFICATE(certificateData.id)), payload);
+          response = await axios.put(`http://localhost:8080/api/certificates/${certificateData.id}`, payload);
         } else {
           // Create new certificate
           console.log('Creating new certificate template with eventId:', payload.eventId);
-          response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), payload);
+          response = await axios.post('http://localhost:8080/api/certificates', payload);
         }
         
         console.log('Certificate save response:', response);
@@ -1102,7 +1110,7 @@ export default function EventPage() {
         if (savedCertificateData.id && savedCertificateData.eventId) {
           try {
             console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
-            await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
+            await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
               certificateId: savedCertificateData.id,
               eventId: savedCertificateData.eventId
             });
@@ -1117,7 +1125,7 @@ export default function EventPage() {
         if (savedCertificateData.eventId) {
           try {
             console.log('Verifying certificate was saved correctly for eventId:', savedCertificateData.eventId);
-            const verifyResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(savedCertificateData.eventId)));
+            const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${savedCertificateData.eventId}`);
             console.log('Certificate verification response:', verifyResponse.data);
           } catch (verifyError) {
             console.error('Certificate verification failed:', verifyError);
@@ -1192,7 +1200,7 @@ export default function EventPage() {
           let existingCertificateId = null;
           
           try {
-            const checkResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_CERTIFICATE_BY_EVENT(eventForCertificate.eventId)));
+            const checkResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventForCertificate.eventId}`);
             
             // Certificate exists if we get data back with an ID
             if (checkResponse.data && checkResponse.data.id) {
@@ -1214,7 +1222,7 @@ export default function EventPage() {
           if (certificateExists && existingCertificateId) {
             // Update existing certificate
             console.log('Apply: Updating existing certificate:', existingCertificateId);
-            response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_CERTIFICATE(existingCertificateId)), {
+            response = await axios.put(`http://localhost:8080/api/certificates/${existingCertificateId}`, {
               ...payload,
               id: existingCertificateId
             });
@@ -1222,14 +1230,14 @@ export default function EventPage() {
           } else {
             // Create new certificate
             console.log('Apply: Creating new certificate for event:', eventForCertificate.eventId);
-            response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_CERTIFICATE), payload);
+            response = await axios.post('http://localhost:8080/api/certificates', payload);
             console.log('Apply: Certificate created successfully:', response.data);
           }
           
           // Try to link certificate to event if we got a valid response
           if (response && response.data && response.data.id) {
             try {
-              await axios.post(getApiUrl(API_ENDPOINTS.LINK_CERTIFICATE_TO_EVENT), {
+              await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
                 certificateId: response.data.id,
                 eventId: eventForCertificate.eventId
               });
@@ -1348,7 +1356,7 @@ export default function EventPage() {
     try {
       // Delete each selected event
       const deletePromises = selectedEvents.map(eventId => 
-        axios.delete(getApiUrl(API_ENDPOINTS.DELETE_EVENT(eventId)))
+        axios.delete(`http://localhost:8080/api/events/deleteEvent/${eventId}`)
       );
       
       await Promise.all(deletePromises);
@@ -2520,7 +2528,7 @@ export default function EventPage() {
           position: 'relative'
         }}>
           <img 
-            src={getApiUrl(API_ENDPOINTS.EVENT_QR(currentQrEventId))} 
+            src={`http://localhost:8080/api/events/qr/${currentQrEventId}`} 
             alt="Event QR Code" 
             style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
@@ -2582,7 +2590,7 @@ export default function EventPage() {
         // Create an anchor element
         const link = document.createElement('a');
         // Set the href to the QR code URL
-        link.href = getApiUrl(API_ENDPOINTS.EVENT_QR(currentQrEventId));
+        link.href = `http://localhost:8080/api/events/qr/${currentQrEventId}`;
         // Set the download attribute with filename
         link.download = `event-${currentQrEventId}-qr.png`;
         // Append to document, click, and remove

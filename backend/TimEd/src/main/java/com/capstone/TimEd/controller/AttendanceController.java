@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,9 +31,6 @@ import com.google.zxing.qrcode.QRCodeWriter;
 @RestController
 @RequestMapping("/api/attendance")
 public class AttendanceController {
-    @Value("${app.frontend.base-url}")
-    private String frontendBaseUrl;
-
     private final CertificateService certificateService;
     private final EmailService emailService;
     private final FirebaseEmailService firebaseEmailService;
@@ -106,61 +102,8 @@ public ResponseEntity<String> markAttendance(
                     firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
                     System.out.println("Certificate email successfully queued via Firebase for " + email);
                 } else {
-                    System.err.println("No attendee record found for userId: " + userId + " on first attempt. Retrying after delay...");
-                    
-                    // Retry after a short delay to handle Firestore eventual consistency
-                    try {
-                        Thread.sleep(2000); // Wait 2 seconds for Firestore consistency
-                        
-                        List<QueryDocumentSnapshot> retryAttendeeDocs = FirestoreClient.getFirestore()
-                                .collection("events")
-                                .document(eventId)
-                                .collection("attendees")
-                                .whereEqualTo("userId", userId)
-                                .whereEqualTo("type", "event_time_in")
-                                .get()
-                                .get()
-                                .getDocuments();
-                        
-                        if (!retryAttendeeDocs.isEmpty()) {
-                            System.out.println("Retry successful: Found attendee record for userId: " + userId);
-                            DocumentSnapshot userDoc = retryAttendeeDocs.get(0);
-
-                            String email = userDoc.getString("email");
-                            String firstName = userDoc.getString("firstName");
-                            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
-
-                            if (email != null && !email.isEmpty()) {
-                                Map<String, String> userAttendance = new HashMap<>();
-                                userAttendance.put("userId", userId);
-                                userAttendance.put("email", email);
-                                userAttendance.put("firstName", firstName);
-                                userAttendance.put("lastName", lastName);
-                                userAttendance.put("manualEntry", "false");
-                                userAttendance.put("timeIn", userDoc.getString("timestamp"));
-                                userAttendance.put("timeOut", "");
-
-                                System.out.println("Generating certificate for " + firstName + " " + lastName + " (retry)");
-                                byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-
-                                System.out.println("Sending certificate via Firebase to " + email + " (retry)");
-                                firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
-                                System.out.println("Certificate email successfully queued via Firebase for " + email + " (retry)");
-                                
-                                return ResponseEntity.ok(result); // Success: certificate sent
-                            } else {
-                                System.err.println("Email is missing for userId: " + userId + " (retry)");
-                                return ResponseEntity.ok(result + " (Note: Email not found)");
-                            }
-                        } else {
-                            System.err.println("Retry failed: Still no attendee record found for userId: " + userId);
-                            return ResponseEntity.ok(result + " (Note: No attendee record found)");
-                        }
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        System.err.println("Retry interrupted for userId: " + userId);
-                        return ResponseEntity.ok(result + " (Note: Certificate processing interrupted)");
-                    }
+                    System.err.println("No attendee record found for userId: " + userId);
+                    return ResponseEntity.ok(result + " (Note: No attendee record found)");
                 }
             } catch (Exception e) {
                 System.err.println("Error during certificate generation or email sending: " + e.getMessage());
@@ -257,7 +200,7 @@ public ResponseEntity<String> markAttendance(
 
     public String generateEventQrCode(String eventId, String userId) {
         try {
-            String joinUrl = frontendBaseUrl + "/join-event/" + eventId + "?userId=" + userId;
+            String joinUrl = "http://localhost:5173/join-event/" + eventId + "?userId=" + userId;
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(joinUrl, BarcodeFormat.QR_CODE, 300, 300);
 

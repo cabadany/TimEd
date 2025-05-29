@@ -207,30 +207,52 @@ class TimeInActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val currentAuth = FirebaseAuth.getInstance()
-            val user = currentAuth.currentUser
+            timeInButton.isEnabled = false
+            timeInButton.text = "Processing..."
 
-            if (user == null) {
-                signInAnonymouslyForStorage { success ->
-                    if (success) {
-                        val firebaseUser = FirebaseAuth.getInstance().currentUser
-                        if (firebaseUser != null) {
-                            checkAndCapturePhoto(userId ?: firebaseUser.uid)
+            Handler(Looper.getMainLooper()).postDelayed({
+                val currentAuth = FirebaseAuth.getInstance()
+                val user = currentAuth.currentUser
+
+                if (user == null) {
+                    signInAnonymouslyForStorage { success ->
+                        if (success) {
+                            val firebaseUser = FirebaseAuth.getInstance().currentUser
+                            if (firebaseUser != null) {
+                                checkAndCapturePhoto(userId ?: firebaseUser.uid)
+                            } else {
+                                Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                                resetTimeInButton()
+                            }
                         } else {
                             Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                            resetTimeInButton()
                         }
-                    } else {
-                        Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    checkAndCapturePhoto(userId ?: user.uid)
                 }
-                return@setOnClickListener
-            }
-
-            checkAndCapturePhoto(userId ?: user.uid)
+            }, 2000)
         }
     }
 
     private fun checkAndCapturePhoto(uid: String) {
+        // Time check: Only allow between 9:00 AM and 10:00 AM
+        val now = Calendar.getInstance()
+        val currentHour = now.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(Calendar.MINUTE)
+
+        val isAllowed = (currentHour == 9) || (currentHour == 10 && currentMinute == 0)
+
+        if (!isAllowed) {
+            AlertDialog.Builder(this)
+                .setTitle("Time-In Not Allowed")
+                .setMessage("You can only Time-In between 9:00 AM and 10:00 AM.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+
         checkAlreadyTimedIn(uid) { already ->
             if (already) {
                 AlertDialog.Builder(this)
@@ -240,7 +262,7 @@ class TimeInActivity : AppCompatActivity() {
                     .show()
                 // Re-enable button if already timed in and no action is taken
                 timeInButton.isEnabled = true
-                timeInButton.text = getString(R.string.button_time_in) // Assuming you have this string resource
+                timeInButton.text = getString(R.string.button_time_in)
             } else {
                 capturePhotoAndUpload(uid)
             }
@@ -657,5 +679,10 @@ class TimeInActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error closing face detector: ${e.message}")
         }
+    }
+
+    private fun resetTimeInButton() {
+        timeInButton.isEnabled = true
+        timeInButton.text = getString(R.string.button_time_in)
     }
 }
