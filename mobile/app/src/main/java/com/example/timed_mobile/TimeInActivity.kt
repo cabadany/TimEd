@@ -207,26 +207,32 @@ class TimeInActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val currentAuth = FirebaseAuth.getInstance()
-            val user = currentAuth.currentUser
+            timeInButton.isEnabled = false
+            timeInButton.text = "Processing..."
 
-            if (user == null) {
-                signInAnonymouslyForStorage { success ->
-                    if (success) {
-                        val firebaseUser = FirebaseAuth.getInstance().currentUser
-                        if (firebaseUser != null) {
-                            checkAndCapturePhoto(userId ?: firebaseUser.uid)
+            Handler(Looper.getMainLooper()).postDelayed({
+                val currentAuth = FirebaseAuth.getInstance()
+                val user = currentAuth.currentUser
+
+                if (user == null) {
+                    signInAnonymouslyForStorage { success ->
+                        if (success) {
+                            val firebaseUser = FirebaseAuth.getInstance().currentUser
+                            if (firebaseUser != null) {
+                                checkAndCapturePhoto(userId ?: firebaseUser.uid)
+                            } else {
+                                Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                                resetTimeInButton()
+                            }
                         } else {
                             Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
+                            resetTimeInButton()
                         }
-                    } else {
-                        Toast.makeText(this, "Authentication failed. Please login again.", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    checkAndCapturePhoto(userId ?: user.uid)
                 }
-                return@setOnClickListener
-            }
-
-            checkAndCapturePhoto(userId ?: user.uid)
+            }, 2000)
         }
     }
 
@@ -673,5 +679,10 @@ class TimeInActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error closing face detector: ${e.message}")
         }
+    }
+
+    private fun resetTimeInButton() {
+        timeInButton.isEnabled = true
+        timeInButton.text = getString(R.string.button_time_in)
     }
 }
