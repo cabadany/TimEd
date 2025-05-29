@@ -68,10 +68,8 @@ public class EventService {
 
         // Check if events are found
         if (events != null && !events.isEmpty()) {
-            // Create a SimpleDateFormat to format the date as a String with Philippines timezone
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila")); // Set to Philippines timezone
-            
+            // Create a SimpleDateFormat to format the date as a String
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"); // Include time in the format
             for (Event event : events) {
                 String formattedDate = dateFormat.format(event.getDate()); // Convert Date to String (yyyy-MM-dd'T'HH:mm:ss)
                 
@@ -274,15 +272,10 @@ public class EventService {
                 TimeZone serverTimezone = TimeZone.getDefault();
                 System.out.println("Server timezone: " + serverTimezone.getID());
                 
-                // Format with Philippines timezone for verification
-                SimpleDateFormat phFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                phFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila"));
-                System.out.println("Event date formatted as Philippines time: " + phFormat.format(event.getDate()));
-                
-                // Also log UTC format for comparison
-                SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-                System.out.println("Event date in UTC: " + utcFormat.format(event.getDate()));
+                // This will help with debugging time conversion issues
+                SimpleDateFormat debugFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                debugFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                System.out.println("Event date in UTC: " + debugFormat.format(event.getDate()));
             }
             
             // Add event to Firestore and let Firestore generate the document ID
@@ -364,9 +357,8 @@ public class EventService {
                 // Set the department object
                 event.setDepartment(department);
 
-                // Format the date with Philippines timezone
+                // Format the date
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila")); // Set to Philippines timezone
                 String formattedDate = dateFormat.format(event.getDate());
 
                 // Create an EventDTO
@@ -445,9 +437,8 @@ public class EventService {
                 Department department = getDepartmentById(event.getDepartmentId());
                 event.setDepartment(department);
                 
-                // Format date for DTO with Philippines timezone
+                // Format date for DTO
                 SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                outputFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila")); // Set to Philippines timezone
                 String formattedDate = outputFormat.format(event.getDate());
                 
                 // Create DTO
@@ -519,9 +510,8 @@ public class EventService {
                         event.setEventId(doc.getId());
                     }
                     
-                    // Format the date with Philippines timezone
+                    // Format the date
                     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                    dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila")); // Set to Philippines timezone
                     String formattedDate = event.getDate() != null ? dateFormat.format(event.getDate()) : "";
                     
                     // Create EventDTO with minimal department info (just department ID)

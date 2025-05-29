@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import {
   Box,
   Typography,
@@ -110,7 +109,7 @@ export default function DepartmentManagement() {
     const fetchDepartments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
+        const response = await axios.get('http://localhost:8080/api/departments');
         setDepartments(response.data);
         setLoading(false);
       } catch (error) {
@@ -160,7 +159,7 @@ export default function DepartmentManagement() {
         return;
       }
       
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_DEPARTMENT), formData);
+      const response = await axios.post('http://localhost:8080/api/departments', formData);
       
       // Add the new department to the state
       setDepartments([...departments, response.data]);
@@ -182,7 +181,7 @@ export default function DepartmentManagement() {
         return;
       }
       
-      const response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_DEPARTMENT(selectedDepartment.departmentId)), formData);
+      const response = await axios.put(`http://localhost:8080/api/departments/${selectedDepartment.departmentId}`, formData);
       
       // Update the department in the state
       setDepartments(departments.map(dept => 
@@ -390,7 +389,7 @@ export default function DepartmentManagement() {
   // Add this function to handle department deletion
   const handleDeleteDepartment = async () => {
     try {
-      await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_DEPARTMENT(departmentToDelete.departmentId)));
+      await axios.delete(`http://localhost:8080/api/departments/${departmentToDelete.departmentId}`);
       
       // Update the departments list
       setDepartments(departments.filter(dept => dept.departmentId !== departmentToDelete.departmentId));
@@ -551,7 +550,7 @@ export default function DepartmentManagement() {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department Name</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Abbreviation</TableCell>
-              {/*    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>*/}
+                  <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Programs Offered</TableCell>
                   <TableCell sx={{ width: 120, bgcolor: '#F8FAFC', textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
@@ -572,7 +571,7 @@ export default function DepartmentManagement() {
                     <TableRow key={department.departmentId} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
                       <TableCell sx={{ fontWeight: 500 }}>{department.name}</TableCell>
                       <TableCell>{department.abbreviation}</TableCell>
-                     {/* <TableCell>{department.numberOfFaculty}</TableCell>*/}
+                      <TableCell>{department.numberOfFaculty}</TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {department.offeredPrograms && department.offeredPrograms.length > 0 ? (
@@ -842,7 +841,6 @@ export default function DepartmentManagement() {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    disabled={true}
                     name="numberOfFaculty"
                     label="Number of Faculty"
                     type="number"

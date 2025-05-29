@@ -48,7 +48,6 @@ import {
 import '../certificate/certificate.css';
 import axios from 'axios';
 import { useTheme } from '../contexts/ThemeContext';
-import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 const fontFamilies = [
   'Arial',
@@ -265,7 +264,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       }
 
       const response = await axios.post(
-        getApiUrl(API_ENDPOINTS.CERTIFICATE_IMAGES(certificate.eventId)),
+        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
         formData,
         {
           headers: {
@@ -312,7 +311,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       }
 
       await axios.delete(
-        getApiUrl(API_ENDPOINTS.CERTIFICATE_IMAGES(certificate.eventId)),
+        `http://localhost:8080/api/certificates/${certificate.eventId}/images`,
         { params }
       );
 

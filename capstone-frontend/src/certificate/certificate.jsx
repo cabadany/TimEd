@@ -98,7 +98,7 @@ const AttendanceModal = memo(({
   const fetchAllUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
+      const response = await axios.get('http://localhost:8080/api/user/getAll');
       
       // Create a map of existing attendees by userId for quick lookup
       const attendeeMap = new Map();
@@ -495,7 +495,7 @@ export default function Certificate() {
         setLoading(true);
         
         // Fetch all events to find the specific one
-        const eventsResponse = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
+        const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
         const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
         
         if (!foundEvent) {
@@ -506,13 +506,13 @@ export default function Certificate() {
         
         // Fetch department details
         if (foundEvent.departmentId) {
-          const departmentsResponse = await axios.get('https://timed-utd9.onrender.com/api/departments');
+          const departmentsResponse = await axios.get('http://localhost:8080/api/departments');
           const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
           setDepartment(foundDepartment);
         }
         
         // Fetch attendees
-        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
         setAttendees(attendeesResponse.data);
         setFilteredAttendees(attendeesResponse.data);
         
@@ -576,12 +576,12 @@ export default function Certificate() {
       console.log("[DEBUG] Starting certificate fetch");
       
       // First, fetch all events to get valid event IDs
-      const eventsResponse = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
+      const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
       const validEventIds = eventsResponse.data.map(event => event.eventId);
       console.log(`[DEBUG] Found ${validEventIds.length} valid events`);
       
       // Fetch all certificates
-      const certificatesResponse = await axios.get('https://timed-utd9.onrender.com/api/certificates', {
+      const certificatesResponse = await axios.get('http://localhost:8080/api/certificates', {
         params: {
           includeImages: true // Request server to include all image data
         }
@@ -614,7 +614,7 @@ export default function Certificate() {
         // If we have an eventId but images are missing, try to fetch them separately
         if (cert.eventId && (!cert.backgroundImage || !cert.logoImage || !cert.watermarkImage)) {
           try {
-            const detailResponse = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${cert.eventId}`);
+            const detailResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${cert.eventId}`);
             if (detailResponse.data) {
               // Merge any image data that might be available in the detailed response
               if (detailResponse.data.backgroundImage) cert.backgroundImage = detailResponse.data.backgroundImage;
@@ -638,7 +638,7 @@ export default function Certificate() {
   // Fetch all events for certificate creation
   const fetchEvents = async () => {
     try {
-      const response = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
+      const response = await axios.get('http://localhost:8080/api/events/getAll');
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -650,7 +650,7 @@ export default function Certificate() {
   const fetchCertificateForEvent = async (eventId) => {
     try {
       setLoading(true);
-      const response = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${eventId}`);
+      const response = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${eventId}`);
       if (response.data) {
         setCurrentCertificateData(response.data);
       } else {
@@ -719,10 +719,10 @@ export default function Certificate() {
       let response;
       if (certificateData.id) {
         // Update existing certificate
-        response = await axios.put(`https://timed-utd9.onrender.com/api/certificates/${certificateData.id}`, payload);
+        response = await axios.put(`http://localhost:8080/api/certificates/${certificateData.id}`, payload);
       } else {
         // Create new certificate
-        response = await axios.post('https://timed-utd9.onrender.com/api/certificates', payload);
+        response = await axios.post('http://localhost:8080/api/certificates', payload);
       }
       
       // Get the complete certificate data from response
@@ -732,7 +732,7 @@ export default function Certificate() {
       if (savedCertificateData.id && savedCertificateData.eventId) {
         try {
           console.log('Linking certificate to event', savedCertificateData.id, savedCertificateData.eventId);
-          await axios.post('https://timed-utd9.onrender.com/api/certificates/linkToEvent', {
+          await axios.post('http://localhost:8080/api/certificates/linkToEvent', {
             certificateId: savedCertificateData.id,
             eventId: savedCertificateData.eventId
           });
@@ -746,7 +746,7 @@ export default function Certificate() {
       if (payload.eventId) {
         try {
           console.log('Verifying certificate was saved correctly');
-          const verifyResponse = await axios.get(`https://timed-utd9.onrender.com/api/certificates/getByEventId/${payload.eventId}`);
+          const verifyResponse = await axios.get(`http://localhost:8080/api/certificates/getByEventId/${payload.eventId}`);
           console.log('Certificate verification response:', verifyResponse.data);
         } catch (verifyError) {
           console.error('Certificate verification failed:', verifyError);
@@ -769,7 +769,7 @@ export default function Certificate() {
   const deleteCertificate = async (certificateId) => {
     try {
       setLoading(true);
-      await axios.delete(`https://timed-utd9.onrender.com/api/certificates/delete/${certificateId}`);
+      await axios.delete(`http://localhost:8080/api/certificates/delete/${certificateId}`);
       
       // Remove certificate from state
       setCertificates(certificates.filter(cert => cert.id !== certificateId));
@@ -787,7 +787,7 @@ export default function Certificate() {
     try {
       setActionLoading(true);
       // This would connect to your backend endpoint that triggers email sending
-      const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
+      const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
       const attendees = attendeesResponse.data;
       
       // Get certificate template
@@ -850,7 +850,7 @@ export default function Certificate() {
         const pdfData = pdf.output('datauristring');
 
         // Send email with certificate
-        await axios.post('https://timed-utd9.onrender.com/api/email/send', {
+        await axios.post('http://localhost:8080/api/email/send', {
           to: attendee.email,
           from: 'timedcit@outlook.com',
           subject: `Your Certificate for ${certificateTemplate.eventName}`,
@@ -933,11 +933,11 @@ export default function Certificate() {
   const handleManualTimeIn = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`https://timed-utd9.onrender.com/api/attendance/${eventId}/${userId}/manual/timein`);
+      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timein`);
       
       if (response.status === 200) {
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         
@@ -977,11 +977,11 @@ export default function Certificate() {
   const handleManualTimeOut = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`https://timed-utd9.onrender.com/api/attendance/${eventId}/${userId}/manual/timeout`);
+      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timeout`);
       
       if (response.status === 200) {
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         

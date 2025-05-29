@@ -13,70 +13,33 @@ import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/api/events")
 public class EventController {
-    
-    @Value("${app.frontend.base-url}")
-    private String frontendBaseUrl;
-    
-    private final Firestore firestore = FirestoreClient.getFirestore();
+	 @Autowired
+	    public EventController(EventService eventService, CertificateService certificateService) {
+	        this.eventService = eventService;
+	        this.certificateService = certificateService;
+	    }
+    @Autowired private final Firestore firestore = FirestoreClient.getFirestore();
     private final EventService eventService;
     private final CertificateService certificateService;
 
-    @Autowired
-    public EventController(EventService eventService, CertificateService certificateService) {
-        this.eventService = eventService;
-        this.certificateService = certificateService;
+    @PostMapping("/createEvent")
+    public String saveEvent(@RequestBody Event event) throws ExecutionException, InterruptedException {
+        return eventService.addEvent(event);
     }
 
-    @PostMapping("/createEvent")
-    public String saveEvent(@RequestBody Map<String, Object> eventData) throws ExecutionException, InterruptedException {
-        try {
-            // Create Event object manually to avoid automatic date conversion
-            Event event = new Event();
-            event.setEventName((String) eventData.get("eventName"));
-            event.setDepartmentId((String) eventData.get("departmentId"));
-            event.setDuration((String) eventData.get("duration"));
-            event.setStatus((String) eventData.get("status"));
-            event.setDescription((String) eventData.get("description"));
-            
-            // Handle date parsing manually to preserve Philippines timezone
-            String dateString = (String) eventData.get("date");
-            if (dateString != null) {
-                System.out.println("Received date string from frontend: " + dateString);
-                
-                // Parse the date string as Philippines time
-                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                inputFormat.setTimeZone(TimeZone.getTimeZone("Asia/Manila"));
-                
-                java.util.Date parsedDate = inputFormat.parse(dateString);
-                event.setDate(parsedDate);
-                
-                System.out.println("Parsed date as Philippines time: " + parsedDate);
-                System.out.println("Parsed date in string format: " + inputFormat.format(parsedDate));
-            }
-            
-            return eventService.addEvent(event);
-        } catch (Exception e) {
-            System.err.println("Error in saveEvent: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to create event: " + e.getMessage());
-        }
-    }
 
     @GetMapping("/{id}/department")
     public Department getDepartmentForEvent(@PathVariable("id") String eventId) {
@@ -110,7 +73,8 @@ public class EventController {
     @GetMapping("/qr/{eventId}")
     public ResponseEntity<byte[]> generateQrCode(@PathVariable String eventId) {
         try {
-            String qrUrl = frontendBaseUrl + "/qr-join/" + eventId;
+            String baseUrl = "localhost:5173/qr-join/";
+            String qrUrl = baseUrl + eventId;
 
             byte[] image = QRCodeGenerator.generateQRCodeImage(qrUrl, 300, 300);
 
