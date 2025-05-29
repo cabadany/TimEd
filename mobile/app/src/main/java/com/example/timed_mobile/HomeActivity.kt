@@ -96,6 +96,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var attendanceStatusBadge: TextView
 
     private lateinit var btnHelp: ImageView
+    private lateinit var profileImagePlaceholder: ImageView // Declare profileImagePlaceholder
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -149,6 +150,9 @@ class HomeActivity : AppCompatActivity() {
             shouldConsumeTouch
         }
 
+
+
+
         drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
@@ -172,10 +176,63 @@ class HomeActivity : AppCompatActivity() {
 
         btnHelp = findViewById(R.id.btn_help) // Initialize btnHelp
         noEventsMessage = findViewById(R.id.no_events_message)
+        profileImagePlaceholder = findViewById(R.id.profile_image_placeholder) // Initialize profileImagePlaceholder
+
 
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
         statusSpinner.adapter = statusAdapter
+
+
+        val greetingCardView = findViewById<androidx.cardview.widget.CardView>(R.id.greeting_card)
+        val filterButtonsLayout = findViewById<LinearLayout>(R.id.filter_buttons)
+
+        val attendancePromptView: TextView? = try {
+            findViewById(R.id.attendance_prompt)
+        } catch (e: Exception) {
+            null // Handle if the view doesn't exist to prevent crashes
+        }
+
+        // Load animations
+        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        val animFadeInContent = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        val animSlideUpFadeInBottom = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+
+        // Apply animations with staggered delays
+
+        // 1. Greeting Card
+        greetingCardView.startAnimation(animSlideDownFadeIn)
+
+        // 2. Filter Buttons (delay slightly after greeting card)
+        val animSlideDownFilters = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideDownFilters.startOffset = 200L // 200ms delay
+        filterButtonsLayout.startAnimation(animSlideDownFilters)
+
+        // 3. Event List (RecyclerView)
+        val animFadeInRecycler = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        animFadeInRecycler.startOffset = 400L // 400ms delay
+        recyclerEvents.startAnimation(animFadeInRecycler)
+
+        // 4. Bottom elements - animate them with slight staggers
+        val baseDelayBottom = 600L
+
+        attendancePromptView?.let {
+            val animSlideUpPrompt = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+            animSlideUpPrompt.startOffset = baseDelayBottom
+            it.startAnimation(animSlideUpPrompt)
+        }
+
+        val animSlideUpTimeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpTimeIn.startOffset = baseDelayBottom + (if (attendancePromptView != null) 100L else 0L)
+        btnTimeIn.startAnimation(animSlideUpTimeIn)
+
+        val animSlideUpTimeOut = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpTimeOut.startOffset = baseDelayBottom + (if (attendancePromptView != null) 200L else 100L)
+        btnTimeOut.startAnimation(animSlideUpTimeOut)
+
+        val animSlideUpExcuseLetter = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpExcuseLetter.startOffset = baseDelayBottom + (if (attendancePromptView != null) 300L else 200L)
+        excuseLetterText.startAnimation(animSlideUpExcuseLetter)
 
         // Setup for btn_help
         btnHelp.setOnClickListener {
@@ -253,6 +310,23 @@ class HomeActivity : AppCompatActivity() {
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
+
+        // --- START OF PROFILE NAVIGATION SETUP ---
+        val profileClickListener = View.OnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail)
+                putExtra("firstName", userFirstName)
+                putExtra("idNumber", idNumber)
+                putExtra("department", department) // Assuming department string is what ProfileActivity expects
+            }
+            startActivity(intent)
+        }
+
+        profileImagePlaceholder.setOnClickListener(profileClickListener)
+        greetingName.setOnClickListener(profileClickListener)
+        // --- END OF PROFILE NAVIGATION SETUP ---
+
 
         swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
         swipeRefreshLayout.setOnRefreshListener {
@@ -848,7 +922,7 @@ class HomeActivity : AppCompatActivity() {
             val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
-                putExtra("email", userEmail)
+                // putExtra("email", userEmail) // Duplicate email extra
                 putExtra("firstName", userFirstName)
                 putExtra("idNumber", idNumber)
                 putExtra("department", department)
@@ -899,7 +973,7 @@ class HomeActivity : AppCompatActivity() {
 
                                 allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
                             } catch (e: Exception) {
-                                Log.e("FirestoreEvents", "Skipping event due to error: \${e.message}", e)
+                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
                             }
                         }
 
@@ -907,12 +981,12 @@ class HomeActivity : AppCompatActivity() {
                         updateFilterButtonStates(btnUpcoming)
                     }
                     .addOnFailureListener {
-                        Log.e("Firestore", "Failed to load events: \${it.message}", it)
+                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
                         Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener {
-                Log.e("Firestore", "Failed to fetch user document: \${it.message}", it)
+                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
                 Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
             }
     }

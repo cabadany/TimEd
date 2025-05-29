@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.animation.AnimationUtils
 import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -26,8 +27,8 @@ class EventLogActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
     private lateinit var adapter: EventLogAdapter
-    private lateinit var backButton: ImageView
-    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var backButton: ImageView // Class member
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout // Class member, used for animation target
     private lateinit var progressBar: ProgressBar
 
     private val FADE_DURATION = 300L
@@ -37,16 +38,47 @@ class EventLogActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.event_log)
 
+        // Initialize class members first
         recyclerView = findViewById(R.id.recycler_event_logs)
         emptyText = findViewById(R.id.text_empty)
-        backButton = findViewById(R.id.icon_back_button_event_log)
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout_event_log)
         progressBar = findViewById(R.id.progress_bar_event_log)
+        backButton = findViewById(R.id.icon_back_button_event_log) // Initialize class member backButton
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout_event_log) // Initialize class member swipeRefreshLayout
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation_event_log)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        backButton.setOnClickListener { finish() }
+        backButton.setOnClickListener { finish() } // Now safe to set listener
+
+        // Views for animation (some might be the same as class members)
+        val iconBackButtonForAnimation = backButton // Use the initialized class member
+        val eventLogTitle = findViewById<TextView>(R.id.event_log_title)
+        val swipeRefreshLayoutForAnimation = swipeRefreshLayout // Use the initialized class member
+
+        // --- START OF ANIMATION CODE ---
+        // Load animations from your existing files
+        val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        val animContentFadeInLong = AnimationUtils.loadAnimation(this, R.anim.fade_in_long) // Using fade_in_long
+
+        // Apply animations with staggered delays
+        var currentDelay = 100L
+
+        // 1. Back Button
+        val animBackButtonInstance = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        animBackButtonInstance.startOffset = currentDelay
+        iconBackButtonForAnimation.startAnimation(animBackButtonInstance)
+        currentDelay += 150L
+
+        // 2. Title
+        animSlideDownFadeIn.startOffset = currentDelay
+        eventLogTitle.startAnimation(animSlideDownFadeIn)
+        currentDelay += 200L
+
+        // 3. Main Content Area (SwipeRefreshLayout)
+        animContentFadeInLong.startOffset = currentDelay
+        swipeRefreshLayoutForAnimation.startAnimation(animContentFadeInLong)
+        // --- END OF ANIMATION CODE ---
 
         adapter = EventLogAdapter(
             onTimeOutClick = { log -> /* not needed anymore */ },
@@ -137,6 +169,7 @@ class EventLogActivity : AppCompatActivity() {
                             }
                         }
                         .addOnFailureListener {
+                            Log.e(TAG, "Error fetching attendees for event $eventId", it)
                             processedCount++
                             if (processedCount == totalEvents) {
                                 updateUIWithLogs(logs)
@@ -145,6 +178,7 @@ class EventLogActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener {
+                Log.e(TAG, "Error loading events", it)
                 Toast.makeText(this, "Error loading events: ${it.message}", Toast.LENGTH_LONG).show()
                 swipeRefreshLayout.isRefreshing = false
                 progressBar.visibility = View.GONE
@@ -157,7 +191,8 @@ class EventLogActivity : AppCompatActivity() {
             showEmptyText("No logs found.")
         } else {
             recyclerView.visibility = View.VISIBLE
-            emptyText.visibility = View.GONE
+            emptyText.visibility = View.GONE // Ensure empty text is hidden if logs are present
+            emptyText.alpha = 0f // Reset alpha if it was animated
             adapter.submitList(logs.sortedByDescending { it.timeInTimestamp })
         }
 
@@ -165,7 +200,7 @@ class EventLogActivity : AppCompatActivity() {
         progressBar.visibility = View.GONE
     }
 
-    private fun parseDurationToMillis(duration: String): Long {
+    private fun parseDurationToMillis(duration: String): Long { // This function seems unused, consider removing if not needed
         val parts = duration.split(":")
         val hours = parts.getOrNull(0)?.toIntOrNull() ?: 0
         val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
@@ -173,7 +208,7 @@ class EventLogActivity : AppCompatActivity() {
         return (hours * 3600 + minutes * 60 + seconds) * 1000L
     }
 
-    private fun showResults(logs: List<EventLogModel>, isRefreshing: Boolean) {
+    private fun showResults(logs: List<EventLogModel>, isRefreshing: Boolean) { // This function seems unused, consider removing if not needed
         if (logs.isEmpty()) {
             showEmptyText("No event logs found.")
         } else {
@@ -194,6 +229,7 @@ class EventLogActivity : AppCompatActivity() {
             .setDuration(FADE_DURATION)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationStart(animation: Animator) {
+                    super.onAnimationStart(animation) // Call super
                     emptyText.visibility = View.VISIBLE
                 }
             })
