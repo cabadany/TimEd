@@ -99,9 +99,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnHelp: ImageView
     private lateinit var profileImagePlaceholder: ImageView
 
-    // Flags for drawer animation state
-    private var isDrawerCurrentlyOpen = false
-    private var outAnimationPlayedForThisClosingSequence = false
+    // Flags for drawer animation state (commented out as animations are removed)
+    // private var isDrawerCurrentlyOpen = false
+    // private var outAnimationPlayedForThisClosingSequence = false
 
 
     private val timeInLauncher =
@@ -650,33 +650,30 @@ class HomeActivity : AppCompatActivity() {
         }
         sidebarEmail.text = userEmail ?: ""
 
-        // Call prepare here to set the initial state of drawer contents
-        // This ensures they are invisible and transparent before the first open.
-        prepareDrawerContentsForInAnimation(navigationView)
+        // Commented out: Initial preparation for custom animation
+        // prepareDrawerContentsForInAnimation(navigationView)
 
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                if (isDrawerCurrentlyOpen && slideOffset < 0.95f && !outAnimationPlayedForThisClosingSequence) {
-                    animateDrawerContentsOut(navigationView)
-                    outAnimationPlayedForThisClosingSequence = true
-                }
+                // Commented out: Logic for custom out-animation trigger
+                // if (isDrawerCurrentlyOpen && slideOffset < 0.95f && !outAnimationPlayedForThisClosingSequence) {
+                //     animateDrawerContentsOut(navigationView)
+                //     outAnimationPlayedForThisClosingSequence = true
+                // }
             }
 
             override fun onDrawerOpened(drawerView: View) {
-                isDrawerCurrentlyOpen = true
-                outAnimationPlayedForThisClosingSequence = false
-                // Contents are already prepared (invisible, alpha=0f) by the initial call
-                // in setupNavigationDrawer() or by onDrawerClosed().
-                // So, just animate them in.
-                animateDrawerContentsIn(navigationView)
+                // Commented out: Custom in-animation logic
+                // isDrawerCurrentlyOpen = true
+                // outAnimationPlayedForThisClosingSequence = false
+                // animateDrawerContentsIn(navigationView)
             }
 
             override fun onDrawerClosed(drawerView: View) {
-                isDrawerCurrentlyOpen = false
-                // Reset contents to be invisible and transparent for the next open.
-                // This handles cases where out-animation might have been skipped or to ensure a clean state.
-                prepareDrawerContentsForInAnimation(navigationView)
-                outAnimationPlayedForThisClosingSequence = false
+                // Commented out: Resetting state for custom animation
+                // isDrawerCurrentlyOpen = false
+                // prepareDrawerContentsForInAnimation(navigationView)
+                // outAnimationPlayedForThisClosingSequence = false
             }
 
             override fun onDrawerStateChanged(newState: Int) {
@@ -721,6 +718,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    /* Commented out: Custom animation function
     private fun prepareDrawerContentsForInAnimation(navView: NavigationView) {
         val headerView = navView.getHeaderView(0)
         if (headerView != null) {
@@ -759,7 +757,9 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
+    */
 
+    /* Commented out: Custom animation function
     private fun animateDrawerContentsIn(navView: NavigationView) {
         var currentDelay = 80L
 
@@ -803,7 +803,9 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
+    */
 
+    /* Commented out: Custom animation function
     private fun animateDrawerContentsOut(navView: NavigationView) {
         var currentDelay = 0L
 
@@ -858,6 +860,7 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
+    */
 
 
     private fun showLogoutDialog() {
