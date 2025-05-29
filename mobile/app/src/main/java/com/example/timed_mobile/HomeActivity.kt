@@ -1222,27 +1222,37 @@ class HomeActivity : AppCompatActivity() {
                     val type = child.child("type").getValue(String::class.java)
                     val timestamp = child.child("timestamp").getValue(Long::class.java)
                     if (type == "TimeIn" && timestamp != null) { timeInTimestamp = timestamp; timeInSnapshot = child }
-                    else if (type == "TimeOut" && timestamp != null) { timeOutTimestamp = timestamp; }
+                    else if (type == "TimeOut" && timestamp != null) { timeOutTimestamp = timestamp }
                 }
+
                 if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
                     updateUserStatus("Off Duty")
                     var badge: String? = null
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
                         val badgeValue = child.child("attendanceBadge").getValue(String::class.java)
-                        if ((type == "TimeIn" || type == "TimeOut") && !badgeValue.isNullOrEmpty()) { badge = badgeValue; break }
+                        if ((type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
+                            badge = badgeValue
+                            break
+                        }
                     }
-                    if (!badge.isNullOrEmpty()) updateAttendanceBadge(badge)
-                    else if (timeInTimestamp != null) {
-                        val fallback = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
-                        updateAttendanceBadge(fallback); timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
-                    } else attendanceStatusBadge.visibility = View.GONE
+                    if (!badge.isNullOrEmpty()) {
+                        updateAttendanceBadge(badge)
+                    } else {
+                        updateAttendanceBadge("Timed-Out")
+                    }
                 } else if (timeInTimestamp != null) {
                     val badge = timeInSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
-                    if (!badge.isNullOrEmpty()) updateAttendanceBadge(badge)
-                    else {
-                        val fallback = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
-                        updateAttendanceBadge(fallback); timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
+                    if (!badge.isNullOrEmpty()) {
+                        updateAttendanceBadge(badge)
+                    } else {
+                        val fallback = when {
+                            timeInTimestamp < cutoff9am -> "On Time"
+                            timeInTimestamp < cutoff10am -> "Late"
+                            else -> "Absent"
+                        }
+                        updateAttendanceBadge(fallback)
+                        timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
                     }
                 } else {
                     val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
@@ -1253,17 +1263,24 @@ class HomeActivity : AppCompatActivity() {
                             for (doc in excuseSnapshot.children) {
                                 val date = doc.child("date").getValue(String::class.java)
                                 val status = doc.child("status").getValue(String::class.java)
-                                if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) { matched = true; break }
+                                if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) {
+                                    matched = true
+                                    break
+                                }
                             }
                             if (matched) updateAttendanceBadge("Absent")
                             else if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In")
                             else attendanceStatusBadge.visibility = View.GONE
                         }
-                        override fun onCancelled(error: DatabaseError) { updateAttendanceBadge("Has not Timed-In") }
+                        override fun onCancelled(error: DatabaseError) {
+                            updateAttendanceBadge("Has not Timed-In")
+                        }
                     })
                 }
             }
-            override fun onCancelled(error: DatabaseError) { updateAttendanceBadge("Has not Timed-In") }
+            override fun onCancelled(error: DatabaseError) {
+                updateAttendanceBadge("Has not Timed-In")
+            }
         })
     }
 }
