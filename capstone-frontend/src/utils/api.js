@@ -10,7 +10,7 @@ export const getApiUrl = (endpoint) => {
 export const API_ENDPOINTS = {
   // Auth
   LOGIN_BY_SCHOOL_ID: '/auth/login-by-schoolId',
-  EMAIL_BY_SCHOOL_ID: '/auth/auth/email-by-schoolId',
+  EMAIL_BY_SCHOOL_ID: '/auth/email-by-schoolId',
   REGISTER: '/auth/register',
   
   // Users
