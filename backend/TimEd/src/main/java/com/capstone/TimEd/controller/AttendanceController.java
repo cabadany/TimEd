@@ -106,8 +106,61 @@ public ResponseEntity<String> markAttendance(
                     firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
                     System.out.println("Certificate email successfully queued via Firebase for " + email);
                 } else {
-                    System.err.println("No attendee record found for userId: " + userId);
-                    return ResponseEntity.ok(result + " (Note: No attendee record found)");
+                    System.err.println("No attendee record found for userId: " + userId + " on first attempt. Retrying after delay...");
+                    
+                    // Retry after a short delay to handle Firestore eventual consistency
+                    try {
+                        Thread.sleep(2000); // Wait 2 seconds for Firestore consistency
+                        
+                        List<QueryDocumentSnapshot> retryAttendeeDocs = FirestoreClient.getFirestore()
+                                .collection("events")
+                                .document(eventId)
+                                .collection("attendees")
+                                .whereEqualTo("userId", userId)
+                                .whereEqualTo("type", "event_time_in")
+                                .get()
+                                .get()
+                                .getDocuments();
+                        
+                        if (!retryAttendeeDocs.isEmpty()) {
+                            System.out.println("Retry successful: Found attendee record for userId: " + userId);
+                            DocumentSnapshot userDoc = retryAttendeeDocs.get(0);
+
+                            String email = userDoc.getString("email");
+                            String firstName = userDoc.getString("firstName");
+                            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+
+                            if (email != null && !email.isEmpty()) {
+                                Map<String, String> userAttendance = new HashMap<>();
+                                userAttendance.put("userId", userId);
+                                userAttendance.put("email", email);
+                                userAttendance.put("firstName", firstName);
+                                userAttendance.put("lastName", lastName);
+                                userAttendance.put("manualEntry", "false");
+                                userAttendance.put("timeIn", userDoc.getString("timestamp"));
+                                userAttendance.put("timeOut", "");
+
+                                System.out.println("Generating certificate for " + firstName + " " + lastName + " (retry)");
+                                byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
+
+                                System.out.println("Sending certificate via Firebase to " + email + " (retry)");
+                                firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
+                                System.out.println("Certificate email successfully queued via Firebase for " + email + " (retry)");
+                                
+                                return ResponseEntity.ok(result); // Success: certificate sent
+                            } else {
+                                System.err.println("Email is missing for userId: " + userId + " (retry)");
+                                return ResponseEntity.ok(result + " (Note: Email not found)");
+                            }
+                        } else {
+                            System.err.println("Retry failed: Still no attendee record found for userId: " + userId);
+                            return ResponseEntity.ok(result + " (Note: No attendee record found)");
+                        }
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        System.err.println("Retry interrupted for userId: " + userId);
+                        return ResponseEntity.ok(result + " (Note: Certificate processing interrupted)");
+                    }
                 }
             } catch (Exception e) {
                 System.err.println("Error during certificate generation or email sending: " + e.getMessage());
