@@ -52,13 +52,14 @@ import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
 import EmailStatusTracker from '../components/EmailStatusTracker';
-import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
+import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt, set, get } from 'firebase/database';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format, isSameDay } from 'date-fns';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
 import EventAnalytics from '../components/EventAnalytics';
+import { getAuth } from 'firebase/auth';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -172,6 +173,9 @@ export default function Dashboard() {
 
   const [attendanceStartDate, setAttendanceStartDate] = useState('');
   const [attendanceEndDate, setAttendanceEndDate] = useState('');
+
+  // Add state for error handling
+  const [thresholdError, setThresholdError] = useState(null);
 
   useEffect(() => {
     fetchDepartments();
@@ -786,47 +790,149 @@ export default function Dashboard() {
     }
   }, [selectedDate, mainTab, lateThreshold]);
 
-  // Add the Late Threshold Modal component
-  const LateThresholdModal = () => (
-    <Modal
-      open={showLateThresholdModal}
-      onClose={() => setShowLateThresholdModal(false)}
-      aria-labelledby="late-threshold-modal"
-    >
-      <Box sx={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 400,
-        bgcolor: 'background.paper',
-        boxShadow: 24,
-        borderRadius: 2,
-        p: 3
-      }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Set Late Threshold</Typography>
-        <TextField
-          type="time"
-          value={lateThreshold}
-          onChange={(e) => setLateThreshold(e.target.value)}
-          fullWidth
-          sx={{ mb: 2 }}
-        />
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button onClick={() => setShowLateThresholdModal(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            onClick={() => {
-              // Save the threshold and close modal
-              setShowLateThresholdModal(false);
-            }}
-          >
-            Save
-          </Button>
+  // Update loadLateThreshold function
+  const loadLateThreshold = async () => {
+    try {
+      const db = getDatabase();
+      const thresholdRef = ref(db, 'settings/lateThreshold');
+      
+      // First try to get the existing value
+      const snapshot = await get(thresholdRef);
+      if (snapshot.exists()) {
+        setLateThreshold(snapshot.val());
+      }
+
+      // Set up real-time listener
+      onValue(thresholdRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setLateThreshold(snapshot.val());
+        }
+      }, (error) => {
+        console.error('Error loading late threshold:', error);
+        setThresholdError('Failed to load late threshold. Please check your permissions.');
+      });
+    } catch (error) {
+      console.error('Error loading late threshold:', error);
+      setThresholdError('Failed to load late threshold. Please check your permissions.');
+    }
+  };
+
+  // Update saveLateThreshold function
+  const saveLateThreshold = async (newThreshold) => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        setThresholdError('You must be logged in to change the late threshold.');
+        return false;
+      }
+
+      const db = getDatabase();
+      const thresholdRef = ref(db, 'settings/lateThreshold');
+      await set(thresholdRef, newThreshold);
+      setThresholdError(null);
+      return true;
+    } catch (error) {
+      console.error('Error saving late threshold:', error);
+      if (error.message.includes('permission_denied')) {
+        setThresholdError('You do not have permission to change the late threshold. Only administrators can modify this setting.');
+      } else {
+        setThresholdError('Failed to save late threshold. Please try again.');
+      }
+      return false;
+    }
+  };
+
+  // Load late threshold when component mounts
+  useEffect(() => {
+    loadLateThreshold();
+  }, []);
+
+  // Update the LateThresholdModal component
+  const LateThresholdModal = () => {
+    const [tempThreshold, setTempThreshold] = useState(lateThreshold);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      setSaving(true);
+      setThresholdError(null);
+      const success = await saveLateThreshold(tempThreshold);
+      setSaving(false);
+      if (success) {
+        setShowLateThresholdModal(false);
+      }
+    };
+
+    return (
+      <Modal
+        open={showLateThresholdModal}
+        onClose={() => {
+          setShowLateThresholdModal(false);
+          setThresholdError(null);
+        }}
+        aria-labelledby="late-threshold-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper',
+          boxShadow: 24,
+          borderRadius: 2,
+          p: 3,
+          border: darkMode ? '1px solid var(--border-color)' : 'none'
+        }}>
+          <Typography variant="h6" sx={{ mb: 2, color: darkMode ? 'var(--text-primary)' : 'inherit' }}>Set Late Threshold</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Faculty members who time in after this time will be marked as late.
+          </Typography>
+          <TextField
+            type="time"
+            value={tempThreshold}
+            onChange={(e) => setTempThreshold(e.target.value)}
+            fullWidth
+            sx={{ mb: thresholdError ? 1 : 3 }}
+          />
+          {thresholdError && (
+            <Typography 
+              color="error" 
+              variant="body2" 
+              sx={{ mb: 2 }}
+            >
+              {thresholdError}
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button 
+              onClick={() => {
+                setShowLateThresholdModal(false);
+                setThresholdError(null);
+              }}
+              sx={{ color: darkMode ? 'var(--text-secondary)' : 'inherit' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSave}
+              disabled={saving}
+              sx={{
+                bgcolor: darkMode ? 'var(--accent-color)' : undefined,
+                '&:hover': {
+                  bgcolor: darkMode ? 'var(--accent-hover)' : undefined
+                }
+              }}
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </Box>
         </Box>
-      </Box>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   // Add this function after calculateAttendanceStats
   const getLateAttendanceDetails = () => {
@@ -1467,7 +1573,7 @@ export default function Dashboard() {
                   <Typography variant="h6" fontWeight="600" color="#1E293B">
                     Today's Attendance Summary
                   </Typography>
-                {/*  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                       Late after: {lateThreshold}
                     </Typography>
@@ -1484,7 +1590,7 @@ export default function Dashboard() {
                     >
                       Change Time
                     </Button>
-                  </Box>*/}
+                  </Box>
                 </Box>
 
                 <Box sx={{ 
