@@ -1238,7 +1238,7 @@ export default function Attendance() {
             </Box>
           </Grid>
           
-          <Grid item xs={6}>
+   {/*        <Grid item xs={6}>
             <Box sx={{ 
               p: 2.5, 
               borderRadius: '12px', 
@@ -1249,7 +1249,7 @@ export default function Attendance() {
               height: '100%',
               textAlign: 'center'
             }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+             <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Faculty Count
               </Typography>
               <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8, mt: 0.5 }}>
@@ -1257,7 +1257,7 @@ export default function Attendance() {
                 {department?.numberOfFaculty || 'N/A'}
               </Typography>
             </Box>
-          </Grid>
+          </Grid>*/}
           
           <Grid item xs={12}>
             <Box sx={{ 

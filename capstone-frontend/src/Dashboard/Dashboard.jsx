@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
+import * as XLSX from 'xlsx';
 import {
   Box,
   Typography,
@@ -45,7 +46,8 @@ import {
   Search,
   InfoOutlined,
   CheckCircleOutline,
-  Email
+  Email,
+  GetApp
 } from '@mui/icons-material';
 import './Dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
@@ -176,6 +178,9 @@ export default function Dashboard() {
 
   // Add state for error handling
   const [thresholdError, setThresholdError] = useState(null);
+
+  // Add after the useState declarations
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchDepartments();
@@ -1326,6 +1331,114 @@ export default function Dashboard() {
     fetchFacultyLogs();
   };
 
+  // Add the export function before the return statement
+  const handleExportAttendance = async () => {
+    try {
+      setExportLoading(true);
+      
+      // Get the filename based on the filter type
+      let filename;
+      if (filterType === 'single') {
+        filename = `Faculty_Attendance_${format(selectedDate, 'MMM_d_yyyy')}.xlsx`;
+      } else {
+        filename = `Faculty_Attendance_${format(new Date(attendanceStartDate), 'MMM_d_yyyy')}_to_${format(new Date(attendanceEndDate), 'MMM_d_yyyy')}.xlsx`;
+      }
+
+      // Prepare the export data
+      const exportData = facultyLogs.map(log => ({
+        'Faculty Name': log.firstName,
+        'Email': log.email,
+        'Date': format(new Date(log.timeIn.timestamp), 'MMMM d, yyyy'),
+        'Time In': log.timeIn ? format(new Date(log.timeIn.timestamp), 'hh:mm:ss a') : 'N/A',
+        'Time Out': log.timeOut ? format(new Date(log.timeOut.timestamp), 'hh:mm:ss a') : 'Active Session',
+        'Duration': calculateDuration(log.timeIn, log.timeOut) || 'In Progress',
+        'Status': log.attendanceBadge || 'Unknown'
+      }));
+
+      // Add summary information
+      const summaryData = [
+        {
+          'Faculty Name': 'ATTENDANCE SUMMARY',
+          'Email': '',
+          'Date': filterType === 'single' ? format(selectedDate, 'MMMM d, yyyy') : `${format(new Date(attendanceStartDate), 'MMMM d, yyyy')} to ${format(new Date(attendanceEndDate), 'MMMM d, yyyy')}`,
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'On Time:',
+          'Email': attendanceStats.present.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'Late:',
+          'Email': attendanceStats.late.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'No Time-in:',
+          'Email': attendanceStats.absent.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {}, // Empty row for spacing
+        ...exportData
+      ];
+
+      // Create workbook and add the data
+      const worksheet = XLSX.utils.json_to_sheet(summaryData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Records');
+
+      // Auto-size columns
+      const max_width = summaryData.reduce((w, r) => Math.max(w, r['Faculty Name'] ? r['Faculty Name'].length : 0), 10);
+      const col_width = Math.min(max_width, 50);
+      worksheet['!cols'] = [
+        { wch: col_width }, // Faculty Name
+        { wch: 30 }, // Email
+        { wch: 20 }, // Date
+        { wch: 15 }, // Time In
+        { wch: 15 }, // Time Out
+        { wch: 15 }, // Duration
+        { wch: 15 }  // Status
+      ];
+
+      // Style the summary section
+      const summaryRange = XLSX.utils.decode_range('A1:G4');
+      for (let R = summaryRange.s.r; R <= summaryRange.e.r; ++R) {
+        for (let C = summaryRange.s.c; C <= summaryRange.e.c; ++C) {
+          const cell_address = { c: C, r: R };
+          const cell_ref = XLSX.utils.encode_cell(cell_address);
+          if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+          worksheet[cell_ref].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: "EFEFEF" } }
+          };
+        }
+      }
+
+      // Save the file
+      XLSX.writeFile(workbook, filename);
+    } catch (error) {
+      console.error('Error exporting attendance:', error);
+      setError('Failed to export attendance data. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <Box 
       className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}
@@ -1418,6 +1531,26 @@ export default function Dashboard() {
                   flexWrap: { xs: 'wrap', md: 'nowrap' },
                   alignItems: 'center'
                 }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    disabled={exportLoading || facultyLogs.length === 0}
+                    onClick={handleExportAttendance}
+                    startIcon={exportLoading ? <CircularProgress size={20} /> : <GetApp />}
+                    sx={{ 
+                      textTransform: 'none',
+                      borderRadius: '8px',
+                      borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                      color: darkMode ? 'var(--text-primary)' : 'inherit',
+                      '&:hover': {
+                        borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                      }
+                    }}
+                  >
+                    {exportLoading ? 'Exporting...' : 'Export to Excel'}
+                  </Button>
+
                   <Box sx={{ 
                     display: 'flex', 
                     gap: 1, 
