@@ -2,8 +2,8 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minWidth="180dp"
-        android:maxWidth="280dp"
+        android:minWidth="220dp"
+        android:maxWidth="300dp"
         android:background="@drawable/tutorial_dialog_background"
         android:elevation="8dp">
 
@@ -19,7 +19,7 @@
             android:layout_alignParentEnd="true"
             android:layout_marginTop="4dp"
             android:layout_marginEnd="4dp"
-            android:contentDescription="Close tutorial" />
+            android:contentDescription="Close tutorial step" />
 
     <LinearLayout
             android:layout_width="match_parent"
@@ -31,9 +31,6 @@
             android:paddingEnd="16dp"
             android:gravity="center_horizontal">
 
-        <!-- Top padding might be reduced if X button provides enough space, or add margin to this LinearLayout -->
-        <!-- For simplicity, keeping main content padding, X button overlaps padding area slightly -->
-
         <TextView
                 android:id="@+id/tutorial_progress_text"
                 android:layout_width="wrap_content"
@@ -42,7 +39,7 @@
                 android:textSize="12sp"
                 android:textColor="@color/dark_gray"
                 android:layout_marginBottom="6dp"
-                android:layout_marginTop="16dp" /> <!-- Added marginTop to push content below X button area -->
+                android:layout_marginTop="16dp" />
 
         <TextView
                 android:id="@+id/tutorial_message"
@@ -54,16 +51,17 @@
                 android:gravity="center"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="2dp"
-                android:lineSpacingExtra="2dp" />
+                android:lineSpacingExtra="2dp"
+                android:layout_marginBottom="16dp"/>
 
         <Button
                 android:id="@+id/tutorial_next_button"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
                 android:text="Next"
                 android:backgroundTint="@color/maroon"
                 android:textColor="@color/white"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:layout_marginTop="8dp"/>
     </LinearLayout>
 </RelativeLayout>

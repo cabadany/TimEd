@@ -39,7 +39,8 @@ class SplashActivity : AppCompatActivity() {
     private val ALLOWED_WIFI_SSIDS = listOf(
         "\"TIMED-AP2.4G\"",
         "\"CITU_WILSTUDENT\"",
-        "\"CITI_WILCORPO2.4GHz\"",
+        "\"CITU_WILCORPO2.4GHz\"",
+        "\"NAVACOM AP\"",
         "\"GlobeAtHome_b4338_2.4\""
     )
     override fun onCreate(savedInstanceState: Bundle?) {
