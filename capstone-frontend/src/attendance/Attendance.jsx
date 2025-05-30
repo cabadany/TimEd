@@ -49,6 +49,7 @@ import {
 } from '@mui/icons-material';
 import './attendance.css';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 // Separate Modal Component with its own state
 const AttendanceModal = memo(({ 
@@ -85,7 +86,7 @@ const AttendanceModal = memo(({
   const fetchAllUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8080/api/user/getAll');
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
       
       // Create a map of existing attendees by userId for quick lookup
       const attendeeMap = new Map();
@@ -541,7 +542,7 @@ export default function Attendance() {
   // Helper to fetch user details by userId
   const fetchUserById = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:8080/api/user/getUser/${userId}`);
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(userId)));
       return response.data;
     } catch (error) {
       console.error('Error fetching user by ID:', userId, error);
@@ -556,7 +557,7 @@ export default function Attendance() {
       try {
         setLoading(true);
         // Fetch all events to find the specific one
-        const eventsResponse = await axios.get('http://localhost:8080/api/events/getAll');
+        const eventsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_EVENTS));
         const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
         if (!foundEvent) {
           throw new Error('Event not found');
@@ -564,12 +565,12 @@ export default function Attendance() {
         setEvent(foundEvent);
         // Fetch department details
         if (foundEvent.departmentId) {
-          const departmentsResponse = await axios.get('http://localhost:8080/api/departments');
+          const departmentsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
           const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
           setDepartment(foundDepartment);
         }
         // Fetch attendees
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         let attendeesData = attendeesResponse.data;
         // Fetch user details for each attendee to get profilePictureUrl
         const attendeesWithProfile = await Promise.all(attendeesData.map(async (att) => {
@@ -640,7 +641,7 @@ export default function Attendance() {
   const handleManualTimeIn = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timein`);
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.ATTENDANCE_MANUAL_TIME_IN(eventId, userId)));
       
       if (response.status === 200) {
         if (response.data.includes("already timed in")) {
@@ -653,7 +654,7 @@ export default function Attendance() {
         }
 
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         
@@ -693,11 +694,11 @@ export default function Attendance() {
   const handleManualTimeOut = async (userId) => {
     try {
       setActionLoading(true);
-      const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${userId}/manual/timeout`);
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.ATTENDANCE_MANUAL_TIME_OUT(eventId, userId)));
       
       if (response.status === 200) {
         // Refresh attendee list
-        const attendeesResponse = await axios.get(`http://localhost:8080/api/attendance/${eventId}/attendees`);
+        const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
         

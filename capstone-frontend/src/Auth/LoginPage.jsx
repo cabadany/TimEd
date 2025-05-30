@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import axios from 'axios';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import { Modal, Box, Typography, Button, TextField, CircularProgress, Paper, Fade, Zoom, Grid, Avatar, IconButton, AppBar, Toolbar, Popover, Chip } from '@mui/material';
 import { getAuth, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { Email, GitHub, LinkedIn, Language, Info, Close } from '@mui/icons-material';
@@ -116,20 +117,20 @@ function LoginPage() {
     setUserInfoLoading(true);
     try {
       // First, try to get the user's email using the existing endpoint
-      const response = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+      const response = await axios.get(getApiUrl(API_ENDPOINTS.EMAIL_BY_SCHOOL_ID), {
         params: { schoolId: idNumber }
       });
       
       if (response.data) {
         try {
           // Get the user's login info first
-          const loginResponse = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+          const loginResponse = await axios.post(getApiUrl(API_ENDPOINTS.LOGIN_BY_SCHOOL_ID), {
             schoolId: idNumber
           });
           
           if (loginResponse.data && loginResponse.data.userId) {
             // Now use the userId to get full user details
-            const userDetailsResponse = await axios.get(`http://localhost:8080/api/user/getUser/${loginResponse.data.userId}`, {
+            const userDetailsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(loginResponse.data.userId)), {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
                 'Content-Type': 'application/json'
@@ -216,7 +217,7 @@ function LoginPage() {
   
     try {
       // 🔄 Get email from backend using schoolId
-      const emailResponse = await axios.get('http://localhost:8080/api/auth/auth/email-by-schoolId', {
+      const emailResponse = await axios.get(getApiUrl(API_ENDPOINTS.EMAIL_BY_SCHOOL_ID), {
         params: { schoolId: idNumber }
       });
   
@@ -229,7 +230,7 @@ function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
   
       // 🔓 If login success, call backend to get user role & token (now including password)
-      const response = await axios.post('http://localhost:8080/api/auth/login-by-schoolId', {
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.LOGIN_BY_SCHOOL_ID), {
         schoolId: idNumber
       });
 
