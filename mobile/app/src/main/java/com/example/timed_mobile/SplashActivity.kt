@@ -41,7 +41,9 @@ class SplashActivity : AppCompatActivity() {
         "\"CITU_WILSTUDENT\"",
         "\"CITU_WILCORPO2.4GHz\"",
         "\"NAVACOM AP\"",
+        "\"AndroidWifi\"",
         "\"GlobeAtHome_b4338_2.4\""
+
     )
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

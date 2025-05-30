@@ -5,14 +5,15 @@
         android:minWidth="220dp"
         android:maxWidth="300dp"
         android:background="@drawable/tutorial_dialog_background"
-        android:elevation="8dp">
+        android:elevation="8dp"
+        >
 
     <ImageButton
             android:id="@+id/btn_close_tutorial_step"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:src="@drawable/ic_close"
-            app:tint="@color/dark_gray"
+            app:tint="@color/primary_medium_blue"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:layout_alignParentTop="true"
@@ -37,7 +38,7 @@
                 android:layout_height="wrap_content"
                 android:text="Step 1 of 4"
                 android:textSize="12sp"
-                android:textColor="@color/dark_gray"
+                android:textColor="@color/neutral_text_gray"
                 android:layout_marginBottom="6dp"
                 android:layout_marginTop="16dp" />
 
@@ -59,7 +60,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Next"
-                android:backgroundTint="@color/maroon"
+                android:backgroundTint="@color/primary_deep_blue"
                 android:textColor="@color/white"
                 android:textSize="13sp"
                 android:layout_marginTop="8dp"/>
