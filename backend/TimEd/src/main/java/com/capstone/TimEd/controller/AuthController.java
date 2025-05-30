@@ -96,7 +96,7 @@ public class AuthController {
 
         return ResponseEntity.ok("Password synced to Firestore.");
     }
-    @GetMapping("/auth/email-by-schoolId")
+    @GetMapping("/email-by-schoolId")
     public ResponseEntity<String> getEmailBySchoolId(@RequestParam String schoolId) {
         try {
             User user = userService.getUserBySchoolId(schoolId);

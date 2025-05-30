@@ -47,6 +47,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format, parseISO } from 'date-fns';
 import axios from 'axios';
+import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 const ExcuseLetters = () => {
   // State variables
@@ -111,7 +112,7 @@ const ExcuseLetters = () => {
       // Get excuse letters from Firebase and departments from API
       const [excuseSnapshot, departmentsResponse] = await Promise.all([
         get(excuseLettersRef),
-        axios.get('http://localhost:8080/api/departments')
+        axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS))
       ]);
       
       // Create lookup table for departments
@@ -152,7 +153,7 @@ const ExcuseLetters = () => {
                 const letterPromise = (async () => {
                   try {
                     // Get user data by idNumber (schoolId)
-                    const userResponse = await axios.get(`http://localhost:8080/api/user/getBySchoolId/${letter.idNumber}`);
+                    const userResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER_BY_SCHOOL_ID(letter.idNumber)));
                     const userData = userResponse.data;
                     console.log('Found user by idNumber:', userData);
                     
@@ -586,7 +587,7 @@ const ExcuseLetters = () => {
         </Typography>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* Create Button */}
+       {/*  
           <Button
             variant="contained"
             color="primary"
@@ -595,7 +596,7 @@ const ExcuseLetters = () => {
             size="small"
           >
             Create Test Letter
-          </Button>
+          </Button>*/}
           
           {/* Status Filter */}
           <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>

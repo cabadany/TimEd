@@ -7,4 +7,10 @@ export default defineConfig({
   optimizeDeps: {
     include: ['date-fns-tz'],
   },
+  server: {
+    historyApiFallback: true,
+  },
+  preview: {
+    historyApiFallback: true,
+  }
 })
