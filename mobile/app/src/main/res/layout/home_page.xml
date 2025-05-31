@@ -144,7 +144,7 @@
                                             android:textColor="@color/attendance_green"
                                             android:textSize="12sp"
                                             android:textStyle="bold"
-                                            android:visibility="gone" />
+                                            android:visibility="visible" />
                                 </LinearLayout>
 
                                 <TextView

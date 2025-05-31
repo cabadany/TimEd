@@ -160,4 +160,12 @@
             app:cornerRadius="8dp"
             android:stateListAnimator="@animator/button_scale_animator"/>
 
+    <FrameLayout
+            android:id="@+id/time_in_tutorial_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:visibility="gone"
+            android:elevation="10dp"/>
+
 </RelativeLayout>
