@@ -50,7 +50,7 @@
     </LinearLayout>
 
     <!-- Tutorial Progress Section (aligned to bottom-end, initially hidden) -->
-<!--    <LinearLayout
+    <LinearLayout
             android:id="@+id/tutorial_progress_on_right_nav_header"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -72,12 +72,12 @@
         <ProgressBar
                 android:id="@+id/tutorial_bar_on_right_nav_header"
                 style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="100dp"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:max="100"
                 android:progress="0"
                 android:progressTint="@color/accent_coral"
                 android:backgroundTint="@color/light_gray" />
-    </LinearLayout>-->
+    </LinearLayout>
 
 </RelativeLayout>
