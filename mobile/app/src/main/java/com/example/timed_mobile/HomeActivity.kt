@@ -55,32 +55,28 @@ import com.google.android.material.internal.NavigationMenuView
 class HomeActivity : AppCompatActivity() {
 
     companion object {
-        private const val TAG = "HomeActivity" // Added TAG for logging
+        private const val TAG = "HomeActivity" // Existing TAG
+        private const val TAG_TUTORIAL_NAV = "HomeActivityTutorialNav" // Specific TAG for nav header tutorial
         const val TOTAL_QUICK_TOUR_STEPS = 4
         const val PREFS_TUTORIAL = "TutorialPrefs"
-        const val KEY_TUTORIAL_COMPLETED = "tutorialCompleted" // For the main quick tour
+        const val KEY_TUTORIAL_COMPLETED = "tutorialCompleted"
 
-        // New for launching TimeInActivity in tutorial mode
         const val EXTRA_IS_TUTORIAL_MODE = "is_tutorial_mode"
 
-        // New for Attendance Workflow Tutorial
-        const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4 // TimeIn, TimeOut, Status Spinner, Excuse Letter
+        const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4
         const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted"
     }
 
-    // Consolidated currentTutorialPopupWindow declaration
     private var currentTutorialPopupWindow: PopupWindow? = null
-    private var currentTutorialCompletionKey: String = KEY_TUTORIAL_COMPLETED // Default to main quick tour
+    private var currentTutorialCompletionKey: String = KEY_TUTORIAL_COMPLETED
 
     private val timeInActivityTutorialLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            // TimeInActivity tutorial part completed, proceed in HomeActivity
-            showTimeOutButtonTutorialStep() // This is part of the new Attendance Workflow
+            showTimeOutButtonTutorialStep()
         } else {
-            // Tutorial was cancelled in TimeInActivity or an error occurred
-            handleTutorialCancellation() // This will use currentTutorialCompletionKey
+            handleTutorialCancellation()
             Toast.makeText(this, "Time-In screen guide was not completed.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -109,7 +105,6 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var tutorialOverlay: FrameLayout
     private lateinit var noEventsMessage: TextView
 
-    // Removed duplicate currentTutorialPopupWindow declaration
     private val allEvents = mutableListOf<EventModel>()
     private var userId: String? = null
     private var userEmail: String? = null
@@ -124,6 +119,13 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var btnHelp: ImageView
     private lateinit var profileImagePlaceholder: ImageView
+
+    // --- For Tutorial Progress on the RIGHT of Nav Header ---
+    private var tutorialProgressOnRightNavHeader: LinearLayout? = null
+    private var tutorialProgressBarOnRight: ProgressBar? = null
+    private var tutorialTitleTextOnRight: TextView? = null // For "Tutorial Progress:"
+    private var tutorialPercentageTextOnRight: TextView? = null // For "25%"
+    // ---
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -156,8 +158,35 @@ class HomeActivity : AppCompatActivity() {
         attendanceStatusBadge = findViewById(R.id.attendance_status_badge)
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
         drawerLayout = findViewById(R.id.drawer_layout)
-        navigationView = findViewById(R.id.navigation_view)
+        navigationView = findViewById(R.id.navigation_view) // Initialize navigationView first
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
+
+        // --- Initialize Nav Header Tutorial Progress Views ---
+        val headerView: View? = navigationView.getHeaderView(0)
+        if (headerView != null) {
+            tutorialProgressOnRightNavHeader = headerView.findViewById(R.id.tutorial_progress_on_right_nav_header)
+            tutorialProgressBarOnRight = headerView.findViewById(R.id.tutorial_bar_on_right_nav_header)
+            tutorialTitleTextOnRight = headerView.findViewById(R.id.tutorial_title_text)
+            tutorialPercentageTextOnRight = headerView.findViewById(R.id.tutorial_percentage_text)
+            Log.d(TAG_TUTORIAL_NAV, "Nav Header Tutorial Views Initialized: Container=${tutorialProgressOnRightNavHeader != null}, Bar=${tutorialProgressBarOnRight != null}, Title=${tutorialTitleTextOnRight != null}, Percentage=${tutorialPercentageTextOnRight != null}")
+
+            if (tutorialProgressOnRightNavHeader != null) {
+                tutorialProgressOnRightNavHeader?.isClickable = true // Ensure it's clickable
+                tutorialProgressOnRightNavHeader?.isFocusable = true // Ensure it's focusable (matches XML)
+                tutorialProgressOnRightNavHeader?.setOnClickListener {
+                    val intent = Intent(this, TutorialProgressActivity::class.java)
+                    intent.putExtra("userId", userId) // Pass userId if TutorialProgressActivity needs it
+                    startActivity(intent)
+                    Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity.")
+                }
+            } else {
+                Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader (LinearLayout) itself was not found in headerView.")
+            }
+
+        } else {
+            Log.e(TAG_TUTORIAL_NAV, "Navigation headerView is NULL. Cannot find tutorial progress views.")
+        }
+        // ---
 
         greetingCardNavIcon.setOnClickListener {
             if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
@@ -215,7 +244,7 @@ class HomeActivity : AppCompatActivity() {
         // --- End Entry Animations ---
 
         btnHelp.setOnClickListener {
-            showTutorialDialog() // This will now offer choices, and allow repeating
+            showTutorialDialog()
         }
 
         firestore = FirebaseFirestore.getInstance()
@@ -235,7 +264,7 @@ class HomeActivity : AppCompatActivity() {
                 if (isUserChangingStatus) {
                     showStatusConfirmationDialog(selectedStatus)
                 }
-                isUserChangingStatus = false // Reset flag after handling
+                isUserChangingStatus = false
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -305,12 +334,19 @@ class HomeActivity : AppCompatActivity() {
         }
 
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-        // This initial check is to show the dialog once if the main tutorial hasn't been "skipped" via the dialog's cancel.
-        // Actual completion flags are no longer set by finishing/cancelling a tutorial to allow repeats.
         if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false) &&
-            !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) { // Show if neither has been marked as "initially dealt with"
+            !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
             showTutorialDialog()
+        } else if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false)) {
+            currentTutorialCompletionKey = KEY_TUTORIAL_COMPLETED
+            showQuickTour()
+        } else if (!tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
+            currentTutorialCompletionKey = KEY_ATTENDANCE_TUTORIAL_COMPLETED
+            startAttendanceWorkflowTutorial()
         }
+        // If both tutorials are completed, the nav header progress won't be actively shown here
+        // but will remain from its last state if a tutorial was run in this session.
+        // It's initially GONE in XML and made visible by showCustomTutorialDialog.
 
         loadAndStoreEvents()
         evaluateAndDisplayAttendanceBadge()
@@ -645,7 +681,7 @@ class HomeActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle("Log Out").setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes") { _, _ ->
                 getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply() // Clear tutorial prefs too
+                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
                 startActivity(Intent(this, LoginActivity::class.java))
                 finishAffinity()
             }
@@ -776,11 +812,13 @@ class HomeActivity : AppCompatActivity() {
         if (tutorialOverlay.visibility == View.VISIBLE) {
             tutorialOverlay.visibility = View.GONE
         }
+        // --- Nav Header Tutorial Progress will remain visible ---
+        // The progress will show the state at the time of cancellation.
+        Log.d(TAG_TUTORIAL_NAV, "Tutorial CANCELED, nav header progress remains visible showing current step.")
+        // ---
         previousTargetLocationForAnimation = null
-        // Do NOT mark tutorial as completed in SharedPreferences to allow repeating
-        // val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-        // tutorialPrefs.edit().putBoolean(this.currentTutorialCompletionKey, true).apply()
         Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
+        currentTutorialPopupWindow?.dismiss()
         currentTutorialPopupWindow = null
     }
 
@@ -788,7 +826,7 @@ class HomeActivity : AppCompatActivity() {
         if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
             drawerLayout.closeDrawer(GravityCompat.END)
         } else if (currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing) {
-            currentTutorialPopupWindow?.dismiss()
+            currentTutorialPopupWindow?.dismiss() // This will trigger handleTutorialCancellation via onDismissListener
         } else {
             super.onBackPressed()
         }
@@ -796,7 +834,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun showTutorialDialog() {
         val dialog = Dialog(this)
-        dialog.setContentView(R.layout.dialog_tutorial_options)
+        dialog.setContentView(R.layout.dialog_tutorial_options) // Ensure this layout exists
         dialog.setCancelable(false)
 
         val window = dialog.window
@@ -816,28 +854,25 @@ class HomeActivity : AppCompatActivity() {
 
         layoutQuickTour.setOnClickListener {
             previousTargetLocationForAnimation = null
-            currentTutorialCompletionKey = KEY_TUTORIAL_COMPLETED
-            showQuickTour()
+            showQuickTour() // This will set currentTutorialCompletionKey
             dialog.dismiss()
         }
 
         layoutAttendanceGuide?.setOnClickListener {
             previousTargetLocationForAnimation = null
-            currentTutorialCompletionKey = KEY_ATTENDANCE_TUTORIAL_COMPLETED
-            startAttendanceWorkflowTutorial()
+            startAttendanceWorkflowTutorial() // This will set currentTutorialCompletionKey
             dialog.dismiss()
         }
 
         btnCancel.setOnClickListener {
             dialog.dismiss()
-            // This part is for the initial auto-popup. If user cancels the dialog
-            // when neither tutorial has been "completed" (i.e., skipped initially),
-            // mark the main one as "completed" to prevent auto-popup on next launch.
-            // They can still access tutorials via help button.
-            if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false) &&
+            if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false) ||
                 !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
-                tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
-                Toast.makeText(this, "Tutorials skipped for now. You can access them via the help button.", Toast.LENGTH_LONG).show()
+                tutorialPrefs.edit()
+                    .putBoolean(KEY_TUTORIAL_COMPLETED, true)
+                    .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
+                    .apply()
+                Toast.makeText(this, "Tutorials skipped. You can access them via the help button.", Toast.LENGTH_LONG).show()
             }
         }
         dialog.show()
@@ -846,6 +881,27 @@ class HomeActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun showCustomTutorialDialog(message: String, targetView: View, currentStep: Int, totalSteps: Int, onNext: () -> Unit) {
         tutorialOverlay.visibility = View.VISIBLE
+
+        // --- Show and Update Nav Header Tutorial Progress with Animation ---
+        if (tutorialProgressOnRightNavHeader != null) {
+            val percentage = if (totalSteps > 0) (currentStep * 100) / totalSteps else 0
+            tutorialProgressBarOnRight?.max = 100
+            tutorialProgressBarOnRight?.progress = percentage
+            tutorialPercentageTextOnRight?.text = "$percentage%"
+
+            if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE) {
+                tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
+                val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+                tutorialProgressOnRightNavHeader?.startAnimation(fadeIn)
+            }
+            Log.d(TAG_TUTORIAL_NAV, "Showing nav header progress: $percentage% (Step $currentStep/$totalSteps). Visibility: ${tutorialProgressOnRightNavHeader?.visibility}")
+        } else {
+            Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader is NULL in showCustomTutorialDialog.")
+        }
+        // ---
+
+        currentTutorialPopupWindow?.dismiss()
+
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null)
         val progressTextView = dialogView.findViewById<TextView>(R.id.tutorial_progress_text)
@@ -854,58 +910,38 @@ class HomeActivity : AppCompatActivity() {
         val closeButton = dialogView.findViewById<ImageButton>(R.id.btn_close_tutorial_step)
 
         progressTextView.text = "Step $currentStep of $totalSteps"; messageTextView.text = message
-
         dialogView.measure(View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST))
 
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
         val margin = (16 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-
         val measuredWidth = dialogView.measuredWidth
         val initialDialogWidth = if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
-
         val upperWidthBound = (screenWidth - 2 * margin).coerceAtLeast(margin * 2)
         val lowerWidthBound = (margin * 2).coerceAtLeast(1)
         val dialogWidth = initialDialogWidth.coerceIn(lowerWidthBound, upperWidthBound)
         val dialogHeight = dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
-
         var finalDialogX: Int; var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(currentTargetLocationOnScreen)
-
         val spaceBelow = screenHeight - (currentTargetLocationOnScreen[1] + targetView.height)
         val spaceAbove = currentTargetLocationOnScreen[1]
         val minXPlacement = margin
         val maxXPlacement = screenWidth - dialogWidth - margin
-
-        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2)
-            .coerceIn(minXPlacement, maxXPlacement.coerceAtLeast(minXPlacement))
-
+        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minXPlacement, maxXPlacement.coerceAtLeast(minXPlacement))
         if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0 && targetView.isAttachedToWindow) {
-            finalDialogY = if (spaceBelow >= dialogHeight + margin / 2) {
-                currentTargetLocationOnScreen[1] + targetView.height + margin / 2
-            } else if (spaceAbove >= dialogHeight + margin / 2) {
-                currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
-            } else {
-                (screenHeight - dialogHeight) / 2
-            }
+            finalDialogY = if (spaceBelow >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] + targetView.height + margin / 2
+            else if (spaceAbove >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
+            else (screenHeight - dialogHeight) / 2
         } else {
             finalDialogX = (screenWidth - dialogWidth) / 2
             finalDialogY = (screenHeight - dialogHeight) / 2
         }
-
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow
-        popupWindow.isFocusable = true
-        popupWindow.isOutsideTouchable = true
+        popupWindow.isFocusable = true; popupWindow.isOutsideTouchable = true
         popupWindow.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)))
         var isProceedingToNextStepOrCompleting = false
-
-        popupWindow.setOnDismissListener {
-            if (!isProceedingToNextStepOrCompleting) {
-                handleTutorialCancellation()
-            }
-        }
-
+        popupWindow.setOnDismissListener { if (!isProceedingToNextStepOrCompleting) handleTutorialCancellation() }
         val animationSet = AnimationSet(true); val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
         alphaAnimation.duration = 300
         alphaAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
@@ -925,31 +961,33 @@ class HomeActivity : AppCompatActivity() {
         translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.overshoot_interpolator)
         animationSet.addAnimation(translateAnimation)
         dialogView.startAnimation(animationSet)
-
         popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
-        val currentTargetScreenPos = IntArray(2)
-        targetView.getLocationOnScreen(currentTargetScreenPos)
+        val currentTargetScreenPos = IntArray(2); targetView.getLocationOnScreen(currentTargetScreenPos)
         previousTargetLocationForAnimation = currentTargetScreenPos
 
         nextButton.setOnClickListener {
             isProceedingToNextStepOrCompleting = true
-            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-            fadeOut.setAnimationListener(object : Animation.AnimationListener {
+            val fadeOutPopup = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+            fadeOutPopup.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
                     popupWindow.dismiss()
                     if (currentStep == totalSteps) {
                         tutorialOverlay.visibility = View.GONE
+                        // --- Nav Header Tutorial Progress will remain visible ---
+                        // It will show 100% or the final step's progress.
+                        Log.d(TAG_TUTORIAL_NAV, "Tutorial COMPLETED, nav header progress remains visible.")
+                        // ---
                         previousTargetLocationForAnimation = null
-                        // Do NOT mark tutorial as completed in SharedPreferences to allow repeating
-                        // val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-                        // tutorialPrefs.edit().putBoolean(this@HomeActivity.currentTutorialCompletionKey, true).apply()
                         currentTutorialPopupWindow = null
+                        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+                        tutorialPrefs.edit().putBoolean(currentTutorialCompletionKey, true).apply()
+                        Log.d(TAG, "$currentTutorialCompletionKey marked as completed.")
                     }
                 }
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
-            dialogView.startAnimation(fadeOut)
+            dialogView.startAnimation(fadeOutPopup)
             onNext()
         }
 
@@ -967,27 +1005,32 @@ class HomeActivity : AppCompatActivity() {
 
     private fun hideOverlay() { if (tutorialOverlay.visibility == View.VISIBLE) tutorialOverlay.visibility = View.GONE }
 
-    // --- Quick Tour Steps (Existing) ---
+    // --- Quick Tour Steps ---
     private fun showQuickTour() {
+        currentTutorialCompletionKey = KEY_TUTORIAL_COMPLETED
         val greetingCard = findViewById<View>(R.id.greeting_card)
+        if (greetingCard == null) { Log.e(TAG, "Greeting card view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) { showFilterButtonsTour() }
     }
     private fun showFilterButtonsTour() {
         val filterButtons = findViewById<View>(R.id.filter_buttons)
+        if (filterButtons == null) { Log.e(TAG, "Filter buttons view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) { showEventListTour() }
     }
     private fun showEventListTour() {
         val eventList = findViewById<View>(R.id.recycler_events)
+        if (eventList == null) { Log.e(TAG, "Event list view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) { showAttendanceSectionTour() }
     }
     private fun showAttendanceSectionTour() {
         val attendanceButton = findViewById<View>(R.id.btntime_in)
-        showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, 4, TOTAL_QUICK_TOUR_STEPS) {
+        if (attendanceButton == null) { Log.e(TAG, "Attendance button view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, TOTAL_QUICK_TOUR_STEPS, TOTAL_QUICK_TOUR_STEPS) {
             Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // --- NEW: Attendance Workflow Tutorial Steps ---
+    // --- Attendance Workflow Tutorial Steps ---
     private fun startAttendanceWorkflowTutorial() {
         this.currentTutorialCompletionKey = KEY_ATTENDANCE_TUTORIAL_COMPLETED
         showTimeInButtonTutorialStep_New()
@@ -995,6 +1038,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun showTimeInButtonTutorialStep_New() {
         val timeInButton = findViewById<View>(R.id.btntime_in)
+        if (timeInButton == null) { Log.e(TAG, "Time-In button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog(
             "This guide focuses on attendance. First, let's see how to 'Time-In'. Tapping this opens the camera for face verification.",
             timeInButton, 1, TOTAL_ATTENDANCE_TUTORIAL_STEPS,
@@ -1009,17 +1053,20 @@ class HomeActivity : AppCompatActivity() {
 
     fun showTimeOutButtonTutorialStep() {
         val timeOutButton = findViewById<View>(R.id.btntime_out)
+        if (timeOutButton == null) { Log.e(TAG, "Time-Out button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) { showStatusSpinnerTutorialStep_New() }
     }
 
     private fun showStatusSpinnerTutorialStep_New() {
         val statusSpinnerView = findViewById<View>(R.id.status_spinner)
+        if (statusSpinnerView == null) { Log.e(TAG, "Status spinner view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown.", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) { showExcuseLetterButtonTutorialStep_New() }
     }
 
     private fun showExcuseLetterButtonTutorialStep_New() {
         val excuseLetterButton = findViewById<View>(R.id.excuse_letter_text_button)
-        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here.", excuseLetterButton, 4, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        if (excuseLetterButton == null) { Log.e(TAG, "Excuse letter button view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here.", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
             Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉", Toast.LENGTH_SHORT).show()
         }
     }
