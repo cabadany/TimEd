@@ -9,7 +9,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.cardview.widget.CardView // Added for CardView
+import androidx.cardview.widget.CardView
 
 class TutorialProgressActivity : AppCompatActivity() {
 
@@ -17,17 +17,13 @@ class TutorialProgressActivity : AppCompatActivity() {
     private lateinit var pbQuickTour: ProgressBar
     private lateinit var tvAttendanceGuideStatus: TextView
     private lateinit var pbAttendanceGuide: ProgressBar
-    private lateinit var tvNoActiveTutorial: TextView
+    private lateinit var tvNoActiveTutorial: TextView // Will be managed based on actual progress
 
-    // CardView declarations for animation
     private lateinit var cardQuickTour: CardView
     private lateinit var cardAttendanceGuide: CardView
 
-    // private var userId: String? = null // Uncomment if you pass and use userId
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ensure this matches your XML file name: tutorial_progress_page.xml
         setContentView(R.layout.tutorial_progress_page)
 
         val toolbar: Toolbar = findViewById(R.id.toolbar_tutorial_progress)
@@ -35,15 +31,12 @@ class TutorialProgressActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
 
-        // userId = intent.getStringExtra("userId") // Uncomment if needed
-
         tvQuickTourStatus = findViewById(R.id.tv_quick_tour_status)
         pbQuickTour = findViewById(R.id.pb_quick_tour)
         tvAttendanceGuideStatus = findViewById(R.id.tv_attendance_guide_status)
         pbAttendanceGuide = findViewById(R.id.pb_attendance_guide)
-        tvNoActiveTutorial = findViewById(R.id.tv_no_active_tutorial)
+        tvNoActiveTutorial = findViewById(R.id.tv_no_active_tutorial) // Keep for now
 
-        // Initialize CardViews (ensure these IDs exist in your tutorial_progress_page.xml)
         cardQuickTour = findViewById(R.id.card_quick_tour)
         cardAttendanceGuide = findViewById(R.id.card_attendance_guide)
 
@@ -51,67 +44,73 @@ class TutorialProgressActivity : AppCompatActivity() {
 
         // Apply animations
         val animSlideUpFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
-        animSlideUpFadeIn.startOffset = 100 // Optional: delay for the first card
+        animSlideUpFadeIn.startOffset = 100
         cardQuickTour.startAnimation(animSlideUpFadeIn)
 
         val animSlideUpFadeIn2 = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
-        animSlideUpFadeIn2.startOffset = 300 // Optional: slightly longer delay for the second card
+        animSlideUpFadeIn2.startOffset = 300
         cardAttendanceGuide.startAnimation(animSlideUpFadeIn2)
     }
 
     private fun loadTutorialProgress() {
         val tutorialPrefs = getSharedPreferences(HomeActivity.PREFS_TUTORIAL, Context.MODE_PRIVATE)
 
-        val quickTourCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_TUTORIAL_COMPLETED, false)
-        val attendanceGuideCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+        // --- Quick Tour Progress ---
+        val quickTourIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_QUICK_TOUR_COMPLETED, false)
+        val quickTourSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_QUICK_TOUR_CURRENT_STEP, 0)
 
-        var anyTutorialActiveOrCompleted = false
-
-        if (quickTourCompleted) {
+        if (quickTourIsCompleted) {
             tvQuickTourStatus.text = "Completed"
             pbQuickTour.progress = 100
-            anyTutorialActiveOrCompleted = true
+        } else if (quickTourSavedStep > 0) {
+            val progressPercentage = (quickTourSavedStep * 100) / HomeActivity.TOTAL_QUICK_TOUR_STEPS
+            pbQuickTour.progress = progressPercentage
+            tvQuickTourStatus.text = "In Progress (${quickTourSavedStep}/${HomeActivity.TOTAL_QUICK_TOUR_STEPS})"
         } else {
             tvQuickTourStatus.text = "Not Started"
             pbQuickTour.progress = 0
-            // If you want to show the card even if not started, ensure anyTutorialActiveOrCompleted can be true
-            // For example, if the tutorial is available to be started.
-            // For now, this logic means if neither is completed, "no active tutorial" might show.
-            // Consider if "Not Started" tutorials should still make the cards visible.
-            // If so, you might always set anyTutorialActiveOrCompleted = true here,
-            // or have a more complex check for tutorial availability.
         }
 
-        if (attendanceGuideCompleted) {
+        // --- Attendance Workflow Guide Progress ---
+        val attendanceGuideIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+        val attendanceGuideSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+
+        if (attendanceGuideIsCompleted) {
             tvAttendanceGuideStatus.text = "Completed"
             pbAttendanceGuide.progress = 100
-            anyTutorialActiveOrCompleted = true
+        } else if (attendanceGuideSavedStep > 0) {
+            val progressPercentage = (attendanceGuideSavedStep * 100) / HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS
+            pbAttendanceGuide.progress = progressPercentage
+            tvAttendanceGuideStatus.text = "In Progress (${attendanceGuideSavedStep}/${HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS})"
         } else {
             tvAttendanceGuideStatus.text = "Not Started"
             pbAttendanceGuide.progress = 0
-            // Similar consideration as above for "Not Started" state.
         }
 
-        // This logic will hide the "No active tutorial" text if EITHER tutorial is completed.
-        // If both are "Not Started", "No active tutorial" will be shown.
-        // The cards themselves are not explicitly hidden here, their visibility depends on the XML default
-        // and whether the "No active tutorial" text overlays them or if the parent layout adjusts.
-        if (!anyTutorialActiveOrCompleted) {
-            tvNoActiveTutorial.visibility = View.VISIBLE
-            // You might also want to explicitly hide the cards if no tutorials are active/completed:
-            // cardQuickTour.visibility = View.GONE
-            // cardAttendanceGuide.visibility = View.GONE
-        } else {
+        // Manage visibility of "No active tutorial" text
+        // If both are "Not Started" (step 0) AND not marked as completed (which they wouldn't be if step is 0),
+        // then it might be relevant. However, "Not Started" is a valid status on the card.
+        // For now, let's assume the cards are always shown and display their status.
+        // If you want to hide cards for "Not Started" and show "No active tutorial", this logic would change.
+        val anyTutorialEverStartedOrCompleted = quickTourIsCompleted || quickTourSavedStep > 0 ||
+                attendanceGuideIsCompleted || attendanceGuideSavedStep > 0
+
+        if (anyTutorialEverStartedOrCompleted) {
             tvNoActiveTutorial.visibility = View.GONE
-            // And ensure cards are visible if tutorials are active/completed:
-            // cardQuickTour.visibility = View.VISIBLE
-            // cardAttendanceGuide.visibility = View.VISIBLE
+        } else {
+            // This means both tutorials are at step 0 and not marked completed.
+            // You could show "No active tutorial" or let the cards show "Not Started".
+            // Let's hide it if cards show "Not Started".
+            tvNoActiveTutorial.visibility = View.GONE
         }
+        // Ensure cards are visible by default in XML or set them visible here if needed.
+        // cardQuickTour.visibility = View.VISIBLE
+        // cardAttendanceGuide.visibility = View.VISIBLE
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-            finish() // Goes back to the previous activity
+            finish()
             return true
         }
         return super.onOptionsItemSelected(item)
