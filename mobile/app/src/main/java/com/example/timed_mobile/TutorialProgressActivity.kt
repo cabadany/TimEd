@@ -17,7 +17,7 @@ class TutorialProgressActivity : AppCompatActivity() {
     private lateinit var pbQuickTour: ProgressBar
     private lateinit var tvAttendanceGuideStatus: TextView
     private lateinit var pbAttendanceGuide: ProgressBar
-    private lateinit var tvNoActiveTutorial: TextView // Will be managed based on actual progress
+    private lateinit var tvNoActiveTutorial: TextView
 
     private lateinit var cardQuickTour: CardView
     private lateinit var cardAttendanceGuide: CardView
@@ -35,14 +35,13 @@ class TutorialProgressActivity : AppCompatActivity() {
         pbQuickTour = findViewById(R.id.pb_quick_tour)
         tvAttendanceGuideStatus = findViewById(R.id.tv_attendance_guide_status)
         pbAttendanceGuide = findViewById(R.id.pb_attendance_guide)
-        tvNoActiveTutorial = findViewById(R.id.tv_no_active_tutorial) // Keep for now
+        tvNoActiveTutorial = findViewById(R.id.tv_no_active_tutorial)
 
         cardQuickTour = findViewById(R.id.card_quick_tour)
         cardAttendanceGuide = findViewById(R.id.card_attendance_guide)
 
         loadTutorialProgress()
 
-        // Apply animations
         val animSlideUpFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideUpFadeIn.startOffset = 100
         cardQuickTour.startAnimation(animSlideUpFadeIn)
@@ -56,15 +55,16 @@ class TutorialProgressActivity : AppCompatActivity() {
         val tutorialPrefs = getSharedPreferences(HomeActivity.PREFS_TUTORIAL, Context.MODE_PRIVATE)
 
         // --- Quick Tour Progress ---
+        // Uses keys that HomeActivity should now consistently use
         val quickTourIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_QUICK_TOUR_COMPLETED, false)
-        val quickTourSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_QUICK_TOUR_CURRENT_STEP, 0)
+        val quickTourSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_QUICK_TOUR_CURRENT_STEP, 0) // Last completed step
 
+        pbQuickTour.max = HomeActivity.TOTAL_QUICK_TOUR_STEPS // Ensure max is set for accurate percentage
         if (quickTourIsCompleted) {
             tvQuickTourStatus.text = "Completed"
-            pbQuickTour.progress = 100
+            pbQuickTour.progress = HomeActivity.TOTAL_QUICK_TOUR_STEPS
         } else if (quickTourSavedStep > 0) {
-            val progressPercentage = (quickTourSavedStep * 100) / HomeActivity.TOTAL_QUICK_TOUR_STEPS
-            pbQuickTour.progress = progressPercentage
+            pbQuickTour.progress = quickTourSavedStep
             tvQuickTourStatus.text = "In Progress (${quickTourSavedStep}/${HomeActivity.TOTAL_QUICK_TOUR_STEPS})"
         } else {
             tvQuickTourStatus.text = "Not Started"
@@ -72,40 +72,33 @@ class TutorialProgressActivity : AppCompatActivity() {
         }
 
         // --- Attendance Workflow Guide Progress ---
+        // Uses keys that HomeActivity should now consistently use
         val attendanceGuideIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
-        val attendanceGuideSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+        val attendanceGuideSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0) // Last completed step
 
+        pbAttendanceGuide.max = HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS // Ensure max is set
         if (attendanceGuideIsCompleted) {
             tvAttendanceGuideStatus.text = "Completed"
-            pbAttendanceGuide.progress = 100
+            pbAttendanceGuide.progress = HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS
         } else if (attendanceGuideSavedStep > 0) {
-            val progressPercentage = (attendanceGuideSavedStep * 100) / HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS
-            pbAttendanceGuide.progress = progressPercentage
+            pbAttendanceGuide.progress = attendanceGuideSavedStep
             tvAttendanceGuideStatus.text = "In Progress (${attendanceGuideSavedStep}/${HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS})"
         } else {
             tvAttendanceGuideStatus.text = "Not Started"
             pbAttendanceGuide.progress = 0
         }
 
-        // Manage visibility of "No active tutorial" text
-        // If both are "Not Started" (step 0) AND not marked as completed (which they wouldn't be if step is 0),
-        // then it might be relevant. However, "Not Started" is a valid status on the card.
-        // For now, let's assume the cards are always shown and display their status.
-        // If you want to hide cards for "Not Started" and show "No active tutorial", this logic would change.
         val anyTutorialEverStartedOrCompleted = quickTourIsCompleted || quickTourSavedStep > 0 ||
                 attendanceGuideIsCompleted || attendanceGuideSavedStep > 0
 
         if (anyTutorialEverStartedOrCompleted) {
             tvNoActiveTutorial.visibility = View.GONE
         } else {
-            // This means both tutorials are at step 0 and not marked completed.
-            // You could show "No active tutorial" or let the cards show "Not Started".
-            // Let's hide it if cards show "Not Started".
-            tvNoActiveTutorial.visibility = View.GONE
+            tvNoActiveTutorial.visibility = View.VISIBLE // Show if nothing has ever been touched
+            // Optionally hide cards if you prefer "No active tutorial" to dominate
+            // cardQuickTour.visibility = View.GONE
+            // cardAttendanceGuide.visibility = View.GONE
         }
-        // Ensure cards are visible by default in XML or set them visible here if needed.
-        // cardQuickTour.visibility = View.VISIBLE
-        // cardAttendanceGuide.visibility = View.VISIBLE
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

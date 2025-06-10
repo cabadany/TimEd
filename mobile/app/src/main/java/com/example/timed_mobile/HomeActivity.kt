@@ -60,15 +60,17 @@ class HomeActivity : AppCompatActivity() {
 
         const val PREFS_TUTORIAL = "TutorialPrefs"
 
+        // --- Quick Tour Keys ---
         const val TOTAL_QUICK_TOUR_STEPS = 4
         const val KEY_QUICK_TOUR_COMPLETED = "quickTourCompleted" // Specific completion key
-        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep"
+        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep" // Last completed step for quick tour
 
         const val EXTRA_IS_TUTORIAL_MODE = "is_tutorial_mode"
 
+        // --- Attendance Workflow Guide Keys ---
         const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4
-        const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted"
-        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep"
+        const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted" // Specific completion key
+        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep" // Last completed step for attendance guide
     }
 
     private var currentTutorialPopupWindow: PopupWindow? = null
@@ -282,7 +284,10 @@ class HomeActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
+        statusSpinner.adapter = statusAdapter
+
         recyclerEvents.layoutManager = LinearLayoutManager(this)
+        recyclerEvents.adapter = EventAdapter(mutableListOf()) // Initialize with an empty mutable list/ Initialize with an empty list
 
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
@@ -346,8 +351,8 @@ class HomeActivity : AppCompatActivity() {
             swipeRefreshLayout.isRefreshing = false
         }
 
-        // Post the tutorial check to the drawerLayout's message queue
-        // to ensure the activity's window is attached before showing PopupWindows.
+        // --- Tutorial Auto-Start Logic ---
+        // Ensure this is posted to run after layout is complete to avoid BadTokenException
         drawerLayout.post {
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             val quickTourDone = tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)
@@ -813,7 +818,8 @@ class HomeActivity : AppCompatActivity() {
         }
         val filtered = if (statusFilter == null) eventsWithDynamicStatus else eventsWithDynamicStatus.filter { it.status.equals(statusFilter, ignoreCase = true) }
         val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
-        recyclerEvents.adapter = EventAdapter(sorted)
+        // recyclerEvents.adapter = EventAdapter(sorted) // Original line, commented out as per your change
+        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted) // Your new line that needs EventAdapter.updateData()
         val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
         noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
         if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
@@ -1060,19 +1066,23 @@ class HomeActivity : AppCompatActivity() {
 
         if (resetProgress) {
             tutorialPrefs.edit()
-                .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
+                .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) // Current step is 0-indexed for "last completed"
                 .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
                 .apply()
             Log.d(TAG, "Quick Tour progress reset.")
         } else {
+            // Resuming or starting if not completed
             if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
-                stepToDisplay = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) + 1
+                stepToDisplay = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) + 1 // Next step to show
                 if (stepToDisplay > TOTAL_QUICK_TOUR_STEPS) {
                     Log.w(TAG, "Quick Tour: stepToDisplay ($stepToDisplay) > total. Likely already completed or error. Resetting to 1.")
                     stepToDisplay = 1
-                    tutorialPrefs.edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0).apply()
+                    tutorialPrefs.edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0).apply() // Reset current step
                 }
             } else {
+                // This case means it's completed, and showQuickTour(resetProgress=false) was called.
+                // This shouldn't happen from auto-resume logic. If user re-selects from help,
+                // resetProgress should be true. For safety, if we reach here, treat as restart.
                 Toast.makeText(this, "Quick Tour already completed. Restarting.", Toast.LENGTH_SHORT).show()
                 tutorialPrefs.edit()
                     .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
@@ -1085,9 +1095,9 @@ class HomeActivity : AppCompatActivity() {
 
         when (stepToDisplay) {
             1 -> showGreetingCardTourStep()
-            2 -> showFilterButtonsTourStep()
-            3 -> showEventListTourStep()
-            4 -> showAttendanceSectionTourStep()
+            2 -> showFilterButtonsTour()
+            3 -> showEventListTour()
+            4 -> showAttendanceSectionTour()
             else -> {
                 Log.e(TAG, "Quick Tour: Invalid step $stepToDisplay. Defaulting to step 1.")
                 showGreetingCardTourStep()
@@ -1099,30 +1109,32 @@ class HomeActivity : AppCompatActivity() {
         val greetingCard = findViewById<View>(R.id.greeting_card)
         if (greetingCard == null) { Log.e(TAG, "Greeting card view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) {
-            showFilterButtonsTourStep()
+            showFilterButtonsTour()
         }
     }
-    private fun showFilterButtonsTourStep() {
+    private fun showFilterButtonsTour() {
         val filterButtons = findViewById<View>(R.id.filter_buttons)
         if (filterButtons == null) { Log.e(TAG, "Filter buttons view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) {
-            showEventListTourStep()
+            showEventListTour()
         }
     }
-    private fun showEventListTourStep() {
+    private fun showEventListTour() {
         val eventList = findViewById<View>(R.id.recycler_events)
         if (eventList == null) { Log.e(TAG, "Event list view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) {
-            showAttendanceSectionTourStep()
+            showAttendanceSectionTour()
         }
     }
-    private fun showAttendanceSectionTourStep() {
-        val attendanceButton = findViewById<View>(R.id.btntime_in)
+    private fun showAttendanceSectionTour() { // Last step of Quick Tour
+        val attendanceButton = findViewById<View>(R.id.btntime_in) // Example target
         if (attendanceButton == null) { Log.e(TAG, "Attendance button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, TOTAL_QUICK_TOUR_STEPS, TOTAL_QUICK_TOUR_STEPS) {
+            // This is the last step, onNext will trigger completion logic in showCustomTutorialDialog
             Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
         }
     }
+
 
     // --- Attendance Workflow Tutorial Steps ---
     private fun startAttendanceWorkflowTutorial(resetProgress: Boolean = false) {
@@ -1159,18 +1171,18 @@ class HomeActivity : AppCompatActivity() {
         Log.d(TAG, "Starting/Resuming Attendance Guide. Step to display: $stepToDisplay")
 
         when (stepToDisplay) {
-            1 -> showTimeInButtonTutorialStep()
+            1 -> showTimeInButtonTutorialStep_New()
             2 -> showTimeOutButtonTutorialStep()
-            3 -> showStatusSpinnerTutorialStep()
-            4 -> showExcuseLetterButtonTutorialStep()
+            3 -> showStatusSpinnerTutorialStep_New()
+            4 -> showExcuseLetterButtonTutorialStep_New()
             else -> {
                 Log.e(TAG, "Attendance Guide: Invalid step $stepToDisplay. Defaulting to step 1.")
-                showTimeInButtonTutorialStep()
+                showTimeInButtonTutorialStep_New()
             }
         }
     }
 
-    private fun showTimeInButtonTutorialStep() {
+    private fun showTimeInButtonTutorialStep_New() { // Step 1 of Attendance Guide
         val timeInButton = findViewById<View>(R.id.btntime_in)
         if (timeInButton == null) { Log.e(TAG, "Time-In button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog(
@@ -1184,29 +1196,33 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    // This is Step 2 of Attendance Guide, called from timeInActivityTutorialLauncher
     fun showTimeOutButtonTutorialStep() {
         val timeOutButton = findViewById<View>(R.id.btntime_out)
         if (timeOutButton == null) { Log.e(TAG, "Time-Out button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-            showStatusSpinnerTutorialStep()
+            showStatusSpinnerTutorialStep_New()
         }
     }
 
-    private fun showStatusSpinnerTutorialStep() {
+    // This is Step 3
+    private fun showStatusSpinnerTutorialStep_New() {
         val statusSpinnerView = findViewById<View>(R.id.status_spinner)
         if (statusSpinnerView == null) { Log.e(TAG, "Status spinner view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown.", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-            showExcuseLetterButtonTutorialStep()
+            showExcuseLetterButtonTutorialStep_New()
         }
     }
 
-    private fun showExcuseLetterButtonTutorialStep() {
+    // This is Step 4 (Last step of Attendance Guide)
+    private fun showExcuseLetterButtonTutorialStep_New() {
         val excuseLetterButton = findViewById<View>(R.id.excuse_letter_text_button)
         if (excuseLetterButton == null) { Log.e(TAG, "Excuse letter button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here.", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
             Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉", Toast.LENGTH_SHORT).show()
         }
     }
+
     // --- END TUTORIAL SYSTEM ---
 
     private fun updateAttendanceBadge(status: String) {
