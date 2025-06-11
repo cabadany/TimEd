@@ -55,55 +55,69 @@ class TutorialProgressActivity : AppCompatActivity() {
         val tutorialPrefs = getSharedPreferences(HomeActivity.PREFS_TUTORIAL, Context.MODE_PRIVATE)
 
         // --- Quick Tour Progress ---
-        // Uses keys that HomeActivity should now consistently use
         val quickTourIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_QUICK_TOUR_COMPLETED, false)
-        val quickTourSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_QUICK_TOUR_CURRENT_STEP, 0) // Last completed step
+        var quickTourSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_QUICK_TOUR_CURRENT_STEP, 0)
+        val quickTourTotalSteps = HomeActivity.TOTAL_QUICK_TOUR_STEPS
 
-        pbQuickTour.max = HomeActivity.TOTAL_QUICK_TOUR_STEPS // Ensure max is set for accurate percentage
+        pbQuickTour.max = quickTourTotalSteps
         if (quickTourIsCompleted) {
-            tvQuickTourStatus.text = "Completed"
-            pbQuickTour.progress = HomeActivity.TOTAL_QUICK_TOUR_STEPS
-        } else if (quickTourSavedStep > 0) {
-            pbQuickTour.progress = quickTourSavedStep
-            tvQuickTourStatus.text = "In Progress (${quickTourSavedStep}/${HomeActivity.TOTAL_QUICK_TOUR_STEPS})"
+            tvQuickTourStatus.text = "Status: Completed (100%)"
+            pbQuickTour.progress = quickTourTotalSteps
         } else {
-            tvQuickTourStatus.text = "Not Started"
-            pbQuickTour.progress = 0
+            // Defensively cap savedStep for display if it somehow exceeds total steps
+            if (quickTourSavedStep > quickTourTotalSteps) {
+                quickTourSavedStep = quickTourTotalSteps
+            }
+
+            if (quickTourSavedStep > 0 && quickTourTotalSteps > 0) {
+                val percentage = (quickTourSavedStep * 100) / quickTourTotalSteps
+                pbQuickTour.progress = quickTourSavedStep
+                tvQuickTourStatus.text = "Status: In Progress - ${percentage}% (${quickTourSavedStep}/${quickTourTotalSteps})"
+            } else {
+                tvQuickTourStatus.text = "Status: Not Started (0%)"
+                pbQuickTour.progress = 0
+            }
         }
 
         // --- Attendance Workflow Guide Progress ---
-        // Uses keys that HomeActivity should now consistently use
         val attendanceGuideIsCompleted = tutorialPrefs.getBoolean(HomeActivity.KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
-        val attendanceGuideSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0) // Last completed step
+        var attendanceGuideSavedStep = tutorialPrefs.getInt(HomeActivity.KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+        val attendanceGuideTotalSteps = HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS
 
-        pbAttendanceGuide.max = HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS // Ensure max is set
+        pbAttendanceGuide.max = attendanceGuideTotalSteps
         if (attendanceGuideIsCompleted) {
-            tvAttendanceGuideStatus.text = "Completed"
-            pbAttendanceGuide.progress = HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS
-        } else if (attendanceGuideSavedStep > 0) {
-            pbAttendanceGuide.progress = attendanceGuideSavedStep
-            tvAttendanceGuideStatus.text = "In Progress (${attendanceGuideSavedStep}/${HomeActivity.TOTAL_ATTENDANCE_TUTORIAL_STEPS})"
+            tvAttendanceGuideStatus.text = "Status: Completed (100%)"
+            pbAttendanceGuide.progress = attendanceGuideTotalSteps
         } else {
-            tvAttendanceGuideStatus.text = "Not Started"
-            pbAttendanceGuide.progress = 0
+            // Defensively cap savedStep for display
+            if (attendanceGuideSavedStep > attendanceGuideTotalSteps) {
+                attendanceGuideSavedStep = attendanceGuideTotalSteps
+            }
+
+            if (attendanceGuideSavedStep > 0 && attendanceGuideTotalSteps > 0) {
+                val percentage = (attendanceGuideSavedStep * 100) / attendanceGuideTotalSteps
+                pbAttendanceGuide.progress = attendanceGuideSavedStep
+                tvAttendanceGuideStatus.text = "Status: In Progress - ${percentage}% (${attendanceGuideSavedStep}/${attendanceGuideTotalSteps})"
+            } else {
+                tvAttendanceGuideStatus.text = "Status: Not Started (0%)"
+                pbAttendanceGuide.progress = 0
+            }
         }
 
-        val anyTutorialEverStartedOrCompleted = quickTourIsCompleted || quickTourSavedStep > 0 ||
-                attendanceGuideIsCompleted || attendanceGuideSavedStep > 0
+        // Determine if any tutorial has ever been started or completed to hide the "No active tutorial" message
+        val anyQuickTourProgress = quickTourIsCompleted || quickTourSavedStep > 0
+        val anyAttendanceGuideProgress = attendanceGuideIsCompleted || attendanceGuideSavedStep > 0
 
-        if (anyTutorialEverStartedOrCompleted) {
+        if (anyQuickTourProgress || anyAttendanceGuideProgress) {
             tvNoActiveTutorial.visibility = View.GONE
         } else {
-            tvNoActiveTutorial.visibility = View.VISIBLE // Show if nothing has ever been touched
-            // Optionally hide cards if you prefer "No active tutorial" to dominate
-            // cardQuickTour.visibility = View.GONE
-            // cardAttendanceGuide.visibility = View.GONE
+            tvNoActiveTutorial.visibility = View.VISIBLE
         }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-            finish()
+            finish() // Go back to the previous activity
             return true
         }
         return super.onOptionsItemSelected(item)

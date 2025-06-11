@@ -62,41 +62,87 @@ class HomeActivity : AppCompatActivity() {
 
         // --- Quick Tour Keys ---
         const val TOTAL_QUICK_TOUR_STEPS = 4
-        const val KEY_QUICK_TOUR_COMPLETED = "quickTourCompleted" // Specific completion key
-        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep" // Last completed step for quick tour
+        const val KEY_QUICK_TOUR_COMPLETED = "quickTourCompleted" // Renamed for clarity
+        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep" // Added for progress tracking
 
         const val EXTRA_IS_TUTORIAL_MODE = "is_tutorial_mode"
 
         // --- Attendance Workflow Guide Keys ---
         const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4
-        const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted" // Specific completion key
-        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep" // Last completed step for attendance guide
+        const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted"
+        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep" // Added for progress tracking
+
+        // --- Interactive Tutorial Action Constants ---
+        private const val TUTORIAL_NAME_QUICK_TOUR = "TUTORIAL_NAME_QUICK_TOUR" // Added for Quick Tour
+        private const val TUTORIAL_NAME_ATTENDANCE = "TUTORIAL_NAME_ATTENDANCE"
+        private const val ACTION_USER_CLICK_TIME_IN = "ACTION_USER_CLICK_TIME_IN"
+        private const val ACTION_USER_PERFORMED_TIME_IN = "ACTION_USER_PERFORMED_TIME_IN"
+        // TODO: Add more for other interactive steps:
+        // private const val ACTION_USER_CLICK_TIME_OUT = "ACTION_USER_CLICK_TIME_OUT"
+        // private const val ACTION_USER_PERFORMED_TIME_OUT = "ACTION_USER_PERFORMED_TIME_OUT"
+        // private const val ACTION_USER_SELECT_STATUS = "ACTION_USER_SELECT_STATUS"
+        // private const val ACTION_USER_PERFORMED_STATUS_SELECT = "ACTION_USER_PERFORMED_STATUS_SELECT"
+        // private const val ACTION_USER_CLICK_EXCUSE_LETTER = "ACTION_USER_CLICK_EXCUSE_LETTER"
+        // private const val ACTION_USER_PERFORMED_EXCUSE_LETTER = "ACTION_USER_PERFORMED_EXCUSE_LETTER"
     }
 
     private var currentTutorialPopupWindow: PopupWindow? = null
-    // These will be set when a specific tutorial flow starts
-    private lateinit var activeTutorialCompletionKey: String
-    private lateinit var activeTutorialStepKey: String
-    private var activeTutorialTotalSteps: Int = 0
+    // This will be set when a specific tutorial flow starts to determine which SharedPreferences key to update for completion.
+    private var activeTutorialCompletionKey: String = KEY_QUICK_TOUR_COMPLETED // Default, will be updated
+    // This will be set to determine which SharedPreferences key to update for current step.
+    private var activeTutorialStepKey: String = KEY_QUICK_TOUR_CURRENT_STEP // Default, will be updated
+    private var activeTutorialTotalSteps: Int = TOTAL_QUICK_TOUR_STEPS // Default
 
+
+    // New state variables for managing interactive tutorials
+    private var isInteractiveTutorialActive: Boolean = false
+    private var currentInteractiveTutorialName: String? = null
+    private var expectedInteractiveTutorialAction: String? = null
 
     private val timeInActivityTutorialLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
         if (result.resultCode == RESULT_OK) {
-            // TimeInActivity was step 1 of Attendance Guide. It's now completed.
-            tutorialPrefs.edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 1).apply() // Mark step 1 as done
-            Log.d(TAG, "Attendance tutorial: TimeInActivity part (step 1) completed. Saved step 1.")
-            // activeTutorialStepKey should be KEY_ATTENDANCE_GUIDE_CURRENT_STEP
-            // activeTutorialCompletionKey should be KEY_ATTENDANCE_TUTORIAL_COMPLETED
-            // activeTutorialTotalSteps should be TOTAL_ATTENDANCE_TUTORIAL_STEPS
-            // Proceed to the next step of the attendance tutorial
-            showTimeOutButtonTutorialStep() // This will show step 2
-        } else {
-            // User cancelled TimeInActivity part of tutorial.
-            handleTutorialCancellation() // This will also clear the overlay
-            Toast.makeText(this, "Time-In screen guide was not completed.", Toast.LENGTH_SHORT).show()
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: TimeInActivity successful (Step 1).")
+                tutorialPrefs.edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 1).apply()
+                Log.d(TAG, "Attendance tutorial: TimeInActivity part (step 1) completed. Saved step 1.")
+
+                showTimeOutButtonTutorialStep() // Proceed to the next step
+            } else {
+                Log.w(TAG, "TimeInActivity (tutorial mode) returned OK, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
+                // If TimeInActivity was successful outside the exact expected action, still update UI
+                Toast.makeText(this, "Time-In recorded.", Toast.LENGTH_SHORT).show()
+                updateUserStatus("On Duty")
+                updateTimeLogsStatus("On Duty")
+                loadTodayTimeInPhoto()
+                updateSidebarProfileImage()
+                evaluateAndDisplayAttendanceBadge()
+                val index = statusOptions.indexOf("On Duty")
+                if (index != -1) {
+                    isUserChangingStatus = false
+                    statusSpinner.setSelection(index)
+                }
+                if(isInteractiveTutorialActive) handleTutorialCancellation() // Cancel tutorial if state is unexpected
+            }
+        } else { // Result was not OK
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: TimeInActivity cancelled or failed by user (Step 1).")
+                Toast.makeText(this, "Time-In was not completed. Please tap the 'Time-In' button again to try.", Toast.LENGTH_LONG).show()
+                expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN // Reset to expect click again
+                hideOverlay()
+            } else {
+                Log.w(TAG, "TimeInActivity (tutorial mode) cancelled, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
+                if(isInteractiveTutorialActive) handleTutorialCancellation()
+                else Toast.makeText(this, "Time-In was not completed.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -139,12 +185,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnHelp: ImageView
     private lateinit var profileImagePlaceholder: ImageView
 
-    // --- For Tutorial Progress on the RIGHT of Nav Header ---
     private var tutorialProgressOnRightNavHeader: LinearLayout? = null
     private var tutorialProgressBarOnRight: ProgressBar? = null
     private var tutorialTitleTextOnRight: TextView? = null
     private var tutorialPercentageTextOnRight: TextView? = null
-    // ---
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -176,7 +220,7 @@ class HomeActivity : AppCompatActivity() {
 
         attendanceStatusBadge = findViewById(R.id.attendance_status_badge)
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
-        drawerLayout = findViewById(R.id.drawer_layout) // Initialize drawerLayout
+        drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
@@ -277,6 +321,7 @@ class HomeActivity : AppCompatActivity() {
                 }
                 val selectedStatus = statusOptions[position]
                 if (isUserChangingStatus) {
+                    // TODO: Integrate interactive tutorial logic if this action is part of a tutorial step
                     showStatusConfirmationDialog(selectedStatus)
                 }
                 isUserChangingStatus = false
@@ -284,10 +329,8 @@ class HomeActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        statusSpinner.adapter = statusAdapter
-
         recyclerEvents.layoutManager = LinearLayoutManager(this)
-        recyclerEvents.adapter = EventAdapter(mutableListOf()) // Initialize with an empty mutable list/ Initialize with an empty list
+        recyclerEvents.adapter = EventAdapter(mutableListOf()) // Initialize with an empty mutable list
 
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
@@ -352,21 +395,18 @@ class HomeActivity : AppCompatActivity() {
         }
 
         // --- Tutorial Auto-Start Logic ---
-        // Ensure this is posted to run after layout is complete to avoid BadTokenException
-        drawerLayout.post {
+        drawerLayout.post { // Ensure this runs after layout
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             val quickTourDone = tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)
             val attendanceGuideDone = tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
 
             if (!quickTourDone && !attendanceGuideDone) {
-                // If it's the very first run or both were somehow reset and not completed
-                showTutorialDialog() // This shows a Dialog. PopupWindows from its clicks are fine.
+                showTutorialDialog()
             } else if (!quickTourDone) {
                 showQuickTour(resetProgress = false) // Resume Quick Tour
             } else if (!attendanceGuideDone) {
                 startAttendanceWorkflowTutorial(resetProgress = false) // Resume Attendance Guide
             }
-            // If both are done, no tutorial starts automatically. User can re-initiate via help button.
         }
 
         loadAndStoreEvents()
@@ -702,7 +742,7 @@ class HomeActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle("Log Out").setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes") { _, _ ->
                 getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply() // Clear tutorial progress on logout
+                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
                 startActivity(Intent(this, LoginActivity::class.java))
                 finishAffinity()
             }
@@ -719,14 +759,32 @@ class HomeActivity : AppCompatActivity() {
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
-            AlertDialog.Builder(this).setTitle("Time - In Confirmation").setMessage("Are you ready to time in for today?")
-                .setPositiveButton("Yes") { _, _ ->
-                    val intent = Intent(this, TimeInActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User") }
-                    timeInLauncher.launch(intent)
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_CLICK_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: Time-In button clicked by user during tutorial.")
+                expectedInteractiveTutorialAction = ACTION_USER_PERFORMED_TIME_IN // Expect TimeInActivity result
+
+                val intent = Intent(this, TimeInActivity::class.java).apply {
+                    putExtra(EXTRA_IS_TUTORIAL_MODE, true)
+                    putExtra("userId", userId)
+                    putExtra("email", userEmail ?: "")
+                    putExtra("firstName", userFirstName ?: "User")
                 }
-                .setNegativeButton("Cancel", null).show()
+                timeInActivityTutorialLauncher.launch(intent)
+            } else if (isInteractiveTutorialActive && currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE) {
+                Log.w(TAG, "Attendance Tutorial: Time-In button clicked, but not the expected action ($expectedInteractiveTutorialAction). Guiding user or allowing normal flow.")
+                // Optionally, show a message to guide the user back to the correct tutorial action
+                // For now, let normal flow happen or show the default dialog
+                showDefaultTimeInDialog()
+            } else {
+                showDefaultTimeInDialog() // Normal Time-In button click
+            }
         }
         btnTimeOut.setOnClickListener {
+            // TODO: Implement interactive tutorial logic for Time-Out if this is a tutorial step
+            // Check isInteractiveTutorialActive, currentInteractiveTutorialName, expectedInteractiveTutorialAction
             hasTimedInToday { alreadyTimedIn ->
                 if (!alreadyTimedIn) {
                     AlertDialog.Builder(this).setTitle("Cannot Time-Out").setMessage("You haven't timed in yet. Please time in first before timing out.").setPositiveButton("OK", null).show()
@@ -745,14 +803,27 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDefaultTimeInDialog() {
+        AlertDialog.Builder(this).setTitle("Time - In Confirmation").setMessage("Are you ready to time in for today?")
+            .setPositiveButton("Yes") { _, _ ->
+                val intent = Intent(this, TimeInActivity::class.java).apply {
+                    putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
+                }
+                timeInLauncher.launch(intent) // Use the normal launcher
+            }
+            .setNegativeButton("Cancel", null).show()
+    }
+
+
     private fun setupExcuseLetterRedirect() {
         excuseLetterText.setOnClickListener {
+            // TODO: Implement interactive tutorial logic if this is a tutorial step
             startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
         }
     }
 
     private fun loadAndStoreEvents() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
         FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { userDoc ->
             val departmentId: String? = userDoc.getString("departmentId")
             if (departmentId.isNullOrEmpty()) {
@@ -818,8 +889,11 @@ class HomeActivity : AppCompatActivity() {
         }
         val filtered = if (statusFilter == null) eventsWithDynamicStatus else eventsWithDynamicStatus.filter { it.status.equals(statusFilter, ignoreCase = true) }
         val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
-        // recyclerEvents.adapter = EventAdapter(sorted) // Original line, commented out as per your change
-        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted) // Your new line that needs EventAdapter.updateData()
+
+        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
+            ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
+
+
         val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
         noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
         if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
@@ -834,13 +908,15 @@ class HomeActivity : AppCompatActivity() {
         if (tutorialOverlay.visibility == View.VISIBLE) {
             tutorialOverlay.visibility = View.GONE
         }
+        isInteractiveTutorialActive = false
+        currentInteractiveTutorialName = null
+        expectedInteractiveTutorialAction = null
+
         Log.d(TAG_TUTORIAL_NAV, "Tutorial CANCELED, nav header progress remains visible showing current step.")
         previousTargetLocationForAnimation = null
         Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
         currentTutorialPopupWindow?.dismiss()
         currentTutorialPopupWindow = null
-        // Do not reset progress here, user might want to resume later.
-        // The nav header will show the progress of the step they cancelled on.
     }
 
     override fun onBackPressed() {
@@ -856,7 +932,7 @@ class HomeActivity : AppCompatActivity() {
     private fun showTutorialDialog() {
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_tutorial_options)
-        dialog.setCancelable(false) // User must choose an option or explicitly skip
+        dialog.setCancelable(false)
 
         val window = dialog.window
         if (window != null) {
@@ -874,31 +950,29 @@ class HomeActivity : AppCompatActivity() {
 
         layoutQuickTour.setOnClickListener {
             previousTargetLocationForAnimation = null
-            showQuickTour(resetProgress = true) // Reset and start Quick Tour
+            showQuickTour(resetProgress = true)
             dialog.dismiss()
         }
 
         layoutAttendanceGuide?.setOnClickListener {
             previousTargetLocationForAnimation = null
-            startAttendanceWorkflowTutorial(resetProgress = true) // Reset and start Attendance Guide
+            startAttendanceWorkflowTutorial(resetProgress = true)
             dialog.dismiss()
         }
 
         btnCancel.setOnClickListener {
             dialog.dismiss()
-            // Mark both as "completed" to prevent auto-start, but steps remain 0.
-            // User can still access them via help button, which will reset progress.
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false) ||
                 !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
                 tutorialPrefs.edit()
-                    .putBoolean(KEY_QUICK_TOUR_COMPLETED, true) // Mark as "skipped" by setting completed
-                    .putInt(KEY_QUICK_TOUR_CURRENT_STEP, TOTAL_QUICK_TOUR_STEPS) // Show as 100% if skipped
-                    .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
-                    .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
+                    .putBoolean(KEY_QUICK_TOUR_COMPLETED, true) // Mark as skipped
+                    .putInt(KEY_QUICK_TOUR_CURRENT_STEP, TOTAL_QUICK_TOUR_STEPS) // Show as 100%
+                    .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true) // Mark as skipped
+                    .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS) // Show as 100%
                     .apply()
                 Toast.makeText(this, "Tutorials skipped. You can access them again via the help button.", Toast.LENGTH_LONG).show()
-                hideNavHeaderTutorialProgressAfterCompletion() // Hide or update nav header
+                hideNavHeaderTutorialProgressAfterCompletion()
             }
         }
         dialog.show()
@@ -913,7 +987,7 @@ class HomeActivity : AppCompatActivity() {
             tutorialProgressBarOnRight?.max = 100
             tutorialProgressBarOnRight?.progress = percentage
             tutorialPercentageTextOnRight?.text = "$percentage%"
-            tutorialTitleTextOnRight?.text = when (activeTutorialStepKey) {
+            tutorialTitleTextOnRight?.text = when (activeTutorialStepKey) { // Use activeTutorialStepKey
                 KEY_QUICK_TOUR_CURRENT_STEP -> "Quick Tour:"
                 KEY_ATTENDANCE_GUIDE_CURRENT_STEP -> "Attendance Guide:"
                 else -> "Tutorial Progress:"
@@ -1001,26 +1075,32 @@ class HomeActivity : AppCompatActivity() {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
                     popupWindow.dismiss()
-                    // Save the step that was just shown/completed
-                    val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-                    tutorialPrefs.edit().putInt(activeTutorialStepKey, currentStepToShow).apply()
-                    Log.d(TAG, "Saved $activeTutorialStepKey: $currentStepToShow")
+                    // Save the step that was just shown/completed (for non-interactive or passive parts)
+                    // For interactive, actual step saving happens after user action.
+                    // This part is tricky with mixed interactive/passive.
+                    // Let's assume for now that if onNext is called, the *instruction* for the step is done.
+                    // Actual progress for interactive steps is handled elsewhere (e.g. ActivityResultLauncher)
 
-                    if (currentStepToShow == totalStepsInTutorial) { // Tutorial completed
+                    if (currentStepToShow == totalStepsInTutorial && !isInteractiveTutorialActive) { // Only mark completed if not an interactive tutorial waiting for action
                         tutorialOverlay.visibility = View.GONE
-                        Log.d(TAG_TUTORIAL_NAV, "$activeTutorialCompletionKey COMPLETED, nav header progress remains visible at 100%.")
+                        Log.d(TAG_TUTORIAL_NAV, "$activeTutorialCompletionKey COMPLETED (passive), nav header progress remains visible at 100%.")
                         previousTargetLocationForAnimation = null
                         currentTutorialPopupWindow = null
+                        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
                         tutorialPrefs.edit().putBoolean(activeTutorialCompletionKey, true).apply()
                         Log.d(TAG, "$activeTutorialCompletionKey marked as completed.")
-                        // Optionally hide or update nav header after a delay or specific message
                         // hideNavHeaderTutorialProgressAfterCompletion()
+                    } else if (currentStepToShow == totalStepsInTutorial && isInteractiveTutorialActive && activeTutorialCompletionKey == KEY_ATTENDANCE_TUTORIAL_COMPLETED) {
+                        // For the last step of an interactive tutorial, completion is handled after the final action.
+                        // This block might be redundant if final action handles completion.
+                        // However, if the last step's "onNext" is just a "Done" message, this is okay.
+                        Log.d(TAG, "Last step of interactive tutorial shown. Completion handled by action or final onNext.")
                     }
                 }
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
             dialogView.startAnimation(fadeOutPopup)
-            onNext() // This will call the function for the next step or handle completion
+            onNext()
         }
 
         closeButton.setOnClickListener {
@@ -1028,7 +1108,7 @@ class HomeActivity : AppCompatActivity() {
             val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
-                override fun onAnimationEnd(animation: Animation?) { popupWindow.dismiss() } // Dismissal triggers handleTutorialCancellation
+                override fun onAnimationEnd(animation: Animation?) { popupWindow.dismiss() }
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
             dialogView.startAnimation(fadeOut)
@@ -1038,7 +1118,6 @@ class HomeActivity : AppCompatActivity() {
     private fun hideOverlay() { if (tutorialOverlay.visibility == View.VISIBLE) tutorialOverlay.visibility = View.GONE }
 
     private fun hideNavHeaderTutorialProgressAfterCompletion() {
-        // Example: Fade out the nav header progress after a short delay
         Handler(mainLooper).postDelayed({
             if (tutorialProgressOnRightNavHeader?.visibility == View.VISIBLE) {
                 val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
@@ -1051,7 +1130,7 @@ class HomeActivity : AppCompatActivity() {
                 })
                 tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
             }
-        }, 1500) // 1.5 second delay
+        }, 1500)
     }
 
 
@@ -1061,37 +1140,38 @@ class HomeActivity : AppCompatActivity() {
         activeTutorialStepKey = KEY_QUICK_TOUR_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_QUICK_TOUR_STEPS
 
+        isInteractiveTutorialActive = false // Quick tour is passive for now
+        currentInteractiveTutorialName = TUTORIAL_NAME_QUICK_TOUR // Or null if purely passive
+
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
         var stepToDisplay = 1
 
         if (resetProgress) {
             tutorialPrefs.edit()
-                .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) // Current step is 0-indexed for "last completed"
+                .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
                 .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
                 .apply()
             Log.d(TAG, "Quick Tour progress reset.")
         } else {
-            // Resuming or starting if not completed
             if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
-                stepToDisplay = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) + 1 // Next step to show
+                stepToDisplay = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0) + 1
                 if (stepToDisplay > TOTAL_QUICK_TOUR_STEPS) {
-                    Log.w(TAG, "Quick Tour: stepToDisplay ($stepToDisplay) > total. Likely already completed or error. Resetting to 1.")
                     stepToDisplay = 1
-                    tutorialPrefs.edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0).apply() // Reset current step
+                    tutorialPrefs.edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0).apply()
                 }
             } else {
-                // This case means it's completed, and showQuickTour(resetProgress=false) was called.
-                // This shouldn't happen from auto-resume logic. If user re-selects from help,
-                // resetProgress should be true. For safety, if we reach here, treat as restart.
                 Toast.makeText(this, "Quick Tour already completed. Restarting.", Toast.LENGTH_SHORT).show()
                 tutorialPrefs.edit()
                     .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
                     .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
                     .apply()
-                // stepToDisplay remains 1
             }
         }
         Log.d(TAG, "Starting/Resuming Quick Tour. Step to display: $stepToDisplay")
+
+        // Save current step before showing for passive tours
+        tutorialPrefs.edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, stepToDisplay -1).apply()
+
 
         when (stepToDisplay) {
             1 -> showGreetingCardTourStep()
@@ -1104,11 +1184,11 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun showGreetingCardTourStep() {
         val greetingCard = findViewById<View>(R.id.greeting_card)
         if (greetingCard == null) { Log.e(TAG, "Greeting card view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) {
+            getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 1).apply()
             showFilterButtonsTour()
         }
     }
@@ -1116,6 +1196,7 @@ class HomeActivity : AppCompatActivity() {
         val filterButtons = findViewById<View>(R.id.filter_buttons)
         if (filterButtons == null) { Log.e(TAG, "Filter buttons view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) {
+            getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 2).apply()
             showEventListTour()
         }
     }
@@ -1123,15 +1204,18 @@ class HomeActivity : AppCompatActivity() {
         val eventList = findViewById<View>(R.id.recycler_events)
         if (eventList == null) { Log.e(TAG, "Event list view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) {
+            getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, 3).apply()
             showAttendanceSectionTour()
         }
     }
     private fun showAttendanceSectionTour() { // Last step of Quick Tour
-        val attendanceButton = findViewById<View>(R.id.btntime_in) // Example target
+        val attendanceButton = findViewById<View>(R.id.btntime_in)
         if (attendanceButton == null) { Log.e(TAG, "Attendance button view not found for tutorial"); handleTutorialCancellation(); return }
         showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, TOTAL_QUICK_TOUR_STEPS, TOTAL_QUICK_TOUR_STEPS) {
-            // This is the last step, onNext will trigger completion logic in showCustomTutorialDialog
+            // This is the last step, onNext will trigger completion logic in showCustomTutorialDialog for passive tours
+            getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_QUICK_TOUR_CURRENT_STEP, TOTAL_QUICK_TOUR_STEPS).apply()
             Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
+            // Completion flag (KEY_QUICK_TOUR_COMPLETED) is set by showCustomTutorialDialog's nextButton listener when currentStep == totalSteps
         }
     }
 
@@ -1141,6 +1225,9 @@ class HomeActivity : AppCompatActivity() {
         activeTutorialCompletionKey = KEY_ATTENDANCE_TUTORIAL_COMPLETED
         activeTutorialStepKey = KEY_ATTENDANCE_GUIDE_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_ATTENDANCE_TUTORIAL_STEPS
+
+        isInteractiveTutorialActive = true
+        currentInteractiveTutorialName = TUTORIAL_NAME_ATTENDANCE
 
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
         var stepToDisplay = 1
@@ -1155,7 +1242,6 @@ class HomeActivity : AppCompatActivity() {
             if (!tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
                 stepToDisplay = tutorialPrefs.getInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0) + 1
                 if (stepToDisplay > TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-                    Log.w(TAG, "Attendance Guide: stepToDisplay ($stepToDisplay) > total. Likely already completed or error. Resetting to 1.")
                     stepToDisplay = 1
                     tutorialPrefs.edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0).apply()
                 }
@@ -1165,10 +1251,9 @@ class HomeActivity : AppCompatActivity() {
                     .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
                     .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
                     .apply()
-                // stepToDisplay remains 1
             }
         }
-        Log.d(TAG, "Starting/Resuming Attendance Guide. Step to display: $stepToDisplay")
+        Log.d(TAG, "Starting/Resuming Interactive Attendance Guide. Step to display: $stepToDisplay")
 
         when (stepToDisplay) {
             1 -> showTimeInButtonTutorialStep_New()
@@ -1182,44 +1267,93 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun showTimeInButtonTutorialStep_New() { // Step 1 of Attendance Guide
+    private fun showTimeInButtonTutorialStep_New() { // Step 1 of Attendance Guide (Interactive)
         val timeInButton = findViewById<View>(R.id.btntime_in)
         if (timeInButton == null) { Log.e(TAG, "Time-In button view not found for tutorial"); handleTutorialCancellation(); return }
+
+        expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN
+        Log.d(TAG, "Attendance Tutorial: Expecting user to click Time-In button.")
+
         showCustomTutorialDialog(
-            "This guide focuses on attendance. First, let's see how to 'Time-In'. Tapping this opens the camera for face verification.",
+            "This guide focuses on attendance. First, let's Time-In. Please tap the 'Time-In' button now.",
             timeInButton, 1, TOTAL_ATTENDANCE_TUTORIAL_STEPS
         ) {
-            val intent = Intent(this, TimeInActivity::class.java).apply {
-                putExtra(EXTRA_IS_TUTORIAL_MODE, true); putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName)
+            // This onNext is for the tutorial dialog's "Next" button.
+            // For interactive step, we just hide overlay to allow user to click the actual UI element.
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
             }
-            timeInActivityTutorialLauncher.launch(intent)
+            Log.d(TAG, "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button.")
         }
     }
 
-    // This is Step 2 of Attendance Guide, called from timeInActivityTutorialLauncher
-    fun showTimeOutButtonTutorialStep() {
+    fun showTimeOutButtonTutorialStep() { // Step 2 - TODO: Make fully interactive
         val timeOutButton = findViewById<View>(R.id.btntime_out)
         if (timeOutButton == null) { Log.e(TAG, "Time-Out button view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-            showStatusSpinnerTutorialStep_New()
+
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_OUT
+        Log.d(TAG, "Attendance Tutorial: Now showing Time-Out step (placeholder for full interactive logic).")
+
+        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time. (TODO: Make this interactive)", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            // Original: showStatusSpinnerTutorialStep_New()
+            // For interactive: This onNext would hide overlay. Actual progression via Time-Out button click.
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            Toast.makeText(this, "TODO: Click Time-Out button now.", Toast.LENGTH_SHORT).show()
+            // Next step (showStatusSpinnerTutorialStep_New) should be called after user successfully clicks Time-Out
+            // and TimeOutActivity (if any) completes, similar to how Time-In was handled.
+            // For now, to keep flow:
+            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
+            // showStatusSpinnerTutorialStep_New()
         }
     }
 
-    // This is Step 3
-    private fun showStatusSpinnerTutorialStep_New() {
+    private fun showStatusSpinnerTutorialStep_New() { // Step 3 - TODO: Make fully interactive
         val statusSpinnerView = findViewById<View>(R.id.status_spinner)
         if (statusSpinnerView == null) { Log.e(TAG, "Status spinner view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown.", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-            showExcuseLetterButtonTutorialStep_New()
+
+        Log.d(TAG, "Attendance Tutorial: Now showing Status Spinner step (placeholder for full interactive logic).")
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_SELECT_STATUS
+
+        showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            // Original: showExcuseLetterButtonTutorialStep_New()
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            Toast.makeText(this, "TODO: Select a status now.", Toast.LENGTH_SHORT).show()
+            // Next step after user selects status.
+            // For now, to keep flow:
+            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
+            // showExcuseLetterButtonTutorialStep_New()
         }
     }
 
-    // This is Step 4 (Last step of Attendance Guide)
-    private fun showExcuseLetterButtonTutorialStep_New() {
+    private fun showExcuseLetterButtonTutorialStep_New() { // Step 4 - TODO: Make fully interactive
         val excuseLetterButton = findViewById<View>(R.id.excuse_letter_text_button)
         if (excuseLetterButton == null) { Log.e(TAG, "Excuse letter button view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here.", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
-            Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉", Toast.LENGTH_SHORT).show()
+
+        Log.d(TAG, "Attendance Tutorial: Now showing Excuse Letter step (placeholder for full interactive logic).")
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_EXCUSE_LETTER
+
+        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            // This is the last step.
+            // For interactive, completion is marked after user performs the action.
+            // For now, we'll mark it here.
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit()
+                .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
+                .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
+                .apply()
+
+            Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉 (Partially interactive)", Toast.LENGTH_SHORT).show()
+            isInteractiveTutorialActive = false
+            currentInteractiveTutorialName = null
+            expectedInteractiveTutorialAction = null
+            hideNavHeaderTutorialProgressAfterCompletion()
         }
     }
 
