@@ -44,6 +44,34 @@
                 android:textColor="@color/black" />
     </LinearLayout>
 
+    <LinearLayout
+            android:id="@+id/layout_attendance_guide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="12dp"
+            android:paddingHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+        <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_qr_scanner"
+                app:tint="@color/maroon"
+                android:layout_marginEnd="16dp" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Attendance Workflow Guide"
+                android:textSize="17sp"
+                android:textColor="@color/black" />
+    </LinearLayout>
+
     <!-- Add more options here in the future if needed, similar to layout_quick_tour -->
 
     <Button

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/light_gray"
+        tools:context=".TutorialProgressActivity">
+
+    <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar_tutorial_progress"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/primary_deep_blue"
+            app:title="Tutorial Progress"
+            app:titleTextColor="@android:color/white"
+            app:navigationIcon="@drawable/ic_back_button"
+            app:navigationIconTint="@android:color/white"
+            android:elevation="4dp"/>
+
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your Tutorial Progress"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary_deep_blue"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="24dp"
+                    android:layout_gravity="center_horizontal"/>
+
+            <androidx.cardview.widget.CardView
+                    android:id="@+id/card_quick_tour"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp"
+                    android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                    <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:gravity="center_vertical">
+
+                        <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Quick Tour"
+                                android:textColor="@color/primary_deep_blue"
+                                android:textSize="18sp"
+                                android:textStyle="bold"/>
+
+                        <TextView
+                                android:id="@+id/tv_quick_tour_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:text="Completed"
+                                android:text="Not Started"
+                                android:textColor="@color/neutral_text_gray"
+                                android:textSize="14sp"/>
+                    </LinearLayout>
+
+                    <ProgressBar
+                            android:id="@+id/pb_quick_tour"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:max="100"
+                            tools:progress="100"
+                            android:progress="0"
+                            android:progressTint="@color/accent_coral"
+                            android:backgroundTint="@color/medium_gray"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                    android:id="@+id/card_attendance_guide"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp"
+                    android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                    <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:gravity="center_vertical">
+
+                        <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Attendance Workflow Guide"
+                                android:textColor="@color/primary_deep_blue"
+                                android:textSize="18sp"
+                                android:textStyle="bold"/>
+
+                        <TextView
+                                android:id="@+id/tv_attendance_guide_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:text="In Progress (2/4)"
+                                android:text="Not Started"
+                                android:textColor="@color/neutral_text_gray"
+                                android:textSize="14sp"/>
+                    </LinearLayout>
+
+                    <ProgressBar
+                            android:id="@+id/pb_attendance_guide"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:max="100"
+                            tools:progress="50"
+                            android:progress="0"
+                            android:progressTint="@color/accent_coral"
+                            android:backgroundTint="@color/medium_gray"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                    android:id="@+id/tv_no_active_tutorial"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No active tutorial at the moment."
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="16sp"
+                    android:layout_gravity="center_horizontal"
+                    android:visibility="gone"
+                    tools:visibility="visible"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="16dp"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

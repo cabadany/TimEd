@@ -21,6 +21,8 @@ import com.capstone.TimEd.dto.UpdatePasswordRequest;
 import com.capstone.TimEd.model.User;
 import com.capstone.TimEd.service.AuthService;
 import com.capstone.TimEd.service.UserService;
+import com.capstone.TimEd.service.OtpService;
+import com.capstone.TimEd.dto.OtpRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -31,6 +33,8 @@ public class AuthController {
     private AuthService authService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private OtpService otpService;
     @GetMapping("/getSample")
     public String getSample() {
         return "Samplsse";
@@ -145,6 +149,36 @@ public class AuthController {
             return ResponseEntity.ok(authResponse);
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
+        }
+    }
+
+    @PostMapping("/generate-otp")
+    public ResponseEntity<?> generateOtp(@RequestBody OtpRequest request) {
+        try {
+            // Check if user is admin
+            User user = userService.getUserBySchoolId(request.getSchoolId());
+            if (user == null || !"ADMIN".equals(user.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("OTP generation is only available for admin users");
+            }
+
+            otpService.generateOtp(request.getSchoolId());
+            return ResponseEntity.ok("OTP sent successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate OTP: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody OtpRequest request) {
+        try {
+            boolean isValid = otpService.verifyOtp(request.getSchoolId(), request.getOtp());
+            if (isValid) {
+                return ResponseEntity.ok("OTP verified successfully");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired OTP");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to verify OTP: " + e.getMessage());
         }
     }
 

@@ -48,18 +48,108 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.os.Build
+import android.os.Handler
 import androidx.core.app.NotificationCompat
 import com.google.android.material.internal.NavigationMenuView
 
 class HomeActivity : AppCompatActivity() {
 
     companion object {
-        const val TOTAL_QUICK_TOUR_STEPS = 4
+        private const val TAG = "HomeActivity"
+        private const val TAG_TUTORIAL_NAV = "HomeActivityTutorialNav"
+
         const val PREFS_TUTORIAL = "TutorialPrefs"
-        const val KEY_TUTORIAL_COMPLETED = "tutorialCompleted"
+
+        // --- Quick Tour Keys ---
+        const val TOTAL_QUICK_TOUR_STEPS = 4
+        const val KEY_QUICK_TOUR_COMPLETED = "quickTourCompleted" // Renamed from KEY_TUTORIAL_COMPLETED
+        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep" // Added for progress tracking
+
+        const val EXTRA_IS_TUTORIAL_MODE = "is_tutorial_mode"
+
+        // --- Attendance Workflow Guide Keys ---
+        const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4
+        const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted"
+        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep" // Added for progress tracking
+
+        // --- Interactive Tutorial Action Constants ---
+        private const val TUTORIAL_NAME_QUICK_TOUR = "TUTORIAL_NAME_QUICK_TOUR"
+        private const val TUTORIAL_NAME_ATTENDANCE = "TUTORIAL_NAME_ATTENDANCE"
+        private const val ACTION_USER_CLICK_TIME_IN = "ACTION_USER_CLICK_TIME_IN"
+        private const val ACTION_USER_PERFORMED_TIME_IN = "ACTION_USER_PERFORMED_TIME_IN"
+        // TODO: Add more for other interactive steps:
+        // private const val ACTION_USER_CLICK_TIME_OUT = "ACTION_USER_CLICK_TIME_OUT"
+        // private const val ACTION_USER_PERFORMED_TIME_OUT = "ACTION_USER_PERFORMED_TIME_OUT"
+        // private const val ACTION_USER_SELECT_STATUS = "ACTION_USER_SELECT_STATUS"
+        // private const val ACTION_USER_PERFORMED_STATUS_SELECT = "ACTION_USER_PERFORMED_STATUS_SELECT"
+        // private const val ACTION_USER_CLICK_EXCUSE_LETTER = "ACTION_USER_CLICK_EXCUSE_LETTER"
+        // private const val ACTION_USER_PERFORMED_EXCUSE_LETTER = "ACTION_USER_PERFORMED_EXCUSE_LETTER"
     }
 
-    private var previousTargetLocation: IntArray? = null
+    private var currentTutorialPopupWindow: PopupWindow? = null
+    // These will be set when a specific tutorial flow starts.
+    private var activeTutorialCompletionKey: String = KEY_QUICK_TOUR_COMPLETED
+    private var activeTutorialStepKey: String = KEY_QUICK_TOUR_CURRENT_STEP
+    private var activeTutorialTotalSteps: Int = TOTAL_QUICK_TOUR_STEPS
+
+
+    // New state variables for managing interactive tutorials
+    private var isInteractiveTutorialActive: Boolean = false
+    private var currentInteractiveTutorialName: String? = null
+    private var expectedInteractiveTutorialAction: String? = null
+
+    private val timeInActivityTutorialLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        if (result.resultCode == RESULT_OK) {
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: TimeInActivity successful (Step 1).")
+                tutorialPrefs.edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 1).apply()
+                updateNavHeaderTutorialProgress() // Update nav header after step completion
+                Log.d(TAG, "Attendance tutorial: TimeInActivity part (step 1) completed. Saved step 1.")
+
+                // Proceed to the next tutorial step instruction
+                showTimeOutButtonTutorialStep()
+            } else {
+                // TimeInActivity was successful, but not as part of the expected tutorial action
+                Log.w(TAG, "TimeInActivity (tutorial mode) returned OK, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
+                // Handle normal successful time-in UI updates
+                Toast.makeText(this, "Time-In recorded.", Toast.LENGTH_SHORT).show()
+                updateUserStatus("On Duty")
+                updateTimeLogsStatus("On Duty")
+                loadTodayTimeInPhoto()
+                updateSidebarProfileImage()
+                evaluateAndDisplayAttendanceBadge()
+                val index = statusOptions.indexOf("On Duty")
+                if (index != -1) {
+                    isUserChangingStatus = false
+                    statusSpinner.setSelection(index)
+                }
+                if(isInteractiveTutorialActive) handleTutorialCancellation() // Cancel tutorial if state is unexpected
+            }
+        } else { // Result was not OK (e.g., user cancelled TimeInActivity)
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: TimeInActivity cancelled or failed by user (Step 1).")
+                Toast.makeText(this, "Time-In was not completed. Please tap the 'Time-In' button again to try.", Toast.LENGTH_LONG).show()
+                expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN // Reset to expect click again
+                hideOverlay()
+                updateNavHeaderTutorialProgress() // Reflect current (unchanged) progress
+            } else {
+                Log.w(TAG, "TimeInActivity (tutorial mode) cancelled, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
+                if(isInteractiveTutorialActive) handleTutorialCancellation()
+                else Toast.makeText(this, "Time-In was not completed.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private var previousTargetLocationForAnimation: IntArray? = null
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
@@ -83,7 +173,6 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var tutorialOverlay: FrameLayout
     private lateinit var noEventsMessage: TextView
 
-    private var currentTutorialPopupWindow: PopupWindow? = null
     private val allEvents = mutableListOf<EventModel>()
     private var userId: String? = null
     private var userEmail: String? = null
@@ -99,10 +188,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnHelp: ImageView
     private lateinit var profileImagePlaceholder: ImageView
 
-    // Flags for drawer animation state (commented out as animations are removed)
-    // private var isDrawerCurrentlyOpen = false
-    // private var outAnimationPlayedForThisClosingSequence = false
-
+    private var tutorialProgressOnRightNavHeader: LinearLayout? = null
+    private var tutorialProgressBarOnRight: ProgressBar? = null
+    private var tutorialTitleTextOnRight: TextView? = null
+    private var tutorialPercentageTextOnRight: TextView? = null
 
     private val timeInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -110,14 +199,11 @@ class HomeActivity : AppCompatActivity() {
                 val isTimedIn = result.data?.getBooleanExtra("TIMED_IN_SUCCESS", false) ?: false
                 if (isTimedIn) {
                     Toast.makeText(this, "Time-In recorded successfully!", Toast.LENGTH_LONG).show()
-
                     updateUserStatus("On Duty")
                     updateTimeLogsStatus("On Duty")
-
                     loadTodayTimeInPhoto()
                     updateSidebarProfileImage()
                     evaluateAndDisplayAttendanceBadge()
-
                     val index = statusOptions.indexOf("On Duty")
                     if (index != -1) {
                         isUserChangingStatus = false
@@ -136,20 +222,35 @@ class HomeActivity : AppCompatActivity() {
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
         attendanceStatusBadge = findViewById(R.id.attendance_status_badge)
-
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
-        tutorialOverlay.setOnTouchListener { _, _ ->
-            val isTutorialStepActive = currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing
-            val shouldConsumeTouch = tutorialOverlay.isVisible && isTutorialStepActive
-            if (shouldConsumeTouch) {
-                // Optional feedback
-            }
-            shouldConsumeTouch
-        }
-
         drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
+
+        val headerView: View? = navigationView.getHeaderView(0)
+        if (headerView != null) {
+            tutorialProgressOnRightNavHeader = headerView.findViewById(R.id.tutorial_progress_on_right_nav_header)
+            tutorialProgressBarOnRight = headerView.findViewById(R.id.tutorial_bar_on_right_nav_header)
+            tutorialTitleTextOnRight = headerView.findViewById(R.id.tutorial_title_text)
+            tutorialPercentageTextOnRight = headerView.findViewById(R.id.tutorial_percentage_text)
+            Log.d(TAG_TUTORIAL_NAV, "Nav Header Tutorial Views Initialized: Container=${tutorialProgressOnRightNavHeader != null}, Bar=${tutorialProgressBarOnRight != null}, Title=${tutorialTitleTextOnRight != null}, Percentage=${tutorialPercentageTextOnRight != null}")
+
+            if (tutorialProgressOnRightNavHeader != null) {
+                tutorialProgressOnRightNavHeader?.isClickable = true
+                tutorialProgressOnRightNavHeader?.isFocusable = true
+                tutorialProgressOnRightNavHeader?.setOnClickListener {
+                    val intent = Intent(this, TutorialProgressActivity::class.java)
+                    intent.putExtra("userId", userId)
+                    startActivity(intent)
+                    Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity.")
+                }
+            } else {
+                Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader (LinearLayout) itself was not found in headerView.")
+            }
+
+        } else {
+            Log.e(TAG_TUTORIAL_NAV, "Navigation headerView is NULL. Cannot find tutorial progress views.")
+        }
 
         greetingCardNavIcon.setOnClickListener {
             if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
@@ -170,34 +271,24 @@ class HomeActivity : AppCompatActivity() {
         btnTimeIn = findViewById(R.id.btntime_in)
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
-
         btnHelp = findViewById(R.id.btn_help)
         noEventsMessage = findViewById(R.id.no_events_message)
         profileImagePlaceholder = findViewById(R.id.profile_image_placeholder)
-
         statusSpinner = findViewById(R.id.status_spinner)
         val statusAdapter = StatusAdapter(this, statusOptions)
         statusSpinner.adapter = statusAdapter
 
         val greetingCardView = findViewById<androidx.cardview.widget.CardView>(R.id.greeting_card)
         val filterButtonsLayout = findViewById<LinearLayout>(R.id.filter_buttons)
-        val attendancePromptView: TextView? = try {
-            findViewById(R.id.attendance_prompt)
-        } catch (e: Exception) {
-            null
-        }
-
+        val attendancePromptView: TextView? = try { findViewById(R.id.attendance_prompt) } catch (e: Exception) { null }
         val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
         greetingCardView.startAnimation(animSlideDownFadeIn)
-
         val animSlideDownFilters = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideDownFilters.startOffset = 200L
         filterButtonsLayout.startAnimation(animSlideDownFilters)
-
         val animFadeInRecycler = AnimationUtils.loadAnimation(this, R.anim.fade_in)
         animFadeInRecycler.startOffset = 400L
         recyclerEvents.startAnimation(animFadeInRecycler)
-
         val baseDelayBottom = 600L
         attendancePromptView?.let {
             val animSlideUpPrompt = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
@@ -207,11 +298,9 @@ class HomeActivity : AppCompatActivity() {
         val animSlideUpTimeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideUpTimeIn.startOffset = baseDelayBottom + (if (attendancePromptView != null) 100L else 0L)
         btnTimeIn.startAnimation(animSlideUpTimeIn)
-
         val animSlideUpTimeOut = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideUpTimeOut.startOffset = baseDelayBottom + (if (attendancePromptView != null) 200L else 100L)
         btnTimeOut.startAnimation(animSlideUpTimeOut)
-
         val animSlideUpExcuseLetter = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideUpExcuseLetter.startOffset = baseDelayBottom + (if (attendancePromptView != null) 300L else 200L)
         excuseLetterText.startAnimation(animSlideUpExcuseLetter)
@@ -235,10 +324,8 @@ class HomeActivity : AppCompatActivity() {
                 }
                 val selectedStatus = statusOptions[position]
                 if (isUserChangingStatus) {
+                    // TODO: Integrate interactive tutorial logic if this action is part of a tutorial step
                     showStatusConfirmationDialog(selectedStatus)
-                } else {
-                    updateUserStatus(selectedStatus)
-                    updateTimeLogsStatus(selectedStatus)
                 }
                 isUserChangingStatus = false
             }
@@ -246,6 +333,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         recyclerEvents.layoutManager = LinearLayoutManager(this)
+        recyclerEvents.adapter = EventAdapter(mutableListOf())
 
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
@@ -280,10 +368,9 @@ class HomeActivity : AppCompatActivity() {
             greetingDetails.text = "N/A • N/A"
         }
 
-
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
-        setupNavigationDrawer() // Call this after navigationView is initialized
+        setupNavigationDrawer()
         setupFilterButtons()
         setupActionButtons()
         setupExcuseLetterRedirect()
@@ -301,7 +388,7 @@ class HomeActivity : AppCompatActivity() {
         profileImagePlaceholder.setOnClickListener(profileClickListener)
         greetingName.setOnClickListener(profileClickListener)
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+        swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.accent_coral)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d("HomeActivity", "Pull-to-refresh triggered")
             loadTodayTimeInPhoto()
@@ -310,12 +397,25 @@ class HomeActivity : AppCompatActivity() {
             swipeRefreshLayout.isRefreshing = false
         }
 
-        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-        if (!tutorialPrefs.getBoolean(KEY_TUTORIAL_COMPLETED, false)) {
-            showTutorialDialog()
+        // --- Tutorial Auto-Start Logic ---
+        drawerLayout.post {
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            val quickTourDone = tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)
+            val attendanceGuideDone = tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+
+            if (!quickTourDone && !attendanceGuideDone) { // Neither completed, show dialog
+                showTutorialDialog()
+            } else if (!quickTourDone) { // Quick tour not done, resume it
+                showQuickTour(resetProgress = false)
+            } else if (!attendanceGuideDone) { // Attendance guide not done, resume it
+                startAttendanceWorkflowTutorial(resetProgress = false)
+            }
+            // If both are done, do nothing here. Nav header progress will be hidden or show last state.
         }
 
+
         loadAndStoreEvents()
+        evaluateAndDisplayAttendanceBadge()
     }
 
     private fun hasTimedInToday(callback: (Boolean) -> Unit) {
@@ -327,19 +427,14 @@ class HomeActivity : AppCompatActivity() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
+                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
 
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
                         val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
-
                         if (type == "TimeIn" && timestamp >= todayStart) {
-                            callback(true)
-                            return
+                            callback(true); return
                         }
                     }
                     callback(false)
@@ -357,13 +452,11 @@ class HomeActivity : AppCompatActivity() {
                         .setMessage("You haven't timed in yet. Do you want to time in now?")
                         .setPositiveButton("Yes") { _, _ ->
                             val intent = Intent(this, TimeInActivity::class.java).apply {
-                                putExtra("userId", userId)
-                                putExtra("email", userEmail ?: "")
-                                putExtra("firstName", userFirstName ?: "User")
+                                putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
                             }
                             timeInLauncher.launch(intent)
                         }
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton("Cancel") { _, _ -> loadUserStatus() }
                         .show()
                 } else {
                     confirmStatusChange(selectedStatus)
@@ -397,8 +490,8 @@ class HomeActivity : AppCompatActivity() {
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
         firestore.collection("users").document(userId)
             .update("status", status)
-            .addOnSuccessListener { Log.d("HomeActivity", "Status updated to $status") }
-            .addOnFailureListener { Log.e("HomeActivity", "Failed to update status: ${it.message}") }
+            .addOnSuccessListener { Log.d("HomeActivity", "Status updated to $status in Firestore") }
+            .addOnFailureListener { Log.e("HomeActivity", "Failed to update status in Firestore: ${it.message}") }
     }
 
     private fun updateTimeLogsStatus(status: String) {
@@ -409,7 +502,13 @@ class HomeActivity : AppCompatActivity() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     for (child in snapshot.children) {
-                        child.ref.child("status").setValue(status)
+                        val logTimestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        if (logTimestamp >= todayStart) {
+                            child.ref.child("status").setValue(status)
+                                .addOnSuccessListener { Log.d("HomeActivity", "Status updated to $status in RealtimeDB for log ${child.key}") }
+                                .addOnFailureListener { Log.e("HomeActivity", "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}") }
+                        }
                     }
                 }
                 override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to update timeLogs status: ${error.message}") }
@@ -417,71 +516,69 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun handleTimeOutOnOffDuty() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_USER_ID, null) ?: return
-        val userEmail = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_EMAIL, null)
-        val userFirstName = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_FIRST_NAME, "User")
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userEmail = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_EMAIL, null)
+        val userFirstName = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_FIRST_NAME, "User")
         val intent = Intent(this, TimeOutActivity::class.java).apply {
-            putExtra("userId", userId)
-            putExtra("email", userEmail ?: "")
-            putExtra("firstName", userFirstName ?: "User")
+            putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
         }
         startActivity(intent)
     }
 
     private fun loadUserStatus() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_USER_ID, null) ?: return
-        val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        realtimeRef.orderByChild("timestamp").limitToLast(10)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var latestTimeIn: Long? = null
-                    var latestTimeOut: Long? = null
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java)
-                        if (type == "TimeIn" && timestamp != null) {
-                            if (latestTimeIn == null || timestamp > latestTimeIn) latestTimeIn = timestamp
-                        } else if (type == "TimeOut" && timestamp != null) {
-                            if (latestTimeOut == null || timestamp > latestTimeOut) latestTimeOut = timestamp
-                        }
-                    }
-                    val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-                    val statusFromLogs: String = when {
-                        latestTimeOut != null && latestTimeOut >= todayStart && (latestTimeIn == null || latestTimeOut > latestTimeIn) -> "Off Duty"
-                        latestTimeIn != null && latestTimeIn >= todayStart -> "On Duty"
-                        else -> "Off Duty"
-                    }
-                    firestore.collection("users").document(userId)
-                        .get()
-                        .addOnSuccessListener { doc ->
-                            firestore.collection("users").document(userId).update("status", statusFromLogs)
-                            val index = statusOptions.indexOf(statusFromLogs)
-                            if (index != -1) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val firestoreStatus = doc.getString("status") ?: "Off Duty"
+                val index = statusOptions.indexOf(firestoreStatus)
+                if (index != -1) {
+                    isUserChangingStatus = false
+                    statusSpinner.setSelection(index, false)
+                }
+                val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                realtimeRef.orderByChild("timestamp").limitToLast(10)
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            var latestTimeIn: Long? = null; var latestTimeOut: Long? = null
+                            var statusFromLogs = firestoreStatus
+                            val todayStart = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                            }.timeInMillis
+                            for (child in snapshot.children) {
+                                val type = child.child("type").getValue(String::class.java)
+                                val timestamp = child.child("timestamp").getValue(Long::class.java)
+                                if (timestamp != null && timestamp >= todayStart) {
+                                    if (type == "TimeIn") { if (latestTimeIn == null || timestamp > latestTimeIn) latestTimeIn = timestamp }
+                                    else if (type == "TimeOut") { if (latestTimeOut == null || timestamp > latestTimeOut) latestTimeOut = timestamp }
+                                }
+                            }
+                            statusFromLogs = when {
+                                latestTimeOut != null && (latestTimeIn == null || latestTimeOut > latestTimeIn) -> "Off Duty"
+                                latestTimeIn != null -> "On Duty"
+                                else -> firestoreStatus
+                            }
+                            if (statusFromLogs != firestoreStatus) { updateUserStatus(statusFromLogs) }
+                            val finalIndex = statusOptions.indexOf(statusFromLogs)
+                            if (finalIndex != -1) {
                                 isUserChangingStatus = false
-                                statusSpinner.setSelection(index)
+                                statusSpinner.setSelection(finalIndex)
                             }
                         }
-                }
-                override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to load user status: ${error.message}") }
-            })
+                        override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to load user status from RealtimeDB: ${error.message}") }
+                    })
+            }
+            .addOnFailureListener {
+                Log.e("HomeActivity", "Failed to load user status from Firestore: ${it.message}")
+                val index = statusOptions.indexOf("Off Duty")
+                if (index != -1) { isUserChangingStatus = false; statusSpinner.setSelection(index) }
+            }
     }
 
     private fun updateFilterButtonStates(selectedButton: Button) {
         val filterButtons = listOf(btnUpcoming, btnOngoing, btnEnded, btnCancelled)
         filterButtons.forEach { button ->
-            if (button.id == selectedButton.id) {
-                button.isSelected = true
-                button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.maroon)
-            } else {
-                button.isSelected = false
-                button.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
-            }
+            button.isSelected = (button.id == selectedButton.id)
+            button.backgroundTintList = ContextCompat.getColorStateList(this, if (button.isSelected) R.color.primary_deep_blue else R.color.white)
         }
     }
 
@@ -500,103 +597,92 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        loadUserStatus()
         if (hasTimedOutToday()) {
             profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-            val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
-            sidebarImage.setImageResource(R.drawable.ic_profile)
+            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image).setImageResource(R.drawable.ic_profile)
         } else {
             loadTodayTimeInPhoto()
             updateSidebarProfileImage()
-            evaluateAndDisplayAttendanceBadge()
         }
+        evaluateAndDisplayAttendanceBadge()
     }
 
     private fun loadTodayTimeInPhoto() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_USER_ID, null) ?: return
-        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
-        usersRef.get().addOnSuccessListener { document ->
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { document ->
             val userStatus = document.getString("status") ?: "Off Duty"
             val profileUrl = document.getString("profilePictureUrl")
             if (userStatus == "On Duty") {
-                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-                ref.orderByChild("timestamp").limitToLast(1)
+                FirebaseDatabase.getInstance().getReference("timeLogs").child(userId).orderByChild("timestamp").limitToLast(1)
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
+                            var foundTodaysTimeIn = false
                             for (child in snapshot.children) {
                                 val type = child.child("type").getValue(String::class.java)
                                 val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                                val todayStart = Calendar.getInstance().apply {
-                                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                                }.timeInMillis
+                                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
                                 if (type == "TimeIn" && timestamp >= todayStart) {
                                     val imageUrl = child.child("imageUrl").getValue(String::class.java)
                                     if (!imageUrl.isNullOrEmpty()) {
                                         Glide.with(this@HomeActivity).load(imageUrl).circleCrop().diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).into(profileImagePlaceholder)
-                                        return
+                                        foundTodaysTimeIn = true; return
                                     }
                                 }
                             }
-                            if (!profileUrl.isNullOrEmpty()) {
-                                Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
-                            } else {
-                                profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                            if (!foundTodaysTimeIn) {
+                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
+                                else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                        override fun onCancelled(error: DatabaseError) { profileImagePlaceholder.setImageResource(R.drawable.ic_profile) }
+                        override fun onCancelled(error: DatabaseError) {
+                            if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
+                            else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                        }
                     })
             } else {
-                if (!profileUrl.isNullOrEmpty()) {
-                    Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
-                } else {
-                    profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-                }
+                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
+                else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
             }
         }.addOnFailureListener { profileImagePlaceholder.setImageResource(R.drawable.ic_profile) }
     }
 
     private fun updateSidebarProfileImage() {
-        val headerView = navigationView.getHeaderView(0)
-        val sidebarImage = headerView.findViewById<ImageView>(R.id.sidebar_profile_image)
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
-            .getString(LoginActivity.KEY_USER_ID, null) ?: return
-        val usersRef = FirebaseFirestore.getInstance().collection("users").document(userId)
-        usersRef.get().addOnSuccessListener { document ->
+        val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { document ->
             val userStatus = document.getString("status") ?: "Off Duty"
             val profileUrl = document.getString("profilePictureUrl")
             if (userStatus == "On Duty") {
-                val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-                ref.orderByChild("timestamp").limitToLast(1)
+                FirebaseDatabase.getInstance().getReference("timeLogs").child(userId).orderByChild("timestamp").limitToLast(1)
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
+                            var foundTodaysTimeIn = false
                             for (child in snapshot.children) {
                                 val type = child.child("type").getValue(String::class.java)
                                 val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                                val todayStart = Calendar.getInstance().apply {
-                                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                                }.timeInMillis
+                                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
                                 if (type == "TimeIn" && timestamp >= todayStart) {
                                     val imageUrl = child.child("imageUrl").getValue(String::class.java)
                                     if (!imageUrl.isNullOrEmpty()) {
                                         Glide.with(this@HomeActivity).load(imageUrl).circleCrop().diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).into(sidebarImage)
-                                        return
+                                        foundTodaysTimeIn = true; return
                                     }
                                 }
                             }
-                            if (!profileUrl.isNullOrEmpty()) {
-                                Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
-                            } else {
-                                sidebarImage.setImageResource(R.drawable.ic_profile)
+                            if (!foundTodaysTimeIn) {
+                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
+                                else sidebarImage.setImageResource(R.drawable.ic_profile)
                             }
                         }
-                        override fun onCancelled(error: DatabaseError) { sidebarImage.setImageResource(R.drawable.ic_profile) }
+                        override fun onCancelled(error: DatabaseError) {
+                            if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
+                            else sidebarImage.setImageResource(R.drawable.ic_profile)
+                        }
                     })
             } else {
-                if (!profileUrl.isNullOrEmpty()) {
-                    Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
-                } else {
-                    sidebarImage.setImageResource(R.drawable.ic_profile)
-                }
+                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
+                else sidebarImage.setImageResource(R.drawable.ic_profile)
             }
         }.addOnFailureListener { sidebarImage.setImageResource(R.drawable.ic_profile) }
     }
@@ -604,18 +690,14 @@ class HomeActivity : AppCompatActivity() {
     private fun sendEventNotification(title: String, message: String) {
         val channelId = "event_channel_id"
         val notificationId = System.currentTimeMillis().toInt()
-        val intent = Intent(this, HomeActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val intent = Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) }
+        val pendingIntent = PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT)
         val builder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
+            .setSmallIcon(R.drawable.ic_notification).setContentTitle(title).setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true).setContentIntent(pendingIntent)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Event Notifications", NotificationManager.IMPORTANCE_HIGH)
+            val channel = NotificationChannel(channelId, "Event Notifications", NotificationManager.IMPORTANCE_HIGH).apply { description = "Notifications for Timed events" }
             notificationManager.createNotificationChannel(channel)
         }
         notificationManager.notify(notificationId, builder.build())
@@ -626,255 +708,50 @@ class HomeActivity : AppCompatActivity() {
         val sidebarName = headerView.findViewById<TextView>(R.id.sidebar_user_name)
         val sidebarDetails = headerView.findViewById<TextView>(R.id.sidebar_user_details)
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
-
         sidebarName.text = userFirstName ?: "User"
         userId?.let { uid ->
-            val usersRef = FirebaseFirestore.getInstance().collection("users").document(uid)
-            usersRef.get().addOnSuccessListener { userDoc ->
+            FirebaseFirestore.getInstance().collection("users").document(uid).get().addOnSuccessListener { userDoc ->
                 val departmentId = userDoc.getString("departmentId")
                 if (!departmentId.isNullOrEmpty()) {
-                    FirebaseFirestore.getInstance().collection("departments")
-                        .document(departmentId)
-                        .get()
-                        .addOnSuccessListener { deptDoc ->
-                            val abbreviation = deptDoc.getString("abbreviation") ?: "N/A"
-                            sidebarDetails.text = "$idNumber • $abbreviation"
-                        }
+                    FirebaseFirestore.getInstance().collection("departments").document(departmentId).get()
+                        .addOnSuccessListener { deptDoc -> sidebarDetails.text = "$idNumber • ${deptDoc.getString("abbreviation") ?: "N/A"}" }
                         .addOnFailureListener { sidebarDetails.text = "$idNumber • N/A" }
-                } else {
-                    sidebarDetails.text = "$idNumber • N/A"
-                }
+                } else { sidebarDetails.text = "$idNumber • N/A" }
             }
-        } ?: run {
-            sidebarDetails.text = "$idNumber • N/A"
-        }
+        } ?: run { sidebarDetails.text = "$idNumber • N/A" }
         sidebarEmail.text = userEmail ?: ""
-
-        // Commented out: Initial preparation for custom animation
-        // prepareDrawerContentsForInAnimation(navigationView)
-
+        (navigationView.getChildAt(0) as? NavigationMenuView)?.isVerticalScrollBarEnabled = false
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                // Commented out: Logic for custom out-animation trigger
-                // if (isDrawerCurrentlyOpen && slideOffset < 0.95f && !outAnimationPlayedForThisClosingSequence) {
-                //     animateDrawerContentsOut(navigationView)
-                //     outAnimationPlayedForThisClosingSequence = true
-                // }
-            }
-
-            override fun onDrawerOpened(drawerView: View) {
-                // Commented out: Custom in-animation logic
-                // isDrawerCurrentlyOpen = true
-                // outAnimationPlayedForThisClosingSequence = false
-                // animateDrawerContentsIn(navigationView)
-            }
-
-            override fun onDrawerClosed(drawerView: View) {
-                // Commented out: Resetting state for custom animation
-                // isDrawerCurrentlyOpen = false
-                // prepareDrawerContentsForInAnimation(navigationView)
-                // outAnimationPlayedForThisClosingSequence = false
-            }
-
-            override fun onDrawerStateChanged(newState: Int) {
-                // No action needed here for this specific animation
-            }
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
+            override fun onDrawerOpened(drawerView: View) {}
+            override fun onDrawerClosed(drawerView: View) {}
+            override fun onDrawerStateChanged(newState: Int) {}
         })
-
         navigationView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_home -> { drawerLayout.closeDrawer(GravityCompat.END); true }
-                R.id.nav_event_log -> {
-                    val sharedPref = getSharedPreferences("TimedAppPrefs", Context.MODE_PRIVATE)
-                    val userId = sharedPref.getString("userId", null)
-                    val intent = Intent(this, EventLogActivity::class.java)
-                    intent.putExtra("userId", userId)
-                    startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.END); true
+            drawerLayout.closeDrawer(GravityCompat.END)
+            Handler(mainLooper).postDelayed({
+                when (menuItem.itemId) {
+                    R.id.nav_home -> {}
+                    R.id.nav_event_log -> startActivity(Intent(this, EventLogActivity::class.java).putExtra("userId", userId))
+                    R.id.nav_excuse_letter -> startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
+                    R.id.nav_excuse_letter_history -> startActivity(Intent(this, ExcuseLetterHistoryActivity::class.java).putExtra("userId", userId))
+                    R.id.nav_profile -> startActivity(Intent(this, ProfileActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
+                    R.id.nav_logout -> showLogoutDialog()
                 }
-                R.id.nav_excuse_letter -> {
-                    val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
-                        putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department)
-                    }
-                    startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.END); true
-                }
-                R.id.nav_excuse_letter_history -> {
-                    val intent = Intent(this, ExcuseLetterHistoryActivity::class.java)
-                    intent.putExtra("userId", userId)
-                    startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.END); true
-                }
-                R.id.nav_profile -> {
-                    val intent = Intent(this, ProfileActivity::class.java).apply {
-                        putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department)
-                    }
-                    startActivity(intent)
-                    drawerLayout.closeDrawer(GravityCompat.END); true
-                }
-                R.id.nav_logout -> { showLogoutDialog(); true }
-                else -> false
-            }
+            }, 250)
+            true
         }
     }
-
-    /* Commented out: Custom animation function
-    private fun prepareDrawerContentsForInAnimation(navView: NavigationView) {
-        val headerView = navView.getHeaderView(0)
-        if (headerView != null) {
-            headerView.findViewById<ImageView>(R.id.sidebar_profile_image)?.apply {
-                visibility = View.INVISIBLE
-                alpha = 0f
-            }
-            headerView.findViewById<TextView>(R.id.sidebar_user_name)?.apply {
-                visibility = View.INVISIBLE
-                alpha = 0f
-            }
-            headerView.findViewById<TextView>(R.id.sidebar_user_details)?.apply {
-                visibility = View.INVISIBLE
-                alpha = 0f
-            }
-            headerView.findViewById<TextView>(R.id.sidebar_user_email)?.apply {
-                visibility = View.INVISIBLE
-                alpha = 0f
-            }
-        }
-
-        var menuRecyclerView: RecyclerView? = null
-        for (i in 0 until navView.childCount) {
-            val child = navView.getChildAt(i)
-            if (child is RecyclerView) { // Covers NavigationMenuView
-                menuRecyclerView = child
-                break
-            }
-        }
-        menuRecyclerView?.let { rv ->
-            for (i in 0 until rv.childCount) {
-                rv.getChildAt(i)?.apply {
-                    visibility = View.INVISIBLE
-                    alpha = 0f
-                }
-            }
-        }
-    }
-    */
-
-    /* Commented out: Custom animation function
-    private fun animateDrawerContentsIn(navView: NavigationView) {
-        var currentDelay = 80L
-
-        fun applyInAnimation(view: View?, animationResId: Int, delay: Long) {
-            view?.let {
-                // Initial state (alpha=0f, visibility=INVISIBLE) is set by prepareDrawerContentsForInAnimation
-                val animation = AnimationUtils.loadAnimation(this, animationResId)
-                animation.startOffset = delay
-                it.startAnimation(animation)
-                it.visibility = View.VISIBLE // Make visible as animation starts (animation handles alpha)
-            }
-        }
-
-        val headerView = navView.getHeaderView(0)
-        if (headerView != null) {
-            applyInAnimation(headerView.findViewById(R.id.sidebar_profile_image), R.anim.slide_in_from_right, currentDelay)
-            currentDelay += 80L
-            applyInAnimation(headerView.findViewById(R.id.sidebar_user_name), R.anim.slide_in_from_right, currentDelay)
-            currentDelay += 60L
-            applyInAnimation(headerView.findViewById(R.id.sidebar_user_details), R.anim.slide_in_from_right, currentDelay)
-            currentDelay += 60L
-            applyInAnimation(headerView.findViewById(R.id.sidebar_user_email), R.anim.slide_in_from_right, currentDelay)
-            currentDelay += 100L
-        }
-
-        var menuRecyclerView: RecyclerView? = null
-        for (i in 0 until navView.childCount) {
-            val child = navView.getChildAt(i)
-            if (child is RecyclerView) {
-                menuRecyclerView = child
-                break
-            }
-        }
-        menuRecyclerView?.let { rv ->
-            for (i in 0 until rv.childCount) {
-                val menuItemView = rv.getChildAt(i)
-                if (menuItemView != null) {
-                    applyInAnimation(menuItemView, R.anim.slide_in_from_right, currentDelay)
-                    currentDelay += 40L
-                }
-            }
-        }
-    }
-    */
-
-    /* Commented out: Custom animation function
-    private fun animateDrawerContentsOut(navView: NavigationView) {
-        var currentDelay = 0L
-
-        fun applyOutAnimation(view: View?, animationResId: Int, delay: Long) {
-            view?.let {
-                if (it.visibility == View.VISIBLE) { // Only animate if visible
-                    val animation = AnimationUtils.loadAnimation(this, animationResId)
-                    animation.startOffset = delay
-                    animation.setAnimationListener(object: Animation.AnimationListener {
-                        override fun onAnimationStart(p0: Animation?) {}
-                        override fun onAnimationEnd(p0: Animation?) {
-                            it.visibility = View.INVISIBLE
-                            it.alpha = 0f // Ensure it's also transparent after out-animation
-                        }
-                        override fun onAnimationRepeat(p0: Animation?) {}
-                    })
-                    it.startAnimation(animation)
-                } else {
-                    // If already invisible, ensure alpha is 0 for consistency
-                    it.alpha = 0f
-                }
-            }
-        }
-
-        val headerView = navView.getHeaderView(0)
-        if (headerView != null) {
-            applyOutAnimation(headerView.findViewById(R.id.sidebar_profile_image), R.anim.slide_out_to_right, currentDelay)
-            currentDelay += 30L
-            applyOutAnimation(headerView.findViewById(R.id.sidebar_user_name), R.anim.slide_out_to_right, currentDelay)
-            currentDelay += 20L
-            applyOutAnimation(headerView.findViewById(R.id.sidebar_user_details), R.anim.slide_out_to_right, currentDelay)
-            currentDelay += 20L
-            applyOutAnimation(headerView.findViewById(R.id.sidebar_user_email), R.anim.slide_out_to_right, currentDelay)
-            currentDelay += 50L
-        }
-
-        var menuRecyclerView: RecyclerView? = null
-        for (i in 0 until navView.childCount) {
-            val child = navView.getChildAt(i)
-            if (child is RecyclerView) {
-                menuRecyclerView = child
-                break
-            }
-        }
-        menuRecyclerView?.let { rv ->
-            for (i in 0 until rv.childCount) {
-                val menuItemView = rv.getChildAt(i)
-                if (menuItemView != null) {
-                    applyOutAnimation(menuItemView, R.anim.slide_out_to_right, currentDelay)
-                    currentDelay += 20L
-                }
-            }
-        }
-    }
-    */
-
 
     private fun showLogoutDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Log Out")
-            .setMessage("Are you sure you want to log out?")
+        AlertDialog.Builder(this).setTitle("Log Out").setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes") { _, _ ->
-                val prefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
-                prefs.edit().clear().apply()
+                getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
                 startActivity(Intent(this, LoginActivity::class.java))
-                finish()
+                finishAffinity()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            .setNegativeButton("Cancel", null).show()
     }
 
     private fun setupFilterButtons() {
@@ -882,195 +759,171 @@ class HomeActivity : AppCompatActivity() {
         btnOngoing.setOnClickListener { updateFilterButtonStates(btnOngoing); showEventsByStatus("ongoing") }
         btnEnded.setOnClickListener { updateFilterButtonStates(btnEnded); showEventsByStatus("ended") }
         btnCancelled.setOnClickListener { updateFilterButtonStates(btnCancelled); showEventsByStatus("cancelled") }
+        updateFilterButtonStates(btnUpcoming)
     }
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("Time - In Confirmation")
-                .setMessage("Are you ready to time in for today?")
-                .setPositiveButton("Yes") { _, _ ->
-                    val intent = Intent(this, TimeInActivity::class.java)
-                    intent.putExtra("userId", userId)
-                    intent.putExtra("email", userEmail ?: "")
-                    intent.putExtra("firstName", userFirstName ?: "User")
-                    timeInLauncher.launch(intent)
+            if (isInteractiveTutorialActive &&
+                currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
+                expectedInteractiveTutorialAction == ACTION_USER_CLICK_TIME_IN) {
+
+                Log.d(TAG, "Attendance Tutorial: Time-In button clicked by user during tutorial.")
+                expectedInteractiveTutorialAction = ACTION_USER_PERFORMED_TIME_IN // Expect TimeInActivity result
+
+                val intent = Intent(this, TimeInActivity::class.java).apply {
+                    putExtra(EXTRA_IS_TUTORIAL_MODE, true) // Signal TimeInActivity it's in tutorial mode
+                    putExtra("userId", userId)
+                    putExtra("email", userEmail ?: "")
+                    putExtra("firstName", userFirstName ?: "User")
                 }
-                .setNegativeButton("Cancel", null)
-                .show()
+                timeInActivityTutorialLauncher.launch(intent)
+            } else if (isInteractiveTutorialActive && currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE) {
+                Log.w(TAG, "Attendance Tutorial: Time-In button clicked, but not the expected action ($expectedInteractiveTutorialAction). Guiding user or allowing normal flow.")
+                // Optionally, show a message to guide the user back to the correct tutorial action
+                // For now, let normal flow happen or show the default dialog
+                showDefaultTimeInDialog()
+            }
+            else {
+                // Normal Time-In button click
+                showDefaultTimeInDialog()
+            }
         }
         btnTimeOut.setOnClickListener {
+            // TODO: Implement interactive tutorial logic for Time-Out if this is a tutorial step
             hasTimedInToday { alreadyTimedIn ->
                 if (!alreadyTimedIn) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Cannot Time-Out")
-                        .setMessage("You haven't timed in yet. Please time in first before timing out.")
-                        .setPositiveButton("OK", null)
-                        .show()
+                    AlertDialog.Builder(this).setTitle("Cannot Time-Out").setMessage("You haven't timed in yet. Please time in first before timing out.").setPositiveButton("OK", null).show()
                 } else {
-                    AlertDialog.Builder(this)
-                        .setTitle("Time - Out Confirmation")
-                        .setMessage("Are you sure you want to time out for today?")
+                    AlertDialog.Builder(this).setTitle("Time - Out Confirmation").setMessage("Are you sure you want to time out for today?")
                         .setPositiveButton("Yes") { _, _ ->
                             profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-                            val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
-                            sidebarImage.setImageResource(R.drawable.ic_profile)
+                            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image).setImageResource(R.drawable.ic_profile)
                             setTimedOutToday()
-                            val intent = Intent(this, TimeOutActivity::class.java).apply {
-                                putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
-                            }
+                            val intent = Intent(this, TimeOutActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User") }
                             startActivity(intent)
                         }
-                        .setNegativeButton("Cancel", null)
-                        .show()
+                        .setNegativeButton("Cancel", null).show()
                 }
             }
         }
     }
 
+    private fun showDefaultTimeInDialog() {
+        AlertDialog.Builder(this).setTitle("Time - In Confirmation").setMessage("Are you ready to time in for today?")
+            .setPositiveButton("Yes") { _, _ ->
+                val intent = Intent(this, TimeInActivity::class.java).apply {
+                    putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
+                }
+                timeInLauncher.launch(intent) // Use the normal launcher
+            }
+            .setNegativeButton("Cancel", null).show()
+    }
+
+
     private fun setupExcuseLetterRedirect() {
         excuseLetterText.setOnClickListener {
-            val intent = Intent(this, ExcuseLetterActivity::class.java).apply {
-                putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department)
-            }
-            startActivity(intent)
+            // TODO: Implement interactive tutorial logic if this is a tutorial step
+            startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
         }
     }
 
     private fun loadAndStoreEvents() {
-        val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
-        val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null) ?: return
-        FirebaseFirestore.getInstance().collection("users").document(userId).get()
-            .addOnSuccessListener { userDoc ->
-                val departmentId: String? = userDoc.getString("departmentId")
-                if (departmentId.isNullOrEmpty()) {
-                    Toast.makeText(this, "No departmentId found for user.", Toast.LENGTH_SHORT).show()
-                    showEventsByStatus("upcoming")
-                    updateFilterButtonStates(btnUpcoming)
-                    return@addOnSuccessListener
-                }
-
-                firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
-                    .addOnSuccessListener { result ->
-                        val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-                        allEvents.clear()
-                        val nowMillis = System.currentTimeMillis()
-
-                        for (doc in result) {
-                            try {
-                                val title = doc.getString("eventName") ?: continue
-                                val duration = doc.getString("duration") ?: "1:00:00"
-                                val date = doc.getTimestamp("date")?.toDate() ?: continue
-                                val dateFormatted = formatter.format(date)
-                                val status = doc.getString("status") ?: "upcoming"
-
-                                // Duration to milliseconds
-                                val durationParts = duration.split(":")
-                                val durationMillis = when (durationParts.size) {
-                                    3 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L +
-                                            (durationParts[1].toIntOrNull() ?: 0) * 60000L +
-                                            (durationParts[2].toIntOrNull() ?: 0) * 1000L
-                                    2 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L +
-                                            (durationParts[1].toIntOrNull() ?: 0) * 60000L
-                                    1 -> (durationParts[0].toIntOrNull() ?: 0) * 60000L
-                                    else -> 3600000L
-                                }
-
-                                val eventStartMillis = date.time
-                                val eventEndMillis = eventStartMillis + durationMillis
-
-                                // NOTIFICATION LOGIC ONLY
-                                if (status.equals("cancelled", ignoreCase = true)) {
-                                    sendEventNotification("Event Cancelled", "The event \"$title\" scheduled on $dateFormatted has been cancelled.")
-                                } else if (status.equals("upcoming", ignoreCase = true)) {
-                                    if (eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
-                                        val minutes = ((eventStartMillis - nowMillis) / 60000).toInt()
-                                        sendEventNotification("Event Starting Soon", "\"$title\" starts in $minutes minute(s).")
-                                    } else if (eventStartMillis - nowMillis in (15 * 60 * 1000)..(60 * 60 * 1000)) {
-                                        sendEventNotification("Upcoming Event", "\"$title\" starts at $dateFormatted.")
-                                    }
-                                } else if (nowMillis in eventStartMillis..eventEndMillis) {
-                                    sendEventNotification("Event Started", "\"$title\" is now ongoing.")
-                                } else if (nowMillis > eventEndMillis) {
-                                    sendEventNotification("Event Ended", "\"$title\" has ended.")
-                                }
-
-                                allEvents.add(EventModel(title, duration, dateFormatted, status, rawDate = date))
-                            } catch (e: Exception) {
-                                Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e)
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { userDoc ->
+            val departmentId: String? = userDoc.getString("departmentId")
+            if (departmentId.isNullOrEmpty()) {
+                Toast.makeText(this, "No department assigned. Cannot load events.", Toast.LENGTH_SHORT).show()
+                showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming); return@addOnSuccessListener
+            }
+            firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
+                .addOnSuccessListener { result ->
+                    val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                    allEvents.clear(); val nowMillis = System.currentTimeMillis()
+                    for (doc in result) {
+                        try {
+                            val title = doc.getString("eventName") ?: continue
+                            val duration = doc.getString("duration") ?: "1:00:00"
+                            val date = doc.getTimestamp("date")?.toDate() ?: continue
+                            val dateFormatted = formatter.format(date)
+                            val statusFromDb = doc.getString("status") ?: "upcoming"
+                            val durationParts = duration.split(":")
+                            val durationMillis = when (durationParts.size) {
+                                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
+                                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
+                                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L
+                                else -> 3600000L
                             }
-                        }
-                        showEventsByStatus("upcoming")
-                        updateFilterButtonStates(btnUpcoming)
+                            val eventStartMillis = date.time; val eventEndMillis = eventStartMillis + durationMillis
+                            val dynamicStatus = when {
+                                statusFromDb.equals("cancelled", ignoreCase = true) -> "cancelled"
+                                nowMillis < eventStartMillis -> "upcoming"
+                                nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
+                                else -> "ended"
+                            }
+                            if (dynamicStatus == "upcoming" && eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
+                                sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
+                            }
+                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date))
+                        } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
                     }
-                    .addOnFailureListener {
-                        Log.e("Firestore", "Failed to load events: ${it.message}", it)
-                        Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener {
-                Log.e("Firestore", "Failed to fetch user document: ${it.message}", it)
-                Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun fetchEventsByDepartmentId(departmentId: String) {
-        firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
-            .addOnSuccessListener { result ->
-                val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-                allEvents.clear()
-                for (doc in result) {
-                    try {
-                        val title = doc.getString("eventName") ?: continue
-                        val duration = doc.getString("duration") ?: "1:00:00"
-                        val date = doc.getTimestamp("date")?.toDate() ?: continue
-                        val dateFormatted = formatter.format(date)
-                        allEvents.add(EventModel(title, duration, dateFormatted))
-                    } catch (e: Exception) { Log.e("EventParse", "Skipping bad event: ${e.message}", e) }
+                    showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming)
                 }
-                showEventsByStatus("upcoming")
-                updateFilterButtonStates(btnUpcoming)
-            }
-            .addOnFailureListener { Toast.makeText(this, "Failed to load events: ${it.message}", Toast.LENGTH_SHORT).show() }
+                .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show() }
+        }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show() }
     }
 
     private fun showEventsByStatus(statusFilter: String?) {
         val currentDate = Date()
         val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = event.rawDate
-            val durationParts = event.duration.split(":")
+            val eventDate = event.rawDate; val durationParts = event.duration.split(":")
             val durationMillis = when (durationParts.size) {
-                3 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L + (durationParts[1].toIntOrNull() ?: 0) * 60000L + (durationParts[2].toIntOrNull() ?: 0) * 1000L
-                2 -> (durationParts[0].toIntOrNull() ?: 0) * 3600000L + (durationParts[1].toIntOrNull() ?: 0) * 60000L
-                1 -> (durationParts[0].toIntOrNull() ?: 0) * 60000L
-                else -> 3600000L // Default to 1 hour if parsing fails
+                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
+                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
+                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L; else -> 3600000L
             }
             val eventEndDate = eventDate?.time?.plus(durationMillis)
-            val dynamicStatus = when {
-                event.status.equals("cancelled", ignoreCase = true) -> "cancelled"
-                eventDate == null || eventEndDate == null -> "unknown" // Should ideally not happen with valid data
-                currentDate.time < eventDate.time -> "upcoming"
-                currentDate.time in eventDate.time until eventEndDate -> "ongoing"
-                else -> "ended"
+            val dynamicStatus = if (event.status.equals("cancelled", ignoreCase = true)) "cancelled" else {
+                when {
+                    eventDate == null || eventEndDate == null -> "unknown"
+                    currentDate.time < eventDate.time -> "upcoming"
+                    currentDate.time in eventDate.time until eventEndDate -> "ongoing"
+                    else -> "ended"
+                }
             }
             event.copy(status = dynamicStatus)
         }
         val filtered = if (statusFilter == null) eventsWithDynamicStatus else eventsWithDynamicStatus.filter { it.status.equals(statusFilter, ignoreCase = true) }
-        val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate })) // Sort by status then by date
-        recyclerEvents.adapter = EventAdapter(sorted)
-        val readableStatus = statusFilter?.replaceFirstChar { it.uppercaseChar() } ?: "Selected"
-        if (sorted.isEmpty()) {
-            noEventsMessage.visibility = View.VISIBLE
-            noEventsMessage.text = "No $readableStatus event/s at the moment."
-        } else {
-            noEventsMessage.visibility = View.GONE
-        }
+        val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
+
+        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
+            ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
+
+
+        val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
+        noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+        if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
     }
 
-    private fun statusOrder(status: String): Int {
-        return when (status.lowercase(Locale.ROOT)) {
-            "upcoming" -> 0; "ongoing" -> 1; "ended" -> 2; else -> 3 // "cancelled" or others
+    private fun statusOrder(status: String): Int = when (status.lowercase(Locale.ROOT)) {
+        "upcoming" -> 0; "ongoing" -> 1; "ended" -> 2; "cancelled" -> 3; else -> 4
+    }
+
+    // --- TUTORIAL SYSTEM ---
+    private fun handleTutorialCancellation() {
+        if (tutorialOverlay.visibility == View.VISIBLE) {
+            tutorialOverlay.visibility = View.GONE
         }
+        isInteractiveTutorialActive = false
+        currentInteractiveTutorialName = null
+        expectedInteractiveTutorialAction = null
+
+        Log.d(TAG_TUTORIAL_NAV, "Tutorial CANCELED.")
+        updateNavHeaderTutorialProgress() // Update nav header to show progress at cancellation
+        previousTargetLocationForAnimation = null
+        Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
+        currentTutorialPopupWindow?.dismiss()
+        currentTutorialPopupWindow = null
     }
 
     override fun onBackPressed() {
@@ -1078,11 +931,6 @@ class HomeActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.END)
         } else if (currentTutorialPopupWindow != null && currentTutorialPopupWindow!!.isShowing) {
             currentTutorialPopupWindow?.dismiss()
-            tutorialOverlay.visibility = View.GONE
-            previousTargetLocation = null
-            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
-            Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
         } else {
             super.onBackPressed()
         }
@@ -1092,136 +940,511 @@ class HomeActivity : AppCompatActivity() {
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_tutorial_options)
         dialog.setCancelable(false)
+
         val window = dialog.window
         if (window != null) {
-            val layoutParams = WindowManager.LayoutParams(); layoutParams.copyFrom(window.attributes)
-            val displayMetrics = resources.displayMetrics; layoutParams.width = (displayMetrics.widthPixels * 0.90).toInt()
+            val layoutParams = WindowManager.LayoutParams()
+            layoutParams.copyFrom(window.attributes)
+            val displayMetrics = resources.displayMetrics
+            layoutParams.width = (displayMetrics.widthPixels * 0.90).toInt()
             window.attributes = layoutParams
+            window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
         }
+
         val layoutQuickTour = dialog.findViewById<LinearLayout>(R.id.layout_quick_tour)
+        val layoutAttendanceGuide = dialog.findViewById<LinearLayout?>(R.id.layout_attendance_guide)
         val btnCancel = dialog.findViewById<Button>(R.id.btn_cancel_tutorial_dialog)
+
         layoutQuickTour.setOnClickListener {
-            previousTargetLocation = null; showQuickTour(); dialog.dismiss()
-            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+            previousTargetLocationForAnimation = null
+            showQuickTour(resetProgress = true)
+            dialog.dismiss()
         }
+
+        layoutAttendanceGuide?.setOnClickListener {
+            previousTargetLocationForAnimation = null
+            startAttendanceWorkflowTutorial(resetProgress = true)
+            dialog.dismiss()
+        }
+
         btnCancel.setOnClickListener {
             dialog.dismiss()
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+            if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false) ||
+                !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
+                tutorialPrefs.edit()
+                    .putBoolean(KEY_QUICK_TOUR_COMPLETED, true)
+                    .putInt(KEY_QUICK_TOUR_CURRENT_STEP, TOTAL_QUICK_TOUR_STEPS)
+                    .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
+                    .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
+                    .apply()
+                Toast.makeText(this, "Tutorials skipped. You can access them again via the help button.", Toast.LENGTH_LONG).show()
+                // Temporarily set active keys to update and then hide one of the bars
+                activeTutorialCompletionKey = KEY_QUICK_TOUR_COMPLETED
+                activeTutorialStepKey = KEY_QUICK_TOUR_CURRENT_STEP
+                activeTutorialTotalSteps = TOTAL_QUICK_TOUR_STEPS
+                updateNavHeaderTutorialProgress() // Show 100%
+                hideNavHeaderTutorialProgressAfterCompletion()
+            }
         }
         dialog.show()
     }
 
+    private fun updateNavHeaderTutorialProgress() {
+        if (tutorialProgressOnRightNavHeader == null) {
+            Log.e(TAG_TUTORIAL_NAV, "Nav header tutorial views not initialized. Cannot update progress.")
+            return
+        }
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        val currentStep = tutorialPrefs.getInt(activeTutorialStepKey, 0)
+        val isCompleted = tutorialPrefs.getBoolean(activeTutorialCompletionKey, false)
+        val totalSteps = activeTutorialTotalSteps
+
+        var percentage = 0
+        if (totalSteps > 0) {
+            percentage = if (isCompleted) 100 else (currentStep * 100) / totalSteps
+        }
+        if (percentage > 100) percentage = 100
+
+
+        tutorialProgressBarOnRight?.max = 100
+        tutorialProgressBarOnRight?.progress = percentage
+        tutorialPercentageTextOnRight?.text = "$percentage%"
+
+        tutorialTitleTextOnRight?.text = when (activeTutorialStepKey) {
+            KEY_QUICK_TOUR_CURRENT_STEP -> "Quick Tour:"
+            KEY_ATTENDANCE_GUIDE_CURRENT_STEP -> "Attendance Guide:"
+            else -> "Tutorial:"
+        }
+
+        // Manage visibility
+        val shouldBeVisible = (currentInteractiveTutorialName != null || currentStep > 0 || isCompleted) &&
+                (activeTutorialStepKey == KEY_QUICK_TOUR_CURRENT_STEP || activeTutorialStepKey == KEY_ATTENDANCE_GUIDE_CURRENT_STEP)
+
+
+        if (shouldBeVisible) {
+            if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE) {
+                if (!isFinishing && !isDestroyed) {
+                    tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
+                    val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+                    tutorialProgressOnRightNavHeader?.startAnimation(fadeIn)
+                }
+            }
+        } else {
+            if (tutorialProgressOnRightNavHeader?.visibility == View.VISIBLE) {
+                if (!isFinishing && !isDestroyed) {
+                    val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+                    fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                        override fun onAnimationStart(p0: Animation?) {}
+                        override fun onAnimationEnd(p0: Animation?) {
+                            if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility = View.GONE
+                        }
+                        override fun onAnimationRepeat(p0: Animation?) {}
+                    })
+                    tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
+                }
+            }
+        }
+        Log.d(TAG_TUTORIAL_NAV, "Updated nav header progress for $activeTutorialStepKey: $percentage% (Step $currentStep/$totalSteps). Completed: $isCompleted. Visible: $shouldBeVisible")
+    }
+
+
     @SuppressLint("ClickableViewAccessibility")
-    private fun showCustomTutorialDialog(message: String, targetView: View, currentStep: Int, totalSteps: Int, onNext: () -> Unit) {
+    private fun showCustomTutorialDialog(message: String, targetView: View, currentStepToShow: Int, totalStepsInTutorial: Int, onNext: () -> Unit) {
         tutorialOverlay.visibility = View.VISIBLE
+
+        if (tutorialProgressOnRightNavHeader != null) {
+            tutorialTitleTextOnRight?.text = when (activeTutorialStepKey) {
+                KEY_QUICK_TOUR_CURRENT_STEP -> "Quick Tour:"
+                KEY_ATTENDANCE_GUIDE_CURRENT_STEP -> "Attendance Guide:"
+                else -> "Tutorial Progress:"
+            }
+            // Ensure visibility if it's supposed to be shown (updateNavHeaderTutorialProgress handles actual percentage)
+            if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE && (activeTutorialStepKey == KEY_QUICK_TOUR_CURRENT_STEP || activeTutorialStepKey == KEY_ATTENDANCE_GUIDE_CURRENT_STEP) && !isFinishing && !isDestroyed) {
+                tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
+            }
+        } else {
+            Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader is NULL in showCustomTutorialDialog.")
+        }
+
+        currentTutorialPopupWindow?.dismiss()
+
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null)
         val progressTextView = dialogView.findViewById<TextView>(R.id.tutorial_progress_text)
         val messageTextView = dialogView.findViewById<TextView>(R.id.tutorial_message)
         val nextButton = dialogView.findViewById<Button>(R.id.tutorial_next_button)
         val closeButton = dialogView.findViewById<ImageButton>(R.id.btn_close_tutorial_step)
-        progressTextView.text = "Step $currentStep of $totalSteps"; messageTextView.text = message
+
+        progressTextView.text = "Step $currentStepToShow of $totalStepsInTutorial"; messageTextView.text = message
         dialogView.measure(View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST))
-        val dialogWidth = dialogView.measuredWidth; val dialogHeight = dialogView.measuredHeight
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val margin = (16 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        val measuredWidth = dialogView.measuredWidth
+        val initialDialogWidth = if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
+        val upperWidthBound = (screenWidth - 2 * margin).coerceAtLeast(margin * 2)
+        val lowerWidthBound = (margin * 2).coerceAtLeast(1)
+        val dialogWidth = initialDialogWidth.coerceIn(lowerWidthBound, upperWidthBound)
+        val dialogHeight = dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
         var finalDialogX: Int; var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(currentTargetLocationOnScreen)
-        if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0) {
-            val spaceBelow = resources.displayMetrics.heightPixels - (currentTargetLocationOnScreen[1] + targetView.height)
-            val spaceAbove = currentTargetLocationOnScreen[1]; val margin = (16 * resources.displayMetrics.density).toInt()
-            val maxX = resources.displayMetrics.widthPixels - dialogWidth - margin; val minX = margin
-            finalDialogX = when { maxX < minX -> margin; else -> (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minX, maxX) }
-            finalDialogY = if (spaceBelow >= dialogHeight + 24) currentTargetLocationOnScreen[1] + targetView.height + 16
-            else if (spaceAbove >= dialogHeight + 24) currentTargetLocationOnScreen[1] - dialogHeight - 16
-            else (resources.displayMetrics.heightPixels - dialogHeight) / 2
+        val spaceBelow = screenHeight - (currentTargetLocationOnScreen[1] + targetView.height)
+        val spaceAbove = currentTargetLocationOnScreen[1]
+        val minXPlacement = margin
+        val maxXPlacement = screenWidth - dialogWidth - margin
+        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minXPlacement, maxXPlacement.coerceAtLeast(minXPlacement))
+        if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0 && targetView.isAttachedToWindow) {
+            finalDialogY = if (spaceBelow >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] + targetView.height + margin / 2
+            else if (spaceAbove >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
+            else (screenHeight - dialogHeight) / 2
         } else {
-            finalDialogX = (resources.displayMetrics.widthPixels - dialogWidth) / 2
-            finalDialogY = (resources.displayMetrics.heightPixels - dialogHeight) / 2
+            finalDialogX = (screenWidth - dialogWidth) / 2
+            finalDialogY = (screenHeight - dialogHeight) / 2
         }
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
-        popupWindow.isOutsideTouchable = false; popupWindow.isFocusable = true
-        popupWindow.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)))
         currentTutorialPopupWindow = popupWindow
-        popupWindow.setOnDismissListener { currentTutorialPopupWindow = null }
+        popupWindow.isFocusable = true; popupWindow.isOutsideTouchable = true
+        popupWindow.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)))
+        var isProceedingToNextStepOrCompleting = false
+        popupWindow.setOnDismissListener { if (!isProceedingToNextStepOrCompleting) handleTutorialCancellation() }
         val animationSet = AnimationSet(true); val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
-        alphaAnimation.duration = 400; alphaAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
+        alphaAnimation.duration = 300
+        alphaAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
         animationSet.addAnimation(alphaAnimation)
         var startTranslateX = 0f; var startTranslateY = 0f
-        if (previousTargetLocation != null) {
-            val prevTargetCenterX = previousTargetLocation!![0] + targetView.width / 2
-            val prevTargetCenterY = previousTargetLocation!![1] + targetView.height / 2
-            val deltaX = (prevTargetCenterX - (finalDialogX + dialogWidth / 2)).toFloat()
-            val deltaY = (prevTargetCenterY - (finalDialogY + dialogHeight / 2)).toFloat()
-            if (abs(deltaX) > abs(deltaY)) { startTranslateX = deltaX; startTranslateY = 0f } else { startTranslateX = 0f; startTranslateY = deltaY }
-        } else { startTranslateX = -dialogWidth.toFloat() * 1.2f; startTranslateY = 0f }
+        if (previousTargetLocationForAnimation != null) {
+            val prevDialogEstimateX = previousTargetLocationForAnimation!![0] + targetView.width / 2 - dialogWidth / 2
+            val prevDialogEstimateY = previousTargetLocationForAnimation!![1] + targetView.height + margin / 2
+            startTranslateX = (prevDialogEstimateX - finalDialogX).toFloat()
+            startTranslateY = (prevDialogEstimateY - finalDialogY).toFloat()
+        } else {
+            startTranslateX = -dialogWidth.toFloat() * 0.2f
+            startTranslateY = (20 * resources.displayMetrics.density)
+        }
         val translateAnimation = TranslateAnimation(startTranslateX, 0f, startTranslateY, 0f)
-        translateAnimation.duration = 600; translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.anticipate_overshoot_interpolator)
-        animationSet.addAnimation(translateAnimation); dialogView.startAnimation(animationSet)
+        translateAnimation.duration = 450
+        translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.overshoot_interpolator)
+        animationSet.addAnimation(translateAnimation)
+        dialogView.startAnimation(animationSet)
         popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
         val currentTargetScreenPos = IntArray(2); targetView.getLocationOnScreen(currentTargetScreenPos)
-        previousTargetLocation = currentTargetScreenPos
-        val dismissPopupAndHideOverlay = {
-            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-            fadeOut.setAnimationListener(object : Animation.AnimationListener {
-                override fun onAnimationStart(animation: Animation?) {}
-                override fun onAnimationEnd(animation: Animation?) { popupWindow.dismiss(); tutorialOverlay.visibility = View.GONE; previousTargetLocation = null }
-                override fun onAnimationRepeat(animation: Animation?) {}
-            })
-            dialogView.startAnimation(fadeOut)
-        }
+        previousTargetLocationForAnimation = currentTargetScreenPos
+
         nextButton.setOnClickListener {
-            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-            fadeOut.setAnimationListener(object : Animation.AnimationListener {
+            isProceedingToNextStepOrCompleting = true
+            val fadeOutPopup = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+            fadeOutPopup.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
                 override fun onAnimationEnd(animation: Animation?) {
                     popupWindow.dismiss()
-                    if (currentStep == totalSteps) {
-                        tutorialOverlay.visibility = View.GONE; previousTargetLocation = null
-                        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-                        tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+                    val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+
+                    if (!isInteractiveTutorialActive) { // Passive tutorial step advancement
+                        // currentStepToShow is the step whose instruction was just shown.
+                        // So, we save this as the completed step.
+                        tutorialPrefs.edit().putInt(activeTutorialStepKey, currentStepToShow).apply()
+                        updateNavHeaderTutorialProgress() // Reflect this completed step
+                    }
+                    // For interactive tutorials, progress is saved upon action completion, not here.
+
+                    if (currentStepToShow == totalStepsInTutorial) { // Last instruction of a tutorial
+                        if (!isInteractiveTutorialActive) { // Passive tutorial completion
+                            tutorialPrefs.edit().putBoolean(activeTutorialCompletionKey, true).apply()
+                            Log.d(TAG, "$activeTutorialCompletionKey marked as completed (passive).")
+                            updateNavHeaderTutorialProgress() // Show 100%
+                        } else { // Interactive tutorial - last instruction shown
+                            Log.d(TAG, "Last instruction for interactive tutorial $activeTutorialCompletionKey shown. Completion depends on final action.")
+                            // Completion and final nav header update will be handled by the action's callback
+                        }
+                        // Common cleanup for last step of any tutorial type if not handled by action
+                        if (tutorialOverlay.visibility == View.VISIBLE && !isInteractiveTutorialActive) {
+                            tutorialOverlay.visibility = View.GONE
+                        }
+                        previousTargetLocationForAnimation = null
+                        currentTutorialPopupWindow = null
                     }
                 }
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
-            dialogView.startAnimation(fadeOut); onNext()
+            dialogView.startAnimation(fadeOutPopup)
+            onNext() // Call the lambda to proceed (e.g., show next step's dialog or launch activity)
         }
+
         closeButton.setOnClickListener {
-            dismissPopupAndHideOverlay()
-            Toast.makeText(this, "Tour cancelled.", Toast.LENGTH_SHORT).show()
-            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
-            tutorialPrefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
+            isProceedingToNextStepOrCompleting = false
+            val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+            fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                override fun onAnimationStart(animation: Animation?) {}
+                override fun onAnimationEnd(animation: Animation?) { popupWindow.dismiss() }
+                override fun onAnimationRepeat(animation: Animation?) {}
+            })
+            dialogView.startAnimation(fadeOut)
         }
     }
 
     private fun hideOverlay() { if (tutorialOverlay.visibility == View.VISIBLE) tutorialOverlay.visibility = View.GONE }
-    private fun showQuickTour() {
-        val greetingCard = findViewById<View>(R.id.greeting_card)
-        showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) { showFilterButtonsTour() }
+
+    private fun hideNavHeaderTutorialProgressAfterCompletion() {
+        Handler(mainLooper).postDelayed({
+            if (tutorialProgressOnRightNavHeader?.visibility == View.VISIBLE && !isFinishing && !isDestroyed) {
+                val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+                fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                    override fun onAnimationStart(p0: Animation?) {}
+                    override fun onAnimationEnd(p0: Animation?) {
+                        if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility = View.GONE
+                    }
+                    override fun onAnimationRepeat(p0: Animation?) {}
+                })
+                tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
+            }
+            currentInteractiveTutorialName = null // Clear active tutorial name after hiding
+        }, 1500)
     }
-    private fun showFilterButtonsTour() {
-        val filterButtons = findViewById<View>(R.id.filter_buttons)
-        showCustomTutorialDialog("Here you can filter events: view All, Upcoming, Ongoing, or past Ended events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) { showEventListTour() }
-    }
-    private fun showEventListTour() {
-        val eventList = findViewById<View>(R.id.recycler_events)
-        showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) { showAttendanceSectionTour() }
-    }
-    private fun showAttendanceSectionTour() {
-        val attendanceButton = findViewById<View>(R.id.btntime_in)
-        showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, 4, TOTAL_QUICK_TOUR_STEPS) {
-            Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
+
+
+    // --- Quick Tour Steps ---
+    private fun showQuickTour(resetProgress: Boolean = false) {
+        activeTutorialCompletionKey = KEY_QUICK_TOUR_COMPLETED
+        activeTutorialStepKey = KEY_QUICK_TOUR_CURRENT_STEP
+        activeTutorialTotalSteps = TOTAL_QUICK_TOUR_STEPS
+
+        isInteractiveTutorialActive = false
+        currentInteractiveTutorialName = TUTORIAL_NAME_QUICK_TOUR
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        var stepToStartFrom = 0 // Represents the number of steps already completed
+
+        if (resetProgress) {
+            tutorialPrefs.edit()
+                .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
+                .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
+                .apply()
+            Log.d(TAG, "Quick Tour progress reset.")
+        } else {
+            if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
+                stepToStartFrom = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
+            } else { // Already completed, but resetProgress was false (e.g. user chose from dialog again)
+                Toast.makeText(this, "Quick Tour already completed. Restarting.", Toast.LENGTH_SHORT).show()
+                tutorialPrefs.edit()
+                    .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
+                    .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
+                    .apply()
+                // stepToStartFrom remains 0 for a fresh start
+            }
+        }
+
+        updateNavHeaderTutorialProgress() // Update nav header based on current/reset progress
+
+        val stepToDisplayInstructionFor = stepToStartFrom + 1 // We show instruction for step N, meaning N-1 are done.
+        Log.d(TAG, "Starting/Resuming Quick Tour. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)")
+
+        when (stepToDisplayInstructionFor) {
+            1 -> showGreetingCardTourStep()
+            2 -> showFilterButtonsTour()
+            3 -> showEventListTour()
+            4 -> showAttendanceSectionTour()
+            else -> { // Handles if already completed (stepToStartFrom = TOTAL_QUICK_TOUR_STEPS) or error
+                if (tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
+                    Log.d(TAG, "Quick Tour was already completed. Not restarting automatically unless reset.")
+                    Toast.makeText(this, "Quick Tour already completed!", Toast.LENGTH_SHORT).show()
+                    hideNavHeaderTutorialProgressAfterCompletion()
+                } else {
+                    Log.e(TAG, "Quick Tour: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1.")
+                    showGreetingCardTourStep() // Should ideally not happen if logic is correct
+                }
+            }
         }
     }
+    private fun showGreetingCardTourStep() { // Instruction for step 1
+        val greetingCard = findViewById<View>(R.id.greeting_card)
+        if (greetingCard == null) { Log.e(TAG, "Greeting card view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) {
+            // Passive: On "Next", step 1 is done. showCustomTutorialDialog's listener saves step 1 and updates nav header.
+            showFilterButtonsTour() // Show instruction for step 2
+        }
+    }
+    private fun showFilterButtonsTour() { // Instruction for step 2
+        val filterButtons = findViewById<View>(R.id.filter_buttons)
+        if (filterButtons == null) { Log.e(TAG, "Filter buttons view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) {
+            showEventListTour() // Show instruction for step 3
+        }
+    }
+    private fun showEventListTour() { // Instruction for step 3
+        val eventList = findViewById<View>(R.id.recycler_events)
+        if (eventList == null) { Log.e(TAG, "Event list view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) {
+            showAttendanceSectionTour() // Show instruction for step 4
+        }
+    }
+    private fun showAttendanceSectionTour() { // Instruction for step 4 (Last step of Quick Tour)
+        val attendanceButton = findViewById<View>(R.id.btntime_in)
+        if (attendanceButton == null) { Log.e(TAG, "Attendance button view not found for tutorial"); handleTutorialCancellation(); return }
+        showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, TOTAL_QUICK_TOUR_STEPS, TOTAL_QUICK_TOUR_STEPS) {
+            // Passive: On "Next", step 4 is done. showCustomTutorialDialog's listener saves step 4, marks completed, updates nav header.
+            Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
+            hideNavHeaderTutorialProgressAfterCompletion()
+        }
+    }
+
+
+    // --- Attendance Workflow Tutorial Steps ---
+    private fun startAttendanceWorkflowTutorial(resetProgress: Boolean = false) {
+        activeTutorialCompletionKey = KEY_ATTENDANCE_TUTORIAL_COMPLETED
+        activeTutorialStepKey = KEY_ATTENDANCE_GUIDE_CURRENT_STEP
+        activeTutorialTotalSteps = TOTAL_ATTENDANCE_TUTORIAL_STEPS
+
+        isInteractiveTutorialActive = true
+        currentInteractiveTutorialName = TUTORIAL_NAME_ATTENDANCE
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        var stepToStartFrom = 0 // Actual completed step count
+
+        if (resetProgress) {
+            tutorialPrefs.edit()
+                .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+                .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+                .apply()
+            Log.d(TAG, "Attendance Guide progress reset.")
+        } else {
+            if (!tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
+                stepToStartFrom = tutorialPrefs.getInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+            } else { // Already completed, but resetProgress was false
+                Toast.makeText(this, "Attendance Guide already completed. Restarting.", Toast.LENGTH_SHORT).show()
+                tutorialPrefs.edit()
+                    .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
+                    .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+                    .apply()
+            }
+        }
+
+        updateNavHeaderTutorialProgress() // Update nav header based on current/reset progress
+
+        val stepToDisplayInstructionFor = stepToStartFrom + 1
+        Log.d(TAG, "Starting/Resuming Interactive Attendance Guide. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)")
+
+        when (stepToDisplayInstructionFor) {
+            1 -> showTimeInButtonTutorialStep_New()
+            2 -> showTimeOutButtonTutorialStep()
+            3 -> showStatusSpinnerTutorialStep_New()
+            4 -> showExcuseLetterButtonTutorialStep_New()
+            else -> {
+                if (tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
+                    Log.d(TAG, "Attendance Guide was already completed. Not restarting automatically unless reset.")
+                    Toast.makeText(this, "Attendance Guide already completed!", Toast.LENGTH_SHORT).show()
+                    hideNavHeaderTutorialProgressAfterCompletion()
+                } else {
+                    Log.e(TAG, "Attendance Guide: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1.")
+                    showTimeInButtonTutorialStep_New()
+                }
+            }
+        }
+    }
+
+    private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Interactive)
+        val timeInButton = findViewById<View>(R.id.btntime_in)
+        if (timeInButton == null) { Log.e(TAG, "Time-In button view not found for tutorial"); handleTutorialCancellation(); return }
+
+        expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN
+        Log.d(TAG, "Attendance Tutorial: Expecting user to click Time-In button (Instruction for step 1).")
+        // Nav header progress already updated by startAttendanceWorkflowTutorial to reflect 0/4 (or current saved step)
+
+        showCustomTutorialDialog(
+            "This guide focuses on attendance. First, let's Time-In. Please tap the 'Time-In' button now.",
+            timeInButton, 1, TOTAL_ATTENDANCE_TUTORIAL_STEPS // currentStepToShow is 1 (instruction for step 1)
+        ) {
+            // This onNext is for the tutorial dialog's "Next" button.
+            // For interactive step, we just hide overlay to allow user to click the actual UI element.
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            Log.d(TAG, "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button.")
+            // Actual progress update for step 1 happens in timeInActivityTutorialLauncher
+        }
+    }
+
+    fun showTimeOutButtonTutorialStep() { // Instruction for Step 2 - TODO: Make fully interactive
+        val timeOutButton = findViewById<View>(R.id.btntime_out)
+        if (timeOutButton == null) { Log.e(TAG, "Time-Out button view not found for tutorial"); handleTutorialCancellation(); return }
+
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_OUT
+        Log.d(TAG, "Attendance Tutorial: Now showing Time-Out step instruction (placeholder for full interactive logic).")
+        // Nav header should reflect 1/4 if Time-In was done. updateNavHeaderTutorialProgress() was called after Time-In.
+
+        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time. (TODO: Make this interactive)", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            Toast.makeText(this, "TODO: Click Time-Out button now.", Toast.LENGTH_SHORT).show()
+            // For now, to simulate progress for testing and move to next instruction:
+            // This would be removed once Time-Out is fully interactive.
+            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
+            // updateNavHeaderTutorialProgress()
+            // showStatusSpinnerTutorialStep_New() // Manually call next instruction for now
+        }
+    }
+
+    private fun showStatusSpinnerTutorialStep_New() { // Instruction for Step 3 - TODO: Make fully interactive
+        val statusSpinnerView = findViewById<View>(R.id.status_spinner)
+        if (statusSpinnerView == null) { Log.e(TAG, "Status spinner view not found for tutorial"); handleTutorialCancellation(); return }
+
+        Log.d(TAG, "Attendance Tutorial: Now showing Status Spinner step instruction (placeholder for full interactive logic).")
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_SELECT_STATUS
+
+        showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            Toast.makeText(this, "TODO: Select a status now.", Toast.LENGTH_SHORT).show()
+            // For now, to simulate progress for testing:
+            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
+            // updateNavHeaderTutorialProgress()
+            // showExcuseLetterButtonTutorialStep_New() // Manually call next instruction
+        }
+    }
+
+    private fun showExcuseLetterButtonTutorialStep_New() { // Instruction for Step 4 - TODO: Make fully interactive
+        val excuseLetterButton = findViewById<View>(R.id.excuse_letter_text_button)
+        if (excuseLetterButton == null) { Log.e(TAG, "Excuse letter button view not found for tutorial"); handleTutorialCancellation(); return }
+
+        Log.d(TAG, "Attendance Tutorial: Now showing Excuse Letter step instruction (placeholder for full interactive logic).")
+        // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_EXCUSE_LETTER
+
+        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            // This is the last step's instruction.
+            // Actual completion and 100% update would happen after user performs the excuse letter action.
+            // For now, to simulate completion for testing:
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit()
+                .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
+                .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
+                .apply()
+            updateNavHeaderTutorialProgress() // Show 100%
+
+            Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉 (Partially interactive)", Toast.LENGTH_SHORT).show()
+            isInteractiveTutorialActive = false
+            currentInteractiveTutorialName = null
+            expectedInteractiveTutorialAction = null
+            hideNavHeaderTutorialProgressAfterCompletion()
+        }
+    }
+
+    // --- END TUTORIAL SYSTEM ---
 
     private fun updateAttendanceBadge(status: String) {
         attendanceStatusBadge.visibility = View.VISIBLE
         writeAttendanceStatusToRealtime(status)
-        when (status.trim().lowercase()) {
+        when (status.trim().lowercase(Locale.ROOT)) {
             "on time" -> { attendanceStatusBadge.text = "On Time"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_green)); attendanceStatusBadge.background = null }
             "late" -> { attendanceStatusBadge.text = "Late"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_yellow)); attendanceStatusBadge.background = null }
             "absent" -> { attendanceStatusBadge.text = "Absent"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_red)); attendanceStatusBadge.background = null }
-            "not timed-in" -> { attendanceStatusBadge.text = "Has not Timed-In"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray)); attendanceStatusBadge.background = null }
+            "has not timed-in" -> { attendanceStatusBadge.text = "Has not Timed-In"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray)); attendanceStatusBadge.background = null }
             "timed-out" -> { attendanceStatusBadge.text = "Timed-Out"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray)); attendanceStatusBadge.background = null }
             else -> attendanceStatusBadge.visibility = View.GONE
         }
@@ -1230,15 +1453,24 @@ class HomeActivity : AppCompatActivity() {
     private fun writeAttendanceStatusToRealtime(status: String) {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(1).addListenerForSingleValueEvent(object : ValueEventListener {
+        ref.orderByChild("timestamp").limitToLast(10).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                var latestTimeInLogKey: String? = null; var latestTimeInTimestamp: Long = 0
+                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
                 for (child in snapshot.children) {
+                    val type = child.child("type").getValue(String::class.java)
                     val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
-                    val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-                    if (timestamp >= todayStart) child.ref.child("attendanceBadge").setValue(status)
+                    if (type == "TimeIn" && timestamp >= todayStart) {
+                        if (timestamp > latestTimeInTimestamp) { latestTimeInTimestamp = timestamp; latestTimeInLogKey = child.key }
+                    }
+                }
+                latestTimeInLogKey?.let { key ->
+                    ref.child(key).child("attendanceBadge").setValue(status)
+                        .addOnSuccessListener { Log.d(TAG, "Attendance badge '$status' written to log $key") }
+                        .addOnFailureListener { e -> Log.e(TAG, "Failed to write badge to log $key: ${e.message}") }
                 }
             }
-            override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to write badge to Realtime DB: ${error.message}") }
+            override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to find TimeIn log to write badge: ${error.message}") }
         })
     }
 
@@ -1249,72 +1481,52 @@ class HomeActivity : AppCompatActivity() {
         val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         val cutoff9am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         val cutoff10am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+
         ref.orderByChild("timestamp").startAt(todayStart.toDouble()).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 var timeInTimestamp: Long? = null; var timeOutTimestamp: Long? = null
-                var timeInSnapshot: DataSnapshot? = null;
+                var timeInLogSnapshot: DataSnapshot? = null
                 for (child in snapshot.children) {
                     val type = child.child("type").getValue(String::class.java)
                     val timestamp = child.child("timestamp").getValue(Long::class.java)
-                    if (type == "TimeIn" && timestamp != null) { timeInTimestamp = timestamp; timeInSnapshot = child }
-                    else if (type == "TimeOut" && timestamp != null) { timeOutTimestamp = timestamp }
+                    if (type == "TimeIn" && timestamp != null) { if (timeInTimestamp == null || timestamp > timeInTimestamp) { timeInTimestamp = timestamp; timeInLogSnapshot = child } }
+                    else if (type == "TimeOut" && timestamp != null) { if (timeOutTimestamp == null || timestamp > timeOutTimestamp) timeOutTimestamp = timestamp }
                 }
 
                 if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
                     updateUserStatus("Off Duty")
-                    var badge: String? = null
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val badgeValue = child.child("attendanceBadge").getValue(String::class.java)
-                        if ((type == "TimeOut") && !badgeValue.isNullOrEmpty()) {
-                            badge = badgeValue
-                            break
-                        }
-                    }
-                    if (!badge.isNullOrEmpty()) {
-                        updateAttendanceBadge(badge)
-                    } else {
-                        updateAttendanceBadge("Timed-Out")
-                    }
+                    val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!badgeFromLog.isNullOrEmpty()) updateAttendanceBadge(badgeFromLog) else updateAttendanceBadge("Timed-Out")
                 } else if (timeInTimestamp != null) {
-                    val badge = timeInSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
-                    if (!badge.isNullOrEmpty()) {
-                        updateAttendanceBadge(badge)
-                    } else {
-                        val fallback = when {
-                            timeInTimestamp < cutoff9am -> "On Time"
-                            timeInTimestamp < cutoff10am -> "Late"
-                            else -> "Absent"
-                        }
-                        updateAttendanceBadge(fallback)
-                        timeInSnapshot?.ref?.child("attendanceBadge")?.setValue(fallback)
+                    val existingBadge = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!existingBadge.isNullOrEmpty()) updateAttendanceBadge(existingBadge)
+                    else {
+                        val determinedBadge = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
+                        updateAttendanceBadge(determinedBadge)
+                        timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
                     }
                 } else {
                     val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
-                    val excuseRef = FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId)
-                    excuseRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(excuseSnapshot: DataSnapshot) {
-                            var matched = false
+                            var isExcused = false
                             for (doc in excuseSnapshot.children) {
-                                val date = doc.child("date").getValue(String::class.java)
-                                val status = doc.child("status").getValue(String::class.java)
-                                if (date == todayFormatted && status.equals("Approved", ignoreCase = true)) {
-                                    matched = true
-                                    break
+                                if (doc.child("date").getValue(String::class.java) == todayFormatted && doc.child("status").getValue(String::class.java).equals("Approved", ignoreCase = true)) {
+                                    isExcused = true; break
                                 }
                             }
-                            if (matched) updateAttendanceBadge("Absent")
+                            if (isExcused) updateAttendanceBadge("Absent")
                             else if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In")
                             else attendanceStatusBadge.visibility = View.GONE
                         }
                         override fun onCancelled(error: DatabaseError) {
-                            updateAttendanceBadge("Has not Timed-In")
+                            if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility = View.GONE
                         }
                     })
                 }
             }
             override fun onCancelled(error: DatabaseError) {
-                updateAttendanceBadge("Has not Timed-In")
+                if (Calendar.getInstance().timeInMillis > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility = View.GONE
             }
         })
     }

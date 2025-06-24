@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.util.Random;
 
 @Service
 public class EventService {
@@ -285,24 +286,47 @@ public class EventService {
                 System.out.println("Event date in UTC: " + utcFormat.format(event.getDate()));
             }
             
-            // Add event to Firestore and let Firestore generate the document ID
-            DocumentReference eventRef = firestore.collection("events").add(event).get();
-
-            // Get the auto-generated ID and set it to the event object
-            event.setEventId(eventRef.getId());
-
-            // Update the event document with the generated eventId
-            eventRef.set(event);
+            // Generate a 6-character event ID (alphanumeric)
+            String eventId = generateShortEventId();
+            event.setEventId(eventId);
             
-            System.out.println("Event added successfully with ID: " + eventRef.getId());
+            // Add event to Firestore with the generated ID
+            DocumentReference eventRef = firestore.collection("events").document(eventId);
+            ApiFuture<WriteResult> result = eventRef.set(event);
+            result.get(); // Wait for write to complete
+            
+            System.out.println("Event added successfully with ID: " + eventId);
 
-            // Return just the ID, not a success message
-            return eventRef.getId();
+            // Return just the ID
+            return eventId;
 
         } catch (Exception e) {
             System.err.println("Error adding event: " + e.getMessage());
-            e.printStackTrace();  // Print full stack trace for debugging
-            return "Failed to add event: " + e.getMessage();
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add event: " + e.getMessage());
+        }
+    }
+
+    // Helper method to generate a 6-character event ID
+    private String generateShortEventId() throws ExecutionException, InterruptedException {
+        String chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new Random();
+        
+        while (true) {
+            StringBuilder sb = new StringBuilder();
+            // Generate a 6-character ID
+            for (int i = 0; i < 6; i++) {
+                sb.append(chars.charAt(random.nextInt(chars.length())));
+            }
+            
+            String eventId = sb.toString();
+            
+            // Check if this ID already exists
+            DocumentSnapshot doc = firestore.collection("events").document(eventId).get().get();
+            if (!doc.exists()) {
+                return eventId; // Return if ID is unique
+            }
+            // If ID exists, loop will continue and generate a new one
         }
     }
 
