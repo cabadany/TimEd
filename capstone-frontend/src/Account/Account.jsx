@@ -349,7 +349,7 @@ export default function AccountPage() {
   const handleAvatarClose = () => {
     setAvatarAnchorEl(null);
   };
-
+//test
   const handleLogout = () => {
     // Remove authentication token and user role from localStorage or sessionStorage
     localStorage.removeItem('token');
