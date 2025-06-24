@@ -58,11 +58,13 @@ import {
   Download,
   Email,
   Home,
-  QrCode2
+  QrCode2,
+  ViewList
 } from '@mui/icons-material';
 import './certificate.css';
 import CertificateEditor from '../components/CertificateEditor';
 import { useTheme } from '../contexts/ThemeContext';
+import EmailStatusTracker from '../components/EmailStatusTracker';
 
 // Separate Modal Component with its own state
 const AttendanceModal = memo(({ 
@@ -485,6 +487,8 @@ export default function Certificate() {
   const [certificatesPerPage] = useState(6);
   const [searchCertQuery, setSearchCertQuery] = useState('');
   const [filteredCertificates, setFilteredCertificates] = useState([]);
+
+  const [activeMainTab, setActiveMainTab] = useState(0);
 
   useEffect(() => {
     // Remove admin role check since this is already an admin dashboard
@@ -1415,6 +1419,11 @@ export default function Certificate() {
   const currentCertificates = filteredCertificates.slice(indexOfFirstCertificate, indexOfLastCertificate);
   const totalPages = Math.ceil(filteredCertificates.length / certificatesPerPage);
 
+  // Add this handler for main tab changes
+  const handleMainTabChange = (event, newValue) => {
+    setActiveMainTab(newValue);
+  };
+
   // If we're on the event attendance page
   if (eventId) {
   return (
@@ -1478,7 +1487,51 @@ export default function Certificate() {
         border: '1px solid',
         borderColor: darkMode ? '#333333' : '#E2E8F0'
       }}>
-        <Box sx={{ 
+       
+        
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Add main tabs */}
+        <Box sx={{ mb: 4 }}>
+          <Tabs 
+            value={activeMainTab} 
+            onChange={handleMainTabChange}
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              '& .MuiTab-root': { 
+                minWidth: { xs: 100, md: 120 }, 
+                textTransform: 'none',
+                fontSize: '16px',
+                fontWeight: 500
+              },
+              '& .Mui-selected': {
+                color: darkMode ? 'var(--accent-color)' : 'royalblue',
+                fontWeight: 600
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue'
+              }
+            }}
+          >
+            <Tab 
+              label="Certificate Templates" 
+              icon={<ViewList />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label="Email Status" 
+              icon={<Email />} 
+              iconPosition="start"
+            />
+          </Tabs>
+        </Box>
+
+        {/* Certificate Templates Tab */}
+        
+        {activeMainTab === 0 && (
+          <>
+           <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
@@ -1531,169 +1584,187 @@ export default function Certificate() {
             }}
           />
         </Box>
-        
-        <Divider sx={{ mb: 3 }} />
-
-        {/* Certificate templates section */}
-        <Box sx={{ mt: 1 }}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-              <CircularProgress size={40} sx={{ color: '#0288d1' }} />
-            </Box>
-          ) : filteredCertificates.length === 0 ? (
-            <Box sx={{ 
-              textAlign: 'center', 
-              py: 4,
-              bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
-              border: '1px dashed',
-              borderColor: darkMode ? '#333333' : '#CBD5E1',
-              borderRadius: '8px'
-            }}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  color: darkMode ? '#f5f5f5' : '#64748B',
-                  mb: 1
-                }}
-              >
-                No certificate templates found
-              </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  color: darkMode ? '#aaaaaa' : '#94A3B8',
-                  mb: 3
-                }}
-              >
-                {searchCertQuery ? 'Try a different search term or' : 'Create templates by selecting an event in the Events page'}
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <Grid container spacing={3}>
-                {currentCertificates.map((certificate) => (
-                  <Grid item xs={12} sm={6} md={4} key={certificate.id}>
-                    <Card 
-                      elevation={2} 
-                      sx={{ 
-                        borderRadius: '12px', 
-                        overflow: 'hidden',
-                        transition: 'all 0.3s ease',
-                        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
-                        border: '1px solid',
-                        borderColor: darkMode ? '#333333' : '#E2E8F0',
-                        '&:hover': {
-                          transform: 'translateY(-8px)',
-                          boxShadow: darkMode 
-                            ? '0 10px 25px rgba(0,0,0,0.3)'
-                            : '0 10px 25px rgba(0,0,0,0.08)'
-                        }
-                      }}
-                    >
-                      {renderCertificateThumbnail(certificate)}
-                      
-                      <CardContent sx={{ pt: 2.5, pb: 2.5 }}>
-                        <Typography 
-                          variant="h6" 
-                          gutterBottom
+            <Box sx={{ mt: 1 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                  <CircularProgress size={40} sx={{ color: '#0288d1' }} />
+                </Box>
+              ) : filteredCertificates.length === 0 ? (
+                <Box sx={{ 
+                  textAlign: 'center', 
+                  py: 4,
+                  bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                  border: '1px dashed',
+                  borderColor: darkMode ? '#333333' : '#CBD5E1',
+                  borderRadius: '8px'
+                }}>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      color: darkMode ? '#f5f5f5' : '#64748B',
+                      mb: 1
+                    }}
+                  >
+                    No certificate templates found
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: darkMode ? '#aaaaaa' : '#94A3B8',
+                      mb: 3
+                    }}
+                  >
+                    {searchCertQuery ? 'Try a different search term or' : 'Create templates by selecting an event in the Events page'}
+                  </Typography>
+                </Box>
+              ) : (
+                <>
+                  <Grid container spacing={3}>
+                    {currentCertificates.map((certificate) => (
+                      <Grid item xs={12} sm={6} md={4} key={certificate.id}>
+                        <Card 
+                          elevation={2} 
                           sx={{ 
-                            fontSize: '18px', 
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
+                            borderRadius: '12px', 
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            color: darkMode ? '#f5f5f5' : '#1E293B'
+                            transition: 'all 0.3s ease',
+                            bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                            border: '1px solid',
+                            borderColor: darkMode ? '#333333' : '#E2E8F0',
+                            '&:hover': {
+                              transform: 'translateY(-8px)',
+                              boxShadow: darkMode 
+                                ? '0 10px 25px rgba(0,0,0,0.3)'
+                                : '0 10px 25px rgba(0,0,0,0.08)'
+                            }
                           }}
                         >
-                          {certificate.title || 'Certificate Template'}
-                        </Typography>
-                        
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary"
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            mb: 2
-                          }}
-                        >
-                          <Event fontSize="small" sx={{ mr: 0.5, fontSize: '16px', color: '#0288d1' }} />
-                          {(certificate.eventName && certificate.eventName !== '{Event Name}')
-                            ? certificate.eventName 
-                            : events.find(e => e.eventId === certificate.eventId)?.eventName 
-                            || 'Unknown Event'}
-                        </Typography>
-                        
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          mt: 'auto'
-                        }}>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => openCertificateEditor(certificate)}
-                            sx={{
-                              borderColor: darkMode ? '#555555' : '#E2E8F0',
-                              color: darkMode ? '#90caf9' : '#0288d1',
-                              '&:hover': {
-                                borderColor: darkMode ? '#90caf9' : '#0288d1',
-                                bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
-                              }
-                            }}
-                          >
-                            Edit Template
-                          </Button>
+                          {renderCertificateThumbnail(certificate)}
                           
-                          <IconButton
-                            onClick={() => deleteCertificate(certificate.id)}
-                            sx={{ 
-                              color: darkMode ? '#ef5350' : '#ef5350',
-                              '&:hover': {
-                                bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
-                              }
-                            }}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </CardContent>
-                    </Card>
+                          <CardContent sx={{ pt: 2.5, pb: 2.5 }}>
+                            <Typography 
+                              variant="h6" 
+                              gutterBottom
+                              sx={{ 
+                                fontSize: '18px', 
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                color: darkMode ? '#f5f5f5' : '#1E293B'
+                              }}
+                            >
+                              {certificate.title || 'Certificate Template'}
+                            </Typography>
+                            
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                mb: 2
+                              }}
+                            >
+                              <Event fontSize="small" sx={{ mr: 0.5, fontSize: '16px', color: '#0288d1' }} />
+                              {(certificate.eventName && certificate.eventName !== '{Event Name}')
+                                ? certificate.eventName 
+                                : events.find(e => e.eventId === certificate.eventId)?.eventName 
+                                || 'Unknown Event'}
+                            </Typography>
+                            
+                            <Box sx={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              mt: 'auto'
+                            }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => openCertificateEditor(certificate)}
+                                sx={{
+                                  borderColor: darkMode ? '#555555' : '#E2E8F0',
+                                  color: darkMode ? '#90caf9' : '#0288d1',
+                                  '&:hover': {
+                                    borderColor: darkMode ? '#90caf9' : '#0288d1',
+                                    bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                                  }
+                                }}
+                              >
+                                Edit Template
+                              </Button>
+                              
+                              <IconButton
+                                onClick={() => deleteCertificate(certificate.id)}
+                                sx={{ 
+                                  color: darkMode ? '#ef5350' : '#ef5350',
+                                  '&:hover': {
+                                    bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
+                                  }
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
                   </Grid>
-                ))}
-              </Grid>
-              
-              {/* Pagination */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                mt: 4,
-                '& .MuiPaginationItem-root': {
-                  color: darkMode ? '#f5f5f5' : 'inherit',
-                  borderColor: darkMode ? '#333333' : '#E2E8F0',
-                  '&.Mui-selected': {
-                    bgcolor: darkMode ? '#90caf9' : '#0288d1',
-                    color: darkMode ? '#1e1e1e' : '#ffffff',
-                    '&:hover': {
-                      bgcolor: darkMode ? '#42a5f5' : '#0277bd'
+                  
+                  {/* Pagination */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    mt: 4,
+                    '& .MuiPaginationItem-root': {
+                      color: darkMode ? '#f5f5f5' : 'inherit',
+                      borderColor: darkMode ? '#333333' : '#E2E8F0',
+                      '&.Mui-selected': {
+                        bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                        color: darkMode ? '#1e1e1e' : '#ffffff',
+                        '&:hover': {
+                          bgcolor: darkMode ? '#42a5f5' : '#0277bd'
+                        }
+                      },
+                      '&:hover': {
+                        bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                      }
                     }
-                  },
-                  '&:hover': {
-                    bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
-                  }
-                }
-              }}>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={handlePageChange}
-                  color="primary"
-                />
-              </Box>
-            </>
-          )}
-        </Box>
+                  }}>
+                    <Pagination
+                      count={totalPages}
+                      page={page}
+                      onChange={handlePageChange}
+                      color="primary"
+                    />
+                  </Box>
+                </>
+              )}
+            </Box>
+          </>
+        )}
+
+        {/* Email Status Tab */}
+        {activeMainTab === 1 && (
+          <Box sx={{ 
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
+            borderRadius: '8px', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            overflow: 'hidden',
+            border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
+            p: 3
+          }}>
+            <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>
+              Certificate Email Status
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Monitor the delivery status of certificate emails sent via Firebase Extensions
+            </Typography>
+            <EmailStatusTracker />
+          </Box>
+        )}
       </Paper>
       
       {/* Certificate Editor Modal */}

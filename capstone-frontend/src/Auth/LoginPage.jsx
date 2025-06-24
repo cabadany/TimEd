@@ -36,6 +36,12 @@ function LoginPage() {
   const [userInfo, setUserInfo] = useState(null);
   const [userInfoLoading, setUserInfoLoading] = useState(false);
 
+  // OTP states
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [tempToken, setTempToken] = useState(null);
+  const [tempUserId, setTempUserId] = useState(null);
+
   // Firebase auth instance
   const auth = getAuth();
 
@@ -216,44 +222,41 @@ function LoginPage() {
     setIsLoading(true);
   
     try {
-      // 🔄 Get email from backend using schoolId
+      // Get email from backend using schoolId
       const emailResponse = await axios.get(getApiUrl(API_ENDPOINTS.EMAIL_BY_SCHOOL_ID), {
         params: { schoolId: idNumber }
       });
   
       const email = emailResponse.data;
-      console.log(email);
-      console.log(password);
-      console.log("auth token firebase", auth);
-      console.log("JWT token: ");
-      // ✅ Authenticate using Firebase Authentication with email
+      
+      // Authenticate using Firebase Authentication with email
       await signInWithEmailAndPassword(auth, email, password);
   
-      // 🔓 If login success, call backend to get user role & token (now including password)
+      // If login success, call backend to get user role & token
       const response = await axios.post(getApiUrl(API_ENDPOINTS.LOGIN_BY_SCHOOL_ID), {
         schoolId: idNumber
       });
 
-      const jwtToken = response.data.token;
-
-      console.log("JWT Token:", jwtToken);
       const data = response.data;
   
       if (data.success) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userId', data.userId);
-        localStorage.setItem('role', data.role);
-        
-        // Dispatch a custom event to notify UserContext of authentication changes
-        window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: data.userId } }));
-        
-        const userI2 = localStorage.getItem("userId"); // or get from auth context
-        console.log("User ID:", userI2);
         if (data.role === 'ADMIN') {
-          setIsAnimating(true);
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 800);
+          // For admin users, request OTP
+          try {
+            await axios.post(getApiUrl(API_ENDPOINTS.GENERATE_OTP), {
+              schoolId: idNumber
+            });
+            
+            // Store temporary data and show OTP input
+            setTempToken(data.token);
+            setTempUserId(data.userId);
+            setShowOtpInput(true);
+            setIsLoading(false);
+            showNotification('Please check your email for OTP', 'info');
+          } catch (error) {
+            setIsLoading(false);
+            showNotification('Failed to send OTP. Please try again.', 'error');
+          }
         } else {
           setIsLoading(false);
           showNotification('Access denied. Only admins can log in.');
@@ -273,13 +276,48 @@ function LoginPage() {
       } else if (error.code === 'auth/wrong-password') {
         showNotification('Wrong password.');
       } else {
-      //  showNotification('Login failed: ' + (error.message || 'Unknown error'));
-      showNotification('Login failed: Check Credentials or Network Connection');
+        showNotification('Login failed: Check Credentials or Network Connection');
       }
     }
   }, [idNumber, password, navigate]);
-  
-  
+
+  const handleVerifyOtp = async () => {
+    if (!otp) {
+      showNotification('Please enter OTP');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.VERIFY_OTP), {
+        schoolId: idNumber,
+        otp: otp
+      });
+
+      if (response.data === 'OTP verified successfully') {
+        // Complete the login process
+        localStorage.setItem('token', tempToken);
+        localStorage.setItem('userId', tempUserId);
+        localStorage.setItem('role', 'ADMIN');
+        
+        // Dispatch auth change event
+        window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: tempUserId } }));
+        
+        setIsAnimating(true);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 800);
+      } else {
+        showNotification('Invalid OTP. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('OTP verification failed:', error);
+      showNotification('Failed to verify OTP. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Add useEffect to handle the 'keydown' event for the entire component
   useEffect(() => {
@@ -793,20 +831,45 @@ function LoginPage() {
             Forgot Password?
           </div>
           
-          <button 
-            ref={loginBtnRef}
-            className={`login-btn ${isAnimating ? 'btn-clicked' : ''} ${isLoading ? 'loading' : ''}`}
-            onClick={handleLogin}
-            disabled={isAnimating || isLoading}
-          >
-            {isLoading ? (
-              <div className="spinner">
-                <div className="bounce1"></div>
-                <div className="bounce2"></div>
-                <div className="bounce3"></div>
-              </div>
-            ) : isAnimating ? 'Logging in...' : 'Login Now'}
-          </button>
+          <Box>
+            {!showOtpInput ? (
+              <button 
+                ref={loginBtnRef}
+                className={`login-btn ${isAnimating ? 'btn-clicked' : ''} ${isLoading ? 'loading' : ''}`}
+                onClick={handleLogin}
+                disabled={isAnimating || isLoading}
+              >
+                {isLoading ? (
+                  <div className="spinner">
+                    <div className="bounce1"></div>
+                    <div className="bounce2"></div>
+                    <div className="bounce3"></div>
+                  </div>
+                ) : isAnimating ? 'Logging in...' : 'Login Now'}
+              </button>
+            ) : (
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Enter OTP"
+                  variant="outlined"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  type="text"
+                  placeholder="Enter the OTP sent to your email"
+                  sx={{ mb: 2 }}
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleVerifyOtp}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <CircularProgress size={24} /> : 'Verify OTP'}
+                </Button>
+              </Box>
+            )}
+          </Box>
           
           <button 
             className="mobile-app-btn"

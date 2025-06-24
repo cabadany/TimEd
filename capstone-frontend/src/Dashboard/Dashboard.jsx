@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
+import * as XLSX from 'xlsx';
 import {
   Box,
   Typography,
@@ -45,20 +46,22 @@ import {
   Search,
   InfoOutlined,
   CheckCircleOutline,
-  Email
+  Email,
+  GetApp
 } from '@mui/icons-material';
 import './Dashboard.css';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCalendar from '../components/EventCalendar';
 import CertificateEditor from '../components/CertificateEditor';
 import EmailStatusTracker from '../components/EmailStatusTracker';
-import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt } from 'firebase/database';
+import { getDatabase, ref, onValue, query, orderByChild, limitToLast, startAt, endAt, set, get } from 'firebase/database';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format, isSameDay } from 'date-fns';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
 import EventAnalytics from '../components/EventAnalytics';
+import { getAuth } from 'firebase/auth';
 
 // Skeleton loading components
 const DashboardSkeleton = () => (
@@ -172,6 +175,12 @@ export default function Dashboard() {
 
   const [attendanceStartDate, setAttendanceStartDate] = useState('');
   const [attendanceEndDate, setAttendanceEndDate] = useState('');
+
+  // Add state for error handling
+  const [thresholdError, setThresholdError] = useState(null);
+
+  // Add after the useState declarations
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchDepartments();
@@ -786,47 +795,149 @@ export default function Dashboard() {
     }
   }, [selectedDate, mainTab, lateThreshold]);
 
-  // Add the Late Threshold Modal component
-  const LateThresholdModal = () => (
-    <Modal
-      open={showLateThresholdModal}
-      onClose={() => setShowLateThresholdModal(false)}
-      aria-labelledby="late-threshold-modal"
-    >
-      <Box sx={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 400,
-        bgcolor: 'background.paper',
-        boxShadow: 24,
-        borderRadius: 2,
-        p: 3
-      }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Set Late Threshold</Typography>
-        <TextField
-          type="time"
-          value={lateThreshold}
-          onChange={(e) => setLateThreshold(e.target.value)}
-          fullWidth
-          sx={{ mb: 2 }}
-        />
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button onClick={() => setShowLateThresholdModal(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            onClick={() => {
-              // Save the threshold and close modal
-              setShowLateThresholdModal(false);
-            }}
-          >
-            Save
-          </Button>
+  // Update loadLateThreshold function
+  const loadLateThreshold = async () => {
+    try {
+      const db = getDatabase();
+      const thresholdRef = ref(db, 'settings/lateThreshold');
+      
+      // First try to get the existing value
+      const snapshot = await get(thresholdRef);
+      if (snapshot.exists()) {
+        setLateThreshold(snapshot.val());
+      }
+
+      // Set up real-time listener
+      onValue(thresholdRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setLateThreshold(snapshot.val());
+        }
+      }, (error) => {
+        console.error('Error loading late threshold:', error);
+        setThresholdError('Failed to load late threshold. Please check your permissions.');
+      });
+    } catch (error) {
+      console.error('Error loading late threshold:', error);
+      setThresholdError('Failed to load late threshold. Please check your permissions.');
+    }
+  };
+
+  // Update saveLateThreshold function
+  const saveLateThreshold = async (newThreshold) => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        setThresholdError('You must be logged in to change the late threshold.');
+        return false;
+      }
+
+      const db = getDatabase();
+      const thresholdRef = ref(db, 'settings/lateThreshold');
+      await set(thresholdRef, newThreshold);
+      setThresholdError(null);
+      return true;
+    } catch (error) {
+      console.error('Error saving late threshold:', error);
+      if (error.message.includes('permission_denied')) {
+        setThresholdError('You do not have permission to change the late threshold. Only administrators can modify this setting.');
+      } else {
+        setThresholdError('Failed to save late threshold. Please try again.');
+      }
+      return false;
+    }
+  };
+
+  // Load late threshold when component mounts
+  useEffect(() => {
+    loadLateThreshold();
+  }, []);
+
+  // Update the LateThresholdModal component
+  const LateThresholdModal = () => {
+    const [tempThreshold, setTempThreshold] = useState(lateThreshold);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      setSaving(true);
+      setThresholdError(null);
+      const success = await saveLateThreshold(tempThreshold);
+      setSaving(false);
+      if (success) {
+        setShowLateThresholdModal(false);
+      }
+    };
+
+    return (
+      <Modal
+        open={showLateThresholdModal}
+        onClose={() => {
+          setShowLateThresholdModal(false);
+          setThresholdError(null);
+        }}
+        aria-labelledby="late-threshold-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper',
+          boxShadow: 24,
+          borderRadius: 2,
+          p: 3,
+          border: darkMode ? '1px solid var(--border-color)' : 'none'
+        }}>
+          <Typography variant="h6" sx={{ mb: 2, color: darkMode ? 'var(--text-primary)' : 'inherit' }}>Set Late Threshold</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Faculty members who time in after this time will be marked as late.
+          </Typography>
+          <TextField
+            type="time"
+            value={tempThreshold}
+            onChange={(e) => setTempThreshold(e.target.value)}
+            fullWidth
+            sx={{ mb: thresholdError ? 1 : 3 }}
+          />
+          {thresholdError && (
+            <Typography 
+              color="error" 
+              variant="body2" 
+              sx={{ mb: 2 }}
+            >
+              {thresholdError}
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button 
+              onClick={() => {
+                setShowLateThresholdModal(false);
+                setThresholdError(null);
+              }}
+              sx={{ color: darkMode ? 'var(--text-secondary)' : 'inherit' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSave}
+              disabled={saving}
+              sx={{
+                bgcolor: darkMode ? 'var(--accent-color)' : undefined,
+                '&:hover': {
+                  bgcolor: darkMode ? 'var(--accent-hover)' : undefined
+                }
+              }}
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </Box>
         </Box>
-      </Box>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   // Add this function after calculateAttendanceStats
   const getLateAttendanceDetails = () => {
@@ -1220,6 +1331,114 @@ export default function Dashboard() {
     fetchFacultyLogs();
   };
 
+  // Add the export function before the return statement
+  const handleExportAttendance = async () => {
+    try {
+      setExportLoading(true);
+      
+      // Get the filename based on the filter type
+      let filename;
+      if (filterType === 'single') {
+        filename = `Faculty_Attendance_${format(selectedDate, 'MMM_d_yyyy')}.xlsx`;
+      } else {
+        filename = `Faculty_Attendance_${format(new Date(attendanceStartDate), 'MMM_d_yyyy')}_to_${format(new Date(attendanceEndDate), 'MMM_d_yyyy')}.xlsx`;
+      }
+
+      // Prepare the export data
+      const exportData = facultyLogs.map(log => ({
+        'Faculty Name': log.firstName,
+        'Email': log.email,
+        'Date': format(new Date(log.timeIn.timestamp), 'MMMM d, yyyy'),
+        'Time In': log.timeIn ? format(new Date(log.timeIn.timestamp), 'hh:mm:ss a') : 'N/A',
+        'Time Out': log.timeOut ? format(new Date(log.timeOut.timestamp), 'hh:mm:ss a') : 'Active Session',
+        'Duration': calculateDuration(log.timeIn, log.timeOut) || 'In Progress',
+        'Status': log.attendanceBadge || 'Unknown'
+      }));
+
+      // Add summary information
+      const summaryData = [
+        {
+          'Faculty Name': 'ATTENDANCE SUMMARY',
+          'Email': '',
+          'Date': filterType === 'single' ? format(selectedDate, 'MMMM d, yyyy') : `${format(new Date(attendanceStartDate), 'MMMM d, yyyy')} to ${format(new Date(attendanceEndDate), 'MMMM d, yyyy')}`,
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'On Time:',
+          'Email': attendanceStats.present.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'Late:',
+          'Email': attendanceStats.late.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {
+          'Faculty Name': 'No Time-in:',
+          'Email': attendanceStats.absent.toString(),
+          'Date': '',
+          'Time In': '',
+          'Time Out': '',
+          'Duration': '',
+          'Status': ''
+        },
+        {}, // Empty row for spacing
+        ...exportData
+      ];
+
+      // Create workbook and add the data
+      const worksheet = XLSX.utils.json_to_sheet(summaryData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Records');
+
+      // Auto-size columns
+      const max_width = summaryData.reduce((w, r) => Math.max(w, r['Faculty Name'] ? r['Faculty Name'].length : 0), 10);
+      const col_width = Math.min(max_width, 50);
+      worksheet['!cols'] = [
+        { wch: col_width }, // Faculty Name
+        { wch: 30 }, // Email
+        { wch: 20 }, // Date
+        { wch: 15 }, // Time In
+        { wch: 15 }, // Time Out
+        { wch: 15 }, // Duration
+        { wch: 15 }  // Status
+      ];
+
+      // Style the summary section
+      const summaryRange = XLSX.utils.decode_range('A1:G4');
+      for (let R = summaryRange.s.r; R <= summaryRange.e.r; ++R) {
+        for (let C = summaryRange.s.c; C <= summaryRange.e.c; ++C) {
+          const cell_address = { c: C, r: R };
+          const cell_ref = XLSX.utils.encode_cell(cell_address);
+          if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+          worksheet[cell_ref].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: "EFEFEF" } }
+          };
+        }
+      }
+
+      // Save the file
+      XLSX.writeFile(workbook, filename);
+    } catch (error) {
+      console.error('Error exporting attendance:', error);
+      setError('Failed to export attendance data. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <Box 
       className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}
@@ -1312,6 +1531,26 @@ export default function Dashboard() {
                   flexWrap: { xs: 'wrap', md: 'nowrap' },
                   alignItems: 'center'
                 }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    disabled={exportLoading || facultyLogs.length === 0}
+                    onClick={handleExportAttendance}
+                    startIcon={exportLoading ? <CircularProgress size={20} /> : <GetApp />}
+                    sx={{ 
+                      textTransform: 'none',
+                      borderRadius: '8px',
+                      borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
+                      color: darkMode ? 'var(--text-primary)' : 'inherit',
+                      '&:hover': {
+                        borderColor: darkMode ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.25)',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+                      }
+                    }}
+                  >
+                    {exportLoading ? 'Exporting...' : 'Export to Excel'}
+                  </Button>
+
                   <Box sx={{ 
                     display: 'flex', 
                     gap: 1, 
@@ -1467,7 +1706,7 @@ export default function Dashboard() {
                   <Typography variant="h6" fontWeight="600" color="#1E293B">
                     Today's Attendance Summary
                   </Typography>
-                {/*  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                       Late after: {lateThreshold}
                     </Typography>
@@ -1484,7 +1723,7 @@ export default function Dashboard() {
                     >
                       Change Time
                     </Button>
-                  </Box>*/}
+                  </Box>
                 </Box>
 
                 <Box sx={{ 

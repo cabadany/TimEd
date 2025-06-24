@@ -163,10 +163,10 @@ const MainLayout = ({ children, title }) => {
     },
     { 
       icon: <AccountTree />, 
-      text: 'DEPARTMENTS', 
+      text: 'DEPTS/ GRADE', 
       onClick: handleNavigateToDepartment, 
       path: '/department',
-      tooltip: 'Departments',
+      tooltip: 'Departma',
     //  badge: departmentCount > 0 ? departmentCount : null,
       group: 'resources'
     },

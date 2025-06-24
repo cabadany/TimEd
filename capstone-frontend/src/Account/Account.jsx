@@ -179,6 +179,7 @@ export default function AccountPage() {
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const filterMenuOpen = Boolean(filterAnchorEl);
   const [activeFilter, setActiveFilter] = useState('');
+  const [showAdminOnly, setShowAdminOnly] = useState(false); // Add this line
 
   // Avatar dropdown menu state
   const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
@@ -263,7 +264,7 @@ export default function AccountPage() {
       setIsLoading(false);
     }
   };
-
+//test
   // Fetch departments from API
   const fetchDepartments = async () => {
     setDepartmentsLoading(true);
@@ -348,7 +349,7 @@ export default function AccountPage() {
   const handleAvatarClose = () => {
     setAvatarAnchorEl(null);
   };
-
+//test
   const handleLogout = () => {
     // Remove authentication token and user role from localStorage or sessionStorage
     localStorage.removeItem('token');
@@ -541,6 +542,10 @@ export default function AccountPage() {
     const departmentId = professor.department?.departmentId;
     const departmentName = departmentId ? getDepartmentName(departmentId).toLowerCase() : '';
     const departmentAbbr = departmentId ? getDepartmentAbbreviation(departmentId).toLowerCase() : '';
+    const isAdmin = professor.role === 'ADMIN';
+    
+    // First apply admin filter if active
+    if (showAdminOnly && !isAdmin) return false;
     
     const matchesSearch = 
       fullName.includes(searchTerm.toLowerCase()) ||
@@ -559,6 +564,8 @@ export default function AccountPage() {
         return matchesSearch && professor.schoolId;
       case 'Name':
         return matchesSearch && (professor.firstName || professor.lastName);
+      case 'Role':
+        return matchesSearch && professor.role;
       default:
         return matchesSearch;
     }
@@ -1377,7 +1384,8 @@ export default function AccountPage() {
         }}>
           <Typography variant="h5" fontWeight="600" color="#1E293B">
             Faculty Accounts
-          </Typography>
+          </Typography>  
+         
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Paper
               elevation={0}
@@ -1420,7 +1428,7 @@ export default function AccountPage() {
                 }}
               >
                 <MenuItem value="" color="white">
-                  <em color="white">All Departments</em>
+                  <em color="white">All Depts / Grade</em>
                 </MenuItem>
                 {departments.map((dept) => (
                   <MenuItem key={dept.departmentId} value={dept.departmentId}>
@@ -1518,7 +1526,7 @@ export default function AccountPage() {
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Dept / Grade</TableCell>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 180 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -1566,12 +1574,12 @@ export default function AccountPage() {
                           try {
                             if (professor.role === 'ADMIN') {
                               return (
-                                <>
-                                  ADMIN
-                                  <Typography variant="caption" color="#64748B" display="block">
-                                    AD
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                                    ADMINISTRATOR
                                   </Typography>
-                                </>
+                          
+                                </Box>
                               );
                             } else if (professor.department && professor.department.departmentId) {
                               return (
@@ -2992,6 +3000,60 @@ export default function AccountPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Filter Menu */}
+      <Menu
+        anchorEl={filterAnchorEl}
+        open={filterMenuOpen}
+        onClose={handleFilterClose}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            border: '1px solid #E2E8F0'
+          }
+        }}
+      >
+        <MenuItem onClick={() => handleFilterSelect('')}>
+          <ListItemIcon>
+            <FilterList fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>All</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleFilterSelect('Department')}>
+          <ListItemIcon>
+            <AccountTree fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Department</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleFilterSelect('ID')}>
+          <ListItemIcon>
+            <Badge fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>School ID</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleFilterSelect('Name')}>
+          <ListItemIcon>
+            <Person fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Name</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleFilterSelect('Role')}>
+          <ListItemIcon>
+            <Settings fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Role</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => setShowAdminOnly(!showAdminOnly)}>
+          <ListItemIcon>
+            <Settings fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {showAdminOnly ? 'Show All Users' : 'Show Admins Only'}
+          </ListItemText>
+        </MenuItem>
+      </Menu>
 
     </Box>
   );
