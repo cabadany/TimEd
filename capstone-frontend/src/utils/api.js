@@ -61,6 +61,6 @@ export const API_ENDPOINTS = {
   
   // Excuse Letters
   GET_ALL_EXCUSE_LETTERS: '/excuse-letters/getAll',
-  GENERATE_OTP: '/api/auth/generate-otp',
-  VERIFY_OTP: '/api/auth/verify-otp',
+  GENERATE_OTP: '/auth/generate-otp',
+  VERIFY_OTP: '/auth/verify-otp',
 }; 

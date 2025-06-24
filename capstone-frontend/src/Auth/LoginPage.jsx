@@ -243,7 +243,7 @@ function LoginPage() {
         if (data.role === 'ADMIN') {
           // For admin users, request OTP
           try {
-            await axios.post('https://timed-utd9.onrender.com/api/auth/generate-otp', {
+            await axios.post(getApiUrl(API_ENDPOINTS.GENERATE_OTP), {
               schoolId: idNumber
             });
             
@@ -290,7 +290,7 @@ function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('https://timed-utd9.onrender.com/api/verify-otp', {
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.VERIFY_OTP), {
         schoolId: idNumber,
         otp: otp
       });
