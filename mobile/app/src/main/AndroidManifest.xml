@@ -99,6 +99,17 @@
                 android:label="@string/home_page"
                 android:windowSoftInputMode="adjustResize" />
 
+        <!--TUTORIAL PROGRESS PAGE-->
+        <activity
+                android:name=".TutorialProgressActivity"
+                android:exported="false"
+                android:label="Tutorial Progress"
+                android:parentActivityName=".HomeActivity">
+            <meta-data
+                    android:name="android.support.PARENT_ACTIVITY"
+                    android:value=".HomeActivity" />
+        </activity>
+
         <!--TIME IN PAGE-->
         <activity
                 android:name=".TimeInActivity"

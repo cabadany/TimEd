@@ -1,44 +1,100 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
         android:layout_height="200dp"
         android:background="@color/primary_deep_blue"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:gravity="bottom">
+        android:padding="16dp">
 
-    <ImageView
-            android:id="@+id/sidebar_profile_image"
-            android:layout_width="70dp"
-            android:layout_height="70dp"
-            android:src="@drawable/ic_profile"
-            android:scaleType="centerCrop"
-            android:layout_gravity="center_vertical"
-            android:padding="4dp" />
-
-    <TextView
-            android:id="@+id/sidebar_user_name"
+    <LinearLayout
+            android:id="@+id/existing_nav_content_wrapper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="User Name"
-            android:textStyle="bold"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:paddingTop="8dp" />
+            android:orientation="vertical"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentBottom="true">
 
-    <TextView
-            android:id="@+id/sidebar_user_details"
+        <ImageView
+                android:id="@+id/sidebar_profile_image"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:src="@drawable/ic_profile"
+                android:scaleType="centerCrop"
+                android:padding="4dp" />
+
+        <TextView
+                android:id="@+id/sidebar_user_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="User Name"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:paddingTop="8dp" />
+
+        <TextView
+                android:id="@+id/sidebar_user_details"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ID • Department"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+
+        <TextView
+                android:id="@+id/sidebar_user_email"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="email@example.com"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+            android:id="@+id/tutorial_progress_on_right_nav_header"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ID • Department"
-            android:textColor="@color/white"
-            android:textSize="14sp" />
+            android:orientation="vertical"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="end"
+            android:visibility="visible">
 
-    <TextView
-            android:id="@+id/sidebar_user_email"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="email@example.com"
-            android:textColor="@color/white"
-            android:textSize="14sp" />
-</LinearLayout>
+        <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+
+            <TextView
+                    android:id="@+id/tutorial_title_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutorial Progress:"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="4dp" />
+
+            <TextView
+                    android:id="@+id/tutorial_percentage_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0%"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <ProgressBar
+                android:id="@+id/tutorial_bar_on_right_nav_header"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@color/accent_coral"
+                android:backgroundTint="@color/light_gray" />
+    </LinearLayout>
+
+</RelativeLayout>
