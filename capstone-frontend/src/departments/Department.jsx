@@ -434,7 +434,7 @@ export default function DepartmentManagement() {
         {/* Filter and Search Bar */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6" fontWeight="600" color="#1E293B">
-            Departments
+            Departments / Grade Level
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Paper
@@ -527,7 +527,7 @@ export default function DepartmentManagement() {
                 fontWeight: 500
               }}
             >
-              Add Department
+              Add Department / Grade Level
             </Button>
           </Box>
         </Box>
@@ -549,7 +549,7 @@ export default function DepartmentManagement() {
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department / Grade Level</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Abbreviation</TableCell>
               {/*    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>*/}
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Programs Offered</TableCell>
@@ -777,7 +777,7 @@ export default function DepartmentManagement() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     name="name"
-                    label="Department Name"
+                    label="Department / Grade Level"
                     value={formData.name}
                     onChange={handleInputChange}
                     fullWidth

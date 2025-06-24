@@ -45,11 +45,14 @@ import {
   CheckCircle,
   Search,
   ManageAccounts,
-  Close
+  Close,
+  FileDownload
 } from '@mui/icons-material';
 import './attendance.css';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 // Separate Modal Component with its own state
 const AttendanceModal = memo(({ 
@@ -538,6 +541,7 @@ export default function Attendance() {
     severity: 'success'
   });
   const [zoomImage, setZoomImage] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Helper to fetch user details by userId
   const fetchUserById = async (userId) => {
@@ -946,6 +950,85 @@ export default function Attendance() {
     };
   };
 
+  const handleExportData = async () => {
+    try {
+      setExportLoading(true);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Export attendees list
+      const attendeesData = filteredAttendees.map(attendee => ({
+        'Name': `${attendee.firstName} ${attendee.lastName}`,
+        'Email': attendee.email,
+        'Department': attendee.department,
+        'Time In': formatTimestamp(attendee.timeIn),
+        'Time Out': formatTimestamp(attendee.timeOut),
+        'Entry Type': 'QR Scan'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(attendeesData);
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendees');
+
+      // Export analytics data
+      const analyticsData = getAttendanceAnalyticsData(attendees);
+      const analyticsSheet = XLSX.utils.json_to_sheet(analyticsData.map(item => ({
+        'Time': item.time,
+        'Time In Count': item.timeInCount,
+        'Time Out Count': item.timeOutCount
+      })));
+      XLSX.utils.book_append_sheet(wb, analyticsSheet, 'Analytics');
+
+      // Capture the analytics graph
+      const analyticsElement = document.querySelector('#attendance-analytics-chart');
+      if (analyticsElement) {
+        const canvas = await html2canvas(analyticsElement);
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Add the graph as a new sheet
+        const imgWs = XLSX.utils.aoa_to_sheet([[{
+          t: 's',
+          v: 'Analytics Graph',
+          s: { font: { bold: true, sz: 14 } }
+        }]]);
+        
+        const imgId = wb.addImage({
+          base64: imgData,
+          extension: 'png',
+        });
+        
+        const col = 'A';
+        const row = 2;
+        imgWs['!images'] = [{
+          name: 'analytics.png',
+          data: imgData,
+          position: {
+            type: 'twoCellAnchor',
+            from: { col: 0, row: row },
+            to: { col: 10, row: row + 20 }
+          }
+        }];
+        
+        XLSX.utils.book_append_sheet(wb, imgWs, 'Analytics Graph');
+      }
+
+      // Generate filename
+      const filename = `${event?.eventName || 'Event'}_Attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Save the file
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to export data',
+        severity: 'error'
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
      
@@ -1238,7 +1321,7 @@ export default function Attendance() {
             </Box>
           </Grid>
           
-          <Grid item xs={6}>
+   {/*        <Grid item xs={6}>
             <Box sx={{ 
               p: 2.5, 
               borderRadius: '12px', 
@@ -1249,7 +1332,7 @@ export default function Attendance() {
               height: '100%',
               textAlign: 'center'
             }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+             <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Faculty Count
               </Typography>
               <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8, mt: 0.5 }}>
@@ -1257,7 +1340,7 @@ export default function Attendance() {
                 {department?.numberOfFaculty || 'N/A'}
               </Typography>
             </Box>
-          </Grid>
+          </Grid>*/}
           
           <Grid item xs={12}>
             <Box sx={{ 
@@ -1427,7 +1510,33 @@ export default function Attendance() {
                     }}
                   />
                   
-            
+                  <Button
+                    variant="contained"
+                    onClick={handleExportData}
+                    disabled={exportLoading || filteredAttendees.length === 0}
+                    startIcon={exportLoading ? <CircularProgress size={20} color="inherit" /> : <FileDownload />}
+                    sx={{
+                      backgroundColor: darkMode ? '#90caf9' : '#0288d1',
+                      color: darkMode ? '#1e1e1e' : '#ffffff',
+                      '&:hover': {
+                        backgroundColor: darkMode ? '#64b5f6' : '#0277bd'
+                      },
+                      borderRadius: '8px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: darkMode ? '0 4px 8px rgba(144,202,249,0.2)' : '0 4px 8px rgba(2,136,209,0.2)',
+                      transition: 'all 0.2s ease-in-out',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textTransform: 'none',
+                      padding: '8px 16px',
+                      height: '40px',
+                      '&:active': {
+                        transform: 'scale(0.98)'
+                      }
+                    }}
+                  >
+                    {exportLoading ? 'Exporting...' : 'Export Data'}
+                  </Button>
                 </Box>
               </Box>
               

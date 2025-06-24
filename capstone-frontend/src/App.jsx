@@ -15,6 +15,7 @@ import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './layouts/MainLayout';
 import Certificate from './certificate/certificate';
+import NotFound from './NotFoundPage';
 import QRJoin from './Event/QRJoin';
 import ExcuseLetters from './ExcuseLetters/ExcuseLetters';
 // Simple layout without sidebar or header, for login page
@@ -137,6 +138,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+                    <Route path="*" element={<NotFound />} />
+
           </Routes>
         </Router>
       </UserProvider>
