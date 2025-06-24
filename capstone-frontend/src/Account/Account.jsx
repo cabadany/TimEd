@@ -264,7 +264,7 @@ export default function AccountPage() {
       setIsLoading(false);
     }
   };
-
+//test
   // Fetch departments from API
   const fetchDepartments = async () => {
     setDepartmentsLoading(true);
