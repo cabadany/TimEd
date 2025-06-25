@@ -731,9 +731,9 @@ export default function EventPage() {
       // Format duration from the separate edit components
       const formattedDuration = `${editDurationHours}:${editDurationMinutes}:${editDurationSeconds}`;
       
-      // Only send the fields that are being updated
+      // Send the full event object as required by backend
       const updatePayload = {
-        eventId: eventToEdit.eventId,
+        ...eventToEdit,
         status: editedStatus,
         duration: formattedDuration
       };
