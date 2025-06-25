@@ -2,6 +2,7 @@ package com.example.timed_mobile
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
@@ -19,6 +20,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.timed_mobile.adapter.EventLogAdapter
 import com.example.timed_mobile.model.EventLogModel
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -80,8 +82,11 @@ class EventLogActivity : AppCompatActivity() {
         swipeRefreshLayoutForAnimation.startAnimation(animContentFadeInLong)
         // --- END OF ANIMATION CODE ---
 
+        // MERGED: The adapter now handles the time-out click by showing a confirmation dialog.
         adapter = EventLogAdapter(
-            onTimeOutClick = { log -> /* not needed anymore */ },
+            onTimeOutClick = { log ->
+                showTimeOutConfirmationDialog(log)
+            },
             onTimeOutConfirmed = {
                 fetchEventLogs() // This will reload updated data
             }
@@ -147,12 +152,17 @@ class EventLogActivity : AppCompatActivity() {
                         .addOnSuccessListener { attendeeSnapshot ->
                             if (!attendeeSnapshot.isEmpty) {
                                 for (attendeeDoc in attendeeSnapshot.documents) {
+                                    // MERGED: Get the unique ID of the attendee document to enable time-out.
+                                    val attendeeDocId = attendeeDoc.id
                                     val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
                                     val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
 
+                                    // MERGED: Create the EventLogModel with the attendeeDocId.
+                                    // Note: Your EventLogModel class must have the 'attendeeDocId' field.
                                     logs.add(
                                         EventLogModel(
                                             eventId = eventId,
+                                            attendeeDocId = attendeeDocId,
                                             eventName = eventName,
                                             timeInTimestamp = timestamp,
                                             status = if (hasTimedOut) "Timed-Out" else "Timed-In",
@@ -185,6 +195,44 @@ class EventLogActivity : AppCompatActivity() {
                 showEmptyText("Failed to load event data.")
             }
     }
+
+    // --- MERGED: Functions to handle the time-out process ---
+    private fun showTimeOutConfirmationDialog(log: EventLogModel) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm Time-Out")
+            .setMessage("Are you sure you want to time out from the event '${log.eventName}'?")
+            .setPositiveButton("Confirm") { dialog, _ ->
+                performTimeOut(log)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun performTimeOut(log: EventLogModel) {
+        Toast.makeText(this, "Processing time-out...", Toast.LENGTH_SHORT).show()
+
+        val db = FirebaseFirestore.getInstance()
+        val eventDocRef = db.collection("events").document(log.eventId)
+        val attendeeDocRef = eventDocRef.collection("attendees").document(log.attendeeDocId)
+
+        db.runTransaction { transaction ->
+            val attendeeSnapshot = transaction.get(attendeeDocRef)
+            if (attendeeSnapshot.getBoolean("hasTimedOut") == true) {
+                return@runTransaction null
+            }
+            transaction.update(attendeeDocRef, "hasTimedOut", true)
+            transaction.update(eventDocRef, "timeOutCount", FieldValue.increment(1))
+            null
+        }.addOnSuccessListener {
+            Toast.makeText(this, "Successfully timed out from ${log.eventName}", Toast.LENGTH_SHORT).show()
+            fetchEventLogs(true)
+        }.addOnFailureListener { e ->
+            Toast.makeText(this, "Failed to time out: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Time-out transaction failed for doc ${log.attendeeDocId}", e)
+        }
+    }
+    // --- END of merged functions ---
 
     private fun updateUIWithLogs(logs: List<EventLogModel>) {
         if (logs.isEmpty()) {
