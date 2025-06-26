@@ -50,7 +50,7 @@
             android:paddingStart="30dp"
             android:paddingEnd="30dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/accent_coral"
+            android:backgroundTint="#3538CD"
             android:text="@string/popup_button_ok"
             android:textColor="@color/white"
             android:textSize="14sp"

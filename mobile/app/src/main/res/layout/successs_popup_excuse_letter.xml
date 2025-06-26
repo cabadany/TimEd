@@ -50,7 +50,7 @@
             android:layout_width="120dp"
             android:layout_height="48dp"
             android:layout_gravity="center"
-            android:backgroundTint="@color/accent_coral"
+            android:backgroundTint="#3538CD"
             android:text="@string/popup_button_ok"
             android:textColor="@color/white"
             android:fontFamily="@font/roboto_medium"

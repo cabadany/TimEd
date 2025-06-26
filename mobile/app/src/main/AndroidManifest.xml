@@ -56,6 +56,14 @@
                 android:screenOrientation="portrait"
                 android:windowSoftInputMode="adjustPan" />
 
+        <!--REQUEST CREATE ACCOUNT PAGE-->
+        <activity
+                android:name=".RequestCreateAccountActivity"
+                android:theme="@style/Theme.TimEd"
+                android:exported="true"
+                android:windowSoftInputMode="adjustPan"
+                />
+
         <!--NEW USER WELCOME PAGE-->
         <activity
                 android:name=".NewUserWelcomeActivity"
