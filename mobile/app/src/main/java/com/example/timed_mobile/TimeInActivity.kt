@@ -53,7 +53,7 @@ import android.graphics.Matrix
 import java.io.File
 import java.io.FileOutputStream
 
-class TimeInActivity : AppCompatActivity() {
+class TimeInActivity : WifiSecurityActivity() {
 
     private lateinit var previewView: PreviewView
     private lateinit var imageCapture: ImageCapture

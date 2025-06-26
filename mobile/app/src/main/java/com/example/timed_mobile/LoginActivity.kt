@@ -21,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.google.firebase.firestore.FirebaseFirestore
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : WifiSecurityActivity() {
 
     private lateinit var inputIdNumber: EditText
     private lateinit var inputPassword: EditText

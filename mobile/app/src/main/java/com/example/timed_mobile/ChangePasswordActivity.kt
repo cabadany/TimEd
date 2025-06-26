@@ -16,7 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import de.hdodenhof.circleimageview.CircleImageView
 import android.util.Log
 
-class ChangePasswordActivity : AppCompatActivity() {
+class ChangePasswordActivity : WifiSecurityActivity() {
     private lateinit var newPasswordInput: TextInputEditText
     private lateinit var reenterPasswordInput: TextInputEditText
     private lateinit var updatePasswordButton: Button

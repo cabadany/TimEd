@@ -22,7 +22,7 @@ import android.view.animation.AnimationUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
-class ExcuseLetterActivity : AppCompatActivity() {
+class ExcuseLetterActivity : WifiSecurityActivity() {
 
     private lateinit var datePicker: Button
     private lateinit var reasonSpinner: Spinner

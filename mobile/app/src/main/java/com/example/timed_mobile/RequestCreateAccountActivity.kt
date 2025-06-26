@@ -25,7 +25,7 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 
-class RequestCreateAccountActivity : AppCompatActivity() {
+class RequestCreateAccountActivity : WifiSecurityActivity() {
 
     // --- Data Models ---
     data class Department(

@@ -48,7 +48,7 @@ import java.net.HttpURLConnection
 // import android.widget.Toast // Already imported
 // import androidx.camera.core.ImageProxy // Already imported
 
-class TimeInEventActivity : AppCompatActivity() {
+class TimeInEventActivity : WifiSecurityActivity() {
 
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner
@@ -1120,15 +1120,15 @@ class TimeInEventActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<out String>,
+        permissions: Array<String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            // Handle this activity's camera permission result
             if (allPermissionsGranted()) {
                 Log.d(TAG, "Permissions granted after request.")
                 setupCameraPreview()
-                startCameraPreviewOnly() // Start with preview, no scanning yet
+                startCameraPreviewOnly()
                 scanButton.text = getString(R.string.button_start_scanning)
                 selfieReminder.text = getString(R.string.timein_event_qr_scan_instruction)
                 scannerOverlay.visibility = View.GONE
@@ -1138,8 +1138,13 @@ class TimeInEventActivity : AppCompatActivity() {
                 Toast.makeText(this, "Camera permission is required.", Toast.LENGTH_LONG).show()
                 finish() // Close activity if permissions are denied
             }
+        } else {
+            // If it's not our request, pass it to the parent (WifiSecureActivity)
+            // to handle its own requests (like location).
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
