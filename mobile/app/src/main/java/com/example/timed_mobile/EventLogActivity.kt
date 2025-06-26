@@ -24,7 +24,7 @@ import com.google.firebase.firestore.FieldValue
 import java.text.SimpleDateFormat
 import java.util.*
 
-class EventLogActivity : AppCompatActivity() {
+class EventLogActivity : WifiSecurityActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView

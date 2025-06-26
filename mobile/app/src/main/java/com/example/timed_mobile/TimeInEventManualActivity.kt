@@ -23,7 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class TimeInEventManualActivity : AppCompatActivity() {
+class TimeInEventManualActivity : WifiSecurityActivity() {
 
     private lateinit var backButton: ImageView
     private lateinit var codeInputLayout: TextInputLayout

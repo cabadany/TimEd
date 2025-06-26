@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.view.View
 import android.view.animation.AnimationUtils
 
-class NewUserFinalStepActivity : AppCompatActivity() {
+class NewUserFinalStepActivity : WifiSecurityActivity() {
 
     private lateinit var completionIcon: ImageView
     private lateinit var completionTitle: TextView

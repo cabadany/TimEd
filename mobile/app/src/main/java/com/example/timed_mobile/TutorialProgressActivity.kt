@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.cardview.widget.CardView
 
-class TutorialProgressActivity : AppCompatActivity() {
+class TutorialProgressActivity : WifiSecurityActivity() {
 
     private lateinit var tvQuickTourStatus: TextView
     private lateinit var pbQuickTour: ProgressBar

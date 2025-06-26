@@ -20,7 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.FirebaseDatabase
 import java.util.Calendar
 
-class TimeOutActivity : AppCompatActivity() {
+class TimeOutActivity : WifiSecurityActivity() {
 
     private var userId: String? = null
     private var userEmail: String? = null

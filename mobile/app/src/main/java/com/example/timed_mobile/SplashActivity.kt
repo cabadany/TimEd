@@ -27,7 +27,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-class SplashActivity : AppCompatActivity() {
+class SplashActivity : WifiSecurityActivity() {
 
     private lateinit var logo: ImageView
     private lateinit var appName: TextView
@@ -45,7 +45,6 @@ class SplashActivity : AppCompatActivity() {
         "AndroidWifi",
         "GlobeAtHome_b4338_2.4",
         "DILI NI WIFI"
-        //"GlobeAtHome_b4338_2.4"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
