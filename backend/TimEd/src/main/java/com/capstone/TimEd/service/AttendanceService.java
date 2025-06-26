@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -57,14 +60,17 @@ public class AttendanceService {
                 return "User not found";
             }
 
-            // Create attendance record
+            // Create attendance record with Philippines timezone
+            ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+            String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("userId", userId);
             attendanceData.put("eventId", eventId);
             attendanceData.put("eventName", eventDoc.getString("eventName"));
             attendanceData.put("firstName", userDoc.getString("firstName"));
             attendanceData.put("email", userDoc.getString("email"));
-            attendanceData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
             attendanceData.put("selfieUrl", null); // Can be updated later if needed
@@ -99,10 +105,13 @@ public class AttendanceService {
                 return "Already timed out for this event";
             }
             
-            // Update the attendance record with timeout information
+            // Update the attendance record with timeout information using Philippines timezone
+            ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+            String timeOutTimestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            
             Map<String, Object> updates = new HashMap<>();
             updates.put("hasTimedOut", true);
-            updates.put("timeOutTimestamp", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            updates.put("timeOutTimestamp", timeOutTimestamp);
             
             // Apply the updates
             attendeeRef.update(updates);
@@ -146,14 +155,17 @@ public class AttendanceService {
             String email = userDoc.getString("email");
             String firstName = userDoc.getString("firstName");
             
-            // Create new attendance record
+            // Create new attendance record with Philippines timezone
+            ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+            String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("eventId", eventId);
             attendanceData.put("eventName", eventName);
             attendanceData.put("userId", userId);
             attendanceData.put("email", email);
             attendanceData.put("firstName", firstName);
-            attendanceData.put("timestamp", Instant.now().toString());
+            attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
             attendanceData.put("selfieUrl", null);
@@ -188,12 +200,14 @@ public class AttendanceService {
                 return "Already timed out for this event";
             }
 
-            String now = Instant.now().toString();
+            // Create timeout timestamp with Philippines timezone
+            ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+            String timeOutTimestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             
             // Update the attendance record
             Map<String, Object> updateData = new HashMap<>();
             updateData.put("hasTimedOut", true);
-            updateData.put("timeOutTimestamp", now);
+            updateData.put("timeOutTimestamp", timeOutTimestamp);
             updateData.put("manualEntry", true);
             
             firestore.collection("attendees").document(attendanceDoc.getId()).update(updateData);

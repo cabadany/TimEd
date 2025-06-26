@@ -37,7 +37,11 @@ class ManualTimeOutActivity : AppCompatActivity() {
 
                 val doc = documents.first()
                 val recordRef = doc.reference
-                val timeOutTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                // Create timestamp in Philippines timezone to match backend format
+                val philippinesTimeZone = java.util.TimeZone.getTimeZone("Asia/Manila")
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                sdf.timeZone = philippinesTimeZone
+                val timeOutTimestamp = sdf.format(Date())
 
                 recordRef.update(
                     mapOf(
