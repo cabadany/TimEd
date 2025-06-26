@@ -16,6 +16,7 @@
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -132,14 +133,6 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/profile_page"
-                android:windowSoftInputMode="adjustResize" />
-
-        <!--SCHEDULE PAGE-->
-        <activity
-                android:name=".ScheduleActivity"
-                android:theme="@style/Theme.TimEd"
-                android:exported="false"
-                android:label="@string/schedule_page"
                 android:windowSoftInputMode="adjustResize" />
 
         <!--CHANGE PASSWORD PAGE-->

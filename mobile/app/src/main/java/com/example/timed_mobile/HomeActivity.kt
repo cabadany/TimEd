@@ -44,11 +44,11 @@ import android.view.ViewGroup
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import androidx.core.app.NotificationCompat
-import com.google.android.material.internal.NavigationMenuView
-
+import android.Manifest
 
 
 class HomeActivity : WifiSecurityActivity() {
@@ -209,6 +209,22 @@ class HomeActivity : WifiSecurityActivity() {
                         statusSpinner.setSelection(index)
                     }
                 }
+            }
+        }
+
+    // --- Notification Permission Handling ---
+    private var pendingNotification: Pair<String, String>? = null
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                Log.d(TAG, "Notification permission granted by user.")
+                pendingNotification?.let {
+                    showNotification(it.first, it.second)
+                    pendingNotification = null
+                }
+            } else {
+                Log.d(TAG, "Notification permission denied by user.")
+                Toast.makeText(this, "Event notifications will not be shown.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -687,6 +703,21 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun sendEventNotification(title: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                showNotification(title, message)
+            } else {
+                // Permission is not granted. Request it.
+                pendingNotification = title to message
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            // No runtime permission needed for older versions
+            showNotification(title, message)
+        }
+    }
+
+    private fun showNotification(title: String, message: String) {
         val channelId = "event_channel_id"
         val notificationId = System.currentTimeMillis().toInt()
         val intent = Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) }
@@ -719,7 +750,9 @@ class HomeActivity : WifiSecurityActivity() {
             }
         } ?: run { sidebarDetails.text = "$idNumber • N/A" }
         sidebarEmail.text = userEmail ?: ""
-        (navigationView.getChildAt(0) as? NavigationMenuView)?.isVerticalScrollBarEnabled = false
+        // The problematic line accessing NavigationMenuView has been removed.
+        // To hide the scrollbar, add `android:scrollbars="none"` to the
+        // <com.google.android.material.navigation.NavigationView> in your home_page.xml file.
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
             override fun onDrawerOpened(drawerView: View) {}
@@ -837,14 +870,29 @@ class HomeActivity : WifiSecurityActivity() {
             }
             firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
                 .addOnSuccessListener { result ->
-                    val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-                    allEvents.clear(); val nowMillis = System.currentTimeMillis()
+                    val fullFormatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                    val shortDateFormatter = SimpleDateFormat("MMM d", Locale.getDefault())
+                    allEvents.clear()
+
+                    // --- Time Window Setup for Notifications ---
+                    val now = Calendar.getInstance()
+                    val nowMillis = now.timeInMillis
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                    }
+                    val todayStartMillis = todayStart.timeInMillis
+                    val yesterdayStart = (todayStart.clone() as Calendar).apply { add(Calendar.DATE, -1) }
+                    val yesterdayStartMillis = yesterdayStart.timeInMillis
+                    // --- End Time Window Setup ---
+
+                    val notifiedPrefs = getSharedPreferences("EventNotificationPrefs", Context.MODE_PRIVATE)
+
                     for (doc in result) {
                         try {
                             val title = doc.getString("eventName") ?: continue
                             val duration = doc.getString("duration") ?: "1:00:00"
                             val date = doc.getTimestamp("date")?.toDate() ?: continue
-                            val dateFormatted = formatter.format(date)
+                            val dateFormatted = fullFormatter.format(date)
                             val statusFromDb = doc.getString("status") ?: "upcoming"
                             val durationParts = duration.split(":")
                             val durationMillis = when (durationParts.size) {
@@ -860,9 +908,43 @@ class HomeActivity : WifiSecurityActivity() {
                                 nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
                                 else -> "ended"
                             }
+
+                            // Notification for upcoming event (within 15 mins)
                             if (dynamicStatus == "upcoming" && eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
-                                sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
+                                val notificationKey = "notified_upcoming_${doc.id}"
+                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
                             }
+                            // Notification for when an event becomes ongoing
+                            else if (dynamicStatus == "ongoing") {
+                                val notificationKey = "notified_ongoing_${doc.id}"
+                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event is Ongoing", "\"$title\" has started.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+                            // Notification for events that ended yesterday or today
+                            else if (dynamicStatus == "ended") {
+                                val notificationKey = "notified_ended_${doc.id}"
+                                val endedWithinWindow = eventEndMillis >= yesterdayStartMillis && eventEndMillis <= nowMillis
+                                if (endedWithinWindow && !notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event Ended", "The event \"$title\" has now ended.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+                            // Notification for events scheduled for yesterday or today that are cancelled
+                            else if (dynamicStatus == "cancelled") {
+                                val notificationKey = "notified_cancelled_${doc.id}"
+                                val scheduledForYesterdayOrToday = eventStartMillis >= yesterdayStartMillis && eventStartMillis < (todayStartMillis + 24 * 60 * 60 * 1000)
+                                if (scheduledForYesterdayOrToday && !notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    val scheduledDateStr = shortDateFormatter.format(date)
+                                    sendEventNotification("Event Cancelled", "The event \"$title\" (for $scheduledDateStr) has been cancelled.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+
                             allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date))
                         } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
                     }
