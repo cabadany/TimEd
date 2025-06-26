@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -14,6 +16,9 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.LayoutInflater
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -38,7 +43,6 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Register a receiver to listen for network changes
         networkChangeReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 Log.d(TAG, "Network state changed.")
@@ -46,22 +50,16 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
             }
         }
         registerReceiver(networkChangeReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
-        // Perform an initial check as soon as the activity is visible
         checkNetworkAndShowBlockerIfNeeded()
     }
 
     override fun onPause() {
         super.onPause()
-        // Unregister the receiver to avoid memory leaks
         unregisterReceiver(networkChangeReceiver)
-        // Dismiss the dialog to prevent window leaks
         blockingDialog?.dismiss()
         blockingDialog = null
     }
 
-    /**
-     * Continuously checks the network state and shows a blocking dialog if invalid.
-     */
     private fun checkNetworkAndShowBlockerIfNeeded() {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -100,25 +98,30 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Shows a non-cancelable dialog that blocks the UI.
-     */
     private fun showBlockingDialog(message: String) {
-        blockingDialog?.dismiss() // Dismiss any old dialog
+        if (blockingDialog != null && blockingDialog!!.isShowing) {
+            return
+        }
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_network_blocker, null)
+        val messageTextView = dialogView.findViewById<TextView>(R.id.dialog_message)
+        val settingsButton = dialogView.findViewById<Button>(R.id.dialog_button_settings)
+
+        messageTextView.text = message
+
         val builder = AlertDialog.Builder(this)
-            .setTitle("Network Requirement")
-            .setMessage(message)
-            .setCancelable(false)
-            .setPositiveButton("Go to Settings") { _, _ ->
-                startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
-            }
+        builder.setView(dialogView)
+        builder.setCancelable(false)
+
         blockingDialog = builder.create()
+
+        settingsButton.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+        }
+
+        blockingDialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         blockingDialog?.show()
     }
 
-    /**
-     * Performs a one-time check when a specific action (e.g., a button click) is initiated.
-     */
     fun performWifiChecksAndProceed(action: () -> Unit) {
         if (!hasLocationPermission()) {
             Log.d(TAG, "Location permission not granted. Requesting...")
@@ -203,43 +206,67 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         return ALLOWED_WIFI_SSIDS.contains(cleanedSsid)
     }
 
+    /**
+     * A generic function to show a custom dialog for one-time info alerts.
+     */
+    private fun showCustomInfoDialog(message: String, buttonText: String, isCancelable: Boolean, action: (() -> Unit)?) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_network_blocker, null)
+        val messageTextView = dialogView.findViewById<TextView>(R.id.dialog_message)
+        val actionButton = dialogView.findViewById<Button>(R.id.dialog_button_settings)
+
+        messageTextView.text = message
+        actionButton.text = buttonText
+
+        val builder = AlertDialog.Builder(this)
+        builder.setView(dialogView)
+        builder.setCancelable(isCancelable)
+
+        val dialog = builder.create()
+
+        actionButton.setOnClickListener {
+            action?.invoke()
+            dialog.dismiss()
+        }
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.show()
+    }
+
     private fun showWifiNotEnabledDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Wi-Fi Disabled")
-            .setMessage("Wi-Fi must be enabled for this action. Please enable Wi-Fi and try again.")
-            .setCancelable(false)
-            .setPositiveButton("Go to Settings") { _, _ -> startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) }
-            .setNegativeButton("Cancel", null)
-            .show()
+        showCustomInfoDialog(
+            message = "Wi-Fi must be enabled for this action. Please enable Wi-Fi and try again.",
+            buttonText = "Go to Settings",
+            isCancelable = false,
+            action = { startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) }
+        )
     }
 
     private fun showMobileDataNotAllowedDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Mobile Data Detected")
-            .setMessage("This action requires a Wi-Fi connection. Please disable mobile data or connect to an authorized Wi-Fi network to continue.")
-            .setCancelable(true)
-            .setPositiveButton("OK", null)
-            .show()
+        showCustomInfoDialog(
+            message = "This action requires a Wi-Fi connection. Please disable mobile data or connect to an authorized Wi-Fi network to continue.",
+            buttonText = "OK",
+            isCancelable = true,
+            action = null
+        )
     }
 
     private fun showEnableLocationDialogForWifi() {
-        AlertDialog.Builder(this)
-            .setTitle("Enable Location Services")
-            .setMessage("Location services are required to detect the Wi-Fi network name. Please enable location services and try again.")
-            .setCancelable(false)
-            .setPositiveButton("Go to Settings") { _, _ -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
-            .setNegativeButton("Cancel", null)
-            .show()
+        showCustomInfoDialog(
+            message = "Location services are required to detect the Wi-Fi network name. Please enable location services and try again.",
+            buttonText = "Go to Settings",
+            isCancelable = false,
+            action = { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+        )
     }
 
     private fun showWifiRequiredDialog() {
         val allowedSsidsString = ALLOWED_WIFI_SSIDS.joinToString(separator = ", ")
-        AlertDialog.Builder(this)
-            .setTitle("Incorrect Wi-Fi Network")
-            .setMessage("You must be connected to one of the following Wi-Fi networks to perform this action: $allowedSsidsString.")
-            .setCancelable(true)
-            .setPositiveButton("OK", null)
-            .show()
+        showCustomInfoDialog(
+            message = "You must be connected to one of the following Wi-Fi networks to perform this action: $allowedSsidsString.",
+            buttonText = "OK",
+            isCancelable = true,
+            action = null
+        )
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {

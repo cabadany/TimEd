@@ -128,4 +128,10 @@
     <string name="popup_message_success_manual_time_in">Your attendance for \'%1$s\' has been recorded.</string>
     <string name="verifying_code_button_text">Verifying...</string>
     <string name="verify_code_button_text">Verify Code</string>
+
+    <!-- Strings for Network Blocker Dialog -->
+    <string name="popup_warning_icon_desc">Warning Icon</string>
+    <string name="popup_title_network_requirement">Network Requirement</string>
+    <string name="popup_message_network_placeholder">You must be connected to an authorized network.</string>
+    <string name="popup_button_go_to_settings">Go to Settings</string>
 </resources>

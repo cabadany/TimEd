@@ -1373,7 +1373,7 @@ class HomeActivity : WifiSecurityActivity() {
         Log.d(TAG, "Attendance Tutorial: Now showing Time-Out step instruction (placeholder for full interactive logic).")
         // Nav header should reflect 1/4 if Time-In was done. updateNavHeaderTutorialProgress() was called after Time-In.
 
-        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time. (TODO: Make this interactive)", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
