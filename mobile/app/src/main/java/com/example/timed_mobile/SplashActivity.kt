@@ -45,7 +45,6 @@ class SplashActivity : WifiSecurityActivity() {
         "AndroidWifi",
         "GlobeAtHome_b4338_2.4",
         "DILI NI WIFI"
-
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

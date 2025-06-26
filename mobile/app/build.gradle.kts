@@ -97,6 +97,10 @@ dependencies {
 
     implementation ("androidx.exifinterface:exifinterface:1.3.6")
 
+    // HTTP client for API calls
+    implementation ("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("com.google.code.gson:gson:2.10.1")
+
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

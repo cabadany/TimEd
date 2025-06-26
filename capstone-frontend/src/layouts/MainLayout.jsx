@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Email,
-  Person
+  Person,
+  PersonAdd
 } from '@mui/icons-material';
 import AppHeader from '../components/AppHeader';
 import { useTheme } from '../contexts/ThemeContext';
@@ -116,6 +117,10 @@ const MainLayout = ({ children, title }) => {
     navigate('/excuse-letters');
   };
 
+  const handleNavigateToAccountRequests = () => {
+    navigate('/account-requests');
+  };
+
   // Function to check if a route is active
   const isActive = (path) => {
     return location.pathname === path;
@@ -168,6 +173,15 @@ const MainLayout = ({ children, title }) => {
       path: '/department',
       tooltip: 'Departma',
     //  badge: departmentCount > 0 ? departmentCount : null,
+      group: 'resources'
+    },
+    {
+      icon: <PersonAdd />,
+      text: 'ACCOUNT REQUESTS',
+      onClick: handleNavigateToAccountRequests,
+      path: '/account-requests',
+      tooltip: 'Account Requests',
+      badge: null,
       group: 'resources'
     },
     {

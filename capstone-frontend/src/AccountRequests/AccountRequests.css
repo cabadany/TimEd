@@ -1,0 +1,181 @@
+/* Account Requests Page Styles */
+.account-requests-container {
+  padding: 24px;
+  background-color: var(--background-primary);
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+.account-requests-header {
+  margin-bottom: 24px;
+}
+
+.account-requests-title {
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.account-requests-description {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.account-requests-tabs {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+
+.account-requests-table-card {
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+}
+
+.account-requests-table-header {
+  background-color: var(--table-header-bg);
+}
+
+.account-requests-table-cell {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--table-border);
+}
+
+.account-requests-table-cell-header {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.account-requests-table-row:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.account-requests-details-dialog {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.account-requests-details-card {
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+}
+
+.account-requests-review-dialog {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.account-requests-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.account-requests-action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.account-requests-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background-color: var(--background-primary);
+}
+
+.account-requests-empty-state {
+  padding: 32px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Dark mode specific adjustments */
+.dark-mode .account-requests-table-row:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark-mode .account-requests-details-card {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root {
+  color: var(--text-primary);
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--border-color);
+}
+
+.dark-mode .MuiTextField-root .MuiInputLabel-root {
+  color: var(--text-secondary);
+}
+
+/* Status chip custom colors */
+.status-chip-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.status-chip-approved {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.status-chip-rejected {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Button animations */
+.account-requests-action-button {
+  transition: all 0.2s ease;
+}
+
+.account-requests-action-button:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .account-requests-container {
+    padding: 16px;
+  }
+  
+  .account-requests-table-container {
+    overflow-x: auto;
+  }
+  
+  .account-requests-details-dialog {
+    margin: 16px;
+  }
+  
+  .account-requests-review-dialog {
+    margin: 16px;
+  }
+}
+
+/* Custom scrollbar for table */
+.account-requests-table-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.account-requests-table-container::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.account-requests-table-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.account-requests-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+} 

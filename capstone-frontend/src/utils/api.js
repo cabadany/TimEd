@@ -59,6 +59,13 @@ export const API_ENDPOINTS = {
   // Email
   SEND_EMAIL: '/email/send',
   
+  // Account Requests
+  GET_ALL_ACCOUNT_REQUESTS: '/account-requests/all',
+  GET_PENDING_ACCOUNT_REQUESTS: '/account-requests/pending',
+  GET_ACCOUNT_REQUEST: (requestId) => `/account-requests/${requestId}`,
+  REVIEW_ACCOUNT_REQUEST: '/account-requests/review',
+  CREATE_ACCOUNT_REQUEST: '/account-requests/create',
+  
   // Excuse Letters
   GET_ALL_EXCUSE_LETTERS: '/excuse-letters/getAll',
   GENERATE_OTP: '/auth/generate-otp',

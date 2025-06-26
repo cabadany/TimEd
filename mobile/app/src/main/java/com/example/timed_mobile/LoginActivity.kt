@@ -109,13 +109,23 @@ class LoginActivity : WifiSecurityActivity() {
                 val userDoc = documents.first()
                 val dbPassword = userDoc.getString("password") ?: ""
                 val role = userDoc.getString("role")?.uppercase() ?: ""
-
+                val verified = userDoc.getBoolean("verified") ?: false
 
                 if (role != "USER" && role != "FACULTY") {
                     Toast.makeText(
                         this,
                         "Only USER/FACULTY accounts can log in on mobile.",
                         Toast.LENGTH_SHORT
+                    ).show()
+                    return@addOnSuccessListener
+                }
+
+                // Check if user account is verified
+                if (!verified) {
+                    Toast.makeText(
+                        this,
+                        "Your account needs to be verified by an admin first. Please contact the administrator.",
+                        Toast.LENGTH_LONG
                     ).show()
                     return@addOnSuccessListener
                 }
@@ -168,7 +178,6 @@ class LoginActivity : WifiSecurityActivity() {
                         putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
                         putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
                         putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
-                        putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
                         putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
                     }
                     startActivity(intent)

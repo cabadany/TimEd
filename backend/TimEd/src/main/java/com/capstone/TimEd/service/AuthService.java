@@ -95,8 +95,9 @@ public class AuthService {
             user.setPassword(passwordEncoder.encode(request.getPassword())); // Hash the password
             user.setDepartment(department); // Set the department
             user.setProfilePictureUrl(request.getProfilePictureUrl()); // Set profile picture URL
+            user.setVerified(true); // Admin-created accounts are automatically verified
 
-            userService.createUser(user); // This method saves the user in Firestore
+            String documentId = userService.createUser(user); // This method saves the user in Firestore
 
             return new AuthResponse(token, userRecord.getUid(), request.getSchoolId(), role);
 
@@ -111,6 +112,11 @@ public class AuthService {
             User user = userService.getUserBySchoolId(request.getSchoolId());
             if (user == null) {
                 return new AuthResponse("User not found with schoolId: " + request.getSchoolId());
+            }
+
+            // Check if user is verified
+            if (!user.isVerified()) {
+                return new AuthResponse("Your account needs to be verified by an admin first. Please contact the administrator.");
             }
 
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -138,17 +144,22 @@ public class AuthService {
                 return new AuthResponse("User not found with schoolId: " + request.getSchoolId());
             }
 
-            // Step 2: Use the Firebase Admin SDK to get user data based on userId
+            // Step 2: Check if user is verified
+            if (!user.isVerified()) {
+                return new AuthResponse("Your account needs to be verified by an admin first. Please contact the administrator.");
+            }
+
+            // Step 3: Use the Firebase Admin SDK to get user data based on userId
             UserRecord userRecord = firebaseAuth.getUser(user.getUserId());
 
-            // Step 3: Prepare additional claims if needed
+            // Step 4: Prepare additional claims if needed
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", user.getRole());
 
-            // Step 4: Generate Firebase Custom Token
+            // Step 5: Generate Firebase Custom Token
             String token = firebaseAuth.createCustomToken(userRecord.getUid(), claims);
 
-            // Step 5: Return the AuthResponse with token, user info, etc.
+            // Step 6: Return the AuthResponse with token, user info, etc.
             return new AuthResponse(token, user.getUserId(), user.getSchoolId(), user.getRole());
 
         } catch (FirebaseAuthException | InterruptedException | ExecutionException e) {
