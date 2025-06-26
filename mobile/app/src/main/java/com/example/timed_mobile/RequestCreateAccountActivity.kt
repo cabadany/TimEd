@@ -22,6 +22,7 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 
 class RequestCreateAccountActivity : AppCompatActivity() {
@@ -171,38 +172,77 @@ class RequestCreateAccountActivity : AppCompatActivity() {
         val firstName = nameParts.getOrNull(0) ?: ""
         val lastName = nameParts.getOrNull(1) ?: ""
 
-        // Create request data with timestamp
+        // Create request data
         val requestData = mapOf(
             "firstName" to firstName,
             "lastName" to lastName,
             "email" to email,
             "schoolId" to idNumber,
             "department" to department,
-            "password" to password,
-            "status" to "PENDING",
-            "requestDate" to com.google.firebase.Timestamp.now()
+            "password" to password
         )
 
-        // Submit to Firestore for backend processing
-        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-        db.collection("accountRequests")
-            .add(requestData)
-            .addOnSuccessListener { documentReference ->
-                Toast.makeText(this, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
-                finish()
-            }
-            .addOnFailureListener { exception ->
-                submitButton.isEnabled = true
-                submitButton.text = "Submit Request"
-                
-                val errorMessage = when {
-                    exception.message?.contains("already exists") == true -> "An account with this ID already exists."
-                    exception.message?.contains("pending") == true -> "You already have a pending request."
-                    else -> "Failed to submit request. Please try again."
+        // Convert to JSON
+        val gson = Gson()
+        val jsonBody = gson.toJson(requestData)
+
+        // Create HTTP request to backend API
+        val client = OkHttpClient()
+        val body = RequestBody.create(
+            "application/json; charset=utf-8".toMediaTypeOrNull(),
+            jsonBody
+        )
+        
+        val request = Request.Builder()
+            .url("$API_BASE_URL/account-requests/create")
+            .post(body)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    submitButton.isEnabled = true
+                    submitButton.text = "Submit Request"
+                    Toast.makeText(this@RequestCreateAccountActivity, "Network error. Please check your internet connection and try again.", Toast.LENGTH_LONG).show()
                 }
-                
-                Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
             }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    runOnUiThread {
+                        submitButton.isEnabled = true
+                        submitButton.text = "Submit Request"
+                        
+                        if (it.isSuccessful) {
+                            val responseBody = it.body?.string()
+                            try {
+                                val responseJson = gson.fromJson(responseBody, Map::class.java)
+                                val success = responseJson["success"] as? Boolean ?: false
+                                val message = responseJson["message"] as? String ?: "Request submitted successfully"
+                                
+                                if (success) {
+                                    Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
+                                    finish()
+                                } else {
+                                    Toast.makeText(this@RequestCreateAccountActivity, message, Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
+                                finish()
+                            }
+                        } else {
+                            val errorMessage = when (it.code) {
+                                400 -> "Invalid request data. Please check all fields."
+                                409 -> "An account with this information already exists or is pending."
+                                500 -> "Server error. Please try again later."
+                                else -> "Failed to submit request. Please try again."
+                            }
+                            Toast.makeText(this@RequestCreateAccountActivity, errorMessage, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        })
     }
 
     private fun fetchDepartmentsFromAPI() {
