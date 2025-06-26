@@ -796,12 +796,13 @@ export default function Attendance() {
         }
       }
       
-      // Handle "yyyy-MM-dd HH:mm:ss" format (new structure)
+      // Handle "yyyy-MM-dd HH:mm:ss" format (new structure) - treat as Philippines time
       if (timestamp.includes('-') && timestamp.includes(':')) {
         const [datePart, timePart] = timestamp.split(' ');
         const [year, month, day] = datePart.split('-');
         const [hour, minute, second] = timePart.split(':');
         
+        // Create date as if it's Philippines time (since backend now stores in Philippines timezone)
         const date = new Date(year, month - 1, day, hour, minute, second);
         if (!isNaN(date.getTime())) {
           return date.toLocaleString('en-PH', {
@@ -810,8 +811,7 @@ export default function Attendance() {
             day: 'numeric',
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true,
-            timeZone: 'Asia/Manila'
+            hour12: true
           });
         }
       }
