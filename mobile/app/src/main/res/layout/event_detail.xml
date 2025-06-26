@@ -66,7 +66,7 @@
             android:layout_marginStart="32dp"
             android:layout_marginEnd="32dp"
             android:layout_marginBottom="24dp"
-            android:backgroundTint="@color/accent_coral"
+            android:backgroundTint="#3538CD"
             android:text="@string/event_detail_button_time_in"
             android:textColor="@color/white"
             android:textSize="16sp"

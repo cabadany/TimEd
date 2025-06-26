@@ -12,7 +12,7 @@
     <ImageView
             android:id="@+id/top_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="300dp"
+            android:layout_height="225dp"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
@@ -24,13 +24,13 @@
             android:layout_alignParentStart="true"
             android:layout_marginStart="4dp"
             android:layout_marginTop="4dp"
+            android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
             android:contentDescription="Back"
             android:focusable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_back_button"
-            android:background="@drawable/ripple_icon_back_button"
-            android:stateListAnimator="@animator/button_scale_animator" />
+            android:stateListAnimator="@animator/button_scale_animator"
+            app:srcCompat="@drawable/ic_back_button" />
 
     <!-- Title -->
     <TextView
@@ -42,25 +42,25 @@
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
             android:padding="8dp"
-            android:text="Excuse Letter \nHistory"
-            android:textAlignment="center"
-            android:textColor="@color/primary_deep_blue"
-            android:textSize="30sp"
-            android:textStyle="bold"
             android:shadowColor="#33000000"
             android:shadowDx="1"
             android:shadowDy="1"
-            android:shadowRadius="2" />
+            android:shadowRadius="2"
+            android:text="Excuse Letter \nHistory"
+            android:textAlignment="center"
+            android:textColor="#37474F"
+            android:textSize="30sp"
+            android:textStyle="bold" />
 
     <!-- Loading Indicator -->
     <ProgressBar
             android:id="@+id/progress_bar"
+            style="?android:attr/progressBarStyleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:visibility="gone"
-            style="?android:attr/progressBarStyleLarge"
-            android:indeterminateTint="@color/primary_medium_blue" />
+            android:indeterminateTint="#3538CD"
+            android:visibility="gone" />
 
     <!-- SwipeRefreshLayout for RecyclerView and Empty Message -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -79,11 +79,11 @@
                     android:id="@+id/recycler_excuses"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:layoutAnimation="@anim/layout_fall_down"
                     android:paddingHorizontal="16dp"
                     android:paddingBottom="24dp"
-                    android:clipToPadding="false"
                     android:scrollbars="vertical"
-                    android:layoutAnimation="@anim/layout_fall_down"
                     android:visibility="gone" />
 
             <!-- Empty Message -->
@@ -91,13 +91,13 @@
                     android:id="@+id/text_empty"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="No excuse letters submitted."
-                    android:textSize="16sp"
-                    android:textColor="@color/neutral_text_gray"
                     android:layout_centerInParent="true"
-                    android:visibility="gone"
-                    android:fontFamily="@font/roboto_medium"
-                    android:alpha="0" /> <!-- Start with alpha 0 for fade-in -->
+                    android:alpha="0"
+                    android:fontFamily="@font/league_spartan_medium"
+                    android:text="No excuse letters submitted."
+                    android:textColor="@color/medium_gray"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
         </RelativeLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

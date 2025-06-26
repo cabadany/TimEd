@@ -137,19 +137,10 @@ class TimeInEventManualActivity : AppCompatActivity() {
 
         returnToScanButton.setOnClickListener { finish() }
 
-        // Consider removing this auto-verify on focus change if it's causing UX issues
-        // or if the button press is the primary intended action.
-        // If kept, ensure it doesn't trigger prematurely or too often.
         codeInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val code = codeInput.text.toString().trim()
                 if (code.isNotEmpty()) {
-                    // It might be better to just validate and not auto-submit here
-                    // validateInputs()
-                    // If you want to auto-submit, ensure performTimeIn() is desired on focus loss
-                    // if (validateInputs()) {
-                    //     performTimeIn()
-                    // }
                 }
             }
         }
@@ -162,45 +153,34 @@ class TimeInEventManualActivity : AppCompatActivity() {
             codeInput.requestFocus() // Keep focus if error
             return false
         }
-        // Optional: Add length check if event codes have a fixed length
-        // if (code.length != 8) { // Example length
-        //     codeInputLayout.error = "Event ID must be 8 characters"
-        //     codeInput.requestFocus()
-        //     return false
-        // }
         codeInputLayout.error = null
         return true
     }
 
     private fun performTimeIn() {
         verifyButton.isEnabled = false
-        verifyButton.text = "Verifying..." // Consider using a string resource
-        val eventId = codeInput.text.toString().trim().uppercase(Locale.ROOT) // Standardize to uppercase
+        verifyButton.text = "Verifying..."
+
+        val eventId = codeInput.text.toString().trim()
         val db = FirebaseFirestore.getInstance()
 
-        // First, check if the event itself exists
         db.collection("events").document(eventId).get()
             .addOnSuccessListener { eventDocument ->
                 if (!eventDocument.exists()) {
                     showErrorDialog("Event ID '$eventId' not found. Please check the code.")
-                    verifyButton.isEnabled = true
-                    verifyButton.text = "Verify Code" // Reset button
+                    resetButton()
                     return@addOnSuccessListener
                 }
 
-                // Event exists, now check if user already timed in for this event in "attendanceRecords"
-                // Assuming "attendanceRecords" is the central collection for all attendance.
-                db.collection("attendanceRecords")
+                // FIX: Check for duplicates in the location EventLogActivity reads from.
+                db.collection("events").document(eventId).collection("attendees")
                     .whereEqualTo("userId", userId)
-                    .whereEqualTo("eventId", eventId)
-                    .whereEqualTo("type", "event_time_in") // Ensure it's an event time-in
-                    .limit(1) // We only need to know if one exists
+                    .limit(1)
                     .get()
                     .addOnSuccessListener { existingRecords ->
                         if (!existingRecords.isEmpty) {
                             showErrorDialog("You have already timed in for this event.")
-                            verifyButton.isEnabled = true
-                            verifyButton.text = "Verify Code" // Reset button
+                            resetButton()
                         } else {
                             // Not timed in yet, proceed to log attendance
                             logAttendanceToFirestore(eventId, eventDocument.getString("eventName") ?: "Unknown Event")
@@ -208,62 +188,53 @@ class TimeInEventManualActivity : AppCompatActivity() {
                     }
                     .addOnFailureListener { e ->
                         showErrorDialog("Failed to check existing records: ${e.message}")
-                        verifyButton.isEnabled = true
-                        verifyButton.text = "Verify Code" // Reset button
+                        resetButton()
                     }
             }
             .addOnFailureListener { e ->
                 showErrorDialog("Failed to verify event ID: ${e.message}")
-                verifyButton.isEnabled = true
-                verifyButton.text = "Verify Code" // Reset button
+                resetButton()
             }
     }
 
     private fun logAttendanceToFirestore(eventId: String, eventName: String) {
         val db = FirebaseFirestore.getInstance()
-        // val timestamp = System.currentTimeMillis() // Using Firestore server timestamp is better
-        // val formattedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 
+        // FIX: Create a timestamp string, as expected by EventLogActivity.
+        val formattedTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        // FIX: Create a data map that matches the fields used by EventLogActivity.
         val attendanceData = hashMapOf(
             "userId" to userId,
-            "firstName" to userFirstName,
-            "email" to userEmail,
-            "eventId" to eventId, // Add eventId to the record
-            "eventName" to eventName, // Add eventName to the record
-            "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp(), // Use server timestamp
-            "type" to "event_time_in_manual", // Differentiate manual time-in
+            "timestamp" to formattedTimestamp,
             "hasTimedOut" to false,
-            "selfieUrl" to null // Manual time-in typically won't have a selfie
+            // You can include other details; they just won't be used by the log screen
+            "firstName" to userFirstName,
+            "email" to userEmail
         )
 
-        // Log to the central "attendanceRecords" collection
-        db.collection("attendanceRecords")
-            .add(attendanceData) // Use add() to generate a unique document ID
-            .addOnSuccessListener { documentReference ->
-                // Optionally, trigger certificate email if applicable for manual time-ins
-                userEmail?.let { email ->
-                    userFirstName?.let { name ->
-                        // You might need a modified triggerCertificateEmail or a flag to indicate manual
-                        // For now, let's assume manual time-ins might also get certificates
-                        // This depends on your app's logic for certificates.
-                        // triggerCertificateEmail(eventName, eventId, email, name, documentReference.id)
-                        // For simplicity, just show success for now.
-                    }
-                }
+        // FIX: Log to the 'attendees' sub-collection, which is where EventLogActivity reads from.
+        db.collection("events").document(eventId).collection("attendees")
+            .add(attendanceData)
+            .addOnSuccessListener {
                 showSuccessDialog(eventName)
             }
             .addOnFailureListener { e ->
                 showErrorDialog("Failed to save attendance: ${e.message}")
-                verifyButton.isEnabled = true
-                verifyButton.text = "Verify Code" // Reset button
+                resetButton()
             }
+    }
+
+    private fun resetButton() {
+        verifyButton.isEnabled = true
+        verifyButton.text = "Verify Code"
     }
 
     private fun showSuccessDialog(eventName: String) {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(false)
-        dialog.setContentView(R.layout.success_popup_time_in) // Re-use existing success popup
+        dialog.setContentView(R.layout.success_popup_time_in)
         dialog.window?.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -272,14 +243,13 @@ class TimeInEventManualActivity : AppCompatActivity() {
 
         val titleText = dialog.findViewById<TextView>(R.id.popup_title)
         val messageText = dialog.findViewById<TextView>(R.id.popup_message)
-        // Customize message for manual time-in
-        titleText.text = getString(R.string.popup_title_success_manual_time_in) // "Successfully Timed In"
-        messageText.text = getString(R.string.popup_message_success_manual_time_in, eventName) // "Your attendance for '$eventName' has been recorded."
+        titleText.text = getString(R.string.popup_title_success_manual_time_in)
+        messageText.text = getString(R.string.popup_message_success_manual_time_in, eventName)
 
         val closeButton = dialog.findViewById<Button>(R.id.popup_close_button)
         closeButton.setOnClickListener {
             dialog.dismiss()
-            setResult(RESULT_OK) // Indicate success to previous activity if needed
+            setResult(RESULT_OK)
             finish()
         }
 
@@ -288,8 +258,7 @@ class TimeInEventManualActivity : AppCompatActivity() {
 
     private fun showErrorDialog(errorMessage: String) {
         if (!isFinishing && !isDestroyed) {
-            verifyButton.isEnabled = true
-            verifyButton.text = "Verify Code" // Reset button text
+            resetButton()
             Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
         }
     }

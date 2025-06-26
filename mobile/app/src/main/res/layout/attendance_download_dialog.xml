@@ -3,71 +3,73 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="320dp"
         android:layout_height="wrap_content"
-        android:background="@drawable/popup_background"
+        android:layout_gravity="center"
+        android:background="@drawable/dialog_background"
+        android:gravity="center"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="32dp"
-        android:gravity="center_horizontal">
+        android:padding="24dp">
 
-    <!-- Download Icon -->
     <ImageView
             android:id="@+id/download_icon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:layout_marginBottom="16dp"
+            android:contentDescription="Download PDF"
             app:srcCompat="@drawable/ic_download_file"
-            android:contentDescription="Download PDF" />
+            app:tint="#3538CD" />
 
     <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/roboto_bold"
+            android:layout_marginBottom="8dp"
+            android:fontFamily="@font/league_spartan_bold"
             android:gravity="center"
-            android:text="Attendance Sheet"
-            android:textColor="@color/black"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:text="Download Attendance"
+            android:textColor="#37474F"
+            android:textSize="20sp" />
 
     <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/roboto_medium"
+            android:layout_marginBottom="24dp"
+            android:fontFamily="@font/league_spartan_medium"
             android:gravity="center"
-            android:text="Are you sure you want to download the PDF file?"
-            android:textColor="@color/dark_gray"
-            android:textSize="16sp"
-            android:layout_marginBottom="24dp" />
+            android:lineSpacingExtra="4dp"
+            android:text="Do you want to generate and download the attendance sheet as a PDF file?"
+            android:textColor="@color/medium_gray"
+            android:textSize="16sp" />
 
     <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:orientation="horizontal">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_no"
-                android:layout_width="100dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="16dp"
-                android:backgroundTint="#EEEEEE"
-                android:text="No"
-                android:textColor="@color/black"
-                android:fontFamily="@font/roboto_medium"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/league_spartan_bold"
+                android:text="Cancel"
+                android:textColor="#3538CD"
                 android:textSize="14sp"
-                app:cornerRadius="8dp"
-                android:elevation="2dp" />
+                app:cornerRadius="12dp"
+                app:strokeColor="#3538CD" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_yes"
-                android:layout_width="100dp"
-                android:layout_height="48dp"
-                android:backgroundTint="@color/yellow_gold"
-                android:text="Yes"
-                android:textColor="@color/maroon"
-                android:fontFamily="@font/roboto_medium"
-                android:textSize="14sp"
-                app:cornerRadius="8dp"
-                android:elevation="4dp" />
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="#3538CD"
+                android:fontFamily="@font/league_spartan_bold"
+                android:text="Download"
+                android:textColor="@color/white"
+                android:textSize="10sp"
+                app:cornerRadius="12dp" />
     </LinearLayout>
 </LinearLayout>

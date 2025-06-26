@@ -80,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:minWidth="200dp"
                 android:text="Next"
-                android:backgroundTint="@color/accent_coral"
+                android:backgroundTint="#3538CD"
                 android:textColor="@color/white"
                 android:paddingStart="32dp"
                 android:paddingEnd="32dp"

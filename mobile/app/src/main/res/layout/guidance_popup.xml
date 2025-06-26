@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="10dp"
+        app:cardBackgroundColor="@color/white">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="20dp">
+
+        <!-- Header -->
+        <ImageView
+                android:id="@+id/guidance_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_info"
+                app:tint="#3538CD"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/guidance_title"
+                app:layout_constraintBottom_toBottomOf="@id/guidance_title"/>
+
+        <TextView
+                android:id="@+id/guidance_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:fontFamily="@font/league_spartan_bold"
+                android:text="Account Setup Guide"
+                android:textColor="#3538CD"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toStartOf="@+id/guidance_progress_text"
+                app:layout_constraintStart_toEndOf="@id/guidance_icon"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+                android:id="@+id/guidance_progress_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/league_spartan_medium"
+                android:text="Step 1 of 6"
+                android:textColor="@color/medium_gray"
+                android:textSize="12sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/guidance_title"
+                app:layout_constraintBottom_toBottomOf="@id/guidance_title"/>
+
+        <!-- Divider -->
+        <View
+                android:id="@+id/guidance_divider"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:background="#E0E0E0"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/guidance_title" />
+
+        <!-- Body with ScrollView that has a maximum height -->
+        <ScrollView
+                android:id="@+id/guidance_scroll_view"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:scrollbars="vertical"
+                app:layout_constrainedHeight="true"
+                app:layout_constraintHeight_max="250dp"
+                app:layout_constraintTop_toBottomOf="@id/guidance_divider"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/button_container">
+
+            <TextView
+                    android:id="@+id/guidance_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:lineSpacingExtra="5dp"
+                    android:text="This is where the guidance message will appear."
+                    android:textColor="#37474F"
+                    android:textSize="15sp" />
+        </ScrollView>
+
+        <!-- Footer Buttons -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/button_container"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:layout_constraintTop_toBottomOf="@id/guidance_scroll_view"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+            <Button
+                    android:id="@+id/guidance_close_button"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/league_spartan_medium"
+                    android:text="Exit Guide"
+                    android:textColor="#3538CD"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- FIXED: Created a packed chain for the navigation buttons to ensure they are grouped, responsive, and never overlap the 'Exit' button. -->
+            <Button
+                    android:id="@+id/guidance_next_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#3538CD"
+                    android:fontFamily="@font/league_spartan_bold"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:text="Next"
+                    android:textColor="@color/white"
+                    app:cornerRadius="20dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/guidance_previous_button"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            <Button
+                    android:id="@+id/guidance_previous_button"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:fontFamily="@font/league_spartan_medium"
+                    android:text="Previous"
+                    android:textColor="#3538CD"
+                    android:textStyle="bold"
+                    android:visibility="invisible"
+                    app:cornerRadius="20dp"
+                    app:strokeColor="#3538CD"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/guidance_next_button"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/guidance_close_button"
+                    app:layout_constraintHorizontal_chainStyle="packed"
+                    app:layout_constraintHorizontal_bias="1.0"
+                    />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

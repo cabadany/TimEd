@@ -2,12 +2,20 @@ package com.example.timed_mobile
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import at.favre.lib.crypto.bcrypt.BCrypt
@@ -56,6 +64,35 @@ class LoginActivity : AppCompatActivity() {
             }
 
             loginUser(idNumber, password)
+        }
+
+        // --- This block makes "Create Account" a clickable link ---
+        val createAccountText = findViewById<TextView>(R.id.highlight_createAccount)
+        val fullText = createAccountText.text.toString()
+        val spannable = SpannableString(fullText)
+
+        val clickablePart = "Create Account"
+        val start = fullText.indexOf(clickablePart)
+        if (start != -1) { // Check if the text exists to avoid errors
+            val end = start + clickablePart.length
+
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    val intent = Intent(this@LoginActivity, RequestCreateAccountActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+
+            // Make the text clickable
+            spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            // Change the color of the clickable text
+            val color = Color.parseColor("#3538CD") // Your primary button color
+            spannable.setSpan(ForegroundColorSpan(color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            createAccountText.text = spannable
+            createAccountText.movementMethod = LinkMovementMethod.getInstance()
+            createAccountText.highlightColor = Color.TRANSPARENT // Removes the highlight on click
         }
     }
 
