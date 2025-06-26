@@ -139,7 +139,7 @@
         <!-- Department -->
         <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/outline_department"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="32dp"
@@ -157,14 +157,16 @@
                 app:startIconDrawable="@drawable/ic_department"
                 app:startIconTint="#3538CD">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <AutoCompleteTextView
                     android:id="@+id/input_department"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Department"
-                    android:inputType="text"
+                    android:inputType="none"
                     android:padding="16dp"
-                    android:textColor="#37474F" />
+                    android:textColor="#37474F"
+                    android:focusable="false"
+                    android:clickable="true" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Password -->
