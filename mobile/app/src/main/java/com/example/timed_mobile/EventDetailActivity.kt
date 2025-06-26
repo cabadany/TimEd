@@ -14,7 +14,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.firestore.FirebaseFirestore
 
-class EventDetailActivity : AppCompatActivity() {
+class EventDetailActivity : WifiSecurityActivity() {
 
     private lateinit var backButton: ImageView
     private lateinit var descriptionView: TextView

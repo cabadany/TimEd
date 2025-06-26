@@ -11,7 +11,7 @@ import android.view.View // Added for animation
 import android.view.animation.AnimationUtils // Added for animation
 import android.widget.TextView // Added for feature_title and feature_message
 
-class NewUserFeatureActivity : AppCompatActivity() {
+class NewUserFeatureActivity : WifiSecurityActivity() {
 
     private var clockAnimation: Animatable? = null
     private lateinit var featureIcon: ImageView

@@ -9,7 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.MotionEvent
+
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.AlphaAnimation
@@ -20,7 +20,7 @@ import android.view.animation.TranslateAnimation
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -40,9 +40,6 @@ import java.util.*
 import android.graphics.drawable.ColorDrawable
 import android.app.Dialog
 import android.view.ViewGroup
-import kotlin.math.abs
-import androidx.core.view.isVisible
-import com.google.firebase.firestore.DocumentReference
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -52,7 +49,9 @@ import android.os.Handler
 import androidx.core.app.NotificationCompat
 import com.google.android.material.internal.NavigationMenuView
 
-class HomeActivity : AppCompatActivity() {
+
+
+class HomeActivity : WifiSecurityActivity() {
 
     companion object {
         private const val TAG = "HomeActivity"

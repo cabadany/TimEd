@@ -20,7 +20,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputLayout
 
-class RequestCreateAccountActivity : AppCompatActivity() {
+class RequestCreateAccountActivity : WifiSecurityActivity() {
 
     // --- Guidance System Members ---
     private lateinit var guidanceOverlay: FrameLayout

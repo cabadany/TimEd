@@ -18,7 +18,7 @@ import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import de.hdodenhof.circleimageview.CircleImageView
 
-class ProfileActivity : AppCompatActivity() {
+class ProfileActivity : WifiSecurityActivity() {
 
     private lateinit var changePasswordButton: Button
     private lateinit var attendanceSheetButton: Button

@@ -10,7 +10,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
-class EditProfileActivity : AppCompatActivity() {
+class EditProfileActivity : WifiSecurityActivity() {
     private lateinit var nameInput: TextInputEditText
     private lateinit var emailInput: TextInputEditText
     private lateinit var phoneInput: TextInputEditText

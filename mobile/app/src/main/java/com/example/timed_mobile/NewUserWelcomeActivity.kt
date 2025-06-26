@@ -10,7 +10,7 @@ import android.view.View // Added for animation
 import android.view.animation.AnimationUtils // Added for animation
 import android.widget.TextView // Added for TextViews
 
-class NewUserWelcomeActivity : AppCompatActivity() {
+class NewUserWelcomeActivity : WifiSecurityActivity() {
 
     companion object {
         const val PREFS_ONBOARDING = "OnboardingPrefs"

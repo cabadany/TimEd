@@ -20,7 +20,7 @@ import com.example.timed_mobile.model.ExcuseLetterModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
-class ExcuseLetterHistoryActivity : AppCompatActivity() {
+class ExcuseLetterHistoryActivity : WifiSecurityActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ExcuseLetterAdapter
