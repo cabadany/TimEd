@@ -18,6 +18,7 @@ import Certificate from './certificate/certificate';
 import NotFound from './NotFoundPage';
 import QRJoin from './Event/QRJoin';
 import ExcuseLetters from './ExcuseLetters/ExcuseLetters';
+import AccountRequests from './AccountRequests/AccountRequests';
 // Simple layout without sidebar or header, for login page
 const SimpleLayout = ({ children }) => {
   return (
@@ -124,6 +125,16 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout title="Profile">
                     <Setting />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/account-requests" 
+              element={
+                <ProtectedRoute>
+                  <MainLayout title="Account Requests">
+                    <AccountRequests />
                   </MainLayout>
                 </ProtectedRoute>
               }

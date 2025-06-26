@@ -19,8 +19,22 @@ import android.view.animation.TranslateAnimation
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputLayout
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import java.io.IOException
 
 class RequestCreateAccountActivity : AppCompatActivity() {
+
+    // --- Data Models ---
+    data class Department(
+        val departmentId: String,
+        val name: String,
+        val abbreviation: String,
+        val numberOfFaculty: Int,
+        val offeredPrograms: List<String>
+    )
 
     // --- Guidance System Members ---
     private lateinit var guidanceOverlay: FrameLayout
@@ -33,9 +47,15 @@ class RequestCreateAccountActivity : AppCompatActivity() {
     private lateinit var guidanceSteps: List<GuidanceStep>
     private var currentGuidanceStepIndex = 0
 
+    // --- Department Dropdown ---
+    private lateinit var departments: List<Department>
+    private lateinit var departmentDropdown: AutoCompleteTextView
+    private var selectedDepartment: Department? = null
+
     companion object {
         private const val PREFS_NAME = "TimedAppPrefs"
         private const val KEY_SEEN_REG_GUIDE = "hasSeenRegistrationGuide"
+        private const val API_BASE_URL = "https://timed-utd9.onrender.com/api"
     }
     // --- End Guidance System Members ---
 
@@ -53,6 +73,7 @@ class RequestCreateAccountActivity : AppCompatActivity() {
         guidanceOverlay = findViewById(R.id.guidance_overlay)
         helpButton.setOnClickListener { startRegistrationGuidance(it) }
 
+        setupDepartmentDropdown()
         setupFormSubmission()
 
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -98,41 +119,198 @@ class RequestCreateAccountActivity : AppCompatActivity() {
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
     }
 
+    private fun setupDepartmentDropdown() {
+        departmentDropdown = findViewById(R.id.input_department)
+        departments = emptyList()
+        
+        // Load departments from API
+        fetchDepartmentsFromAPI()
+    }
+
     private fun setupFormSubmission() {
         val submitButton = findViewById<Button>(R.id.btnSubmitAccount)
         val inputName = findViewById<EditText>(R.id.input_name)
         val inputIdNumber = findViewById<EditText>(R.id.input_idnumber)
         val inputEmail = findViewById<EditText>(R.id.input_email)
-        val inputDepartment = findViewById<EditText>(R.id.input_department)
         val inputPassword = findViewById<EditText>(R.id.input_password)
 
         submitButton.setOnClickListener {
             val name = inputName.text.toString().trim()
             val idNumber = inputIdNumber.text.toString().trim()
             val email = inputEmail.text.toString().trim()
-            val department = inputDepartment.text.toString().trim()
+            val department = selectedDepartment?.name ?: ""
             val password = inputPassword.text.toString().trim()
 
-            if (listOf(name, idNumber, email, department, password).any { it.isEmpty() }) {
-                Toast.makeText(this, "Please fill in all fields.", Toast.LENGTH_SHORT).show()
+            if (listOf(name, idNumber, email, password).any { it.isEmpty() } || selectedDepartment == null) {
+                Toast.makeText(this, "Please fill in all fields and select a department.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val subject = "TimEd Account Registration Request"
-            val message = "New account registration request:\n\nName: $name\nID Number: $idNumber\nEmail: $email\nDepartment: $department\nPassword: $password\n\nPlease review and approve this request."
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "message/rfc822"
-                putExtra(Intent.EXTRA_EMAIL, arrayOf("timedsystems@gmail.com"))
-                putExtra(Intent.EXTRA_SUBJECT, subject)
-                putExtra(Intent.EXTRA_TEXT, message)
+            // Validate email format
+            if (!isValidEmail(email)) {
+                Toast.makeText(this, "Please enter a valid email address.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            try {
-                startActivity(Intent.createChooser(intent, "Send email..."))
-                Toast.makeText(this, "Request submitted. Please wait for approval.", Toast.LENGTH_LONG).show()
-                finish()
-            } catch (e: Exception) {
-                Toast.makeText(this, "No email app found.", Toast.LENGTH_SHORT).show()
+
+            // Submit request to backend
+            submitAccountRequest(name, idNumber, email, department, password)
+        }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
+    private fun submitAccountRequest(name: String, idNumber: String, email: String, department: String, password: String) {
+        // Show loading state
+        val submitButton = findViewById<Button>(R.id.btnSubmitAccount)
+        submitButton.isEnabled = false
+        submitButton.text = "Submitting..."
+
+        // Parse name into first and last name
+        val nameParts = name.split(" ", limit = 2)
+        val firstName = nameParts.getOrNull(0) ?: ""
+        val lastName = nameParts.getOrNull(1) ?: ""
+
+        // Create request data
+        val requestData = mapOf(
+            "firstName" to firstName,
+            "lastName" to lastName,
+            "email" to email,
+            "schoolId" to idNumber,
+            "department" to department,
+            "password" to password
+        )
+
+        // Convert to JSON
+        val gson = Gson()
+        val jsonBody = gson.toJson(requestData)
+
+        // Create HTTP request to backend API
+        val client = OkHttpClient()
+        val body = RequestBody.create(
+            "application/json; charset=utf-8".toMediaTypeOrNull(),
+            jsonBody
+        )
+        
+        val request = Request.Builder()
+            .url("$API_BASE_URL/account-requests/create")
+            .post(body)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    submitButton.isEnabled = true
+                    submitButton.text = "Submit Request"
+                    Toast.makeText(this@RequestCreateAccountActivity, "Network error. Please check your internet connection and try again.", Toast.LENGTH_LONG).show()
+                }
             }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    runOnUiThread {
+                        submitButton.isEnabled = true
+                        submitButton.text = "Submit Request"
+                        
+                        if (it.isSuccessful) {
+                            val responseBody = it.body?.string()
+                            try {
+                                val responseJson = gson.fromJson(responseBody, Map::class.java)
+                                val success = responseJson["success"] as? Boolean ?: false
+                                val message = responseJson["message"] as? String ?: "Request submitted successfully"
+                                
+                                if (success) {
+                                    Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
+                                    finish()
+                                } else {
+                                    Toast.makeText(this@RequestCreateAccountActivity, message, Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
+                                finish()
+                            }
+                        } else {
+                            val errorMessage = when (it.code) {
+                                400 -> "Invalid request data. Please check all fields."
+                                409 -> "An account with this information already exists or is pending."
+                                500 -> "Server error. Please try again later."
+                                else -> "Failed to submit request. Please try again."
+                            }
+                            Toast.makeText(this@RequestCreateAccountActivity, errorMessage, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    private fun fetchDepartmentsFromAPI() {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("$API_BASE_URL/departments")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(this@RequestCreateAccountActivity, "Failed to load departments. Please check your internet connection.", Toast.LENGTH_LONG).show()
+                    // Set a fallback list of departments
+                    setupFallbackDepartments()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (it.isSuccessful) {
+                        val responseBody = it.body?.string()
+                        if (responseBody != null) {
+                            try {
+                                val gson = Gson()
+                                val departmentListType = object : TypeToken<List<Department>>() {}.type
+                                departments = gson.fromJson(responseBody, departmentListType)
+                                
+                                runOnUiThread {
+                                    setupDepartmentAdapter()
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    Toast.makeText(this@RequestCreateAccountActivity, "Error parsing departments data.", Toast.LENGTH_SHORT).show()
+                                    setupFallbackDepartments()
+                                }
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this@RequestCreateAccountActivity, "Failed to load departments from server.", Toast.LENGTH_SHORT).show()
+                            setupFallbackDepartments()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    private fun setupFallbackDepartments() {
+        // Fallback departments in case API fails
+        departments = listOf(
+            Department("1", "College of Computer Studies", "CCS", 0, emptyList()),
+            Department("2", "College of Arts, Sciences, and Education", "CASE", 0, emptyList()),
+            Department("3", "College of Engineering and Architecture", "CEA", 0, emptyList()),
+            Department("4", "College of Nursing and Allied Health Sciences", "CNAHS", 0, emptyList()),
+            Department("5", "Grade 7", "G7", 0, emptyList())
+        )
+        setupDepartmentAdapter()
+    }
+
+    private fun setupDepartmentAdapter() {
+        val departmentNames = departments.map { it.name }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, departmentNames)
+        departmentDropdown.setAdapter(adapter)
+        
+        departmentDropdown.setOnItemClickListener { _, _, position, _ ->
+            selectedDepartment = departments[position]
+            departmentDropdown.setText(departments[position].name, false)
         }
     }
 
