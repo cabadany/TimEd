@@ -14,9 +14,12 @@ public class User {
     private String password;
     private String role;
     private String profilePictureUrl; // URL to the profile picture in Firebase Storage
+    private boolean verified;       // Whether the user account has been verified by admin
 
     // Default constructor
-    public User() {}
+    public User() {
+        this.verified = false; // Default to unverified
+    }
 
     // Constructor to initialize the User with fields
     public User(String userId, String firstName, String lastName, String departmentId, String email, String schoolId, String password, String role, String profilePictureUrl) {
@@ -29,6 +32,7 @@ public class User {
         this.password = password;
         this.role = role;
         this.profilePictureUrl = profilePictureUrl;
+        this.verified = false; // Default to unverified
     }
 
     // Getters and Setters
@@ -131,6 +135,16 @@ public class User {
         this.profilePictureUrl = profilePictureUrl;
     }
 
+    @PropertyName("verified")
+    public boolean isVerified() {
+        return verified;
+    }
+
+    @PropertyName("verified")
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -142,6 +156,7 @@ public class User {
                 ", email='" + email + '\'' +
                 ", role='" + role + '\'' +
                 ", profilePictureUrl='" + profilePictureUrl + '\'' +
+                ", verified=" + verified +
                 '}';
     }
 }

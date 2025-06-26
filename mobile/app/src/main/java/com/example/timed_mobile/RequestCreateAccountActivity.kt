@@ -118,22 +118,64 @@ class RequestCreateAccountActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val subject = "TimEd Account Registration Request"
-            val message = "New account registration request:\n\nName: $name\nID Number: $idNumber\nEmail: $email\nDepartment: $department\nPassword: $password\n\nPlease review and approve this request."
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "message/rfc822"
-                putExtra(Intent.EXTRA_EMAIL, arrayOf("timedsystems@gmail.com"))
-                putExtra(Intent.EXTRA_SUBJECT, subject)
-                putExtra(Intent.EXTRA_TEXT, message)
+            // Validate email format
+            if (!isValidEmail(email)) {
+                Toast.makeText(this, "Please enter a valid email address.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            try {
-                startActivity(Intent.createChooser(intent, "Send email..."))
-                Toast.makeText(this, "Request submitted. Please wait for approval.", Toast.LENGTH_LONG).show()
-                finish()
-            } catch (e: Exception) {
-                Toast.makeText(this, "No email app found.", Toast.LENGTH_SHORT).show()
-            }
+
+            // Submit request to backend
+            submitAccountRequest(name, idNumber, email, department, password)
         }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
+    private fun submitAccountRequest(name: String, idNumber: String, email: String, department: String, password: String) {
+        // Show loading state
+        val submitButton = findViewById<Button>(R.id.btnSubmitAccount)
+        submitButton.isEnabled = false
+        submitButton.text = "Submitting..."
+
+        // Parse name into first and last name
+        val nameParts = name.split(" ", limit = 2)
+        val firstName = nameParts.getOrNull(0) ?: ""
+        val lastName = nameParts.getOrNull(1) ?: ""
+
+        // Create request data with timestamp
+        val requestData = mapOf(
+            "firstName" to firstName,
+            "lastName" to lastName,
+            "email" to email,
+            "schoolId" to idNumber,
+            "department" to department,
+            "password" to password,
+            "status" to "PENDING",
+            "requestDate" to com.google.firebase.Timestamp.now()
+        )
+
+        // Submit to Firestore for backend processing
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        db.collection("accountRequests")
+            .add(requestData)
+            .addOnSuccessListener { documentReference ->
+                Toast.makeText(this, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
+                finish()
+            }
+            .addOnFailureListener { exception ->
+                submitButton.isEnabled = true
+                submitButton.text = "Submit Request"
+                
+                val errorMessage = when {
+                    exception.message?.contains("already exists") == true -> "An account with this ID already exists."
+                    exception.message?.contains("pending") == true -> "You already have a pending request."
+                    else -> "Failed to submit request. Please try again."
+                }
+                
+                Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+            }
     }
 
     // --- REGISTRATION GUIDANCE SYSTEM ---

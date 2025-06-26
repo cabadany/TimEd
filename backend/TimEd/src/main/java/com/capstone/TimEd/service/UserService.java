@@ -23,12 +23,35 @@ public class UserService {
     private static final String COLLECTION_NAME = "users";
 
     // Create a new user in Firestore
-    public void createUser(User user) throws InterruptedException, ExecutionException {
+    public String createUser(User user) throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
-        
-        // Store the user in Firestore with userId (which should ideally be from Firebase Auth UID)
-        ApiFuture<WriteResult> result = db.collection(COLLECTION_NAME).document(user.getUserId()).set(user);
-        result.get(); // Waits for write to complete
+
+        // Check if user already exists with the same schoolId
+        User existingUser = getUserBySchoolId(user.getSchoolId());
+        if (existingUser != null) {
+            throw new RuntimeException("User already exists with School ID: " + user.getSchoolId());
+        }
+
+        // Generate a unique document ID (or use a custom one)
+        DocumentReference docRef = db.collection(COLLECTION_NAME).document();
+
+        // Ensure the userId is set (usually the Firebase UID)
+        if (user.getUserId() == null) {
+            user.setUserId(docRef.getId()); // Use Firestore document ID as fallback
+        }
+
+        // Set default verified status if not specified
+        // Admin-created accounts are verified by default, mobile requests are not
+        if (user.getRole() != null && "ADMIN".equals(user.getRole().toUpperCase())) {
+            user.setVerified(true);
+        }
+        // For other users, respect the verified status that was set (default is false from constructor)
+
+        // Set the user data in Firestore
+        ApiFuture<WriteResult> result = docRef.set(user);
+        result.get(); // Wait for the operation to complete
+
+        return docRef.getId(); // Return the document ID
     }
     public List<User> getAllUsers() throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
@@ -58,7 +81,17 @@ public class UserService {
 
         if (!snapshot.isEmpty()) {
             DocumentSnapshot doc = snapshot.getDocuments().get(0);
-            return doc.toObject(User.class);  // Convert Firestore document to User object
+            User user = doc.toObject(User.class);
+            
+            // Handle legacy users without verified field
+            if (user != null && doc.get("verified") == null) {
+                // For existing users, set verified to true by default
+                user.setVerified(true);
+                // Update the document to include the verified field
+                db.collection(COLLECTION_NAME).document(doc.getId()).update("verified", true);
+            }
+            
+            return user;
         }
 
         return null;  // Return null if no user is found
