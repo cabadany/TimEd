@@ -100,11 +100,34 @@ const AttendanceModal = memo(({
       // Merge user data with attendance data if available
       const usersWithAttendance = response.data.map(user => {
         const attendeeData = attendeeMap.get(user.userId);
+        
+        // Handle different data structures for time in/out
+        let timeIn = 'N/A';
+        let timeOut = 'N/A';
+        
+        if (attendeeData) {
+          // Handle new structure with hasTimedOut, timeOutTimestamp, and timestamp
+          if (attendeeData.hasTimedOut !== undefined) {
+            timeIn = attendeeData.timestamp || attendeeData.timeIn || 'N/A';
+            timeOut = attendeeData.hasTimedOut ? (attendeeData.timeOutTimestamp || 'N/A') : 'N/A';
+          }
+          // Handle old structure (has timeIn in ISO format)
+          else if (attendeeData.timeIn && attendeeData.timeIn.includes('T')) {
+            timeIn = attendeeData.timeIn;
+            timeOut = attendeeData.timeOut || 'N/A';
+          }
+          // Handle other structures
+          else {
+            timeIn = attendeeData.timeIn || attendeeData.timestamp || 'N/A';
+            timeOut = attendeeData.timeOut || 'N/A';
+          }
+        }
+        
         return {
           ...user,
           // Include attendance data if user is already an attendee
-          timeIn: attendeeData?.timeIn || 'N/A',
-          timeOut: attendeeData?.timeOut || 'N/A',
+          timeIn: timeIn,
+          timeOut: timeOut,
           manualEntry: attendeeData?.manualEntry || 'false',
           // Make sure department is displayed correctly
           department: user.department?.name || 'N/A'
@@ -498,8 +521,10 @@ const ImageZoomModal = ({ imageUrl, onClose }) => (
 const getAttendanceAnalyticsData = (attendees) => {
   const hourMap = {};
   attendees.forEach(att => {
-    if (att.timeIn && att.timeIn !== 'N/A') {
-      const date = new Date(att.timeIn);
+    // Handle time in - check for different field names
+    let timeIn = att.timeIn || att.timestamp;
+    if (timeIn && timeIn !== 'N/A') {
+      const date = new Date(timeIn);
       if (!isNaN(date.getTime())) {
         const hour = date.getHours();
         const label = `${hour.toString().padStart(2, '0')}:00`;
@@ -507,8 +532,15 @@ const getAttendanceAnalyticsData = (attendees) => {
         hourMap[label].timeInCount++;
       }
     }
-    if (att.timeOut && att.timeOut !== 'N/A') {
-      const date = new Date(att.timeOut);
+    
+    // Handle time out - check for different field names and structures
+    let timeOut = att.timeOut;
+    if (att.hasTimedOut !== undefined && att.hasTimedOut) {
+      timeOut = att.timeOutTimestamp;
+    }
+    
+    if (timeOut && timeOut !== 'N/A') {
+      const date = new Date(timeOut);
       if (!isNaN(date.getTime())) {
         const hour = date.getHours();
         const label = `${hour.toString().padStart(2, '0')}:00`;
@@ -934,6 +966,7 @@ export default function Attendance() {
       type: attendee.type || 'event_time_in',
       manualEntry: String(attendee.manualEntry).toLowerCase() === 'true'
     };
+    
     // Handle old structure (has timeIn in ISO format)
     if (attendee.timeIn && attendee.timeIn.includes('T')) {
       return {
@@ -942,11 +975,21 @@ export default function Attendance() {
         timeOut: attendee.timeOut || 'N/A'
       };
     }
-    // Handle new structure
+    
+    // Handle new structure with hasTimedOut, timeOutTimestamp, and timestamp
+    if (attendee.hasTimedOut !== undefined) {
+      return {
+        ...baseData,
+        timeIn: attendee.timestamp || attendee.timeIn || '',
+        timeOut: attendee.hasTimedOut ? (attendee.timeOutTimestamp || 'N/A') : 'N/A'
+      };
+    }
+    
+    // Handle other structures
     return {
       ...baseData,
       timeIn: attendee.timeIn || attendee.timestamp || '',
-      timeOut: attendee.hasTimedOut ? attendee.timeOutTimestamp : 'N/A'
+      timeOut: attendee.timeOut || 'N/A'
     };
   };
 
@@ -958,14 +1001,17 @@ export default function Attendance() {
       const wb = XLSX.utils.book_new();
 
       // Export attendees list
-      const attendeesData = filteredAttendees.map(attendee => ({
-        'Name': `${attendee.firstName} ${attendee.lastName}`,
-        'Email': attendee.email,
-        'Department': attendee.department,
-        'Time In': formatTimestamp(attendee.timeIn),
-        'Time Out': formatTimestamp(attendee.timeOut),
-        'Entry Type': 'QR Scan'
-      }));
+      const attendeesData = filteredAttendees.map(attendee => {
+        const formattedAttendee = formatAttendanceData(attendee);
+        return {
+          'Name': `${formattedAttendee.firstName} ${formattedAttendee.lastName}`,
+          'Email': formattedAttendee.email,
+          'Department': formattedAttendee.department,
+          'Time In': formatTimestamp(formattedAttendee.timeIn),
+          'Time Out': formatTimestamp(formattedAttendee.timeOut),
+          'Entry Type': formattedAttendee.manualEntry ? 'Manual Entry' : 'QR Scan'
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(attendeesData);
       XLSX.utils.book_append_sheet(wb, ws, 'Attendees');
