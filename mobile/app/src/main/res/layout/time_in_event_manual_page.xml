@@ -15,10 +15,10 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
             android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
             android:maxHeight="350dp"
             android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_top"
-            android:importantForAccessibility="no"/>
+            android:src="@drawable/animated_wave_top" />
 
     <!-- Bottom wave -->
     <ImageView
@@ -26,11 +26,11 @@
             android:layout_width="match_parent"
             android:layout_height="250dp"
             android:layout_alignParentBottom="true"
-            android:scaleType="fitXY"
-            android:src="@drawable/animated_wave_bottom"
+            android:importantForAccessibility="no"
             android:rotation="180"
+            android:scaleType="fitXY"
             android:scaleX="-1"
-            android:importantForAccessibility="no"/>
+            android:src="@drawable/animated_wave_bottom" />
 
     <!-- Back Button -->
     <ImageView
@@ -41,13 +41,13 @@
             android:layout_alignParentTop="true"
             android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
+            android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
             android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
             android:padding="8dp"
-            app:srcCompat="@drawable/ic_back_button"
-            android:background="@drawable/ripple_icon_back_button"
-            android:stateListAnimator="@animator/button_scale_animator"/>
+            android:stateListAnimator="@animator/button_scale_animator"
+            app:srcCompat="@drawable/ic_back_button" />
 
     <!-- Title Name -->
     <TextView
@@ -64,7 +64,7 @@
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="@string/app_title_timed"
-            android:textColor="@color/primary_deep_blue"
+            android:textColor="#37474F"
             android:textSize="42sp"
             android:textStyle="bold" />
 
@@ -77,11 +77,11 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="20dp"
             android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_bold"
+            android:fontFamily="@font/league_spartan_bold"
             android:gravity="center"
             android:letterSpacing="0.03"
             android:text="@string/manual_code_subtitle_text"
-            android:textColor="@color/primary_deep_blue"
+            android:textColor="#37474F"
             android:textSize="22sp"
             android:textStyle="bold" />
 
@@ -94,11 +94,11 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="12dp"
             android:layout_marginEnd="32dp"
-            android:fontFamily="@font/roboto_medium"
+            android:fontFamily="@font/league_spartan_medium"
             android:gravity="center"
             android:letterSpacing="0.02"
             android:text="@string/manual_code_instruction_text"
-            android:textColor="@color/neutral_text_gray"
+            android:textColor="@color/medium_gray"
             android:textSize="16sp" />
 
     <!-- Code Input Field -->
@@ -111,26 +111,26 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="36dp"
             android:layout_marginEnd="32dp"
-            app:boxCornerRadiusBottomEnd="8dp"
-            app:boxCornerRadiusBottomStart="8dp"
-            app:boxCornerRadiusTopEnd="8dp"
-            app:boxCornerRadiusTopStart="8dp"
-            app:boxStrokeColor="@color/accent_coral"
-            app:hintTextColor="@color/accent_coral">
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxStrokeColor="#3538CD"
+            app:hintTextColor="#3538CD">
 
         <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/code_input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/roboto_medium"
+                android:fontFamily="@font/league_spartan_medium"
                 android:hint="@string/hint_event_code"
                 android:inputType="textCapCharacters"
                 android:maxLength="8"
                 android:paddingStart="16dp"
-                android:paddingEnd="16dp"
                 android:paddingTop="16dp"
+                android:paddingEnd="16dp"
                 android:paddingBottom="16dp"
-                android:textColor="@color/black"
+                android:textColor="#37474F"
                 android:textSize="18sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -143,17 +143,17 @@
             android:layout_marginStart="40dp"
             android:layout_marginTop="36dp"
             android:layout_marginEnd="40dp"
-            android:backgroundTint="@color/accent_coral"
+            android:backgroundTint="#3538CD"
             android:elevation="6dp"
-            android:fontFamily="@font/roboto_medium"
+            android:fontFamily="@font/league_spartan_bold"
             android:minHeight="54dp"
             android:padding="12dp"
+            android:stateListAnimator="@animator/button_scale_animator"
             android:text="@string/verify_code_button_text"
             android:textColor="@color/white"
             android:textSize="18sp"
             android:textStyle="bold"
-            app:cornerRadius="8dp"
-            android:stateListAnimator="@animator/button_scale_animator"/>
+            app:cornerRadius="12dp" />
 
     <!-- Return to QR Scan Button -->
     <Button
@@ -165,14 +165,14 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="40dp"
             android:layout_marginBottom="40dp"
-            android:backgroundTint="@color/primary_medium_blue"
+            android:backgroundTint="#37474F"
             android:elevation="3dp"
-            android:fontFamily="@font/roboto_medium"
+            android:fontFamily="@font/league_spartan_bold"
             android:minHeight="48dp"
             android:padding="10dp"
+            android:stateListAnimator="@animator/button_scale_animator"
             android:text="@string/button_return_to_scanner"
             android:textColor="@color/white"
             android:textSize="16sp"
-            app:cornerRadius="8dp"
-            android:stateListAnimator="@animator/button_scale_animator"/>
+            app:cornerRadius="12dp" />
 </RelativeLayout>

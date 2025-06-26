@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="20dp"
-    android:gravity="center_vertical"
-    android:background="@drawable/dialog_background">
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:gravity="center_vertical"
+        android:background="@drawable/dialog_background">
 
     <ProgressBar
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:indeterminateTint="@color/maroon"
-        style="?android:attr/progressBarStyleSmall" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminateTint="#3538CD"
+            style="?android:attr/progressBarStyle" />
 
     <TextView
-        android:id="@+id/loading_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:text="Timing you out... syncing with the system ⏳"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
-        android:fontFamily="@font/roboto_medium" />
+            android:id="@+id/loading_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:text="Timing you out... syncing with the system ⏳"
+            android:textColor="#37474F"
+            android:textSize="16sp"
+            android:fontFamily="@font/league_spartan_medium" />
 </LinearLayout>

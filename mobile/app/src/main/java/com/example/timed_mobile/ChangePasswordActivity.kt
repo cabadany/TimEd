@@ -3,7 +3,9 @@ package com.example.timed_mobile
 import android.app.Dialog
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.view.View
 import android.view.Window
+import android.view.animation.AnimationUtils
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
@@ -25,6 +27,9 @@ class ChangePasswordActivity : AppCompatActivity() {
     private lateinit var teacherName: TextView
     private lateinit var teacherId: TextView
     private lateinit var currentPasswordInput: TextInputEditText
+    private lateinit var changePasswordTitle: TextView
+    private lateinit var currentPasswordLayout: TextInputLayout
+
 
     private var userId: String? = null
 
@@ -38,6 +43,7 @@ class ChangePasswordActivity : AppCompatActivity() {
             topDrawable.start()
         }
 
+        // Initialize Views
         newPasswordInput = findViewById(R.id.new_password_input)
         reenterPasswordInput = findViewById(R.id.reenter_password_input)
         updatePasswordButton = findViewById(R.id.btn_update_password)
@@ -48,6 +54,9 @@ class ChangePasswordActivity : AppCompatActivity() {
         teacherName = findViewById(R.id.teacher_name)
         teacherId = findViewById(R.id.teacher_id)
         currentPasswordInput = findViewById(R.id.current_password_input)
+        changePasswordTitle = findViewById(R.id.change_password_title)
+        currentPasswordLayout = findViewById(R.id.current_password_layout)
+
 
         updatePasswordButton.setOnClickListener {
             updatePassword()
@@ -64,6 +73,32 @@ class ChangePasswordActivity : AppCompatActivity() {
         }
 
         loadCurrentUserInfo()
+        setupEntryAnimations() // Call animation setup
+    }
+
+    private fun setupEntryAnimations() {
+        // Animation for elements sliding down from the top
+        val animSlideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        backButton.startAnimation(animSlideDown)
+        changePasswordTitle.startAnimation(animSlideDown)
+
+        // List of elements to slide up from the bottom with a stagger
+        val formElements = listOf<View>(
+            profileImage,
+            teacherName,
+            teacherId,
+            currentPasswordLayout,
+            newPasswordLayout,
+            reenterPasswordLayout,
+            updatePasswordButton
+        )
+
+        formElements.forEachIndexed { index, view ->
+            val animSlideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_form_element)
+            // Stagger the start of each animation
+            animSlideUp.startOffset = (index * 100).toLong()
+            view.startAnimation(animSlideUp)
+        }
     }
 
     private fun loadCurrentUserInfo() {
