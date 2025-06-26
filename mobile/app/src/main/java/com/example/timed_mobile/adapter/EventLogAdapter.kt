@@ -83,8 +83,17 @@ class EventLogAdapter(
                                 .get()
                                 .addOnSuccessListener { snapshot ->
                                     val batch = FirebaseFirestore.getInstance().batch()
+                                    // Create timeout timestamp with Philippines timezone
+                                    val philippinesTimeZone = java.util.TimeZone.getTimeZone("Asia/Manila")
+                                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                                    sdf.timeZone = philippinesTimeZone
+                                    val timeOutTimestamp = sdf.format(java.util.Date())
+                                    
                                     for (doc in snapshot.documents) {
-                                        batch.update(doc.reference, "hasTimedOut", true)
+                                        batch.update(doc.reference, mapOf(
+                                            "hasTimedOut" to true,
+                                            "timeOutTimestamp" to timeOutTimestamp
+                                        ))
                                     }
                                     batch.commit().addOnSuccessListener {
                                         loadingDialog.dismiss()
