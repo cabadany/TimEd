@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -38,17 +38,20 @@ import {
   Badge,
   Business,
   Schedule,
-  Close
+  Close,
+  Refresh
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
 import { getApiUrl, API_ENDPOINTS } from '../utils/api';
+import eventEmitter, { EVENTS } from '../utils/eventEmitter';
 import './AccountRequests.css';
 
 const AccountRequests = () => {
   const { darkMode } = useTheme();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
@@ -57,31 +60,76 @@ const AccountRequests = () => {
   const [processing, setProcessing] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [tabValue, setTabValue] = useState(0);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    fetchAccountRequests();
-  }, [tabValue]);
-
-  const fetchAccountRequests = async () => {
-    setLoading(true);
+  // Memoize fetchAccountRequests to prevent unnecessary re-renders
+  const fetchAccountRequests = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    
     try {
       const endpoint = tabValue === 0 ? 
         API_ENDPOINTS.GET_PENDING_ACCOUNT_REQUESTS : 
         API_ENDPOINTS.GET_ALL_ACCOUNT_REQUESTS;
         
-      const response = await axios.get(getApiUrl(endpoint));
+      console.log('Fetching from endpoint:', getApiUrl(endpoint));
+      
+      const response = await axios.get(getApiUrl(endpoint), {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('API Response:', response.data);
       
       if (response.data.success) {
         setRequests(response.data.requests || []);
+        setRetryCount(0); // Reset retry count on success
+        setError(null);
       } else {
-        showSnackbar('Failed to fetch account requests', 'error');
+        throw new Error(response.data.message || 'Failed to fetch account requests');
       }
     } catch (error) {
       console.error('Error fetching account requests:', error);
-      showSnackbar('Error fetching account requests: ' + error.message, 'error');
+      setError(error);
+      
+      // If it's a network error or 500 error, we can retry
+      if (error.response?.status >= 500 || error.code === 'NETWORK_ERROR' || error.code === 'ECONNABORTED') {
+        if (retryCount < 3) {
+          console.log(`Retrying request (attempt ${retryCount + 1})`);
+          setRetryCount(prev => prev + 1);
+          // Retry after a delay
+          setTimeout(() => {
+            fetchAccountRequests(isRefresh);
+          }, 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+      }
+      
+      showSnackbar(
+        `Error fetching account requests: ${error.response?.data?.message || error.message}`, 
+        'error'
+      );
+      setRequests([]); // Set empty array on error
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [tabValue, retryCount]);
+
+  useEffect(() => {
+    fetchAccountRequests();
+  }, [fetchAccountRequests]);
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    fetchAccountRequests(true);
   };
 
   const handleViewDetails = (request) => {
@@ -111,18 +159,58 @@ const AccountRequests = () => {
         rejectionReason: reviewAction === 'REJECT' ? rejectionReason : null
       };
 
-      const response = await axios.put(getApiUrl(API_ENDPOINTS.REVIEW_ACCOUNT_REQUEST), reviewData);
+      console.log('Submitting review:', reviewData);
+
+      const response = await axios.put(getApiUrl(API_ENDPOINTS.REVIEW_ACCOUNT_REQUEST), reviewData, {
+        timeout: 15000, // 15 second timeout for review operations
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('Review response:', response.data);
       
       if (response.data.success) {
-        showSnackbar(response.data.message, 'success');
+        if (reviewAction === 'APPROVE') {
+          showSnackbar(
+            `Account approved successfully! User ${selectedRequest.firstName} ${selectedRequest.lastName} has been created and can now log in using School ID: ${selectedRequest.schoolId}`, 
+            'success'
+          );
+          
+          // Emit event to notify other components that a new user was created
+          eventEmitter.emit(EVENTS.ACCOUNT_APPROVED, {
+            user: selectedRequest,
+            message: 'New user account has been approved and created'
+          });
+          
+          // Also emit general refresh event for accounts
+          eventEmitter.emit(EVENTS.REFRESH_ACCOUNTS);
+          
+        } else {
+          showSnackbar(response.data.message, 'success');
+          
+          // Emit event for rejected account
+          eventEmitter.emit(EVENTS.ACCOUNT_REJECTED, {
+            user: selectedRequest,
+            reason: rejectionReason
+          });
+        }
         setShowReviewDialog(false);
-        fetchAccountRequests(); // Refresh the list
+        
+        // Auto-refresh the data after successful review
+        setTimeout(() => {
+          fetchAccountRequests(true);
+        }, 1000); // Small delay to ensure backend processing is complete
+        
       } else {
-        showSnackbar(response.data.message, 'error');
+        throw new Error(response.data.message || 'Failed to review request');
       }
     } catch (error) {
       console.error('Error reviewing request:', error);
-      showSnackbar('Error reviewing request: ' + error.message, 'error');
+      showSnackbar(
+        `Error reviewing request: ${error.response?.data?.message || error.message}`, 
+        'error'
+      );
     } finally {
       setProcessing(false);
     }
@@ -165,9 +253,47 @@ const AccountRequests = () => {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+    setRetryCount(0); // Reset retry count when changing tabs
   };
 
-  if (loading) {
+  // Error retry component
+  const ErrorRetryComponent = () => (
+    <Box 
+      display="flex" 
+      flexDirection="column"
+      justifyContent="center" 
+      alignItems="center" 
+      minHeight="400px"
+      sx={{ bgcolor: darkMode ? 'var(--background-primary)' : 'background.paper' }}
+    >
+      <Typography variant="h6" color="error" gutterBottom>
+        Failed to load account requests
+      </Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+        {error?.response?.status === 500 ? 
+          'Server error occurred. The server might be starting up.' : 
+          error?.message || 'An unexpected error occurred'
+        }
+      </Typography>
+      {retryCount > 0 && (
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+          Retrying... (Attempt {retryCount}/3)
+        </Typography>
+      )}
+      <Button 
+        variant="contained" 
+        onClick={() => {
+          setRetryCount(0);
+          fetchAccountRequests();
+        }}
+        startIcon={<Refresh />}
+      >
+        Retry
+      </Button>
+    </Box>
+  );
+
+  if (loading && !refreshing) {
     return (
       <Box 
         display="flex" 
@@ -176,9 +302,18 @@ const AccountRequests = () => {
         minHeight="400px"
         sx={{ bgcolor: darkMode ? 'var(--background-primary)' : 'background.paper' }}
       >
-        <CircularProgress />
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <CircularProgress />
+          <Typography variant="body2" sx={{ mt: 2, color: darkMode ? 'var(--text-secondary)' : 'text.secondary' }}>
+            Loading account requests...
+          </Typography>
+        </Box>
       </Box>
     );
+  }
+
+  if (error && !loading && retryCount >= 3) {
+    return <ErrorRetryComponent />;
   }
 
   return (
@@ -191,59 +326,106 @@ const AccountRequests = () => {
       }}
       className={darkMode ? 'dark-mode' : ''}
     >
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography 
-          variant="h4" 
-          fontWeight="600" 
-          sx={{ 
-            mb: 1,
-            color: darkMode ? 'var(--text-primary)' : '#1E293B',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2
-          }}
-        >
-          <PersonAdd />
-          Account Requests
-        </Typography>
-        <Typography 
-          variant="body1" 
-          sx={{ 
-            color: darkMode ? 'var(--text-secondary)' : 'text.secondary',
-            mb: 2
-          }}
-        >
-          Review and manage account creation requests from mobile app users
-        </Typography>
+              {/* Header */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-start',
+            mb: 1
+          }}>
+            <Typography 
+              variant="h4" 
+              fontWeight="600" 
+              sx={{ 
+                color: darkMode ? 'var(--text-primary)' : '#1E293B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              <PersonAdd />
+              Account Requests
+            </Typography>
+            
+            <Button
+              variant="outlined"
+              startIcon={refreshing ? <CircularProgress size={16} /> : <Refresh />}
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              sx={{
+                color: darkMode ? 'var(--accent-color)' : 'primary.main',
+                borderColor: darkMode ? 'var(--accent-color)' : 'primary.main',
+                '&:hover': {
+                  backgroundColor: darkMode ? 'rgba(var(--accent-color-rgb), 0.1)' : 'rgba(25, 118, 210, 0.04)'
+                }
+              }}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </Box>
+          
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: darkMode ? 'var(--text-secondary)' : 'text.secondary',
+              mb: 2
+            }}
+          >
+            Review and manage account creation requests from mobile app users
+          </Typography>
 
-        {/* Tabs */}
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          sx={{ 
-            borderBottom: 1, 
-            borderColor: darkMode ? 'var(--border-color)' : 'divider',
-            mb: 3
-          }}
-        >
-          <Tab 
-            label={`Pending Requests (${tabValue === 0 ? requests.length : 0})`} 
-            sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}
-          />
-          <Tab 
-            label="All Requests" 
-            sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}
-          />
-        </Tabs>
+                  {/* Tabs */}
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: darkMode ? 'var(--border-color)' : 'divider',
+              mb: 3
+            }}
+          >
+            <Tab 
+              label={`Pending Requests ${!loading && !error ? `(${tabValue === 0 ? requests.length : requests.filter(r => r.status === 'PENDING').length})` : ''}`} 
+              sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}
+            />
+            <Tab 
+              label={`All Requests ${!loading && !error ? `(${tabValue === 1 ? requests.length : 0})` : ''}`} 
+              sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}
+            />
+          </Tabs>
       </Box>
 
       {/* Requests Table */}
       <Card sx={{ 
         boxShadow: darkMode ? 'var(--shadow)' : '0 4px 20px rgba(0,0,0,0.05)',
         border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
-        bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper'
+        bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper',
+        position: 'relative'
       }}>
+        {refreshing && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={24} />
+              <Typography variant="body2" sx={{ mt: 1, color: darkMode ? 'var(--text-primary)' : 'text.primary' }}>
+                Refreshing...
+              </Typography>
+            </Box>
+          </Box>
+        )}
         <TableContainer>
           <Table>
             <TableHead>
@@ -506,7 +688,8 @@ const AccountRequests = () => {
               
               {reviewAction === 'APPROVE' && (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  This will create a new user account and send a confirmation email to the applicant.
+                  This will create a new user account in Firebase, add them to the users database, and send a confirmation email to the applicant. 
+                  The user will then be able to log in using their School ID and password in the mobile app.
                 </Alert>
               )}
               
