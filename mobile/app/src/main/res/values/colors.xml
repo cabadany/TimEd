@@ -33,4 +33,8 @@
     <color name="status_green">#4CAF50</color>
     <color name="status_yellow">#FFC107</color>
     <color name="status_red">#F44336</color>
+
+    <!--FACE -->
+    <color name="valid_green">#4CAF50</color>
+    <color name="invalid_red">#F44336</color>
 </resources>

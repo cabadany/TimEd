@@ -14,16 +14,16 @@ import android.net.Uri
 import android.os.*
 import android.util.Log
 import android.util.Size
-import android.view.Gravity // Added for tutorial
-import android.view.LayoutInflater // Added for tutorial
+import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.view.WindowManager // Added for tutorial
-import android.view.animation.AlphaAnimation // Added for tutorial
-import android.view.animation.AnimationSet // Added for tutorial
+import android.view.WindowManager
+import android.view.animation.AlphaAnimation
+import android.view.animation.AnimationSet
 import android.view.animation.AnimationUtils
-import android.view.animation.TranslateAnimation // Added for tutorial
+import android.view.animation.TranslateAnimation
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -37,13 +37,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.math.abs // Added for tutorial
+import kotlin.math.abs
 import kotlin.math.max
 
 import androidx.exifinterface.media.ExifInterface
@@ -62,7 +63,7 @@ class TimeInActivity : WifiSecurityActivity() {
     private lateinit var faceDetector: FaceDetector
     private lateinit var timeInButton: Button
     private lateinit var backButton: ImageView
-    private var isFaceDetected = false
+    private var isFaceValidForTimeIn = false
     private var isFrontCamera = true
     private var currentLensFacing = CameraSelector.LENS_FACING_FRONT
 
@@ -77,25 +78,22 @@ class TimeInActivity : WifiSecurityActivity() {
     private lateinit var iconQrScanner: ImageView
     private lateinit var qrScannerClickReminderText: TextView
 
-    // --- Tutorial Members ---
     private var isInTutorialMode: Boolean = false
     private var currentTutorialPopupWindow: PopupWindow? = null
-    private lateinit var tutorialOverlay: FrameLayout // IMPORTANT: Add this ID to your time_in_page.xml
+    private lateinit var tutorialOverlay: FrameLayout
     private var previousTargetLocationForAnimation: IntArray? = null
     private var currentTutorialStepForActivity: Int = 0
-    // --- End Tutorial Members ---
 
 
     companion object {
         private const val TAG = "TimeInActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-
         private const val DB_PATH_TIME_LOGS = "timeLogs"
-
-        // --- Tutorial Constants ---
-        private const val TOTAL_TIME_IN_ACTIVITY_TUTORIAL_STEPS = 3 // Preview, Face Position, Button
-        // --- End Tutorial Constants ---
+        // --- SECURITY UPGRADE: Thresholds for liveness checks ---
+        private const val EYE_OPEN_PROBABILITY_THRESHOLD = 0.8f
+        private const val SMILING_PROBABILITY_THRESHOLD = 0.7f // New check for smiling
+        private const val TOTAL_TIME_IN_ACTIVITY_TUTORIAL_STEPS = 3
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,7 +104,6 @@ class TimeInActivity : WifiSecurityActivity() {
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
         isInTutorialMode = intent.getBooleanExtra(HomeActivity.EXTRA_IS_TUTORIAL_MODE, false)
-
 
         imageCapture = ImageCapture.Builder().build()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -119,17 +116,15 @@ class TimeInActivity : WifiSecurityActivity() {
         cameraContainerCard = findViewById(R.id.camera_container)
         iconQrScanner = findViewById(R.id.icon_qr_scanner)
         qrScannerClickReminderText = findViewById(R.id.qr_scanner_click_reminder)
-
-        // --- Tutorial Overlay Initialization ---
-        // IMPORTANT: Ensure you have a FrameLayout with id "time_in_tutorial_overlay" in your time_in_page.xml
         tutorialOverlay = findViewById(R.id.time_in_tutorial_overlay)
-        // --- End Tutorial Overlay Initialization ---
+
+        timeInButton.isEnabled = false
+        timeInButton.alpha = 0.5f
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
 
-        // --- START OF ENTRY ANIMATION CODE ---
-        if (!isInTutorialMode) { // Optionally skip entry animations if in tutorial mode
+        if (!isInTutorialMode) {
             var currentDelay = 100L
             fun animateView(view: View, animationResId: Int, delay: Long) {
                 val anim = AnimationUtils.loadAnimation(view.context, animationResId)
@@ -144,7 +139,6 @@ class TimeInActivity : WifiSecurityActivity() {
             animateView(qrScannerClickReminderText, R.anim.slide_up_fade_in_content, currentDelay); currentDelay += 100L
             animateView(timeInButton, R.anim.slide_up_fade_in_content, currentDelay)
         }
-        // --- END OF ENTRY ANIMATION CODE ---
 
         backButton.setOnClickListener { finish() }
 
@@ -155,20 +149,19 @@ class TimeInActivity : WifiSecurityActivity() {
             intent.putExtra("firstName", userFirstName)
             startActivity(intent)
         }
-        qrScannerClickReminderText.setOnClickListener {
-            iconQrScanner.performClick()
-        }
+        qrScannerClickReminderText.setOnClickListener { iconQrScanner.performClick() }
 
         val auth = FirebaseAuth.getInstance()
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
+        if (auth.currentUser != null) {
             isAuthenticated = true
         } else {
             signInAnonymouslyForStorage { success -> isAuthenticated = success }
         }
 
+        // Enable classification for liveness detection (eyes and smiling)
         val faceOptions = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
             .setMinFaceSize(0.15f)
             .build()
         faceDetector = FaceDetection.getClient(faceOptions)
@@ -178,67 +171,146 @@ class TimeInActivity : WifiSecurityActivity() {
         if (allPermissionsGranted()) {
             startCamera()
             if (isInTutorialMode) {
-                // Delay tutorial start slightly to ensure camera preview is active
-                // and entry animations (if not skipped) are less likely to interfere.
-                Handler(Looper.getMainLooper()).postDelayed({
-                    startTimeInActivityTutorial()
-                }, if (isInTutorialMode) 800L else 0L) // Longer delay if animations run
+                Handler(Looper.getMainLooper()).postDelayed({ startTimeInActivityTutorial() }, 800L)
             }
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
 
         timeInButton.setOnClickListener {
-            if (isInTutorialMode) { // If in tutorial, button click might be part of tutorial
-                // Let tutorial handler manage it, or if it's the final step, it will proceed.
-                // For now, assume tutorial handler will call `setResult` and `finish`.
-                // If this button is the target of the *last* tutorial step, its `onNext`
-                // in `showCustomTutorialDialogInTimeIn` should handle completion.
-                // We prevent normal time-in logic during tutorial.
+            if (isInTutorialMode) {
                 Toast.makeText(this, "Tutorial in progress. Follow guide.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            if (!isFaceDetected) {
-                Toast.makeText(this, "Please position your face properly.", Toast.LENGTH_SHORT).show()
+            if (!isFaceValidForTimeIn) {
+                Toast.makeText(this, "Please position your face correctly.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             timeInButton.isEnabled = false
             timeInButton.text = "Processing..."
             Handler(Looper.getMainLooper()).postDelayed({
-                val currentAuthInner = FirebaseAuth.getInstance()
-                val userInner = currentAuthInner.currentUser
-                if (userInner == null) {
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                if (currentUser == null) {
                     signInAnonymouslyForStorage { success ->
-                        if (success) {
-                            val firebaseUser = FirebaseAuth.getInstance().currentUser
-                            if (firebaseUser != null) checkAndCapturePhoto(userId ?: firebaseUser.uid)
-                            else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
-                        } else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                        if (success) checkAndCapturePhoto(userId ?: "")
+                        else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
                     }
                 } else {
-                    checkAndCapturePhoto(userId ?: userInner.uid)
+                    checkAndCapturePhoto(userId ?: currentUser.uid)
                 }
             }, 2000)
         }
     }
 
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun processImage(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image ?: return imageProxy.close()
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
+
+        faceDetector.process(inputImage)
+            .addOnSuccessListener { faces ->
+                var statusMessage: String
+                var isCurrentlyValid = false
+                var faceBounds: Rect? = null
+
+                when {
+                    faces.isEmpty() -> {
+                        statusMessage = "Position your face in the frame."
+                    }
+                    faces.size > 1 -> {
+                        statusMessage = "Multiple faces detected. Please show only one."
+                    }
+                    else -> { // Exactly one face detected
+                        val face = faces.first()
+                        faceBounds = face.boundingBox
+
+                        // --- SECURITY UPGRADE: Liveness Checks ---
+                        val leftEyeOpenProb = face.leftEyeOpenProbability ?: 0f
+                        val rightEyeOpenProb = face.rightEyeOpenProbability ?: 0f
+                        val eyesAreOpen = leftEyeOpenProb > EYE_OPEN_PROBABILITY_THRESHOLD && rightEyeOpenProb > EYE_OPEN_PROBABILITY_THRESHOLD
+
+                        val smilingProb = face.smilingProbability ?: 0f
+                        val isSmiling = smilingProb > SMILING_PROBABILITY_THRESHOLD
+
+                        when {
+                            eyesAreOpen && isSmiling -> {
+                                statusMessage = "Great! You can now Time-In."
+                                isCurrentlyValid = true
+                            }
+                            !eyesAreOpen -> {
+                                statusMessage = "Please keep both eyes open."
+                            }
+                            else -> { // Eyes are open but not smiling
+                                statusMessage = "Please smile for the camera."
+                            }
+                        }
+                    }
+                }
+
+                isFaceValidForTimeIn = isCurrentlyValid
+                val transformedBounds = faceBounds?.let {
+                    if (previewView.width > 0 && previewView.height > 0) {
+                        adjustBox(it, imageProxy.width, imageProxy.height, previewView.width, previewView.height, rotation)
+                    } else null
+                }
+
+                runOnUiThread {
+                    positionCameraViewText.text = statusMessage
+                    faceBoxOverlay.updateFaceBox(transformedBounds, isCurrentlyValid)
+                    timeInButton.isEnabled = isCurrentlyValid
+                    timeInButton.alpha = if (isCurrentlyValid) 1.0f else 0.5f
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Face detection failure: ", e)
+                isFaceValidForTimeIn = false
+                runOnUiThread {
+                    positionCameraViewText.text = "Face detection error."
+                    faceBoxOverlay.updateFaceBox(null, false)
+                    timeInButton.isEnabled = false
+                    timeInButton.alpha = 0.5f
+                }
+            }
+            .addOnCompleteListener { imageProxy.close() }
+    }
+
+    private fun resetTimeInButton() {
+        isFaceValidForTimeIn = false
+        timeInButton.isEnabled = false
+        timeInButton.alpha = 0.5f
+        timeInButton.text = getString(R.string.button_time_in)
+        positionCameraViewText.text = "Position your face in the frame."
+    }
+
     private fun checkAndCapturePhoto(uid: String) {
+        // 1. Define the allowed hours as variables
+        val startTimeHour = 17  // 7:00 AM
+        val endTimeHour = 17 // 5:00 PM
+
+        // 2. Format these hours into user-friendly AM/PM strings
+        // This logic converts 17 to "5:00 PM" and 7 to "7:00 AM"
+        val formattedStartTime = if (startTimeHour > 12) "${startTimeHour - 12}:00 PM" else "$startTimeHour:00 AM"
+        val formattedEndTime = if (endTimeHour > 12) "${endTimeHour - 12}:00 PM" else "$endTimeHour:00 AM"
+
         val now = Calendar.getInstance()
         val currentHour = now.get(Calendar.HOUR_OF_DAY)
-        // val currentMinute = now.get(Calendar.MINUTE) // Not used in original logic
-        // val isAllowed = (currentHour == 9) || (currentHour == 10 && currentMinute == 0) // Original logic
-        val isAllowed = currentHour in 0..23 // Allowing for testing, revert to original if needed
+
+        // 3. Use the variables to check if the time is allowed
+        val isAllowed = currentHour in startTimeHour..endTimeHour
 
         if (!isAllowed) {
             AlertDialog.Builder(this)
                 .setTitle("Time-In Not Allowed")
-                .setMessage("You can only Time-In between 9:00 AM and 10:00 AM.") // Update if time changes
+                // 4. Use the formatted time strings in the message, just like your example
+                .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
                 .setPositiveButton("OK", null)
                 .show()
-            resetTimeInButton() // Reset button since action is disallowed
+            resetTimeInButton()
             return
         }
+
         checkAlreadyTimedIn(uid) { already ->
             if (already) {
                 AlertDialog.Builder(this)
@@ -254,7 +326,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun signInAnonymouslyForStorage(callback: ((Boolean) -> Unit)? = null) {
-        // ... (existing code - no changes needed for tutorial) ...
         val progressDialog = AlertDialog.Builder(this)
             .setTitle("Authenticating")
             .setMessage("Please wait...")
@@ -279,14 +350,14 @@ class TimeInActivity : WifiSecurityActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (allPermissionsGranted() && !isInTutorialMode) { // Don't restart camera if tutorial is active and might be mid-flow
+        if (allPermissionsGranted() && !isInTutorialMode) {
             startCamera()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        if (!isInTutorialMode) { // Don't unbind if tutorial popup might be showing over it
+        if (!isInTutorialMode) {
             try {
                 ProcessCameraProvider.getInstance(this).get().unbindAll()
             } catch (e: Exception) {
@@ -305,15 +376,13 @@ class TimeInActivity : WifiSecurityActivity() {
             if (allPermissionsGranted()) {
                 startCamera()
                 if (isInTutorialMode) {
-                    Handler(Looper.getMainLooper()).postDelayed({ // Delay to ensure camera is ready
-                        startTimeInActivityTutorial()
-                    }, 500L)
+                    Handler(Looper.getMainLooper()).postDelayed({ startTimeInActivityTutorial() }, 500L)
                 }
             } else {
                 Toast.makeText(this, "Camera permission is required.", Toast.LENGTH_LONG).show()
                 if (isInTutorialMode) {
                     Toast.makeText(this, "Tutorial cannot proceed without camera.", Toast.LENGTH_LONG).show()
-                    setResult(RESULT_CANCELED) // Indicate tutorial couldn't complete
+                    setResult(RESULT_CANCELED)
                     finish()
                 } else {
                     finish()
@@ -323,7 +392,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun setupCameraPreview() {
-        // ... (existing code - no changes needed for tutorial) ...
         val container = findViewById<ViewGroup>(R.id.camera_container)
         container.findViewWithTag<PreviewView>("cameraPreviewTag")?.let {
             container.removeView(it)
@@ -342,7 +410,6 @@ class TimeInActivity : WifiSecurityActivity() {
 
     @SuppressLint("UnsafeOptInUsageError")
     private fun startCamera() {
-        // ... (existing code - no changes needed for tutorial) ...
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
@@ -368,29 +435,7 @@ class TimeInActivity : WifiSecurityActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun processImage(imageProxy: ImageProxy) {
-        // ... (existing code - no changes needed for tutorial) ...
-        val mediaImage = imageProxy.image ?: return imageProxy.close()
-        val rotation = imageProxy.imageInfo.rotationDegrees
-        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
-        faceDetector.process(inputImage)
-            .addOnSuccessListener { faces ->
-                isFaceDetected = faces.isNotEmpty()
-                val bounds = faces.firstOrNull()?.boundingBox
-                val transformed = bounds?.let {
-                    if (previewView.width > 0 && previewView.height > 0) {
-                        adjustBox(it, imageProxy.width, imageProxy.height, previewView.width, previewView.height, rotation)
-                    } else null
-                }
-                runOnUiThread { faceBoxOverlay.updateFaceBox(transformed, isFaceDetected) }
-            }
-            .addOnFailureListener { e -> Log.e(TAG, "Face detection failure: ", e); isFaceDetected = false; runOnUiThread { faceBoxOverlay.updateFaceBox(null, false) } }
-            .addOnCompleteListener { imageProxy.close() }
-    }
-
     private fun adjustBox(box: Rect, imgW: Int, imgH: Int, viewW: Int, viewH: Int, rotationDegrees: Int): RectF {
-        // ... (existing code - no changes needed for tutorial) ...
         val rect = RectF(box)
         val matrix = Matrix()
         val imageActualRatio = if (rotationDegrees == 90 || rotationDegrees == 270) imgH.toFloat() / imgW else imgW.toFloat() / imgH
@@ -417,7 +462,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun checkAlreadyTimedIn(uid: String, callback: (Boolean) -> Unit) {
-        // ... (existing code - no changes needed for tutorial) ...
         val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(uid)
             .orderByChild("timestamp").startAt(todayStart.toDouble())
@@ -431,7 +475,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun capturePhotoAndUpload(uid: String) {
-        // ... (existing code - no changes needed for tutorial) ...
         timeInButton.isEnabled = false; timeInButton.text = "Processing..."
         val file = File(externalCacheDir, "Timed_${System.currentTimeMillis()}.jpg")
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
@@ -449,7 +492,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun fixImageOrientationAndFlip(photoFile: File): Bitmap {
-        // ... (existing code - no changes needed for tutorial) ...
         val originalBitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
         val matrix = Matrix()
         val exif = ExifInterface(photoFile.inputStream())
@@ -469,7 +511,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun uploadImageToFirebase(uri: Uri, uid: String) {
-        // ... (existing code - no changes needed for tutorial) ...
         try {
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser == null) { Toast.makeText(this, "Auth error.", Toast.LENGTH_SHORT).show(); resetTimeInButton(); return }
@@ -487,7 +528,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun logTimeIn(imageUrl: String, studentUid: String) {
-        // ... (existing code - no changes needed for tutorial) ...
         val log = mapOf("timestamp" to System.currentTimeMillis(), "type" to "TimeIn", "imageUrl" to imageUrl, "email" to userEmail, "firstName" to userFirstName, "userId" to studentUid, "status" to "On Duty")
         val ref = FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(studentUid)
         ref.push().setValue(log)
@@ -496,7 +536,6 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun showSuccessDialog() {
-        // ... (existing code - no changes needed for tutorial) ...
         val dialog = Dialog(this); dialog.requestWindowFeature(Window.FEATURE_NO_TITLE); dialog.setCancelable(false)
         dialog.setContentView(R.layout.success_popup_time_in); dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.findViewById<Button>(R.id.popup_close_button).setOnClickListener { dialog.dismiss(); setResult(RESULT_OK, Intent().putExtra("TIMED_IN_SUCCESS", true)); finish() }
@@ -507,34 +546,27 @@ class TimeInActivity : WifiSecurityActivity() {
         super.onDestroy()
         cameraExecutor.shutdown()
         try { if (::faceDetector.isInitialized) faceDetector.close() } catch (e: Exception) { Log.e(TAG, "Error closing face detector: ${e.message}") }
-        // --- Tutorial Cleanup ---
-        currentTutorialPopupWindow?.dismiss() // Dismiss if activity is destroyed
+        currentTutorialPopupWindow?.dismiss()
         currentTutorialPopupWindow = null
-        // --- End Tutorial Cleanup ---
-    }
-
-    private fun resetTimeInButton() {
-        timeInButton.isEnabled = true
-        timeInButton.text = getString(R.string.button_time_in)
     }
 
     // --- TUTORIAL METHODS ---
     private fun startTimeInActivityTutorial() {
-        currentTutorialStepForActivity = 0 // Reset
+        currentTutorialStepForActivity = 0
         if (!::tutorialOverlay.isInitialized) {
             Log.e(TAG, "Tutorial overlay not initialized! Cannot start tutorial.")
-            setResult(RESULT_CANCELED) // Indicate tutorial couldn't run
+            setResult(RESULT_CANCELED)
             finish()
             return
         }
         tutorialOverlay.visibility = View.VISIBLE
-        previousTargetLocationForAnimation = null // Reset for this activity's tutorial
+        previousTargetLocationForAnimation = null
         showCameraPreviewTutorialStep()
     }
 
     private fun showCameraPreviewTutorialStep() {
         currentTutorialStepForActivity = 1
-        val cameraContainer = findViewById<View>(R.id.camera_container) // The CardView
+        val cameraContainer = findViewById<View>(R.id.camera_container)
         showCustomTutorialDialogInTimeIn(
             "This is the camera preview. Your face will appear here once the camera starts.",
             cameraContainer,
@@ -547,11 +579,10 @@ class TimeInActivity : WifiSecurityActivity() {
 
     private fun showFacePositioningTutorialStep() {
         currentTutorialStepForActivity = 2
-        // Target the text view above the camera or the camera container itself
         val instructionText = findViewById<View>(R.id.position_camera_view)
         showCustomTutorialDialogInTimeIn(
             "Position your face within the highlighted box that will appear. Ensure good lighting for accurate detection.",
-            instructionText, // Or cameraContainerCard
+            instructionText,
             currentTutorialStepForActivity,
             TOTAL_TIME_IN_ACTIVITY_TUTORIAL_STEPS
         ) {
@@ -568,12 +599,11 @@ class TimeInActivity : WifiSecurityActivity() {
             currentTutorialStepForActivity,
             TOTAL_TIME_IN_ACTIVITY_TUTORIAL_STEPS
         ) {
-            // Last step for TimeInActivity's tutorial part
             if (::tutorialOverlay.isInitialized) tutorialOverlay.visibility = View.GONE
             previousTargetLocationForAnimation = null
             Toast.makeText(this, "Time-In screen guide finished.", Toast.LENGTH_SHORT).show()
-            setResult(RESULT_OK) // Signal completion to HomeActivity
-            finish() // Return to HomeActivity
+            setResult(RESULT_OK)
+            finish()
         }
     }
 
@@ -585,17 +615,17 @@ class TimeInActivity : WifiSecurityActivity() {
         totalSteps: Int,
         onNext: () -> Unit
     ) {
-        currentTutorialPopupWindow?.dismiss() // Dismiss any existing popup
+        currentTutorialPopupWindow?.dismiss()
 
         if (!::tutorialOverlay.isInitialized) {
             Log.e(TAG, "Tutorial overlay not initialized in showCustomTutorialDialogInTimeIn!")
-            onNext() // Skip step
+            onNext()
             return
         }
-        tutorialOverlay.visibility = View.VISIBLE // Ensure overlay is visible
+        tutorialOverlay.visibility = View.VISIBLE
 
         val inflater = LayoutInflater.from(this)
-        val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null) // Ensure this layout is available
+        val dialogView = inflater.inflate(R.layout.custom_tutorial_dialog, null)
         val progressTextView = dialogView.findViewById<TextView>(R.id.tutorial_progress_text)
         val messageTextView = dialogView.findViewById<TextView>(R.id.tutorial_message)
         val nextButton = dialogView.findViewById<Button>(R.id.tutorial_next_button)
@@ -620,24 +650,22 @@ class TimeInActivity : WifiSecurityActivity() {
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
 
-        // Simplified positioning: Try below, then above, then center.
         finalDialogY = currentTargetLocationOnScreen[1] + targetView.height + margin / 2
-        if (finalDialogY + dialogHeight > screenHeight - margin) { // Not enough space below
+        if (finalDialogY + dialogHeight > screenHeight - margin) {
             finalDialogY = currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
-            if (finalDialogY < margin) { // Not enough space above
-                finalDialogY = (screenHeight - dialogHeight) / 2 // Center vertically
+            if (finalDialogY < margin) {
+                finalDialogY = (screenHeight - dialogHeight) / 2
             }
         }
         finalDialogX = currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2
         if (finalDialogX < margin) finalDialogX = margin
         if (finalDialogX + dialogWidth > screenWidth - margin) finalDialogX = screenWidth - dialogWidth - margin
 
-
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow
         popupWindow.isFocusable = true
-        popupWindow.isOutsideTouchable = true // Allow dismissing by touching outside
-        popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT)) // For rounded corners if dialog bg is shaped
+        popupWindow.isOutsideTouchable = true
+        popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         var isProceeding = false
         popupWindow.setOnDismissListener {
@@ -646,7 +674,6 @@ class TimeInActivity : WifiSecurityActivity() {
             }
         }
 
-        // Animation (adapted from HomeActivity)
         val animationSet = AnimationSet(true)
         val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
         alphaAnimation.duration = 300
@@ -670,7 +697,7 @@ class TimeInActivity : WifiSecurityActivity() {
         dialogView.startAnimation(animationSet)
 
         popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
-        previousTargetLocationForAnimation = intArrayOf(finalDialogX, finalDialogY) // Store dialog's own location
+        previousTargetLocationForAnimation = intArrayOf(finalDialogX, finalDialogY)
 
         nextButton.setOnClickListener {
             isProceeding = true
@@ -678,7 +705,7 @@ class TimeInActivity : WifiSecurityActivity() {
             onNext()
         }
         closeButton.setOnClickListener {
-            isProceeding = true // To prevent double call from onDismissListener
+            isProceeding = true
             popupWindow.dismiss()
             handleTutorialCancellationInTimeIn()
         }
@@ -686,11 +713,11 @@ class TimeInActivity : WifiSecurityActivity() {
 
     private fun handleTutorialCancellationInTimeIn() {
         if (::tutorialOverlay.isInitialized) tutorialOverlay.visibility = View.GONE
-        currentTutorialPopupWindow?.dismiss() // Ensure it's dismissed
+        currentTutorialPopupWindow?.dismiss()
         currentTutorialPopupWindow = null
         previousTargetLocationForAnimation = null
         Toast.makeText(this, "Time-In guide cancelled.", Toast.LENGTH_SHORT).show()
-        setResult(RESULT_CANCELED) // Signal cancellation to HomeActivity
+        setResult(RESULT_CANCELED)
         finish()
     }
 

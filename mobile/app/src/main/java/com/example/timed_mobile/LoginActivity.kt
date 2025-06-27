@@ -120,7 +120,7 @@ class LoginActivity : WifiSecurityActivity() {
                     return@addOnSuccessListener
                 }
 
-/*                // Check if user account is verified
+                // Check if user account is verified
                 if (!verified) {
                     Toast.makeText(
                         this,
@@ -128,7 +128,7 @@ class LoginActivity : WifiSecurityActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                     return@addOnSuccessListener
-                }*/
+                }
 
                 val result = BCrypt.verifyer().verify(password.toCharArray(), dbPassword)
                 if (!result.verified) {
