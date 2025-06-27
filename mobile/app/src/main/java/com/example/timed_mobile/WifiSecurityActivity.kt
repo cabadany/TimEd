@@ -11,6 +11,7 @@ import android.graphics.drawable.ColorDrawable
 import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
@@ -27,9 +28,27 @@ import androidx.core.content.ContextCompat
 
 abstract class WifiSecurityActivity : AppCompatActivity() {
 
+    // Enum to represent different Wi-Fi connection states
+    private enum class WifiCheckResult {
+        SECURE,          // Correct BSSID
+        INSECURE_SSID,   // Correct SSID, but wrong BSSID (Potential Rogue AP)
+        WRONG_NETWORK,   // Not a recognized network
+        NO_WIFI,         // Not on a Wi-Fi network
+        PERMISSION_NEEDED
+    }
+
     companion object {
         private const val TAG = "WifiSecurityActivity"
         private const val LOCATION_PERMISSION_REQUEST_CODE = 123
+
+        // List of authorized BSSIDs (MAC Addresses). This is the primary security check.
+        private val ALLOWED_WIFI_BSSIDS = listOf(
+            "6c:a4:d1:c8:28:f8", //TIMED-AP2.4G //Timeduser12345!
+            "02:00:00:00:00:02", // Example BSSID for CITU_WILSTUDENT
+            "02:00:00:00:00:03"  // Example BSSID for NAVACOM AP
+        )
+
+        // List of authorized SSIDs (Wi-Fi Names). Used for the rogue AP warning.
         private val ALLOWED_WIFI_SSIDS = listOf(
             "TIMED-AP2.4G",
             "CITU_WILSTUDENT",
@@ -78,9 +97,15 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
                 } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                     errorMessage = "Mobile data is not allowed. Please disable it and connect to an authorized Wi-Fi network."
                 } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                    if (!isCorrectWifiConnected()) {
-                        val allowedSsidsString = ALLOWED_WIFI_SSIDS.joinToString(separator = ", ")
-                        errorMessage = "You are connected to an unauthorized Wi-Fi network. Please connect to one of the following: $allowedSsidsString."
+                    // --- ENHANCED SECURITY CHECK ---
+                    when (checkWifiStatus()) {
+                        WifiCheckResult.SECURE -> { /* All good, no error */ }
+                        WifiCheckResult.INSECURE_SSID -> {
+                            errorMessage = "Security Warning: The current Wi-Fi has a correct name but is an unrecognized access point. Please disconnect immediately."
+                        }
+                        else -> { // WRONG_NETWORK, NO_WIFI, PERMISSION_NEEDED
+                            errorMessage = "You are not connected to an authorized Wi-Fi network. Please connect to the company's Wi-Fi to continue."
+                        }
                     }
                 } else {
                     errorMessage = "An unsupported network type is active. Please connect to an authorized Wi-Fi network."
@@ -123,42 +148,26 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
     }
 
     fun performWifiChecksAndProceed(action: () -> Unit) {
-        if (!hasLocationPermission()) {
-            Log.d(TAG, "Location permission not granted. Requesting...")
-            pendingAction = action
-            requestLocationPermission()
-            return
-        }
+        val wifiStatus = checkWifiStatus()
 
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (!wifiManager.isWifiEnabled) {
-            Log.w(TAG, "Wi-Fi is disabled.")
-            showWifiNotEnabledDialog()
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && !isLocationServicesEnabled()) {
-            Log.w(TAG, "Location services are disabled on Android 8.1+.")
-            showEnableLocationDialogForWifi()
-            return
-        }
-
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork
-        val capabilities = connectivityManager.getNetworkCapabilities(network)
-
-        if (capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-            Log.w(TAG, "Action blocked: User is on mobile data.")
-            showMobileDataNotAllowedDialog()
-            return
-        }
-
-        if (isCorrectWifiConnected()) {
-            Log.d(TAG, "All checks passed. Proceeding with action.")
-            action()
-        } else {
-            Log.w(TAG, "Not connected to an allowed Wi-Fi SSID or no network.")
-            showWifiRequiredDialog()
+        when (wifiStatus) {
+            WifiCheckResult.SECURE -> {
+                Log.d(TAG, "All checks passed. Proceeding with action.")
+                action()
+            }
+            WifiCheckResult.INSECURE_SSID -> {
+                Log.w(TAG, "Potential rogue AP detected. Correct SSID, but wrong BSSID.")
+                showInsecureSsidDialog()
+            }
+            WifiCheckResult.WRONG_NETWORK, WifiCheckResult.NO_WIFI -> {
+                Log.w(TAG, "Not connected to an allowed Wi-Fi network.")
+                showWifiRequiredDialog()
+            }
+            WifiCheckResult.PERMISSION_NEEDED -> {
+                Log.d(TAG, "Location permission not granted. Requesting...")
+                pendingAction = action
+                requestLocationPermission()
+            }
         }
     }
 
@@ -183,32 +192,45 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         }
     }
 
-    @Suppress("deprecation")
-    private fun isCorrectWifiConnected(): Boolean {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private fun checkWifiStatus(): WifiCheckResult {
+        if (!hasLocationPermission()) return WifiCheckResult.PERMISSION_NEEDED
+
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        if (!wifiManager.isWifiEnabled) return WifiCheckResult.NO_WIFI
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = connectivityManager.activeNetwork ?: return false
-            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-            if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return false
-        } else {
-            val networkInfo = connectivityManager.activeNetworkInfo ?: return false
-            if (!networkInfo.isConnected || networkInfo.type != ConnectivityManager.TYPE_WIFI) return false
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+        if (network == null || capabilities == null || !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+            return WifiCheckResult.NO_WIFI
         }
 
-        val currentSsidRaw = wifiManager.connectionInfo?.ssid
-        if (currentSsidRaw == null || currentSsidRaw == "<unknown ssid>" || currentSsidRaw.isBlank()) {
-            return false
+        val wifiInfo: WifiInfo? = wifiManager.connectionInfo
+        val currentBssid = wifiInfo?.bssid
+        val currentSsid = wifiInfo?.ssid?.replace("\"", "")
+
+        if (currentBssid == null || currentSsid == null) {
+            Log.w(TAG, "Could not retrieve BSSID or SSID.")
+            return WifiCheckResult.WRONG_NETWORK
         }
-        val cleanedSsid = currentSsidRaw.trim('"')
-        Log.d(TAG, "Current Wi-Fi SSID: $cleanedSsid")
-        return ALLOWED_WIFI_SSIDS.contains(cleanedSsid)
+
+        Log.d(TAG, "Current Wi-Fi - SSID: $currentSsid, BSSID: $currentBssid")
+
+        // Primary check: Is the BSSID in the allowed list?
+        if (ALLOWED_WIFI_BSSIDS.any { it.equals(currentBssid, ignoreCase = true) }) {
+            return WifiCheckResult.SECURE
+        }
+
+        // Secondary check: If BSSID failed, is the SSID a known name?
+        // This indicates a potential "evil twin" attack.
+        if (ALLOWED_WIFI_SSIDS.any { it.equals(currentSsid, ignoreCase = true) }) {
+            return WifiCheckResult.INSECURE_SSID
+        }
+
+        // If both checks fail, it's just a random, unauthorized network.
+        return WifiCheckResult.WRONG_NETWORK
     }
 
-    /**
-     * A generic function to show a custom dialog for one-time info alerts.
-     */
     private fun showCustomInfoDialog(message: String, buttonText: String, isCancelable: Boolean, action: (() -> Unit)?) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_network_blocker, null)
         val messageTextView = dialogView.findViewById<TextView>(R.id.dialog_message)
@@ -232,37 +254,18 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showWifiNotEnabledDialog() {
+    private fun showInsecureSsidDialog() {
         showCustomInfoDialog(
-            message = "Wi-Fi must be enabled for this action. Please enable Wi-Fi and try again.",
-            buttonText = "Go to Settings",
-            isCancelable = false,
-            action = { startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) }
-        )
-    }
-
-    private fun showMobileDataNotAllowedDialog() {
-        showCustomInfoDialog(
-            message = "This action requires a Wi-Fi connection. Please disable mobile data or connect to an authorized Wi-Fi network to continue.",
+            message = "Security Warning: The current Wi-Fi network has the correct name but is not a secure, authorized access point. For your security, please disconnect and connect to the official company Wi-Fi.",
             buttonText = "OK",
             isCancelable = true,
             action = null
         )
     }
 
-    private fun showEnableLocationDialogForWifi() {
-        showCustomInfoDialog(
-            message = "Location services are required to detect the Wi-Fi network name. Please enable location services and try again.",
-            buttonText = "Go to Settings",
-            isCancelable = false,
-            action = { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
-        )
-    }
-
     private fun showWifiRequiredDialog() {
-        val allowedSsidsString = ALLOWED_WIFI_SSIDS.joinToString(separator = ", ")
         showCustomInfoDialog(
-            message = "You must be connected to one of the following Wi-Fi networks to perform this action: $allowedSsidsString.",
+            message = "You must be connected to an authorized company Wi-Fi network to perform this action.",
             buttonText = "OK",
             isCancelable = true,
             action = null
