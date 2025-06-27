@@ -83,39 +83,93 @@ public class AccountRequestService {
     public List<AccountRequest> getAllAccountRequests() throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
 
-        ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
-            .orderBy("requestDate", Query.Direction.DESCENDING)
-            .get();
-        
-        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
-        List<AccountRequest> requests = new ArrayList<>();
+        try {
+            // Try with orderBy first
+            ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
+                .orderBy("requestDate", Query.Direction.DESCENDING)
+                .get();
+            
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            List<AccountRequest> requests = new ArrayList<>();
 
-        for (QueryDocumentSnapshot doc : documents) {
-            AccountRequest request = doc.toObject(AccountRequest.class);
-            requests.add(request);
+            for (QueryDocumentSnapshot doc : documents) {
+                AccountRequest request = doc.toObject(AccountRequest.class);
+                requests.add(request);
+            }
+
+            return requests;
+        } catch (Exception e) {
+            // If orderBy fails, fallback to simple query and sort in memory
+            System.out.println("OrderBy failed, falling back to simple query: " + e.getMessage());
+            
+            ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME).get();
+            
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            List<AccountRequest> requests = new ArrayList<>();
+
+            for (QueryDocumentSnapshot doc : documents) {
+                AccountRequest request = doc.toObject(AccountRequest.class);
+                requests.add(request);
+            }
+
+            // Sort in memory by requestDate (most recent first)
+            requests.sort((a, b) -> {
+                if (a.getRequestDate() == null && b.getRequestDate() == null) return 0;
+                if (a.getRequestDate() == null) return 1;
+                if (b.getRequestDate() == null) return -1;
+                return b.getRequestDate().compareTo(a.getRequestDate());
+            });
+
+            return requests;
         }
-
-        return requests;
     }
 
     // Get pending account requests only
     public List<AccountRequest> getPendingAccountRequests() throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
 
-        ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
-            .whereEqualTo("status", "PENDING")
-            .orderBy("requestDate", Query.Direction.DESCENDING)
-            .get();
-        
-        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
-        List<AccountRequest> requests = new ArrayList<>();
+        try {
+            // Try with orderBy first (requires composite index)
+            ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
+                .whereEqualTo("status", "PENDING")
+                .orderBy("requestDate", Query.Direction.DESCENDING)
+                .get();
+            
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            List<AccountRequest> requests = new ArrayList<>();
 
-        for (QueryDocumentSnapshot doc : documents) {
-            AccountRequest request = doc.toObject(AccountRequest.class);
-            requests.add(request);
+            for (QueryDocumentSnapshot doc : documents) {
+                AccountRequest request = doc.toObject(AccountRequest.class);
+                requests.add(request);
+            }
+
+            return requests;
+        } catch (Exception e) {
+            // If composite index doesn't exist, fallback to simple query and sort in memory
+            System.out.println("Composite index not available, falling back to simple query: " + e.getMessage());
+            
+            ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
+                .whereEqualTo("status", "PENDING")
+                .get();
+            
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            List<AccountRequest> requests = new ArrayList<>();
+
+            for (QueryDocumentSnapshot doc : documents) {
+                AccountRequest request = doc.toObject(AccountRequest.class);
+                requests.add(request);
+            }
+
+            // Sort in memory by requestDate (most recent first)
+            requests.sort((a, b) -> {
+                if (a.getRequestDate() == null && b.getRequestDate() == null) return 0;
+                if (a.getRequestDate() == null) return 1;
+                if (b.getRequestDate() == null) return -1;
+                return b.getRequestDate().compareTo(a.getRequestDate());
+            });
+
+            return requests;
         }
-
-        return requests;
     }
 
     // Get account request by ID
