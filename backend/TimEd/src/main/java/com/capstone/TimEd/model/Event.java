@@ -13,18 +13,20 @@ public class Event {
     private Department department;  // This will hold the full department object (to be set manually)
     private String certificateId; // Reference to Certificate
     private String description; // Description of the event
+    private String location; // Location of the event
 
     // Constructors
     public Event() {}
 
-    public Event(String eventId, String eventName, Date date, String duration, String status, String departmentId, String description) {
+    public Event(String eventId, String eventName, Date date, String duration, String status, String departmentId, String description, String location) {
         this.eventId = eventId;
         this.eventName = eventName;
         this.date = date;
         this.duration = duration;
         this.status = status;
         this.departmentId = departmentId;
-        this.description=description;
+        this.description = description;
+        this.location = location;
     }
 
     // Getters and Setters
@@ -98,5 +100,13 @@ public class Event {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }
