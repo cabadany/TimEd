@@ -11,7 +11,7 @@ public class Eventdto {
     private String departmentId; // Reference to Department
     private String departmentName; // New field for the department name
     private String description; // Description of the event
-    private String location; // Location of the event
+    private String venue; // Location of the event
 
     // Default constructor
     public Eventdto() {
@@ -38,7 +38,7 @@ public class Eventdto {
         this.description = description;
     }
 
-    public Eventdto(String eventId, String eventName, String status, String date, String duration, String departmentId, String departmentName, String description, String location) {
+    public Eventdto(String eventId, String eventName, String status, String date, String duration, String departmentId, String departmentName, String description, String venue) {
         this.eventId = eventId;
         this.eventName = eventName;
         this.status = status;
@@ -47,7 +47,7 @@ public class Eventdto {
         this.departmentId = departmentId;
         this.departmentName = departmentName;
         this.description = description;
-        this.location = location;
+        this.venue = venue;
     }
     // Getters and Setters
     public String getEventId() {
@@ -120,11 +120,11 @@ public class Eventdto {
         this.description = description;
     }
 
-    public String getLocation() {
-        return location;
+    public String getVenue() {
+        return venue;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setVenue(String venue) {
+        this.venue = venue;
     }
 }

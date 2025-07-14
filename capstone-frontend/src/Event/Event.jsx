@@ -184,7 +184,7 @@ const EventCard = React.memo(({ event, getDepartmentName, formatDate, openQrModa
   </Typography>
 
   <Typography variant="body2" color="#64748B" gutterBottom>
-    <strong>Location:</strong> {event.location || 'N/A'}
+    <strong>Location:</strong> {event.venue || 'N/A'}
   </Typography>
 
   {event.description && (
@@ -314,7 +314,7 @@ export default function EventPage() {
   const [durationMinutes, setDurationMinutes] = useState('00');
   const [durationSeconds, setDurationSeconds] = useState('00');
   const [description, setDescription] = useState(''); // Add description state
-  const [location, setLocation] = useState(''); // Add location state
+  const [venue, setVenue] = useState(''); // Add location state
   
   // State for events data
   const [events, setEvents] = useState([]);
@@ -580,7 +580,7 @@ export default function EventPage() {
         duration,
         status: 'Upcoming',
         description, // Add description to event data
-        location // Add location to event data
+        venue // Add location to event data
       };
       
       setLoading(true);
@@ -742,7 +742,7 @@ export default function EventPage() {
         ...eventToEdit,
         status: editedStatus,
         duration: formattedDuration,
-        location // Add location to update payload
+        venue // Add location to update payload
       };
       
       await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT(eventToEdit.eventId)), updatePayload);
@@ -767,7 +767,7 @@ export default function EventPage() {
     setDate('');
     setDuration('');
     setDescription(''); // Reset description
-    setLocation(''); // Reset location
+    setVenue(''); // Reset location
     setCurrentCertificateData(null);
     setEventForCertificate(null);
     setShowCertificateEditor(false);
@@ -1460,7 +1460,7 @@ export default function EventPage() {
                   <strong>Duration:</strong> {event.duration}
                 </Typography>
                 <Typography variant="body2" color="#64748B" gutterBottom>
-    <strong>Venue:</strong> {event.location || 'N/A'}
+    <strong>Venue:</strong> {event.venue || 'N/A'}
   </Typography>
 
                 {event.description && (
@@ -1754,14 +1754,14 @@ export default function EventPage() {
             
             <Box sx={{ gridColumn: "span 2" }}>
               <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                Location
+                Venue
               </Typography>
               <TextField
                 fullWidth
                 variant="outlined"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Enter event location..."
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+                placeholder="Enter event Venue..."
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '4px',
@@ -2047,7 +2047,7 @@ export default function EventPage() {
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Duration</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Location</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Venue</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -2123,7 +2123,7 @@ export default function EventPage() {
                           }}
                         />
                       </TableCell>
-                      <TableCell>{event.location || 'N/A'}</TableCell>
+                      <TableCell>{event.venue || 'N/A'}</TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           <IconButton 

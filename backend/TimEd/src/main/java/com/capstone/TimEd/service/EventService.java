@@ -84,7 +84,7 @@ public class EventService {
                         event.getDuration(),       // Event Duration (HH:mm:ss)
                         event.getDepartmentId(),    // Department ID (linked department)
                         event.getDescription(),
-                        event.getLocation()
+                        event.getVenue()
                 );
                 eventDtos.add(eventDto);  // Add the Eventdto to the list
             }
@@ -246,7 +246,7 @@ public class EventService {
             updateMap.put("duration", updatedEvent.getDuration());
             updateMap.put("departmentId", updatedEvent.getDepartmentId());
             updateMap.put("description", updatedEvent.getDescription());
-            updateMap.put("location", updatedEvent.getLocation());
+            updateMap.put("venue", updatedEvent.getVenue());
             // Also update certificateId if it exists
             if (updatedEvent.getCertificateId() != null) {
                 updateMap.put("certificateId", updatedEvent.getCertificateId());
@@ -406,7 +406,7 @@ public class EventService {
                     event.getDepartmentId(),    
                     event.getDescription(),
                     event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",  // Use department name,
-                    event.getLocation()
+                    event.getVenue()
                 );
 
                 eventDtos.add(eventDto);  // Add the event DTO to the list
@@ -487,7 +487,7 @@ public class EventService {
                     event.getDepartmentId(),
                     event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
                     event.getDescription(),
-                    event.getLocation()
+                    event.getVenue()
                 );
                 
                 eventDtos.add(eventDto);
@@ -563,7 +563,7 @@ public class EventService {
                         event.getDepartmentId(),
                         event.getDepartment() != null ? event.getDepartment().getName() : "Unknown Department",
                         event.getDescription(),
-                        event.getLocation()
+                        event.getVenue()
                     );
                     
                     eventDtos.add(eventDto);

@@ -53,7 +53,7 @@ public class EventController {
             event.setDuration((String) eventData.get("duration"));
             event.setStatus((String) eventData.get("status"));
             event.setDescription((String) eventData.get("description"));
-            event.setLocation((String) eventData.get("location"));
+            event.setVenue((String) eventData.get("venue"));
             
             // Handle date parsing manually to preserve Philippines timezone
             String dateString = (String) eventData.get("date");
