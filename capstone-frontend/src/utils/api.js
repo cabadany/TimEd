@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://timed-utd9.onrender.com/api';
 
 // Helper function to construct API URLs
 export const getApiUrl = (endpoint) => {
