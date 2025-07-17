@@ -298,6 +298,7 @@ export default function Dashboard() {
           status: processedEvent.status || 'Unknown',
           createdBy: event.createdBy || 'Unknown',
           departmentId: event.departmentId || null, // Added departmentId here
+          venue: event.venue || 'N/A',
           _rawDate: event.date, // Keep the raw date for sorting
           _endTime: eventEndTime // Store end time for later use
         };
@@ -1826,6 +1827,8 @@ export default function Dashboard() {
                         <TableCell>Time In</TableCell>
                         <TableCell>Time Out</TableCell>
                         <TableCell>Duration</TableCell>
+                        <TableCell>Venue</TableCell>
+                        <TableCell>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1853,6 +1856,8 @@ export default function Dashboard() {
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Venue</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -2004,6 +2009,15 @@ export default function Dashboard() {
                                   In Progress
                                 </Typography>
                               )}
+                            </TableCell>
+                            <TableCell>{entry.venue || 'N/A'}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={entry.attendanceBadge} 
+                                size="small" 
+                                className={`status-chip ${getStatusClass(entry.attendanceBadge)}`}
+                                variant="outlined"
+                              />
                             </TableCell>
                           </TableRow>
                         );
@@ -2333,6 +2347,7 @@ export default function Dashboard() {
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Venue</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
                         </TableRow>
@@ -2360,6 +2375,7 @@ export default function Dashboard() {
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Department</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Date</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Venue</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Actions</TableCell>
                         </TableRow>
@@ -2374,6 +2390,7 @@ export default function Dashboard() {
                             <TableCell>{getDepartmentName(event.departmentId)}</TableCell>
                             <TableCell>{event.date}</TableCell>
                             <TableCell>{event.duration}</TableCell>
+                            <TableCell>{event.venue || 'N/A'}</TableCell>
                             <TableCell>
                               <Chip 
                                 label={event.status} 
@@ -2595,6 +2612,14 @@ export default function Dashboard() {
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Duration</Typography>
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.duration}</Typography>
+                </Box>
+              </ListItem>
+              <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
+              
+              <ListItem sx={{ py: 1, px: 0 }}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" color="text.secondary">Venue</Typography>
+                  <Typography variant="body1" fontWeight={500}>{selectedEvent.venue || 'N/A'}</Typography>
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
