@@ -1246,6 +1246,24 @@ export default function Attendance() {
               </Typography>
             </Box>
           </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ 
+              p: 2.5, 
+              borderRadius: '12px', 
+              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease',
+              height: '100%'
+            }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Venue
+              </Typography>
+              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                {event?.venue || 'N/A'}
+              </Typography>
+            </Box>
+          </Grid>
           <Grid item xs={12}>
             <Box sx={{ 
               p: 2.5, 
