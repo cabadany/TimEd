@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { parse, format } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 import { QrCode2, Download, BrandingWatermark } from '@mui/icons-material';
@@ -81,7 +81,7 @@ import { formatDatePH, createLocalDateISO } from '../utils/dateUtils';
 // Default certificate template
 const defaultCertificate = {
   title: 'CERTIFICATE',
-  subtitle: 'OF ACHIEVEMENT',
+  subtitle: 'OF ACHIEVEMENT', 
   recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
   recipientName: '{Recipient Name}',
   description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
@@ -150,45 +150,49 @@ const EventCard = React.memo(({ event, getDepartmentName, formatDate, openQrModa
         </Box>
         
         <CardContent sx={{ flex: 1 }}>
-          <Box sx={{ 
-            mb: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'flex-start'
-          }}>
-            <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-              {event.eventName}
-            </Typography>
-            <Chip 
-              label="Ongoing" 
-              size="small"
-              sx={{ 
-                bgcolor: '#E0F2FE',
-                color: '#0369A1',
-                fontWeight: 500,
-                fontSize: '0.75rem'
-              }} 
-            />
-          </Box>
-          
-          <Typography variant="body2" color="#64748B" gutterBottom>
-            <strong>Department:</strong> {getDepartmentName(event.departmentId)}
-          </Typography>
-          
-          <Typography variant="body2" color="#64748B" gutterBottom>
-            <strong>Started:</strong> {formatDate(event.date)}
-          </Typography>
-          
-          <Typography variant="body2" color="#64748B" gutterBottom>
-            <strong>Duration:</strong> {event.duration}
-          </Typography>
+  <Box sx={{ 
+    mb: 2, 
+    display: 'flex', 
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
+  }}>
+    <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+      {event.eventName}
+    </Typography>
+    <Chip 
+      label="Ongoing" 
+      size="small"
+      sx={{ 
+        bgcolor: '#E0F2FE',
+        color: '#0369A1',
+        fontWeight: 500,
+        fontSize: '0.75rem'
+      }} 
+    />
+  </Box>
+  
+  <Typography variant="body2" color="#64748B" gutterBottom>
+    <strong>Department:</strong> {getDepartmentName(event.departmentId)}
+  </Typography>
+  
+  <Typography variant="body2" color="#64748B" gutterBottom>
+    <strong>Started:</strong> {formatDate(event.date)}
+  </Typography>
+  
+  <Typography variant="body2" color="#64748B" gutterBottom>
+    <strong>Duration:</strong> {event.duration}
+  </Typography>
 
-          {event.description && (
-            <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
-              <strong>Description:</strong> {event.description}
-            </Typography>
-          )}
-        </CardContent>
+  <Typography variant="body2" color="#64748B" gutterBottom>
+    <strong>Location:</strong> {event.venue || 'N/A'}
+  </Typography>
+
+  {event.description && (
+    <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
+      <strong>Description:</strong> {event.description}
+    </Typography>
+  )}
+</CardContent>
         
         <Divider />
         
@@ -299,7 +303,7 @@ const EventCardSkeleton = () => (
 export default function EventPage() {
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
+
   
   // State for form fields
   const [eventName, setEventName] = useState('');
@@ -310,6 +314,7 @@ export default function EventPage() {
   const [durationMinutes, setDurationMinutes] = useState('00');
   const [durationSeconds, setDurationSeconds] = useState('00');
   const [description, setDescription] = useState(''); // Add description state
+  const [venue, setVenue] = useState(''); // Add location state
   
   // State for events data
   const [events, setEvents] = useState([]);
@@ -574,7 +579,8 @@ export default function EventPage() {
         date: formattedDate,
         duration,
         status: 'Upcoming',
-        description // Add description to event data
+        description, // Add description to event data
+        venue // Add location to event data
       };
       
       setLoading(true);
@@ -735,7 +741,8 @@ export default function EventPage() {
       const updatePayload = {
         ...eventToEdit,
         status: editedStatus,
-        duration: formattedDuration
+        duration: formattedDuration,
+        venue // Add location to update payload
       };
       
       await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT(eventToEdit.eventId)), updatePayload);
@@ -760,6 +767,7 @@ export default function EventPage() {
     setDate('');
     setDuration('');
     setDescription(''); // Reset description
+    setVenue(''); // Reset location
     setCurrentCertificateData(null);
     setEventForCertificate(null);
     setShowCertificateEditor(false);
@@ -1451,6 +1459,9 @@ export default function EventPage() {
                 <Typography variant="body2" color="#64748B" gutterBottom>
                   <strong>Duration:</strong> {event.duration}
                 </Typography>
+                <Typography variant="body2" color="#64748B" gutterBottom>
+    <strong>Venue:</strong> {event.venue || 'N/A'}
+  </Typography>
 
                 {event.description && (
                   <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
@@ -1743,6 +1754,34 @@ export default function EventPage() {
             
             <Box sx={{ gridColumn: "span 2" }}>
               <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+                Venue
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+                placeholder="Enter event Venue..."
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#CBD5E1',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#0288d1',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            
+            <Box sx={{ gridColumn: "span 2" }}>
+              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
                 Certificate Template
               </Typography>
               <Box sx={{ 
@@ -2008,6 +2047,7 @@ export default function EventPage() {
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Date</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Duration</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Venue</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#1E293B', py: 1.5 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -2083,6 +2123,7 @@ export default function EventPage() {
                           }}
                         />
                       </TableCell>
+                      <TableCell>{event.venue || 'N/A'}</TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           <IconButton 
