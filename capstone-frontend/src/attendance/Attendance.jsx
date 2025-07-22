@@ -1641,8 +1641,8 @@ export default function Attendance() {
                         <TableCell>Email</TableCell>
                         <TableCell>Department</TableCell>
                         <TableCell>Time In</TableCell>
-                        <TableCell>Time Out</TableCell>
-                        <TableCell>Status</TableCell>
+                       <TableCell>Time Out</TableCell>
+                         {/*<TableCell>Status</TableCell>*/}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1699,7 +1699,7 @@ export default function Attendance() {
                                 />
                               </Tooltip>
                             </TableCell>
-                            <TableCell>
+                           <TableCell>
                               {formattedAttendee.timeOut !== 'N/A' ? (
                                 <Tooltip title="Time Out" arrow>
                                   <Chip 
@@ -1719,6 +1719,7 @@ export default function Attendance() {
                                 />
                               )}
                             </TableCell>
+                            {/*
                             <TableCell>
                               <Chip 
                                 label={formattedAttendee.manualEntry ? "Manual Entry" : "QR Scan"}
@@ -1726,7 +1727,7 @@ export default function Attendance() {
                                 size="small"
                                 variant="outlined"
                               />
-                            </TableCell>
+                            </TableCell>*/}
                           </TableRow>
                         );
                       })}
