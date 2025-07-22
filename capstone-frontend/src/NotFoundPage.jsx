@@ -327,7 +327,6 @@ const NotFoundPage = () => {
           <div className="help-section">
             <p className="help-text">Still can't find what you're looking for?</p>
             <a
-  href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
   target="_blank"           // Optional: opens in new tab
   rel="noopener noreferrer" // Security best practice
   className="search-button"
