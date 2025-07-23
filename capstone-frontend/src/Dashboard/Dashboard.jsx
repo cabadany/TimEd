@@ -1708,9 +1708,9 @@ export default function Dashboard() {
                     Today's Attendance Summary
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
+                 {/*   <Typography variant="body2" color="text.secondary">
                       Late after: {lateThreshold}
-                    </Typography>
+                    </Typography>*/}
                     <Button
                       variant="outlined"
                       size="small"
@@ -1827,8 +1827,8 @@ export default function Dashboard() {
                         <TableCell>Time In</TableCell>
                         <TableCell>Time Out</TableCell>
                         <TableCell>Duration</TableCell>
-                        <TableCell>Venue</TableCell>
-                        <TableCell>Status</TableCell>
+                      {/*  <TableCell>Venue</TableCell>
+                        <TableCell>Status</TableCell>*/}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1856,8 +1856,7 @@ export default function Dashboard() {
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time In</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Time Out</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Duration</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Venue</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.875rem' }}>Status</TableCell>
+
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -2010,7 +2009,7 @@ export default function Dashboard() {
                                 </Typography>
                               )}
                             </TableCell>
-                            <TableCell>{entry.venue || 'N/A'}</TableCell>
+                           {/*<TableCell>{entry.venue || 'N/A'}</TableCell>
                             <TableCell>
                               <Chip 
                                 label={entry.attendanceBadge} 
@@ -2018,7 +2017,7 @@ export default function Dashboard() {
                                 className={`status-chip ${getStatusClass(entry.attendanceBadge)}`}
                                 variant="outlined"
                               />
-                            </TableCell>
+                            </TableCell>*/}
                           </TableRow>
                         );
                       })}
@@ -2617,8 +2616,8 @@ export default function Dashboard() {
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
               
               <ListItem sx={{ py: 1, px: 0 }}>
-                <Box sx={{ width: '100%' }}>
-                  <Typography variant="body2" color="text.secondary">Venue</Typography>
+               <Box sx={{ width: '100%' }}>
+                 <Typography variant="body2" color="text.secondary">Venue</Typography>
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.venue || 'N/A'}</Typography>
                 </Box>
               </ListItem>
