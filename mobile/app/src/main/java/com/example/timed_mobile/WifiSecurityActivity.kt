@@ -44,13 +44,14 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         // List of authorized BSSIDs (MAC Addresses). This is the primary security check.
         private val ALLOWED_WIFI_BSSIDS = listOf(
             "6c:a4:d1:c8:28:f8", //TIMED-AP2.4G //Timeduser12345!
-            "02:00:00:00:00:02", // Example BSSID for CITU_WILSTUDENT
-            "02:00:00:00:00:03"  // Example BSSID for NAVACOM AP
+            "00:13:10:85:fe:01", // Example BSSID for AndroidWifi
+            "dc:9f:db:f7:40:91"  // Example BSSID for NAVACOM AP
         )
 
         // List of authorized SSIDs (Wi-Fi Names). Used for the rogue AP warning.
         private val ALLOWED_WIFI_SSIDS = listOf(
             "TIMED-AP2.4G",
+            "AndroidWifi",
             "CITU_WILSTUDENT",
             "NAVACOM AP"
         )

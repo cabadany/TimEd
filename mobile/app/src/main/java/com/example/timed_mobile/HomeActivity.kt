@@ -892,6 +892,7 @@ class HomeActivity : WifiSecurityActivity() {
                             val title = doc.getString("eventName") ?: continue
                             val duration = doc.getString("duration") ?: "1:00:00"
                             val date = doc.getTimestamp("date")?.toDate() ?: continue
+                            val venue = doc.getString("venue") ?: "N/A"
                             val dateFormatted = fullFormatter.format(date)
                             val statusFromDb = doc.getString("status") ?: "upcoming"
                             val durationParts = duration.split(":")
@@ -904,9 +905,14 @@ class HomeActivity : WifiSecurityActivity() {
                             val eventStartMillis = date.time; val eventEndMillis = eventStartMillis + durationMillis
                             val dynamicStatus = when {
                                 statusFromDb.equals("cancelled", ignoreCase = true) -> "cancelled"
-                                nowMillis < eventStartMillis -> "upcoming"
-                                nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
-                                else -> "ended"
+                                statusFromDb.equals("ongoing", ignoreCase = true) -> "ongoing"
+                                statusFromDb.equals("ended", ignoreCase = true) -> "ended"
+                                // If status is "upcoming" or not present, calculate based on time
+                                else -> when {
+                                    nowMillis < eventStartMillis -> "upcoming"
+                                    nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
+                                    else -> "ended"
+                                }
                             }
 
                             // Notification for upcoming event (within 15 mins)
@@ -945,46 +951,44 @@ class HomeActivity : WifiSecurityActivity() {
                                 }
                             }
 
-                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date))
+                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date, venue = venue))
                         } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
                     }
-                    showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming)
+
+                    // --- FIX: This logic now runs *after* allEvents is populated ---
+                    val defaultFilter = if (allEvents.any { it.status.equals("ongoing", ignoreCase = true) }) {
+                        "ongoing"
+                    } else {
+                        "upcoming"
+                    }
+                    showEventsByStatus(defaultFilter)
+                    val buttonToSelect = if (defaultFilter == "ongoing") btnOngoing else btnUpcoming
+                    updateFilterButtonStates(buttonToSelect)
                 }
                 .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show() }
         }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show() }
     }
 
-    private fun showEventsByStatus(statusFilter: String?) {
-        val currentDate = Date()
-        val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = event.rawDate; val durationParts = event.duration.split(":")
-            val durationMillis = when (durationParts.size) {
-                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
-                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
-                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L; else -> 3600000L
-            }
-            val eventEndDate = eventDate?.time?.plus(durationMillis)
-            val dynamicStatus = if (event.status.equals("cancelled", ignoreCase = true)) "cancelled" else {
-                when {
-                    eventDate == null || eventEndDate == null -> "unknown"
-                    currentDate.time < eventDate.time -> "upcoming"
-                    currentDate.time in eventDate.time until eventEndDate -> "ongoing"
-                    else -> "ended"
-                }
-            }
-            event.copy(status = dynamicStatus)
-        }
-        val filtered = if (statusFilter == null) eventsWithDynamicStatus else eventsWithDynamicStatus.filter { it.status.equals(statusFilter, ignoreCase = true) }
-        val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
-
-        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
-            ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
-
-
-        val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
-        noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
-        if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
+private fun showEventsByStatus(statusFilter: String?) {
+    // --- FIX: Simplified Filtering Logic ---
+    // The status for each event is now correctly determined in `loadAndStoreEvents`.
+    // This function should ONLY filter and sort the existing `allEvents` list.
+    // The redundant and buggy re-calculation logic has been removed.
+    val filtered = if (statusFilter == null) {
+        allEvents
+    } else {
+        allEvents.filter { it.status.equals(statusFilter, ignoreCase = true) }
     }
+    val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
+
+    (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
+        ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
+
+
+    val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
+    noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+    if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
+}
 
     private fun statusOrder(status: String): Int = when (status.lowercase(Locale.ROOT)) {
         "upcoming" -> 0; "ongoing" -> 1; "ended" -> 2; "cancelled" -> 3; else -> 4
