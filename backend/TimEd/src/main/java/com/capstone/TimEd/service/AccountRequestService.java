@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.capstone.TimEd.dto.AccountRequestDto;
 import com.capstone.TimEd.dto.ReviewRequestDto;
 import com.capstone.TimEd.model.AccountRequest;
+import com.capstone.TimEd.model.Department;
 import com.capstone.TimEd.model.User;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
@@ -42,6 +43,9 @@ public class AccountRequestService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private DepartmentService departmentService;
 
     private static final String COLLECTION_NAME = "accountRequests";
 
@@ -241,8 +245,28 @@ public class AccountRequestService {
         user.setSchoolId(request.getSchoolId());
         user.setPassword(request.getPassword()); // Already hashed from account request
         user.setRole("USER"); // Default role for mobile users
-        user.setDepartmentId(null); // You might want to map department name to ID
         user.setVerified(true); // Account is verified since admin approved the request
+        
+        // Map department name to department object and ID
+        if (request.getDepartment() != null && !request.getDepartment().trim().isEmpty()) {
+            try {
+                Department department = departmentService.getDepartmentByName(request.getDepartment());
+                if (department != null) {
+                    user.setDepartment(department);
+                    user.setDepartmentId(department.getDepartmentId());
+                } else {
+                    // Log warning if department not found, but don't fail the request
+                    System.out.println("Warning: Department '" + request.getDepartment() + "' not found for user " + request.getEmail());
+                    user.setDepartmentId(null);
+                }
+            } catch (Exception e) {
+                // Log error but don't fail the request
+                System.out.println("Error mapping department for user " + request.getEmail() + ": " + e.getMessage());
+                user.setDepartmentId(null);
+            }
+        } else {
+            user.setDepartmentId(null);
+        }
         
         // Create Firebase user first
         try {

@@ -75,4 +75,18 @@ public class DepartmentService {
         }
         return departmentList;
     }
+
+    public Department getDepartmentByName(String departmentName) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        ApiFuture<QuerySnapshot> future = db.collection(COLLECTION_NAME)
+                .whereEqualTo("name", departmentName)
+                .limit(1)
+                .get();
+        
+        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+        if (!documents.isEmpty()) {
+            return documents.get(0).toObject(Department.class);
+        }
+        return null;
+    }
 }
