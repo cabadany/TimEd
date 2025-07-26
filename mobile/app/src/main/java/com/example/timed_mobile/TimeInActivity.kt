@@ -177,6 +177,8 @@ class TimeInActivity : WifiSecurityActivity() {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
 
+
+        //ORIGINAL CODE FOR TIME-IN BUTTON
         timeInButton.setOnClickListener {
             if (isInTutorialMode) {
                 Toast.makeText(this, "Tutorial in progress. Follow guide.", Toast.LENGTH_SHORT).show()
@@ -202,6 +204,64 @@ class TimeInActivity : WifiSecurityActivity() {
             }, 2000)
         }
     }
+
+    /*// --- DEMO MODE: Modified time-in button logic ---
+    timeInButton.setOnClickListener {
+        if (isInTutorialMode) {
+            Toast.makeText(this, "Tutorial in progress. Follow guide.", Toast.LENGTH_SHORT).show()
+            return@setOnClickListener
+        }
+
+        if (!isFaceValidForTimeIn) {
+            Toast.makeText(this, "Please position your face correctly.", Toast.LENGTH_SHORT).show()
+            return@setOnClickListener
+        }
+        timeInButton.isEnabled = false
+        timeInButton.text = "Processing..."
+        Handler(Looper.getMainLooper()).postDelayed({
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                signInAnonymouslyForStorage { success ->
+                    if (success) {
+                        // --- DEMO MODE: Bypassing time check ---
+                        // Directly check if already timed in, instead of calling checkAndCapturePhoto
+                        checkAlreadyTimedIn(userId ?: "") { already ->
+                            if (already) {
+                                AlertDialog.Builder(this)
+                                    .setTitle("Already Timed In")
+                                    .setMessage("You already timed in today.")
+                                    .setPositiveButton("OK", null)
+                                    .show()
+                                resetTimeInButton()
+                            } else {
+                                capturePhotoAndUpload(userId ?: "")
+                            }
+                        }
+                    } else {
+                        Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show()
+                        resetTimeInButton()
+                    }
+                }
+            } else {
+                // --- DEMO MODE: Bypassing time check ---
+                // Directly check if already timed in, instead of calling checkAndCapturePhoto
+                val uid = userId ?: currentUser.uid
+                checkAlreadyTimedIn(uid) { already ->
+                    if (already) {
+                        AlertDialog.Builder(this)
+                            .setTitle("Already Timed In")
+                            .setMessage("You already timed in today.")
+                            .setPositiveButton("OK", null)
+                            .show()
+                        resetTimeInButton()
+                    } else {
+                        capturePhotoAndUpload(uid)
+                    }
+                }
+            }
+        }, 2000)
+    }
+}*/
 
     @SuppressLint("UnsafeOptInUsageError")
     private fun processImage(imageProxy: ImageProxy) {
@@ -283,8 +343,8 @@ class TimeInActivity : WifiSecurityActivity() {
         timeInButton.text = getString(R.string.button_time_in)
         positionCameraViewText.text = "Position your face in the frame."
     }
-
-    private fun checkAndCapturePhoto(uid: String) {
+// ORIGINAL CODE FOR TIME-IN CHECK
+    /*private fun checkAndCapturePhoto(uid: String) {
         // 1. Define the allowed hours as variables
         val startTimeHour = 17  // 7:00 AM
         val endTimeHour = 17 // 5:00 PM
@@ -304,6 +364,58 @@ class TimeInActivity : WifiSecurityActivity() {
             AlertDialog.Builder(this)
                 .setTitle("Time-In Not Allowed")
                 // 4. Use the formatted time strings in the message, just like your example
+                .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
+                .setPositiveButton("OK", null)
+                .show()
+            resetTimeInButton()
+            return
+        }
+
+        checkAlreadyTimedIn(uid) { already ->
+            if (already) {
+                AlertDialog.Builder(this)
+                    .setTitle("Already Timed In")
+                    .setMessage("You already timed in today.")
+                    .setPositiveButton("OK", null)
+                    .show()
+                resetTimeInButton()
+            } else {
+                capturePhotoAndUpload(uid)
+            }
+        }
+    }*/
+
+    // --- SECURITY UPGRADE: Enhanced time check logic ---
+    private fun checkAndCapturePhoto(uid: String) {
+        // --- Time Check Logic for 1:30 PM to 5:00 PM ---
+
+        // 1. Get the current time
+        val now = Calendar.getInstance()
+
+        // 2. Define the start time (1:30 PM)
+        val startTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 13) // 1 PM in 24-hour format
+            set(Calendar.MINUTE, 30)
+            set(Calendar.SECOND, 0)
+        }
+
+        // 3. Define the end time (5:00 PM)
+        val endTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 17) // 5 PM in 24-hour format
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+        }
+
+        // 4. Create user-friendly time strings for messages
+        val formattedStartTime = "1:30 PM"
+        val formattedEndTime = "5:00 PM"
+
+        // 5. Check if the current time is within the allowed range
+        val isAllowed = now.after(startTime) && now.before(endTime)
+
+        if (!isAllowed) {
+            AlertDialog.Builder(this)
+                .setTitle("Time-In Not Allowed")
                 .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
                 .setPositiveButton("OK", null)
                 .show()

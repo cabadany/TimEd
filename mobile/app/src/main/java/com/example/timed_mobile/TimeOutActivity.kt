@@ -37,7 +37,7 @@ class TimeOutActivity : WifiSecurityActivity() {
     // Set the specific time of day when users are allowed to time-out.
     // Use 12-hour format (1-12 for hour).
     companion object {
-        private const val TIMEOUT_HOUR = 3 // e.g., 5 for 5 o'clock
+        private const val TIMEOUT_HOUR = 2 // e.g., 5 for 5 o'clock
         private const val TIMEOUT_MINUTE = 0 // e.g., 0 for on the hour
         private const val TIMEOUT_AM_PM = Calendar.PM // Use Calendar.AM or Calendar.PM
     }

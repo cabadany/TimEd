@@ -1559,7 +1559,7 @@ private fun showEventsByStatus(statusFilter: String?) {
         })
     }
 
-    private fun evaluateAndDisplayAttendanceBadge() {
+    /*private fun evaluateAndDisplayAttendanceBadge() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
         val now = Calendar.getInstance(); val currentTime = now.timeInMillis
@@ -1590,6 +1590,46 @@ private fun showEventsByStatus(statusFilter: String?) {
                         updateAttendanceBadge(determinedBadge)
                         timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
                     }
+                } else */
+// Modified
+    private fun evaluateAndDisplayAttendanceBadge() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        val now = Calendar.getInstance(); val currentTime = now.timeInMillis
+        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val cutoff9am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val cutoff10am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+
+        ref.orderByChild("timestamp").startAt(todayStart.toDouble()).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var timeInTimestamp: Long? = null; var timeOutTimestamp: Long? = null
+                var timeInLogSnapshot: DataSnapshot? = null
+                for (child in snapshot.children) {
+                    val type = child.child("type").getValue(String::class.java)
+                    val timestamp = child.child("timestamp").getValue(Long::class.java)
+                    if (type == "TimeIn" && timestamp != null) { if (timeInTimestamp == null || timestamp > timeInTimestamp) { timeInTimestamp = timestamp; timeInLogSnapshot = child } }
+                    else if (type == "TimeOut" && timestamp != null) { if (timeOutTimestamp == null || timestamp > timeOutTimestamp) timeOutTimestamp = timestamp }
+                }
+
+                if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
+                    updateUserStatus("Off Duty")
+                    val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!badgeFromLog.isNullOrEmpty()) updateAttendanceBadge(badgeFromLog) else updateAttendanceBadge("Timed-Out")
+                } else if (timeInTimestamp != null) {
+                    val existingBadge = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!existingBadge.isNullOrEmpty()) updateAttendanceBadge(existingBadge)
+                    else {
+                        // --- DEMO MODE: Force "On Time" ---
+                        // The original logic is commented out to ensure any time-in is marked as "On Time".
+                        /*
+                        val determinedBadge = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
+                        */
+                        val determinedBadge = "On Time" // Always set to "On Time" for the demo
+
+                        updateAttendanceBadge(determinedBadge)
+                        timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
+                    }
+                    //MODIFIED
                 } else {
                     val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
                     FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {

@@ -144,7 +144,7 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="20dp">
+                        android:layout_marginBottom="16dp">
 
                     <ImageView
                             android:layout_width="12dp"
@@ -159,6 +159,32 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/event_detail_status_placeholder"
+                            android:textSize="17sp"
+                            android:textColor="@color/neutral_text_gray"
+                            android:fontFamily="@font/roboto_medium" />
+                </LinearLayout>
+
+                <!-- Event Venue Section -->
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="20dp">
+
+                    <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_venue"
+                            app:tint="@color/primary_medium_blue"
+                            android:layout_marginEnd="16dp"
+                            android:contentDescription="@string/content_desc_event_venue_icon" />
+
+                    <TextView
+                            android:id="@+id/detail_event_venue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/event_detail_venue_placeholder"
                             android:textSize="17sp"
                             android:textColor="@color/neutral_text_gray"
                             android:fontFamily="@font/roboto_medium" />

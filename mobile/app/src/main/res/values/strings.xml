@@ -134,4 +134,8 @@
     <string name="popup_title_network_requirement">Network Requirement</string>
     <string name="popup_message_network_placeholder">You must be connected to an authorized network.</string>
     <string name="popup_button_go_to_settings">Go to Settings</string>
+
+
+    <string name="event_detail_venue_placeholder">Venue loading...</string>
+    <string name="content_desc_event_venue_icon">Event venue icon</string>
 </resources>
