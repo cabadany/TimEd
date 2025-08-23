@@ -7,6 +7,7 @@ import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextPaint
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
@@ -68,33 +69,41 @@ class LoginActivity : WifiSecurityActivity() {
 
         // --- This block makes "Create Account" a clickable link ---
         val createAccountText = findViewById<TextView>(R.id.highlight_createAccount)
-        val fullText = createAccountText.text.toString()
+        val fullText = "Don't have an account? Create Account"
+        val target = "Create Account"
+        val start = fullText.indexOf(target)
+        val end = start + target.length
         val spannable = SpannableString(fullText)
 
-        val clickablePart = "Create Account"
-        val start = fullText.indexOf(clickablePart)
-        if (start != -1) { // Check if the text exists to avoid errors
-            val end = start + clickablePart.length
+        createAccountText.isClickable = false
+        createAccountText.isFocusable = false
+        createAccountText.setOnClickListener(null)
 
+        if (start >= 0) {
             val clickableSpan = object : ClickableSpan() {
                 override fun onClick(widget: View) {
-                    val intent = Intent(this@LoginActivity, RequestCreateAccountActivity::class.java)
-                    startActivity(intent)
+                    startActivity(Intent(this@LoginActivity, RequestCreateAccountActivity::class.java))
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.isUnderlineText = false
+                    ds.color = Color.parseColor("#3538CD")
                 }
             }
-
-            // Make the text clickable
             spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            // Change the color of the clickable text
+            // Optional distinct color (already same in updateDrawState—can omit)
+            // spannable.setSpan(ForegroundColorSpan(Color.parseColor("#3538CD")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             val color = Color.parseColor("#3538CD") // Your primary button color
             spannable.setSpan(ForegroundColorSpan(color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+
+
 
             createAccountText.text = spannable
             createAccountText.movementMethod = LinkMovementMethod.getInstance()
             createAccountText.highlightColor = Color.TRANSPARENT // Removes the highlight on click
         }
-    }
+
 
     private fun loginUser(idNumber: String, password: String) {
         firestore.collection("users")

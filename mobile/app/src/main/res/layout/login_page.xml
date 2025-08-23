@@ -84,7 +84,7 @@
                     android:id="@+id/input_idnumber"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="####"
+                    android:hint="School ID"
                     android:inputType="text"
                     android:padding="16dp"
                     android:textColor="#37474F" />
