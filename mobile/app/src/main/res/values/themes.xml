@@ -10,10 +10,23 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <!-- App theme using Material3 with custom colors -->
     <style name="Theme.TimEd" parent="Theme.Material3.DayNight.NoActionBar">
-
+        <!-- Brand colors mapped into Material roles -->
         <item name="colorPrimary">@color/maroon</item>
+        <item name="colorSecondary">@color/yellow_gold</item>
+        <item name="colorTertiary">@color/primary_medium_blue</item>
         <item name="android:statusBarColor">@color/maroon</item>
+        <item name="android:navigationBarColor">@color/black</item>
 
+        <!-- Default shape for components -->
+        <item name="shapeAppearanceSmallComponent">@style/Shape.Corner.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/Shape.Corner.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/Shape.Corner.Large</item>
+
+        <!-- Buttons -->
+        <item name="materialButtonStyle">@style/Widget.TimEd.Button</item>
+        <!-- Text inputs -->
+        <item name="textInputStyle">@style/Widget.TimEd.TextInputLayout</item>
     </style>
 </resources>

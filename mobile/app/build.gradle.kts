@@ -65,7 +65,7 @@ dependencies {
     // General Android libraries
     implementation ("androidx.core:core-ktx:1.9.0")
     implementation ("androidx.appcompat:appcompat:1.6.1")
-    implementation ("com.google.android.material:material:1.8.0")
+    implementation ("com.google.android.material:material:1.12.0")
     implementation ("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // CameraX libraries
@@ -83,8 +83,8 @@ dependencies {
     // ML Kit for barcode scanning and face detection
     implementation ("com.google.mlkit:barcode-scanning:17.1.0")
     implementation ("com.google.mlkit:face-detection:16.1.6")
-    // Material design for Snackbar
-    implementation ("com.google.android.material:material:1.8.0")
+    // Material design for Snackbar (use latest Material)
+    implementation ("com.google.android.material:material:1.12.0")
 
     implementation ("com.google.mlkit:barcode-scanning:17.2.0")
 

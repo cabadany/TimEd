@@ -19,4 +19,27 @@
         <item name="android:windowExitAnimation">@anim/fade_out</item>
     </style>
 
+    <!-- Shapes for Material components -->
+    <style name="Shape.Corner.Small" parent="ShapeAppearance.Material3.Corner.Small" />
+    <style name="Shape.Corner.Medium" parent="ShapeAppearance.Material3.Corner.Medium" />
+    <style name="Shape.Corner.Large" parent="ShapeAppearance.Material3.Corner.Large" />
+
+    <!-- Button style mapping dimensions and typography -->
+    <style name="Widget.TimEd.Button" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_min_height</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:textSize">@dimen/text_sm</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Outlined TextInput with brand stroke -->
+    <style name="Widget.TimEd.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/yellow_gold</item>
+        <item name="hintTextColor">@color/yellow_gold</item>
+        <item name="boxCornerRadiusTopStart">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/card_corner_radius</item>
+    </style>
+
 </resources>
