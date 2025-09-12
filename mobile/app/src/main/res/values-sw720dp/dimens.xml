@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Larger tablets -->
+    <dimen name="space_xs">8dp</dimen>
+    <dimen name="space_sm">14dp</dimen>
+    <dimen name="space_md">20dp</dimen>
+    <dimen name="space_lg">24dp</dimen>
+    <dimen name="space_xl">32dp</dimen>
+    <dimen name="space_2xl">48dp</dimen>
+    <dimen name="space_3xl">64dp</dimen>
+
+    <!-- Text sizes -->
+    <dimen name="text_xs">16sp</dimen>
+    <dimen name="text_sm">18sp</dimen>
+    <dimen name="text_md">20sp</dimen>
+    <dimen name="text_lg">22sp</dimen>
+    <dimen name="text_xl">32sp</dimen>
+    <dimen name="text_display">54sp</dimen>
+
+    <!-- Component sizes -->
+    <dimen name="toolbar_icon">32dp</dimen>
+    <dimen name="icon_touch_target">64dp</dimen>
+    <dimen name="button_min_height">64dp</dimen>
+    <dimen name="button_corner_radius">16dp</dimen>
+    <dimen name="card_corner_radius">16dp</dimen>
+    <dimen name="card_elevation">8dp</dimen>
+    <dimen name="camera_height">320dp</dimen>
+    <dimen name="qr_box_size">280dp</dimen>
+    <dimen name="wave_max_height">480dp</dimen>
+</resources>
