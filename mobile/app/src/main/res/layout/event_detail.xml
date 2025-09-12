@@ -11,7 +11,7 @@
     <ImageView
             android:id="@+id/top_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="280dp"
+            android:layout_height="@dimen/wave_height_medium"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top"
             android:layout_alignParentTop="true"
@@ -26,11 +26,11 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginStart="@dimen/space_lg"
+            android:layout_marginTop="@dimen/space_lg"
             android:clickable="true"
             android:focusable="true"
-            android:padding="12dp"
+            android:padding="@dimen/space_md"
             android:contentDescription="@string/content_desc_back"
             app:srcCompat="@drawable/ic_back_button"
             android:background="@drawable/ripple_icon_back_button"
@@ -42,17 +42,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="180dp"
+            android:layout_marginTop="@dimen/event_title_top_margin"
             android:text="@string/event_detail_title_placeholder"
-            android:textSize="28sp"
+            android:textSize="@dimen/text_h2"
             android:textStyle="bold"
             android:textColor="@color/primary_deep_blue"
             android:shadowColor="#40000000"
             android:shadowDx="1"
             android:shadowDy="2"
             android:shadowRadius="3"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
+            android:paddingStart="@dimen/space_xl"
+            android:paddingEnd="@dimen/space_xl"
             android:gravity="center_horizontal"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true" />
@@ -63,17 +63,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:layout_marginStart="32dp"
-            android:layout_marginEnd="32dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginStart="@dimen/space_2xl"
+            android:layout_marginEnd="@dimen/space_2xl"
+            android:layout_marginBottom="@dimen/space_xl"
             android:backgroundTint="#3538CD"
             android:text="@string/event_detail_button_time_in"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:textStyle="bold"
-            android:paddingTop="14dp"
-            android:paddingBottom="14dp"
-            app:cornerRadius="24dp"
+            android:paddingTop="@dimen/space_md"
+            android:paddingBottom="@dimen/space_md"
+            app:cornerRadius="@dimen/button_corner_radius_pill"
             android:elevation="6dp"
             android:stateListAnimator="@animator/button_scale_animator" />
 
@@ -84,8 +84,8 @@
             android:layout_height="match_parent"
             android:layout_below="@id/detail_event_title"
             android:layout_above="@id/detail_time_in_button"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginBottom="@dimen/space_lg"
             android:fillViewport="true"
             android:clipToPadding="false"
             android:scrollbars="none">
@@ -93,12 +93,12 @@
         <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginEnd="20dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="16dp"
-                app:cardElevation="8dp"
-                app:cardCornerRadius="16dp"
+                android:layout_marginStart="@dimen/space_xl"
+                android:layout_marginEnd="@dimen/space_xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginBottom="@dimen/space_lg"
+                app:cardElevation="@dimen/card_elevation_lg"
+                app:cardCornerRadius="@dimen/card_corner_radius_lg"
                 app:cardBackgroundColor="@color/white"
                 app:strokeColor="@color/primary_light_sky"
                 app:strokeWidth="1dp">
@@ -107,10 +107,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingStart="24dp"
-                    android:paddingEnd="24dp"
-                    android:paddingTop="24dp"
-                    android:paddingBottom="16dp">
+                    android:paddingStart="@dimen/space_xl"
+                    android:paddingEnd="@dimen/space_xl"
+                    android:paddingTop="@dimen/space_xl"
+                    android:paddingBottom="@dimen/space_lg">
 
                 <!-- Event Date Section -->
                 <LinearLayout
@@ -118,14 +118,14 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="@dimen/space_lg">
 
                     <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="@dimen/toolbar_icon"
+                            android:layout_height="@dimen/toolbar_icon"
                             android:src="@drawable/ic_calendar"
                             app:tint="@color/primary_medium_blue"
-                            android:layout_marginEnd="16dp"
+                            android:layout_marginEnd="@dimen/space_lg"
                             android:contentDescription="@string/content_desc_event_date_icon" />
 
                     <TextView
@@ -133,7 +133,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/event_detail_date_placeholder"
-                            android:textSize="17sp"
+                            android:textSize="@dimen/text_lg"
                             android:textColor="@color/neutral_text_gray"
                             android:fontFamily="@font/roboto_medium" />
                 </LinearLayout>
@@ -144,14 +144,14 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="@dimen/space_lg">
 
                     <ImageView
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:src="@drawable/ic_status_event"
-                            android:layout_marginStart="6dp"
-                            android:layout_marginEnd="22dp"
+                            android:layout_marginStart="@dimen/space_sm"
+                            android:layout_marginEnd="@dimen/space_xl"
                             android:contentDescription="@string/content_desc_event_status_icon" />
 
                     <TextView
@@ -159,7 +159,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/event_detail_status_placeholder"
-                            android:textSize="17sp"
+                            android:textSize="@dimen/text_lg"
                             android:textColor="@color/neutral_text_gray"
                             android:fontFamily="@font/roboto_medium" />
                 </LinearLayout>
@@ -170,14 +170,14 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="20dp">
+                        android:layout_marginBottom="@dimen/space_xl">
 
                     <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="@dimen/toolbar_icon"
+                            android:layout_height="@dimen/toolbar_icon"
                             android:src="@drawable/ic_venue"
                             app:tint="@color/primary_medium_blue"
-                            android:layout_marginEnd="16dp"
+                            android:layout_marginEnd="@dimen/space_lg"
                             android:contentDescription="@string/content_desc_event_venue_icon" />
 
                     <TextView
@@ -185,7 +185,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/event_detail_venue_placeholder"
-                            android:textSize="17sp"
+                            android:textSize="@dimen/text_lg"
                             android:textColor="@color/neutral_text_gray"
                             android:fontFamily="@font/roboto_medium" />
                 </LinearLayout>
@@ -195,8 +195,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:background="@color/primary_light_sky"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginTop="@dimen/space_xs"
+                        android:layout_marginBottom="@dimen/space_xl" />
 
                 <!-- Event Description Title Section -->
                 <LinearLayout
@@ -204,21 +204,21 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp">
+                        android:layout_marginBottom="@dimen/space_md">
 
                     <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="@dimen/toolbar_icon"
+                            android:layout_height="@dimen/toolbar_icon"
                             android:src="@drawable/ic_notes_event"
                             app:tint="@color/primary_deep_blue"
-                            android:layout_marginEnd="16dp"
+                            android:layout_marginEnd="@dimen/space_lg"
                             android:contentDescription="@string/content_desc_description_icon" />
 
                     <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/event_detail_description_title"
-                            android:textSize="18sp"
+                            android:textSize="@dimen/text_lg"
                             android:textColor="@color/primary_deep_blue"
                             android:fontFamily="@font/roboto_bold" />
                 </LinearLayout>
@@ -229,11 +229,11 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/event_detail_description_placeholder"
-                        android:textSize="15sp"
+                        android:textSize="@dimen/text_sm"
                         android:textColor="@color/neutral_text_gray"
                         android:lineSpacingMultiplier="1.3"
                         android:fontFamily="@font/roboto_medium"
-                        android:paddingBottom="8dp" />
+                        android:paddingBottom="@dimen/space_sm" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </ScrollView>

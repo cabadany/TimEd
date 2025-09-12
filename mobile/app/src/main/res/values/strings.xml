@@ -138,4 +138,5 @@
 
     <string name="event_detail_venue_placeholder">Venue loading...</string>
     <string name="content_desc_event_venue_icon">Event venue icon</string>
+    <string name="loading">Loading</string>
 </resources>

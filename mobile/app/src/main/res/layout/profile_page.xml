@@ -15,8 +15,8 @@
     <!-- Top wave -->
     <ImageView
             android:id="@+id/top_wave_animation"
-            android:layout_width="450dp"
-            android:layout_height="380dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/wave_max_height"
             android:layout_gravity="top"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
@@ -40,27 +40,27 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentTop="true"
                     android:layout_centerHorizontal="true"
-                    android:layout_marginTop="48dp"
+                    android:layout_marginTop="@dimen/space_2xl"
                     android:fontFamily="@font/league_spartan_bold"
                     android:letterSpacing="0.05"
-                    android:padding="8dp"
+                    android:padding="@dimen/space_sm"
                     android:shadowColor="#33000000"
                     android:shadowDx="1"
                     android:shadowDy="1"
                     android:shadowRadius="2"
                     android:text="PROFILE"
                     android:textColor="#37474F"
-                    android:textSize="48sp"
+                    android:textSize="@dimen/text_display"
                     android:textStyle="bold" />
 
             <!-- Profile Image -->
             <de.hdodenhof.circleimageview.CircleImageView
                     android:id="@+id/profile_image"
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
+                    android:layout_width="@dimen/profile_avatar_size"
+                    android:layout_height="@dimen/profile_avatar_size"
                     android:layout_below="@id/profile_title"
                     android:layout_centerHorizontal="true"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="@dimen/space_xl"
                     android:src="@drawable/profile_placeholder"
                     app:civ_border_color="#3538CD"
                     app:civ_border_width="3dp" />
@@ -71,15 +71,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_below="@id/profile_image"
-                    android:layout_marginStart="24dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginEnd="24dp"
+                    android:layout_marginStart="@dimen/space_xl"
+                    android:layout_marginTop="@dimen/space_lg"
+                    android:layout_marginEnd="@dimen/space_xl"
                     android:fontFamily="@font/league_spartan_bold"
                     android:gravity="center"
                     android:letterSpacing="0.05"
                     android:text="Kristan Ian D. Cabaña"
                     android:textColor="#37474F"
-                    android:textSize="18sp"
+                    android:textSize="@dimen/text_lg"
                     android:textStyle="bold" />
 
             <!-- ID Number -->
@@ -88,14 +88,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_below="@id/profile_name"
-                    android:layout_marginStart="24dp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginEnd="24dp"
+                    android:layout_marginStart="@dimen/space_xl"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:layout_marginEnd="@dimen/space_xl"
                     android:fontFamily="@font/league_spartan_medium"
                     android:gravity="center"
                     android:text="1746"
                     android:textColor="@color/medium_gray"
-                    android:textSize="16sp" />
+                    android:textSize="@dimen/text_md" />
 
             <!-- Profile information container -->
             <LinearLayout
@@ -103,9 +103,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_below="@id/profile_id_number"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="@dimen/space_xl"
                     android:orientation="vertical"
-                    android:paddingHorizontal="24dp">
+                    android:paddingHorizontal="@dimen/space_xl">
 
                 <!-- Email info -->
                 <LinearLayout
@@ -120,7 +120,7 @@
                             android:fontFamily="@font/league_spartan_bold"
                             android:text="Institutional Email: "
                             android:textColor="#37474F"
-                            android:textSize="14sp"
+                            android:textSize="@dimen/text_sm"
                             android:textStyle="bold" />
 
                     <TextView
@@ -131,14 +131,14 @@
                             android:fontFamily="@font/league_spartan_medium"
                             android:text="kristanian.cabana@cit.edu"
                             android:textColor="@color/medium_gray"
-                            android:textSize="14sp" />
+                            android:textSize="@dimen/text_sm" />
                 </LinearLayout>
 
                 <!-- Department info -->
                 <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_md"
                         android:orientation="horizontal">
 
                     <TextView
@@ -148,7 +148,7 @@
                             android:fontFamily="@font/league_spartan_bold"
                             android:text="Department: "
                             android:textColor="#37474F"
-                            android:textSize="14sp"
+                            android:textSize="@dimen/text_sm"
                             android:textStyle="bold" />
 
                     <TextView
@@ -159,7 +159,7 @@
                             android:fontFamily="@font/league_spartan_medium"
                             android:text="College of Computer Science"
                             android:textColor="@color/medium_gray"
-                            android:textSize="14sp" />
+                            android:textSize="@dimen/text_sm" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -167,36 +167,36 @@
             <Button
                     android:id="@+id/btn_change_password"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="@dimen/button_min_height"
                     android:layout_below="@id/profile_info_container"
-                    android:layout_marginStart="24dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginEnd="24dp"
+                    android:layout_marginStart="@dimen/space_xl"
+                    android:layout_marginTop="@dimen/space_xl"
+                    android:layout_marginEnd="@dimen/space_xl"
                     android:backgroundTint="#3538CD"
                     android:elevation="4dp"
                     android:fontFamily="@font/league_spartan_bold"
                     android:text="Change Password"
                     android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:cornerRadius="12dp" />
+                    android:textSize="@dimen/text_sm"
+                    app:cornerRadius="@dimen/button_corner_radius" />
 
             <!-- Attendance Sheet Button -->
             <Button
                     android:id="@+id/btn_attendance_sheet"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="@dimen/button_min_height"
                     android:layout_below="@id/btn_change_password"
-                    android:layout_marginStart="24dp"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginEnd="24dp"
+                    android:layout_marginStart="@dimen/space_xl"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:layout_marginEnd="@dimen/space_xl"
                     android:backgroundTint="#37474F"
                     android:elevation="4dp"
                     android:fontFamily="@font/league_spartan_bold"
                     android:text="Attendance Sheet"
                     android:visibility="gone"
                     android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:cornerRadius="12dp" />
+                    android:textSize="@dimen/text_sm"
+                    app:cornerRadius="@dimen/button_corner_radius" />
 
             <!-- Log Out Text -->
             <TextView
@@ -205,16 +205,16 @@
                     android:layout_height="wrap_content"
                     android:layout_below="@id/btn_attendance_sheet"
                     android:layout_centerHorizontal="true"
-                    android:layout_marginTop="20dp"
-                    android:layout_marginBottom="24dp"
+                    android:layout_marginTop="@dimen/space_xl"
+                    android:layout_marginBottom="@dimen/space_xl"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:fontFamily="@font/league_spartan_bold"
-                    android:padding="8dp"
+                    android:padding="@dimen/space_sm"
                     android:text="Log Out"
                     android:textColor="#3538CD"
-                    android:textSize="16sp" />
+                    android:textSize="@dimen/text_md" />
         </RelativeLayout>
     </ScrollView>
 
@@ -225,13 +225,13 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="4dp"
+            android:layout_marginStart="@dimen/space_xs"
+            android:layout_marginTop="@dimen/space_xs"
             android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
-            android:contentDescription="Back button"
+            android:contentDescription="Back"
             android:focusable="true"
-            android:padding="12dp"
+            android:padding="@dimen/space_md"
             android:stateListAnimator="@animator/button_scale_animator"
             app:srcCompat="@drawable/ic_back_button" />
 </RelativeLayout>
