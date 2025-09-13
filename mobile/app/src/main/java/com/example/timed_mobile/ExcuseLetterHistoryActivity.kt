@@ -95,7 +95,7 @@ class ExcuseLetterHistoryActivity : WifiSecurityActivity() {
         adapter = ExcuseLetterAdapter(excuseList)
         recyclerView.adapter = adapter
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d(TAG, "Swipe to refresh triggered.")
             fetchExcuseLetters(isRefreshing = true)

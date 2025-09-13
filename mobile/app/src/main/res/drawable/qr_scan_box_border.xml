@@ -3,7 +3,7 @@
         android:shape="rectangle">
     <stroke
             android:width="3dp"
-            android:color="@color/yellow_gold" /> <!-- You can change this color -->
+            android:color="@color/primary_light_sky" />
     <solid android:color="@android:color/transparent" />
     <corners android:radius="4dp" /> <!-- Optional: if you want rounded corners for the box -->
 </shape>

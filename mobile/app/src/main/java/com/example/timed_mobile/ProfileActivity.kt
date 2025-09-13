@@ -31,12 +31,23 @@ class ProfileActivity : WifiSecurityActivity() {
     private lateinit var profileImage: CircleImageView
     private lateinit var profileTitle: TextView // Added for animation
     private lateinit var profileInfoContainer: LinearLayout // Added for animation
+    private lateinit var profileContentContainer: RelativeLayout
+    private lateinit var profileSkeletonContainer: LinearLayout
+    private val skeletonTimeoutHandler = Handler(Looper.getMainLooper())
+    private val skeletonTimeoutRunnable = Runnable {
+        if (this::profileSkeletonContainer.isInitialized && profileSkeletonContainer.visibility == View.VISIBLE) {
+            profileSkeletonContainer.clearAnimation()
+            profileSkeletonContainer.visibility = View.GONE
+            if (this::profileContentContainer.isInitialized) profileContentContainer.visibility = View.VISIBLE
+            playEntryAnimations()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_page)
 
-        // Initialize all views
+    // Initialize all views
         profileTitle = findViewById(R.id.profile_title) // Initialize title
         backButton = findViewById(R.id.icon_back_button)
         profileImage = findViewById(R.id.profile_image)
@@ -48,6 +59,8 @@ class ProfileActivity : WifiSecurityActivity() {
         changePasswordButton = findViewById(R.id.btn_change_password)
         attendanceSheetButton = findViewById(R.id.btn_attendance_sheet)
         logoutText = findViewById(R.id.logout_text)
+    profileContentContainer = findViewById(R.id.profile_content_container)
+    profileSkeletonContainer = findViewById(R.id.profile_skeleton_container)
 
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
@@ -56,56 +69,10 @@ class ProfileActivity : WifiSecurityActivity() {
             topDrawable.start()
         }
 
-        // --- START OF ENTRY ANIMATION CODE ---
-        // Load animations
-        val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
-        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
-        val animSlideUpItem = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in)
-
-        var currentDelay = 100L
-
-        // Helper to apply animation
-        fun animateView(view: View, animationResId: Int, delay: Long) {
-            val anim = AnimationUtils.loadAnimation(view.context, animationResId)
-            anim.startOffset = delay
-            view.startAnimation(anim)
-        }
-
-        // 1. Back Button
-        animateView(backButton, R.anim.fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 2. Profile Title
-        animateView(profileTitle, R.anim.slide_down_fade_in, currentDelay)
-        currentDelay += 150L
-
-        // 3. Profile Image
-        animateView(profileImage, R.anim.fade_in, currentDelay) // Simple fade or a custom scale-up fade
-        currentDelay += 150L
-
-        // 4. Profile Name
-        animateView(teacherName, R.anim.slide_up_fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 5. Profile ID
-        animateView(teacherId, R.anim.slide_up_fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 6. Profile Info Container (Email & Department)
-        animateView(profileInfoContainer, R.anim.slide_up_fade_in, currentDelay)
-        currentDelay += 150L // Slightly longer delay before buttons
-
-        // 7. Change Password Button
-        animateView(changePasswordButton, R.anim.slide_up_fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 8. Attendance Sheet Button
-        animateView(attendanceSheetButton, R.anim.slide_up_fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 9. Log Out Text
-        animateView(logoutText, R.anim.slide_up_fade_in, currentDelay)
-        // --- END OF ENTRY ANIMATION CODE ---
+    // Initially show skeleton, hide content
+    profileSkeletonContainer.visibility = View.VISIBLE
+    profileSkeletonContainer.startAnimation(AnimationUtils.loadAnimation(this, R.anim.shimmer_pulse))
+        profileContentContainer.visibility = View.GONE
 
 
         backButton.setOnClickListener { view ->
@@ -132,6 +99,8 @@ class ProfileActivity : WifiSecurityActivity() {
         }
 
         loadUserProfile()
+        // Safety fallback: reveal content after 5s if still loading
+        skeletonTimeoutHandler.postDelayed(skeletonTimeoutRunnable, 5000)
     }
 
     private fun loadUserProfile() {
@@ -141,6 +110,9 @@ class ProfileActivity : WifiSecurityActivity() {
         if (userId.isNullOrEmpty()) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             // Consider hiding animated views or showing an error state if profile can't load
+            profileSkeletonContainer.visibility = View.GONE
+            profileContentContainer.visibility = View.VISIBLE
+            playEntryAnimations()
             return
         }
 
@@ -151,6 +123,9 @@ class ProfileActivity : WifiSecurityActivity() {
             .addOnSuccessListener { document ->
                 if (!document.exists()) {
                     Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
+                    profileSkeletonContainer.clearAnimation()
+                    profileSkeletonContainer.visibility = View.GONE
+                    profileContentContainer.visibility = View.VISIBLE
                     return@addOnSuccessListener
                 }
 
@@ -216,11 +191,17 @@ class ProfileActivity : WifiSecurityActivity() {
                             if (!imageToLoad.isNullOrEmpty()) {
                                 Glide.with(this@ProfileActivity)
                                     .load(imageToLoad)
-                                    .placeholder(R.drawable.profile_placeholder) // Ensure this drawable exists
+                                    .placeholder(R.drawable.profile_placeholder)
                                     .into(profileImage)
                             } else {
-                                profileImage.setImageResource(R.drawable.profile_placeholder) // Ensure this drawable exists
+                                profileImage.setImageResource(R.drawable.profile_placeholder)
                             }
+
+                            // Reveal content and play entry animations after data has been applied
+                            profileSkeletonContainer.clearAnimation()
+                            profileSkeletonContainer.visibility = View.GONE
+                            profileContentContainer.visibility = View.VISIBLE
+                            playEntryAnimations()
                         }
 
                         override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
@@ -232,7 +213,40 @@ class ProfileActivity : WifiSecurityActivity() {
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
                 Log.e("ProfileActivity", "Firestore error: ", it)
+                profileSkeletonContainer.clearAnimation()
+                profileSkeletonContainer.visibility = View.GONE
+                profileContentContainer.visibility = View.VISIBLE
             }
+    }
+
+    private fun playEntryAnimations() {
+        val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
+        var currentDelay = 100L
+
+        fun animateView(view: View, animationResId: Int, delay: Long) {
+            val anim = AnimationUtils.loadAnimation(view.context, animationResId)
+            anim.startOffset = delay
+            view.startAnimation(anim)
+        }
+
+        animateView(backButton, R.anim.fade_in, currentDelay)
+        currentDelay += 100L
+        animateView(profileTitle, R.anim.slide_down_fade_in, currentDelay)
+        currentDelay += 150L
+        animateView(profileImage, R.anim.fade_in, currentDelay)
+        currentDelay += 150L
+        animateView(teacherName, R.anim.slide_up_fade_in, currentDelay)
+        currentDelay += 100L
+        animateView(teacherId, R.anim.slide_up_fade_in, currentDelay)
+        currentDelay += 100L
+        animateView(profileInfoContainer, R.anim.slide_up_fade_in, currentDelay)
+        currentDelay += 150L
+        animateView(changePasswordButton, R.anim.slide_up_fade_in, currentDelay)
+        currentDelay += 100L
+        animateView(attendanceSheetButton, R.anim.slide_up_fade_in, currentDelay)
+        currentDelay += 100L
+        animateView(logoutText, R.anim.slide_up_fade_in, currentDelay)
     }
 
     private fun showAttendanceDownloadDialog() {
@@ -292,5 +306,10 @@ class ProfileActivity : WifiSecurityActivity() {
             finish() // Finish ProfileActivity after logout
         }
         dialog.show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        skeletonTimeoutHandler.removeCallbacks(skeletonTimeoutRunnable)
     }
 }

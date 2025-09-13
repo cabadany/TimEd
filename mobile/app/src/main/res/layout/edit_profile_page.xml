@@ -53,7 +53,7 @@
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="Edit Profile"
-            android:textColor="#8B0000"
+            android:textColor="@color/primary_deep_blue"
             android:textSize="@dimen/text_display"
             android:textStyle="bold" />
 
@@ -95,7 +95,8 @@
             android:layout_centerHorizontal="true"
             android:layout_marginTop="@dimen/space_lg"
             android:fontFamily="@font/roboto_medium"
-            android:text="ID: 1746"
+            android:text=""
+            tools:text="ID: 1746"
             android:textColor="@color/black"
             android:textSize="@dimen/text_md" />
 
@@ -125,8 +126,8 @@
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/name_input"
@@ -135,7 +136,8 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Full Name"
                         android:inputType="textPersonName"
-                        android:text="Kristan Ian D. Cabaña"
+                        android:text=""
+                        tools:text="Kristan Ian D. Cabaña"
                         android:paddingStart="@dimen/space_lg"
                         android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
@@ -152,8 +154,8 @@
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/email_input"
@@ -162,7 +164,8 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Email Address"
                         android:inputType="textEmailAddress"
-                        android:text="kristanian.cabana@cit.edu"
+                        android:text=""
+                        tools:text="kristanian.cabana@cit.edu"
                         android:paddingStart="@dimen/space_lg"
                         android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
@@ -179,8 +182,8 @@
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/phone_input"
@@ -189,7 +192,8 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Phone Number"
                         android:inputType="phone"
-                        android:text="0912 345 6789"
+                        android:text=""
+                        tools:text="0912 345 6789"
                         android:paddingStart="@dimen/space_lg"
                         android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
@@ -206,8 +210,8 @@
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/department_input"
@@ -216,7 +220,8 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Department"
                         android:inputType="text"
-                        android:text="College of Computer Science"
+                        android:text=""
+                        tools:text="College of Computer Science"
                         android:paddingStart="@dimen/space_lg"
                         android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
@@ -234,11 +239,11 @@
             android:layout_marginStart="@dimen/space_xl"
             android:layout_marginEnd="@dimen/space_xl"
             android:layout_marginBottom="@dimen/space_xl"
-            android:backgroundTint="@color/yellow_gold"
+            android:backgroundTint="@color/brand_indigo"
             android:elevation="4dp"
             android:fontFamily="@font/roboto_bold"
             android:text="Update Profile"
-            android:textColor="#8B0000"
+            android:textColor="@color/white"
             android:textSize="@dimen/text_md"
             android:textStyle="bold"
             app:cornerRadius="@dimen/button_corner_radius" />

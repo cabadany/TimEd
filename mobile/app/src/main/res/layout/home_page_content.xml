@@ -17,7 +17,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/maroon"
+            android:background="@color/brand_indigo"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
             app:title="Home"
             app:titleTextColor="@android:color/white" />
@@ -81,7 +81,7 @@
                                 android:text="Hi, User 👋"
                                 android:textSize="20sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/maroon" />
+                                android:textColor="@color/brand_indigo" />
 
                             <TextView
                                 android:id="@+id/home_greeting"
@@ -116,7 +116,7 @@
                         android:layout_height="wrap_content"
                         android:text="All"
                         android:textSize="14sp"
-                        android:textColor="@color/maroon"
+                        android:textColor="@color/brand_indigo"
                         android:backgroundTint="@color/white" />
 
                     <Button
@@ -126,7 +126,7 @@
                         android:text="Upcoming"
                         android:layout_marginStart="8dp"
                         android:textSize="14sp"
-                        android:textColor="@color/maroon"
+                        android:textColor="@color/brand_indigo"
                         android:backgroundTint="@color/white" />
 
                     <Button
@@ -136,7 +136,7 @@
                         android:text="Ongoing"
                         android:layout_marginStart="8dp"
                         android:textSize="14sp"
-                        android:textColor="@color/maroon"
+                        android:textColor="@color/brand_indigo"
                         android:backgroundTint="@color/white" />
 
                     <Button
@@ -146,7 +146,7 @@
                         android:text="Ended"
                         android:layout_marginStart="8dp"
                         android:textSize="14sp"
-                        android:textColor="@color/maroon"
+                        android:textColor="@color/brand_indigo"
                         android:backgroundTint="@color/white" />
                 </LinearLayout>
 
@@ -183,10 +183,10 @@
                     android:layout_marginTop="8dp"
                     android:layout_marginStart="48dp"
                     android:layout_marginEnd="48dp"
-                    android:backgroundTint="@color/yellow_gold"
+                    android:backgroundTint="@color/primary_light_sky"
                     android:elevation="6dp"
                     android:text="Time - In"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/brand_indigo"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     app:cornerRadius="12dp" />
@@ -200,10 +200,10 @@
                     android:layout_marginTop="12dp"
                     android:layout_marginStart="48dp"
                     android:layout_marginEnd="48dp"
-                    android:backgroundTint="@color/maroon"
+                    android:backgroundTint="@color/brand_indigo"
                     android:elevation="6dp"
                     android:text="Time - Out"
-                    android:textColor="@color/yellow_gold"
+                    android:textColor="@color/white"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     app:cornerRadius="12dp" />
@@ -217,7 +217,7 @@
                     android:layout_centerHorizontal="true"
                     android:layout_marginTop="18dp"
                     android:text="Send a Excuse Letter"
-                    android:textColor="@color/maroon"
+                    android:textColor="@color/brand_indigo"
                     android:textSize="15sp"
                     android:textStyle="bold" />
             </RelativeLayout>

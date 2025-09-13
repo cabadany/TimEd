@@ -93,7 +93,7 @@
                 android:layout_height="wrap_content"
                 android:max="100"
                 android:progress="0"
-                android:progressTint="@color/accent_coral"
+                android:progressTint="@color/primary_medium_blue"
                 android:backgroundTint="@color/light_gray" />
     </LinearLayout>
 

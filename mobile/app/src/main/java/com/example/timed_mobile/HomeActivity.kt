@@ -403,7 +403,7 @@ class HomeActivity : WifiSecurityActivity() {
         profileImagePlaceholder.setOnClickListener(profileClickListener)
         greetingName.setOnClickListener(profileClickListener)
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.accent_coral)
+    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d("HomeActivity", "Pull-to-refresh triggered")
             loadTodayTimeInPhoto()
