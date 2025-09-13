@@ -111,7 +111,7 @@ class TimeOutActivity : WifiSecurityActivity() {
 
     private fun logTimeOutToFirebase() {
         if (userId == null) {
-            Toast.makeText(this, "User ID missing. Cannot log time-out.", Toast.LENGTH_LONG).show()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "User ID missing. Cannot log time-out.")
             return
         }
 
@@ -149,15 +149,9 @@ class TimeOutActivity : WifiSecurityActivity() {
                     val now = Calendar.getInstance()
 
                     if (now.before(targetTimeOut)) {
-                        // Format the target time for the error message
                         val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
                         val formattedTimeOut = timeFormat.format(targetTimeOut.time)
-
-                        AlertDialog.Builder(this@TimeOutActivity)
-                            .setTitle("Too Early to Time-Out")
-                            .setMessage("You can only time-out after $formattedTimeOut.")
-                            .setPositiveButton("OK", null)
-                            .show()
+                        UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You can only time-out after $formattedTimeOut.")
                         return
                     }
                     // --- END MODIFIED TIME CHECK ---
@@ -177,12 +171,12 @@ class TimeOutActivity : WifiSecurityActivity() {
                             showTimeOutSuccessDialog()
                         }
                         .addOnFailureListener { e ->
-                            Toast.makeText(this@TimeOutActivity, "Failed to log Time-Out: ${e.message}", Toast.LENGTH_LONG).show()
+                            UiDialogs.showErrorPopup(this@TimeOutActivity, getString(R.string.popup_title_error), "Failed to log Time-Out: ${e.message}")
                         }
                 }
 
                 override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
-                    Toast.makeText(this@TimeOutActivity, "Database error: ${error.message}", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(this@TimeOutActivity, getString(R.string.popup_title_error), "Database error: ${error.message}")
                 }
             })
     }

@@ -108,7 +108,7 @@ class ProfileActivity : WifiSecurityActivity() {
         val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "User not logged in")
             // Consider hiding animated views or showing an error state if profile can't load
             profileSkeletonContainer.visibility = View.GONE
             profileContentContainer.visibility = View.VISIBLE
@@ -122,7 +122,7 @@ class ProfileActivity : WifiSecurityActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (!document.exists()) {
-                    Toast.makeText(this, "Profile not found.", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Profile not found.")
                     profileSkeletonContainer.clearAnimation()
                     profileSkeletonContainer.visibility = View.GONE
                     profileContentContainer.visibility = View.VISIBLE
@@ -211,7 +211,7 @@ class ProfileActivity : WifiSecurityActivity() {
                     })
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to load profile")
                 Log.e("ProfileActivity", "Firestore error: ", it)
                 profileSkeletonContainer.clearAnimation()
                 profileSkeletonContainer.visibility = View.GONE

@@ -224,7 +224,11 @@ class HomeActivity : WifiSecurityActivity() {
                 }
             } else {
                 Log.d(TAG, "Notification permission denied by user.")
-                Toast.makeText(this, "Event notifications will not be shown.", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Permission Denied",
+                    message = "Event notifications will not be shown without notification permission."
+                )
             }
         }
 
@@ -865,7 +869,11 @@ class HomeActivity : WifiSecurityActivity() {
         FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { userDoc ->
             val departmentId: String? = userDoc.getString("departmentId")
             if (departmentId.isNullOrEmpty()) {
-                Toast.makeText(this, "No department assigned. Cannot load events.", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Missing Department",
+                    message = "No department assigned. Cannot load events."
+                )
                 showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming); return@addOnSuccessListener
             }
             firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
@@ -965,8 +973,8 @@ class HomeActivity : WifiSecurityActivity() {
                     val buttonToSelect = if (defaultFilter == "ongoing") btnOngoing else btnUpcoming
                     updateFilterButtonStates(buttonToSelect)
                 }
-                .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show() }
-        }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show() }
+        .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load events.") }
+    }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load user info.") }
     }
 
 private fun showEventsByStatus(statusFilter: String?) {

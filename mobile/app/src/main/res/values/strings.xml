@@ -50,9 +50,12 @@
 
 
     <string name="popup_success_icon_desc">Success icon</string>
+    <string name="popup_error_icon_desc">Error icon</string>
 
     <string name="popup_title_success">Success</string>
+    <string name="popup_title_error">Something went wrong</string>
     <string name="popup_message_excuse_letter_success">Your excuse letter has been submitted successfully!</string>
+    <string name="popup_message_generic_error">An unexpected error occurred. Please try again.</string>
     <string name="popup_button_ok">OK</string>
 
     <string name="popup_title_timed_out_success">Successfully Timed - Out</string>

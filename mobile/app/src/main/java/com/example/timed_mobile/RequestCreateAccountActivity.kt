@@ -142,13 +142,21 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
             val password = inputPassword.text.toString().trim()
 
             if (listOf(name, idNumber, email, password).any { it.isEmpty() } || selectedDepartment == null) {
-                Toast.makeText(this, "Please fill in all fields and select a department.", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Incomplete Form",
+                    message = "Please fill in all fields and select a department."
+                )
                 return@setOnClickListener
             }
 
             // Validate email format
             if (!isValidEmail(email)) {
-                Toast.makeText(this, "Please enter a valid email address.", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Invalid Email",
+                    message = "Please enter a valid email address."
+                )
                 return@setOnClickListener
             }
 
@@ -203,7 +211,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                 runOnUiThread {
                     submitButton.isEnabled = true
                     submitButton.text = "Submit Request"
-                    Toast.makeText(this@RequestCreateAccountActivity, "Network error. Please check your internet connection and try again.", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(
+                        this@RequestCreateAccountActivity,
+                        title = "Network Error",
+                        message = "Please check your internet connection and try again."
+                    )
                 }
             }
 
@@ -224,7 +236,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                     Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
                                     finish()
                                 } else {
-                                    Toast.makeText(this@RequestCreateAccountActivity, message, Toast.LENGTH_LONG).show()
+                                    UiDialogs.showErrorPopup(
+                                        this@RequestCreateAccountActivity,
+                                        title = "Submission Failed",
+                                        message = message
+                                    )
                                 }
                             } catch (e: Exception) {
                                 Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
@@ -237,7 +253,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                 500 -> "Server error. Please try again later."
                                 else -> "Failed to submit request. Please try again."
                             }
-                            Toast.makeText(this@RequestCreateAccountActivity, errorMessage, Toast.LENGTH_LONG).show()
+                            UiDialogs.showErrorPopup(
+                                this@RequestCreateAccountActivity,
+                                title = "Submission Error",
+                                message = errorMessage
+                            )
                         }
                     }
                 }
@@ -254,7 +274,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
-                    Toast.makeText(this@RequestCreateAccountActivity, "Failed to load departments. Please check your internet connection.", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(
+                        this@RequestCreateAccountActivity,
+                        title = "Load Failed",
+                        message = "Failed to load departments. Please check your internet connection."
+                    )
                     // Set a fallback list of departments
                     setupFallbackDepartments()
                 }
@@ -275,14 +299,22 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                 }
                             } catch (e: Exception) {
                                 runOnUiThread {
-                                    Toast.makeText(this@RequestCreateAccountActivity, "Error parsing departments data.", Toast.LENGTH_SHORT).show()
+                                    UiDialogs.showErrorPopup(
+                                        this@RequestCreateAccountActivity,
+                                        title = "Data Error",
+                                        message = "Error parsing departments data."
+                                    )
                                     setupFallbackDepartments()
                                 }
                             }
                         }
                     } else {
                         runOnUiThread {
-                            Toast.makeText(this@RequestCreateAccountActivity, "Failed to load departments from server.", Toast.LENGTH_SHORT).show()
+                            UiDialogs.showErrorPopup(
+                                this@RequestCreateAccountActivity,
+                                title = "Server Error",
+                                message = "Failed to load departments from server."
+                            )
                             setupFallbackDepartments()
                         }
                     }

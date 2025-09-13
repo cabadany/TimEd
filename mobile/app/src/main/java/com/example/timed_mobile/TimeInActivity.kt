@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -455,7 +456,7 @@ class TimeInActivity : WifiSecurityActivity() {
             .addOnFailureListener { e ->
                 Log.e(TAG, "Anonymous auth failed", e)
                 progressDialog.dismiss()
-                Toast.makeText(this, "Authentication failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Authentication failed: ${e.message}")
                 callback?.invoke(false)
             }
     }
@@ -491,9 +492,9 @@ class TimeInActivity : WifiSecurityActivity() {
                     Handler(Looper.getMainLooper()).postDelayed({ startTimeInActivityTutorial() }, 500L)
                 }
             } else {
-                Toast.makeText(this, "Camera permission is required.", Toast.LENGTH_LONG).show()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Camera permission is required.")
                 if (isInTutorialMode) {
-                    Toast.makeText(this, "Tutorial cannot proceed without camera.", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Tutorial cannot proceed without camera.")
                     setResult(RESULT_CANCELED)
                     finish()
                 } else {
@@ -597,9 +598,9 @@ class TimeInActivity : WifiSecurityActivity() {
                     val rotatedBitmap = fixImageOrientationAndFlip(photoFile)
                     FileOutputStream(photoFile).use { out -> rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
                     uploadImageToFirebase(Uri.fromFile(photoFile), uid)
-                } catch (e: Exception) { Log.e(TAG, "Failed to process image: ${e.message}", e); Toast.makeText(this@TimeInActivity, "Image processing failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                } catch (e: Exception) { Log.e(TAG, "Failed to process image: ${e.message}", e); UiDialogs.showErrorPopup(this@TimeInActivity, getString(R.string.popup_title_error), "Image processing failed."); resetTimeInButton() }
             }
-            override fun onError(exc: ImageCaptureException) { Log.e(TAG, "Image capture error: ${exc.message}", exc); Toast.makeText(this@TimeInActivity, "Capture failed: ${exc.message}", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+            override fun onError(exc: ImageCaptureException) { Log.e(TAG, "Image capture error: ${exc.message}", exc); UiDialogs.showErrorPopup(this@TimeInActivity, getString(R.string.popup_title_error), "Capture failed: ${exc.message}"); resetTimeInButton() }
         })
     }
 
@@ -622,21 +623,80 @@ class TimeInActivity : WifiSecurityActivity() {
         return Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true)
     }
 
-    private fun uploadImageToFirebase(uri: Uri, uid: String) {
+    private fun uploadImageToFirebase(uri: Uri, uid: String, hasRetriedAuth: Boolean = false) {
         try {
             val currentUser = FirebaseAuth.getInstance().currentUser
-            if (currentUser == null) { Toast.makeText(this, "Auth error.", Toast.LENGTH_SHORT).show(); resetTimeInButton(); return }
+            if (currentUser == null) { UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Auth error."); resetTimeInButton(); return }
             val timestamp = System.currentTimeMillis(); val fileName = "selfie_$timestamp.jpg"
             val storageUid = currentUser.uid; val logsRef = FirebaseStorage.getInstance().getReference("timeLogs/$storageUid/$fileName")
-            val file = File(uri.path ?: ""); if (!file.exists() || !file.canRead()) { Toast.makeText(this, "File access error.", Toast.LENGTH_SHORT).show(); resetTimeInButton(); return }
+            Log.i(TAG, "Uploading to Firebase Storage bucket='${logsRef.bucket}' path='${logsRef.path}' file='$fileName'")
+            val file = File(uri.path ?: ""); if (!file.exists() || !file.canRead()) { UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "File access error."); resetTimeInButton(); return }
             val metadata = com.google.firebase.storage.StorageMetadata.Builder().setContentType("image/jpeg").build()
             logsRef.putFile(uri, metadata)
                 .addOnSuccessListener { taskSnapshot ->
                     logsRef.downloadUrl.addOnSuccessListener { downloadUrl -> logTimeIn(downloadUrl.toString(), uid); showSuccessDialog() }
-                        .addOnFailureListener { e -> Log.e(TAG, "Failed to get download URL", e); Toast.makeText(this, "Upload failed (URL): ${e.message}", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                        .addOnFailureListener { e -> Log.e(TAG, "Failed to get download URL", e); UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Upload failed (URL): ${e.message}"); resetTimeInButton() }
                 }
-                .addOnFailureListener { e -> Log.e(TAG, "Upload failed (PUT)", e); Toast.makeText(this, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Upload failed (PUT)", e)
+                    when (e) {
+                        is StorageException -> {
+                            val http = e.httpResultCode
+                            val code = e.errorCode
+                            Log.e(TAG, "StorageException code=$code http=$http path='${logsRef.path}' bucket='${logsRef.bucket}'")
+                            when {
+                                http == 412 -> {
+                                    val bucket = logsRef.bucket ?: "(unknown)"
+                                    val path = logsRef.path
+                                    val msg = "Storage upload failed with HTTP 412 (Precondition Failed).\n\n" +
+                                            "Bucket: $bucket\nPath: $path\n\n" +
+                                            "This usually means the Firebase Storage bucket isn't linked or its service account is missing permissions.\n\n" +
+                                            "Fix: Firebase Console > Storage (re-link), then GCP IAM grant Storage Admin/Object Admin to Firebase service accounts."
+                                    UiDialogs.showErrorPopup(this, "Storage Misconfiguration Detected", msg) { }
+                                    resetTimeInButton()
+                                }
+                                (code == StorageException.ERROR_NOT_AUTHORIZED || http == 401 || http == 403) && !hasRetriedAuth -> {
+                                    signInAnonymouslyForStorage { success ->
+                                        if (success) {
+                                            Log.i(TAG, "Re-auth success; retrying upload once...")
+                                            uploadImageToFirebase(uri, uid, true)
+                                        } else {
+                                            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Upload failed (auth).")
+                                            resetTimeInButton()
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Upload failed: ${e.message}")
+                                    resetTimeInButton()
+                                }
+                            }
+                        }
+                        else -> {
+                            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Upload failed: ${e.message}")
+                            resetTimeInButton()
+                        }
+                    }
+                }
         } catch (e: Exception) { Log.e(TAG, "Upload exception", e); Toast.makeText(this, "Error during upload: ${e.message}", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+    }
+
+    private fun showStorageMisconfigDialog(bucket: String, path: String, e: StorageException) {
+        val message = buildString {
+            append("Storage upload failed with HTTP 412 (Precondition Failed).\n\n")
+            append("Bucket: ").append(bucket).append('\n')
+            append("Path: ").append(path).append("\n\n")
+            append("This usually means the Firebase Storage bucket isn't properly linked or its service account is missing permissions.\n\n")
+            append("Developer action:\n")
+            append("1) In Firebase Console > Storage, re-link the default bucket.\n")
+            append("2) In Google Cloud IAM, ensure Firebase service accounts have Storage Admin/Object Admin on the bucket.\n")
+            append("3) Refresh google-services.json if project changed, then rebuild the app.")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Storage Misconfiguration Detected")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun logTimeIn(imageUrl: String, studentUid: String) {
@@ -644,7 +704,7 @@ class TimeInActivity : WifiSecurityActivity() {
         val ref = FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(studentUid)
         ref.push().setValue(log)
             .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid") }
-            .addOnFailureListener { e -> Log.e(TAG, "Failed to write Time-In log for UID: $studentUid", e); Toast.makeText(this, "Failed to record time-in: ${e.message}", Toast.LENGTH_SHORT).show() }
+            .addOnFailureListener { e -> Log.e(TAG, "Failed to write Time-In log for UID: $studentUid", e); UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to record time-in: ${e.message}") }
     }
 
     private fun showSuccessDialog() {

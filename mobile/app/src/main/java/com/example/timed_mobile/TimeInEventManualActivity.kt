@@ -58,7 +58,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         }
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Session",
+                message = "Missing user session. Please log in again."
+            )
             finish()
             return
         }
@@ -167,7 +171,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         db.collection("events").document(eventId).get()
             .addOnSuccessListener { eventDocument ->
                 if (!eventDocument.exists()) {
-                    showErrorDialog("Event ID '$eventId' not found. Please check the code.")
+                    UiDialogs.showErrorPopup(
+                        this@TimeInEventManualActivity,
+                        title = "Event Not Found",
+                        message = "Event ID '$eventId' not found. Please check the code."
+                    )
                     resetButton()
                     return@addOnSuccessListener
                 }
@@ -179,7 +187,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                     .get()
                     .addOnSuccessListener { existingRecords ->
                         if (!existingRecords.isEmpty) {
-                            showErrorDialog("You have already timed in for this event.")
+                            UiDialogs.showErrorPopup(
+                                this@TimeInEventManualActivity,
+                                title = "Already Timed-In",
+                                message = "You have already timed in for this event."
+                            )
                             resetButton()
                         } else {
                             // Not timed in yet, proceed to log attendance
@@ -187,12 +199,20 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                         }
                     }
                     .addOnFailureListener { e ->
-                        showErrorDialog("Failed to check existing records: ${e.message}")
+                        UiDialogs.showErrorPopup(
+                            this@TimeInEventManualActivity,
+                            title = "Check Failed",
+                            message = "Failed to check existing records: ${e.message}"
+                        )
                         resetButton()
                     }
             }
             .addOnFailureListener { e ->
-                showErrorDialog("Failed to verify event ID: ${e.message}")
+                UiDialogs.showErrorPopup(
+                    this@TimeInEventManualActivity,
+                    title = "Verification Failed",
+                    message = "Failed to verify event ID: ${e.message}"
+                )
                 resetButton()
             }
     }
@@ -220,7 +240,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                 showSuccessDialog(eventName)
             }
             .addOnFailureListener { e ->
-                showErrorDialog("Failed to save attendance: ${e.message}")
+                UiDialogs.showErrorPopup(
+                    this@TimeInEventManualActivity,
+                    title = "Save Failed",
+                    message = "Failed to save attendance: ${e.message}"
+                )
                 resetButton()
             }
     }
@@ -256,10 +280,5 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         dialog.show()
     }
 
-    private fun showErrorDialog(errorMessage: String) {
-        if (!isFinishing && !isDestroyed) {
-            resetButton()
-            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
-        }
-    }
+    // Removed local Toast-based error dialog in favor of UiDialogs.showErrorPopup usages above.
 }

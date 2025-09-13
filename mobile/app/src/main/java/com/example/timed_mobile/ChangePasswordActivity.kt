@@ -136,7 +136,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Not Logged In",
+                message = "Please log in to change your password."
+            )
             changePasswordSkeletonContainer.visibility = View.GONE
             changePasswordContentContainer.visibility = View.VISIBLE
             setupEntryAnimations()
@@ -149,7 +153,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (!document.exists()) {
-                    Toast.makeText(this, "User profile not found", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Profile Not Found",
+                        message = "We couldn't find your profile. Please try again or contact support."
+                    )
                     changePasswordSkeletonContainer.clearAnimation()
                     changePasswordSkeletonContainer.visibility = View.GONE
                     changePasswordContentContainer.visibility = View.VISIBLE
@@ -216,11 +224,20 @@ class ChangePasswordActivity : WifiSecurityActivity() {
 
                         override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
                             profileImage.setImageResource(R.drawable.profile_placeholder)
+                            UiDialogs.showErrorPopup(
+                                this@ChangePasswordActivity,
+                                title = "Load Error",
+                                message = "Couldn't load recent time-in image. Please try again later."
+                            )
                         }
                     })
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load user info", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Load Error",
+                    message = "Failed to load user info. Please check your connection and try again."
+                )
                 changePasswordSkeletonContainer.clearAnimation()
                 changePasswordSkeletonContainer.visibility = View.GONE
                 changePasswordContentContainer.visibility = View.VISIBLE
@@ -237,7 +254,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         reenterPasswordLayout.error = null
 
         if (currentPassword.isEmpty()) {
-            Toast.makeText(this, "Enter your current password", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Current Password",
+                message = "Please enter your current password to proceed."
+            )
             return
         }
 
@@ -257,7 +278,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         }
 
         if (userId == null) {
-            Toast.makeText(this, "Missing user session", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Session",
+                message = "Your session is missing or expired. Please log in again."
+            )
             return
         }
 
@@ -268,13 +293,21 @@ class ChangePasswordActivity : WifiSecurityActivity() {
             if (document.exists()) {
                 val storedHash = document.getString("password")
                 if (storedHash.isNullOrEmpty()) {
-                    Toast.makeText(this, "No password stored", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Password Error",
+                        message = "No existing password found for this account."
+                    )
                     return@addOnSuccessListener
                 }
 
                 val passwordMatch = org.mindrot.jbcrypt.BCrypt.checkpw(currentPassword, storedHash)
                 if (!passwordMatch) {
-                    Toast.makeText(this, "Wrong current password", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Incorrect Password",
+                        message = "The current password you entered is incorrect."
+                    )
                     return@addOnSuccessListener
                 }
 
@@ -287,17 +320,25 @@ class ChangePasswordActivity : WifiSecurityActivity() {
                         showSuccessDialog()
                     }
                     .addOnFailureListener {
-                        Toast.makeText(
+                        UiDialogs.showErrorPopup(
                             this,
-                            "Failed to update password in Firestore",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                            title = "Update Failed",
+                            message = "Couldn't update your password. Please try again."
+                        )
                     }
             } else {
-                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "User Not Found",
+                    message = "We couldn't find your account. Please re-login and try again."
+                )
             }
         }.addOnFailureListener {
-            Toast.makeText(this, "Error accessing Firestore", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Database Error",
+                message = "Error accessing your account data. Please try again later."
+            )
         }
     }
 
