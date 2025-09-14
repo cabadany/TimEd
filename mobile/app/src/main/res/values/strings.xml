@@ -53,6 +53,7 @@
     <string name="popup_error_icon_desc">Error icon</string>
 
     <string name="popup_title_success">Success</string>
+    <string name="popup_title_reset_sent">Reset Link Sent</string>
     <string name="popup_title_error">Something went wrong</string>
     <string name="popup_message_excuse_letter_success">Your excuse letter has been submitted successfully!</string>
     <string name="popup_message_generic_error">An unexpected error occurred. Please try again.</string>
@@ -73,6 +74,7 @@
     <string name="popup_title_password_changed_success">Password Changed Successfully</string>
     <string name="popup_message_password_updated_success">Your password has been updated successfully.</string>
     <string name="popup_button_close">Close</string>
+    <string name="popup_message_forgot_password_sent">We sent a reset link to %1$s. Check your inbox and follow the instructions.</string>
 
     <string name="popup_title_download_success">Successfully Downloaded</string>
 

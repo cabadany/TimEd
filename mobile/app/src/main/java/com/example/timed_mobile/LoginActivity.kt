@@ -70,6 +70,12 @@ class LoginActivity : WifiSecurityActivity() {
             loginUser(idNumber, password)
         }
 
+        // Navigate to design-only Forgot Password screen
+        val forgotText = findViewById<TextView>(R.id.highlight_forgotPassword)
+        forgotText.setOnClickListener {
+            startActivity(Intent(this@LoginActivity, ForgotPasswordActivity::class.java))
+        }
+
         // --- This block makes "Create Account" a clickable link ---
         val createAccountText = findViewById<TextView>(R.id.highlight_createAccount)
         val fullText = "Don't have an account? Create Account"
