@@ -91,6 +91,10 @@ class TimeInActivity : WifiSecurityActivity() {
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
         private const val DB_PATH_TIME_LOGS = "timeLogs"
+        // Toggle to enforce the app-level Time-In window (1:30PM - 5:00PM).
+        // Set to `false` to disable the restriction (allow time-in anytime).
+        // Change this flag to `true` to re-enable the time window enforcement.
+        private const val ENFORCE_TIME_WINDOW = false
         // --- SECURITY UPGRADE: Thresholds for liveness checks ---
         private const val EYE_OPEN_PROBABILITY_THRESHOLD = 0.8f
         private const val SMILING_PROBABILITY_THRESHOLD = 0.7f // New check for smiling
@@ -411,17 +415,20 @@ class TimeInActivity : WifiSecurityActivity() {
         val formattedStartTime = "1:30 PM"
         val formattedEndTime = "5:00 PM"
 
-        // 5. Check if the current time is within the allowed range
-        val isAllowed = now.after(startTime) && now.before(endTime)
+        // 5. Respect the ENFORCE_TIME_WINDOW toggle. If enforcement is disabled,
+        //    allow Time-In at any time (useful for demo or administrative overrides).
+        if (ENFORCE_TIME_WINDOW) {
+            val isAllowed = now.after(startTime) && now.before(endTime)
 
-        if (!isAllowed) {
-            AlertDialog.Builder(this)
-                .setTitle("Time-In Not Allowed")
-                .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
-                .setPositiveButton("OK", null)
-                .show()
-            resetTimeInButton()
-            return
+            if (!isAllowed) {
+                AlertDialog.Builder(this)
+                    .setTitle("Time-In Not Allowed")
+                    .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
+                    .setPositiveButton("OK", null)
+                    .show()
+                resetTimeInButton()
+                return
+            }
         }
 
         checkAlreadyTimedIn(uid) { already ->
