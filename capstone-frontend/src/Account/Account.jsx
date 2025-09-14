@@ -16,6 +16,7 @@ import {
 import axios from 'axios';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import NotificationSystem from '../components/NotificationSystem';
+import eventEmitter, { EVENTS } from '../utils/eventEmitter';
 import { storage, database } from '../firebase/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ref as dbRef, get, query, orderByChild, limitToLast, onValue } from 'firebase/database';
@@ -234,6 +235,29 @@ export default function AccountPage() {
   useEffect(() => {
     fetchProfessors();
     fetchDepartments();
+
+    // Set up event listeners for account approval
+    const handleAccountApproved = (data) => {
+      console.log('Account approved event received:', data);
+      showSnackbar(`New user ${data.user.firstName} ${data.user.lastName} has been added to the system`, 'success');
+      // Refresh the professors list
+      fetchProfessors();
+    };
+
+    const handleRefreshAccounts = () => {
+      console.log('Refresh accounts event received');
+      fetchProfessors();
+    };
+
+    // Register event listeners
+    eventEmitter.on(EVENTS.ACCOUNT_APPROVED, handleAccountApproved);
+    eventEmitter.on(EVENTS.REFRESH_ACCOUNTS, handleRefreshAccounts);
+
+    // Cleanup event listeners on component unmount
+    return () => {
+      eventEmitter.off(EVENTS.ACCOUNT_APPROVED, handleAccountApproved);
+      eventEmitter.off(EVENTS.REFRESH_ACCOUNTS, handleRefreshAccounts);
+    };
   }, []);
 
   // Update status counts when professors data changes (to ensure count is always current)
