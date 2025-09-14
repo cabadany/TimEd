@@ -42,7 +42,8 @@ class EventLogAdapter(
     inner class EventLogViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val eventNameView: TextView = itemView.findViewById(R.id.text_event_name)
         private val timeInView: TextView = itemView.findViewById(R.id.text_time_in)
-        private val statusView: TextView = itemView.findViewById(R.id.text_status)
+    private val statusView: TextView = itemView.findViewById(R.id.text_status)
+    private val methodChip: TextView = itemView.findViewById(R.id.text_method_chip)
         private val timeOutButton: Button = itemView.findViewById(R.id.button_time_out)
 
         fun bind(log: EventLogModel) {
@@ -51,12 +52,19 @@ class EventLogAdapter(
             statusView.text = log.status
 
             statusView.setTypeface(null, android.graphics.Typeface.BOLD)
-
-            if (log.status == "Timed-In") {
-                statusView.setTextColor(ContextCompat.getColor(itemView.context, R.color.success_green)) // custom green
-            } else if (log.status == "Timed-Out") {
-                statusView.setTextColor(itemView.context.getColor(R.color.error_red)) // custom red
+            when (log.status) {
+                "Timed-In" -> statusView.setTextColor(ContextCompat.getColor(itemView.context, R.color.success_green))
+                "Timed-Out" -> statusView.setTextColor(ContextCompat.getColor(itemView.context, R.color.error_red))
+                else -> statusView.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.black))
             }
+
+            // Bind check-in method chip
+            val isManual = log.checkinMethod
+            methodChip.text = if (isManual) "Manual Code" else "QR Scan"
+            methodChip.background = ContextCompat.getDrawable(
+                itemView.context,
+                if (isManual) R.drawable.bg_chip_manual else R.drawable.bg_chip_qr
+            )
 
             if (log.showTimeOutButton) {
                 timeOutButton.visibility = View.VISIBLE

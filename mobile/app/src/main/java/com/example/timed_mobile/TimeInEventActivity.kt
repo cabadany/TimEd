@@ -631,7 +631,9 @@ class TimeInEventActivity : WifiSecurityActivity() {
             "timestamp" to FieldValue.serverTimestamp(),
             "selfieUrl" to selfieUrl,
             "type" to "event_time_in",
-            "hasTimedOut" to false
+            "hasTimedOut" to false,
+            // Indicate this was via QR/selfie (false = QR/selfie)
+            "checkinMethod" to false
         )
 
         val db = FirebaseFirestore.getInstance()

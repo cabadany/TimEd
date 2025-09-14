@@ -160,6 +160,9 @@ class EventLogActivity : WifiSecurityActivity() {
                                     val attendeeDocId = attendeeDoc.id
                                     val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
                                     val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
+                                    // Prefer new flag; fallback to legacy manualEntry if present
+                                    val checkinMethod = attendeeDoc.getBoolean("checkinMethod")
+                                        ?: (attendeeDoc.getBoolean("manualEntry") ?: false)
 
                                     // MERGED: Create the EventLogModel with the attendeeDocId.
                                     // Note: Your EventLogModel class must have the 'attendeeDocId' field.
@@ -171,6 +174,7 @@ class EventLogActivity : WifiSecurityActivity() {
                                             timeInTimestamp = timestamp,
                                             status = if (hasTimedOut) "Timed-Out" else "Timed-In",
                                             showTimeOutButton = !hasTimedOut && isStillActive,
+                                            checkinMethod = checkinMethod,
                                             userId = userId
                                         )
                                     )

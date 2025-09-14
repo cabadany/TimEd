@@ -230,7 +230,9 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
             "hasTimedOut" to false,
             // You can include other details; they just won't be used by the log screen
             "firstName" to userFirstName,
-            "email" to userEmail
+            "email" to userEmail,
+            // Indicate this was a manual code entry
+            "checkinMethod" to true
         )
 
         // FIX: Log to the 'attendees' sub-collection, which is where EventLogActivity reads from.
