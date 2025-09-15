@@ -1,17 +1,14 @@
 package com.capstone.TimEd.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class OtpService {
     @Autowired
-    private JavaMailSender emailSender;
+    private SendGridEmailService sendGridEmailService;
 
     @Autowired
     private UserService userService;
@@ -43,17 +40,10 @@ public class OtpService {
         otpStore.put(schoolId, otpData);
         System.out.println("OTP stored in memory for school ID: " + schoolId);
 
-        // Send OTP via email
+        // Send OTP via SendGrid API (not SMTP)
         try {
-            System.out.println("Creating email message...");
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("timeedsystem@gmail.com"); // Use your verified sender email
-            message.setTo(user.getEmail());
-            message.setSubject("TimEd Admin Login OTP");
-            message.setText("Your OTP for TimEd admin login is: " + otp + "\nThis OTP will expire in 5 minutes.");
-            
-            System.out.println("Attempting to send email to: " + user.getEmail());
-            emailSender.send(message);
+            System.out.println("Sending OTP via SendGrid API to: " + user.getEmail());
+            sendGridEmailService.sendOtpEmail(user.getEmail(), otp);
             System.out.println("--- OTP Service: Email sent successfully ---");
             
         } catch (Exception emailException) {
