@@ -74,6 +74,10 @@ public class AttendanceService {
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
             attendanceData.put("selfieUrl", null); // Can be updated later if needed
+            attendanceData.put("checkinMethod", false); // QR code check-in
+            
+            // Debug: Log the checkinMethod value being set
+            System.out.println("[DEBUG] QR Code Time-in - Setting checkinMethod to: false for user: " + userId);
 
             // Add the attendance record to the event's attendees subcollection
             attendeesRef.document(userId).set(attendanceData);
@@ -170,6 +174,10 @@ public class AttendanceService {
             attendanceData.put("hasTimedOut", false);
             attendanceData.put("selfieUrl", null);
             attendanceData.put("manualEntry", true);
+            attendanceData.put("checkinMethod", true); // Manual check-in
+            
+            // Debug: Log the checkinMethod value being set
+            System.out.println("[DEBUG] Manual Time-in - Setting checkinMethod to: true for user: " + userId);
 
             // Add to the new 'attendees' collection
             firestore.collection("attendees").add(attendanceData);
@@ -278,7 +286,29 @@ public class AttendanceService {
                         attendee.put("timeIn", timeIn);
                         attendee.put("timeOut", "N/A"); // Old structure doesn't have timeOut
                         attendee.put("type", "event_time_in");
-                        attendee.put("manualEntry", data.getOrDefault("manualEntry", false).toString());
+                        // Handle manualEntry and checkinMethod with proper fallbacks
+                        Object manualEntryValue = data.get("manualEntry");
+                        boolean isManualEntry = manualEntryValue instanceof Boolean ? (Boolean) manualEntryValue : 
+                                               (manualEntryValue != null && "true".equals(manualEntryValue.toString()));
+                        
+                        Object checkinMethodValue = data.get("checkinMethod");
+                        boolean checkinMethodBool;
+                        
+                        if (checkinMethodValue != null) {
+                            // If checkinMethod exists, use it
+                            checkinMethodBool = checkinMethodValue instanceof Boolean ? (Boolean) checkinMethodValue : 
+                                               "true".equals(checkinMethodValue.toString());
+                        } else {
+                            // If checkinMethod doesn't exist, fall back to manualEntry logic
+                            checkinMethodBool = isManualEntry;
+                        }
+                        
+                        attendee.put("manualEntry", String.valueOf(isManualEntry));
+                        attendee.put("checkinMethod", String.valueOf(checkinMethodBool));
+                        
+                        // Debug: Log checkinMethod retrieval for old structure
+                        System.out.println("[DEBUG] Old Structure - User: " + userId + ", checkinMethod raw: " + checkinMethodValue + " (exists: " + (checkinMethodValue != null) + "), manualEntry: " + manualEntryValue + ", final checkinMethod: " + checkinMethodBool);
+                        
                         attendee.put("selfieUrl", null);
                     }
                 } else {
@@ -315,7 +345,29 @@ public class AttendanceService {
                     
                     attendee.put("type", data.getOrDefault("type", "event_time_in").toString());
                     attendee.put("selfieUrl", data.get("selfieUrl") != null ? data.get("selfieUrl").toString() : null);
-                    attendee.put("manualEntry", data.getOrDefault("manualEntry", false).toString());
+                    
+                    // Handle manualEntry and checkinMethod with proper fallbacks
+                    Object manualEntryValue = data.get("manualEntry");
+                    boolean isManualEntry = manualEntryValue instanceof Boolean ? (Boolean) manualEntryValue : 
+                                           (manualEntryValue != null && "true".equals(manualEntryValue.toString()));
+                    
+                    Object checkinMethodValue = data.get("checkinMethod");
+                    boolean checkinMethodBool;
+                    
+                    if (checkinMethodValue != null) {
+                        // If checkinMethod exists, use it
+                        checkinMethodBool = checkinMethodValue instanceof Boolean ? (Boolean) checkinMethodValue : 
+                                           "true".equals(checkinMethodValue.toString());
+                    } else {
+                        // If checkinMethod doesn't exist, fall back to manualEntry logic
+                        checkinMethodBool = isManualEntry;
+                    }
+                    
+                    attendee.put("manualEntry", String.valueOf(isManualEntry));
+                    attendee.put("checkinMethod", String.valueOf(checkinMethodBool));
+                    
+                    // Debug: Log checkinMethod retrieval for new structure
+                    System.out.println("[DEBUG] New Structure - User: " + userId + ", checkinMethod raw: " + checkinMethodValue + " (exists: " + (checkinMethodValue != null) + "), manualEntry: " + manualEntryValue + ", final checkinMethod: " + checkinMethodBool);
                 }
                 
                 if (!attendee.isEmpty()) {
