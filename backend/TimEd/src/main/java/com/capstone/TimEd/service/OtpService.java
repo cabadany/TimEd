@@ -47,6 +47,7 @@ public class OtpService {
         try {
             System.out.println("Creating email message...");
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("timeedsystem@gmail.com"); // Use your verified sender email
             message.setTo(user.getEmail());
             message.setSubject("TimEd Admin Login OTP");
             message.setText("Your OTP for TimEd admin login is: " + otp + "\nThis OTP will expire in 5 minutes.");
