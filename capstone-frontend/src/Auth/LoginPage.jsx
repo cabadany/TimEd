@@ -7,6 +7,7 @@ import { Modal, Box, Typography, Button, TextField, CircularProgress, Paper, Fad
 import { getAuth, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { Email, GitHub, LinkedIn, Language, Info, Close } from '@mui/icons-material';
 
+
 function LoginPage() {
   const navigate = useNavigate();
   const [idNumber, setIdNumber] = useState('');
