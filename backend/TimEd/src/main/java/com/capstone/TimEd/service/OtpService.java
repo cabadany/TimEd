@@ -21,26 +21,46 @@ public class OtpService {
     private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
 
     public String generateOtp(String schoolId) throws Exception {
+        System.out.println("--- OTP Service: Starting OTP generation ---");
+        
         // Generate 6-digit OTP
         Random random = new Random();
         String otp = String.format("%06d", random.nextInt(1000000));
+        System.out.println("Generated OTP: " + otp);
 
         // Get user's email
+        System.out.println("Fetching user from UserService...");
         var user = userService.getUserBySchoolId(schoolId);
         if (user == null || user.getEmail() == null) {
+            System.err.println("ERROR: User not found or email not available");
             throw new Exception("User not found or email not available");
         }
+        
+        System.out.println("User email: " + user.getEmail());
 
         // Store OTP with expiration time
         String[] otpData = {otp, String.valueOf(System.currentTimeMillis() + OTP_VALID_DURATION)};
         otpStore.put(schoolId, otpData);
+        System.out.println("OTP stored in memory for school ID: " + schoolId);
 
         // Send OTP via email
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setSubject("TimEd Admin Login OTP");
-        message.setText("Your OTP for TimEd admin login is: " + otp + "\nThis OTP will expire in 5 minutes.");
-        emailSender.send(message);
+        try {
+            System.out.println("Creating email message...");
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(user.getEmail());
+            message.setSubject("TimEd Admin Login OTP");
+            message.setText("Your OTP for TimEd admin login is: " + otp + "\nThis OTP will expire in 5 minutes.");
+            
+            System.out.println("Attempting to send email to: " + user.getEmail());
+            emailSender.send(message);
+            System.out.println("--- OTP Service: Email sent successfully ---");
+            
+        } catch (Exception emailException) {
+            System.err.println("--- OTP Service: EMAIL SENDING FAILED ---");
+            System.err.println("Email error: " + emailException.getMessage());
+            emailException.printStackTrace();
+            throw new Exception("Failed to send OTP email: " + emailException.getMessage());
+        }
 
         return otp;
     }
