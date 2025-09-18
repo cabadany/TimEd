@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class OtpService {
     @Autowired
-    private SendGridEmailService sendGridEmailService;
+    private BrevoEmailService brevoEmailService;
 
     @Autowired
     private UserService userService;
@@ -40,10 +40,10 @@ public class OtpService {
         otpStore.put(schoolId, otpData);
         System.out.println("OTP stored in memory for school ID: " + schoolId);
 
-        // Send OTP via SendGrid API (not SMTP)
+        // Send OTP via Brevo API
         try {
-            System.out.println("Sending OTP via SendGrid API to: " + user.getEmail());
-            sendGridEmailService.sendOtpEmail(user.getEmail(), otp);
+            System.out.println("Sending OTP via Brevo API to: " + user.getEmail());
+            brevoEmailService.sendOtpEmail(user.getEmail(), otp);
             System.out.println("--- OTP Service: Email sent successfully ---");
             
         } catch (Exception emailException) {
