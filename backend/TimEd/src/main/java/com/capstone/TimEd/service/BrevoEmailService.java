@@ -123,7 +123,7 @@ public class BrevoEmailService {
             // Add PDF attachment
             if (certificatePdf != null && certificatePdf.length > 0) {
                 SendSmtpEmailAttachment attachment = new SendSmtpEmailAttachment();
-                attachment.setContent(Base64.getEncoder().encodeToString(certificatePdf));
+                attachment.setContent(certificatePdf);
                 attachment.setName("Certificate.pdf");
                 sendSmtpEmail.setAttachment(Arrays.asList(attachment));
             }
