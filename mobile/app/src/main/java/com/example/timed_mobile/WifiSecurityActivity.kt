@@ -40,12 +40,15 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "WifiSecurityActivity"
         private const val LOCATION_PERMISSION_REQUEST_CODE = 123
+        // Toggle: When true, require strict BSSID match. When false, allow SSID match as secure.
+        private const val ENFORCE_STRICT_BSSID = false
 
         // List of authorized BSSIDs (MAC Addresses). This is the primary security check.
         private val ALLOWED_WIFI_BSSIDS = listOf(
             "6c:a4:d1:c8:28:f8", //TIMED-AP2.4G //Timeduser12345!
             "00:13:10:85:fe:01", // Example BSSID for AndroidWifi
-            "dc:9f:db:f7:40:91"  // Example BSSID for NAVACOM AP
+            "dc:9f:db:f7:40:91", // Example BSSID for NAVACOM AP
+            "6e:16:1b:e9:06:08" // Example BSSID for CITU_WILSTUDENT
         )
 
         // List of authorized SSIDs (Wi-Fi Names). Used for the rogue AP warning.
@@ -223,9 +226,9 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         }
 
         // Secondary check: If BSSID failed, is the SSID a known name?
-        // This indicates a potential "evil twin" attack.
+        // If strict BSSID enforcement is disabled, treat SSID match as SECURE; otherwise warn.
         if (ALLOWED_WIFI_SSIDS.any { it.equals(currentSsid, ignoreCase = true) }) {
-            return WifiCheckResult.INSECURE_SSID
+            return if (ENFORCE_STRICT_BSSID) WifiCheckResult.INSECURE_SSID else WifiCheckResult.SECURE
         }
 
         // If both checks fail, it's just a random, unauthorized network.

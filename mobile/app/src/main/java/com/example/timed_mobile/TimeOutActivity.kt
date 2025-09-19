@@ -37,9 +37,12 @@ class TimeOutActivity : WifiSecurityActivity() {
     // Set the specific time of day when users are allowed to time-out.
     // Use 12-hour format (1-12 for hour).
     companion object {
-        private const val TIMEOUT_HOUR = 2 // e.g., 5 for 5 o'clock
+        // Toggle to enforce the app-level Time-Out window.
+        // Set to false to allow time-out anytime (for demo/admin overrides).
+        private const val ENFORCE_TIMEOUT_WINDOW = false
+        private const val TIMEOUT_HOUR = 11 // e.g., 5 for 5 o'clock
         private const val TIMEOUT_MINUTE = 0 // e.g., 0 for on the hour
-        private const val TIMEOUT_AM_PM = Calendar.PM // Use Calendar.AM or Calendar.PM
+        private const val TIMEOUT_AM_PM = Calendar.AM // Use Calendar.AM or Calendar.PM
     }
     // --- END MODIFIABLE TIME SETTING ---
 
@@ -136,7 +139,7 @@ class TimeOutActivity : WifiSecurityActivity() {
                         return
                     }
 
-                    // --- MODIFIED TIME CHECK WITH SPECIFIC TIME OF DAY (AM/PM) ---
+                    // --- TIME-OUT WINDOW CHECK (gated by ENFORCE_TIMEOUT_WINDOW) ---
                     val targetTimeOut = Calendar.getInstance().apply {
                         // Use HOUR for 12-hour format. Calendar treats 12 AM/PM as 0 in this context.
                         set(Calendar.HOUR, if (TIMEOUT_HOUR == 12) 0 else TIMEOUT_HOUR)
@@ -148,13 +151,15 @@ class TimeOutActivity : WifiSecurityActivity() {
 
                     val now = Calendar.getInstance()
 
-                    if (now.before(targetTimeOut)) {
-                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                        val formattedTimeOut = timeFormat.format(targetTimeOut.time)
-                        UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You can only time-out after $formattedTimeOut.")
-                        return
+                    if (ENFORCE_TIMEOUT_WINDOW) {
+                        if (now.before(targetTimeOut)) {
+                            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                            val formattedTimeOut = timeFormat.format(targetTimeOut.time)
+                            UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You can only time-out after $formattedTimeOut.")
+                            return
+                        }
                     }
-                    // --- END MODIFIED TIME CHECK ---
+                    // --- END TIME-OUT WINDOW CHECK ---
 
                     val log = mapOf(
                         "timestamp" to now.timeInMillis,
