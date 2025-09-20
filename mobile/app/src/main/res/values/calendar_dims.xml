@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="calendar_cell_size">42dp</dimen>
+    <dimen name="calendar_cell_margin">0dp</dimen>
+    <dimen name="calendar_cell_col_spacing">4dp</dimen>
+    <dimen name="calendar_cell_row_spacing">4dp</dimen>
+</resources>

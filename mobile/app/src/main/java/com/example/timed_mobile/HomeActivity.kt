@@ -185,6 +185,7 @@ class HomeActivity : WifiSecurityActivity() {
     private lateinit var attendanceStatusBadge: TextView
 
     private lateinit var btnHelp: ImageView
+    private lateinit var btnCalendar: ImageView
     private lateinit var profileImagePlaceholder: ImageView
 
     private var tutorialProgressOnRightNavHeader: LinearLayout? = null
@@ -291,6 +292,7 @@ class HomeActivity : WifiSecurityActivity() {
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
         btnHelp = findViewById(R.id.btn_help)
+    btnCalendar = findViewById(R.id.btn_calendar)
         noEventsMessage = findViewById(R.id.no_events_message)
         profileImagePlaceholder = findViewById(R.id.profile_image_placeholder)
         statusSpinner = findViewById(R.id.status_spinner)
@@ -326,6 +328,10 @@ class HomeActivity : WifiSecurityActivity() {
 
         btnHelp.setOnClickListener {
             showTutorialDialog()
+        }
+        btnCalendar.setOnClickListener {
+            // Open static calendar bottom sheet
+            com.example.timed_mobile.calendar.EventCalendarBottomSheet().show(supportFragmentManager, "EventCalendar")
         }
 
         firestore = FirebaseFirestore.getInstance()

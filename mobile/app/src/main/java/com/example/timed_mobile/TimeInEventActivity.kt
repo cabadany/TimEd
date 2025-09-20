@@ -472,6 +472,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -492,6 +493,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             dialog.dismiss()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -560,6 +562,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -574,6 +577,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -588,6 +592,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -610,6 +615,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             dialog.dismiss()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -649,6 +655,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -664,6 +671,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 .setMessage("Successfully timed in for '${currentScannedEventName}'! Processing certificate...")
                                 .setPositiveButton("OK") { dialog, _ ->
                                     dialog.dismiss()
+                                    startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                     finish()
                                 }
                                 .setCancelable(false)

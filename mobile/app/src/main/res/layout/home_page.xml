@@ -68,11 +68,25 @@
                             android:shadowColor="#33000000"
                             android:shadowDx="1"
                             android:shadowDy="1"
-                            android:shadowRadius="2"
                             android:text="TimEd"
                             android:textColor="#37474F"
                             android:textSize="@dimen/text_title"
                             android:textStyle="bold" />
+
+                    <ImageButton
+                            android:id="@+id/btn_calendar"
+                            android:layout_width="@dimen/toolbar_icon_lg"
+                            android:layout_height="@dimen/toolbar_icon_lg"
+                            android:layout_toStartOf="@id/btn_help"
+                            android:layout_marginTop="@dimen/space_sm"
+                            android:layout_marginEnd="@dimen/space_md"
+                            android:src="@drawable/ic_calendar_outline"
+                            android:contentDescription="Calendar"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            app:tint="#3538CD" />
+
 
                     <!-- Greeting Card -->
                     <androidx.cardview.widget.CardView

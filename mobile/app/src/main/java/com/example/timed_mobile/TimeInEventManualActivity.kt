@@ -12,6 +12,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.view.animation.AnimationUtils // Added for animation
 import android.widget.Button
+import android.content.Intent
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -276,6 +277,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         closeButton.setOnClickListener {
             dialog.dismiss()
             setResult(RESULT_OK)
+            // Navigate explicitly back to Home after manual event time-in
+            val intent = Intent(this@TimeInEventManualActivity, HomeActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(intent)
             finish()
         }
 
