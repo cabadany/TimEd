@@ -447,6 +447,65 @@ body, html, #root {
   box-shadow: 0 4px 10px rgba(53, 56, 205, 0.2);
 }
 
+/* Already Logged in Button Styles */
+.already-logged-in-btn {
+  width: 100%;
+  padding: 0.8rem;
+  background-color: transparent;
+  color: #28a745;
+  border: 1px solid #28a745;
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.6rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(40, 167, 69, 0.1);
+}
+
+.already-logged-in-btn:hover {
+  background-color: rgba(40, 167, 69, 0.05);
+  box-shadow: 0 2px 5px rgba(40, 167, 69, 0.2);
+  transform: translateY(-1px);
+}
+
+.already-logged-in-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(40, 167, 69, 0.1);
+}
+
+.already-logged-in-btn:disabled {
+  background-color: transparent;
+  color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.dark-mode .already-logged-in-btn {
+  color: #4caf50;
+  border-color: #4caf50;
+}
+
+.dark-mode .already-logged-in-btn:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.dark-mode .already-logged-in-btn:disabled {
+  color: #6c7b7d;
+  border-color: #6c7b7d;
+}
+
+.already-logged-in-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
+}
+
+.dark-mode .already-logged-in-btn:focus {
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+}
+
 /* Mobile App Button Styles */
 .mobile-app-btn {
   width: 100%;
@@ -459,7 +518,7 @@ body, html, #root {
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 0.9rem;
+  margin-top: 0.6rem;
   position: relative;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(53, 56, 205, 0.1);
