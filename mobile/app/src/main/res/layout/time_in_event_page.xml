@@ -23,7 +23,7 @@
             android:layout_alignParentEnd="true"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:maxHeight="350dp"
+            android:maxHeight="@dimen/wave_max_height"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
@@ -34,13 +34,13 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginStart="@dimen/space_sm"
+            android:layout_marginTop="@dimen/space_sm"
             android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
             android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
-            android:padding="8dp"
+            android:padding="@dimen/space_sm"
             android:stateListAnimator="@animator/button_scale_animator"
             app:srcCompat="@drawable/ic_back_button" />
 
@@ -50,31 +50,31 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
-            android:padding="8dp"
+            android:padding="@dimen/space_sm"
             android:shadowColor="#33000000"
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="@string/app_title_timed"
             android:textColor="#37474F"
-            android:textSize="42sp"
+            android:textSize="@dimen/text_display"
             android:textStyle="bold" />
 
     <!-- Camera Box Frame -->
     <androidx.cardview.widget.CardView
             android:id="@+id/camera_container"
             android:layout_width="match_parent"
-            android:layout_height="220dp"
+            android:layout_height="@dimen/camera_height"
             android:layout_below="@id/titleName"
             android:layout_centerHorizontal="true"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="32dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginStart="@dimen/space_2xl"
+            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginEnd="@dimen/space_2xl"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:cardElevation="@dimen/card_elevation">
 
         <!-- FrameLayout to hold camera preview and overlay -->
         <FrameLayout
@@ -94,8 +94,8 @@
             <!-- QR Scan Box Overlay -->
             <View
                     android:id="@+id/qr_scan_box_overlay"
-                    android:layout_width="200dp"
-                    android:layout_height="200dp"
+                    android:layout_width="@dimen/qr_box_size"
+                    android:layout_height="@dimen/qr_box_size"
                     android:layout_gravity="center"
                     android:background="@drawable/qr_scan_box_border"
                     android:visibility="gone" />
@@ -108,11 +108,11 @@
     <!-- Shutter Camera Icon -->
     <ImageView
             android:id="@+id/icon_shutter_camera"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/icon_touch_target"
+            android:layout_height="@dimen/icon_touch_target"
             android:layout_below="@id/camera_container"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_md"
             android:clickable="true"
             android:contentDescription="@string/content_desc_camera_icon"
             android:focusable="true"
@@ -126,16 +126,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/icon_shutter_camera"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="32dp"
+            android:layout_marginStart="@dimen/space_2xl"
+            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginEnd="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
-            android:padding="4dp"
+            android:padding="@dimen/space_xs"
             android:text="@string/timein_event_qr_scan_instruction"
             android:textColor="@color/medium_gray"
-            android:textSize="16sp" />
+            android:textSize="@dimen/text_md" />
 
     <!-- Scan QR Code Button - must match scanButton in your code -->
     <Button
@@ -144,20 +144,20 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/qr_scanner_click_reminder"
             android:layout_centerHorizontal="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="40dp"
+            android:layout_marginStart="@dimen/space_3xl"
+            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginEnd="@dimen/space_3xl"
             android:backgroundTint="#3538CD"
             android:elevation="6dp"
             android:fontFamily="@font/league_spartan_bold"
-            android:minHeight="48dp"
-            android:padding="10dp"
+            android:minHeight="@dimen/button_min_height"
+            android:padding="@dimen/space_md"
             android:stateListAnimator="@animator/button_scale_animator"
             android:text="@string/button_start_scanning"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:textStyle="bold"
-            app:cornerRadius="12dp" />
+            app:cornerRadius="@dimen/button_corner_radius" />
 
     <!-- Manual Type Code Button -->
     <Button
@@ -166,20 +166,20 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/scan_qr_code"
             android:layout_centerHorizontal="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginBottom="20dp"
+            android:layout_marginStart="@dimen/space_3xl"
+            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginEnd="@dimen/space_3xl"
+            android:layout_marginBottom="@dimen/space_xl"
             android:backgroundTint="#37474F"
             android:elevation="6dp"
             android:fontFamily="@font/league_spartan_bold"
-            android:minHeight="48dp"
-            android:padding="10dp"
+            android:minHeight="@dimen/button_min_height"
+            android:padding="@dimen/space_md"
             android:stateListAnimator="@animator/button_scale_animator"
             android:text="@string/button_manual_type_code"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:textStyle="bold"
-            app:cornerRadius="12dp" />
+            app:cornerRadius="@dimen/button_corner_radius" />
 
 </RelativeLayout>

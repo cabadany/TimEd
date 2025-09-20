@@ -7,18 +7,19 @@ import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View // Added for View
+import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.view.animation.AnimationUtils // Added for animations
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.FirebaseDatabase
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 class TimeOutActivity : WifiSecurityActivity() {
 
@@ -26,13 +27,24 @@ class TimeOutActivity : WifiSecurityActivity() {
     private var userEmail: String? = null
     private var userFirstName: String? = null
 
-    // Declare views for animation
     private lateinit var iconBackButton: ImageView
     private lateinit var titleName: TextView
     private lateinit var timeoutIllustration: ImageView
     private lateinit var timeoutInstruction: TextView
     private lateinit var btnTimeOut: Button
 
+    // --- MODIFIABLE TIME SETTING ---
+    // Set the specific time of day when users are allowed to time-out.
+    // Use 12-hour format (1-12 for hour).
+    companion object {
+        // Toggle to enforce the app-level Time-Out window.
+        // Set to false to allow time-out anytime (for demo/admin overrides).
+        private const val ENFORCE_TIMEOUT_WINDOW = false
+        private const val TIMEOUT_HOUR = 11 // e.g., 5 for 5 o'clock
+        private const val TIMEOUT_MINUTE = 0 // e.g., 0 for on the hour
+        private const val TIMEOUT_AM_PM = Calendar.AM // Use Calendar.AM or Calendar.PM
+    }
+    // --- END MODIFIABLE TIME SETTING ---
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,49 +57,24 @@ class TimeOutActivity : WifiSecurityActivity() {
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
 
-        // Initialize views
         iconBackButton = findViewById(R.id.icon_back_button)
         titleName = findViewById(R.id.titleName)
         timeoutIllustration = findViewById(R.id.timeout_illustration)
         timeoutInstruction = findViewById(R.id.timeout_instruction)
         btnTimeOut = findViewById(R.id.btntime_out)
 
-
-        // --- START OF ENTRY ANIMATION CODE ---
-        // Load animations
-        val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
-        val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
-        val animSlideUpContent = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_content)
-
         var currentDelay = 100L
-
-        // Helper to apply animation
         fun animateView(view: View, animationResId: Int, delay: Long) {
             val anim = AnimationUtils.loadAnimation(view.context, animationResId)
             anim.startOffset = delay
             view.startAnimation(anim)
         }
 
-        // 1. Back Button
-        animateView(iconBackButton, R.anim.fade_in, currentDelay)
-        currentDelay += 100L
-
-        // 2. Title
-        animateView(titleName, R.anim.slide_down_fade_in, currentDelay)
-        currentDelay += 150L
-
-        // 3. Timeout Illustration
-        animateView(timeoutIllustration, R.anim.fade_in, currentDelay) // Simple fade, or a custom scale/zoom
-        currentDelay += 150L
-
-        // 4. Timeout Instruction Text
-        animateView(timeoutInstruction, R.anim.slide_up_fade_in_content, currentDelay)
-        currentDelay += 100L
-
-        // 5. Time-Out Button
+        animateView(iconBackButton, R.anim.fade_in, currentDelay); currentDelay += 100L
+        animateView(titleName, R.anim.slide_down_fade_in, currentDelay); currentDelay += 150L
+        animateView(timeoutIllustration, R.anim.fade_in, currentDelay); currentDelay += 150L
+        animateView(timeoutInstruction, R.anim.slide_up_fade_in_content, currentDelay); currentDelay += 100L
         animateView(btnTimeOut, R.anim.slide_up_fade_in_content, currentDelay)
-        // --- END OF ENTRY ANIMATION CODE ---
-
 
         btnTimeOut.setOnClickListener {
             logTimeOutToFirebase()
@@ -104,10 +91,7 @@ class TimeOutActivity : WifiSecurityActivity() {
         dialog.setCancelable(false)
         dialog.setContentView(R.layout.success_popup_time_out)
 
-        dialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.window?.setGravity(Gravity.CENTER)
         dialog.window?.setWindowAnimations(R.style.DialogAnimation)
@@ -130,7 +114,7 @@ class TimeOutActivity : WifiSecurityActivity() {
 
     private fun logTimeOutToFirebase() {
         if (userId == null) {
-            Toast.makeText(this, "User ID missing. Cannot log time-out.", Toast.LENGTH_LONG).show()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "User ID missing. Cannot log time-out.")
             return
         }
 
@@ -146,39 +130,39 @@ class TimeOutActivity : WifiSecurityActivity() {
         dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
                 override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                    var latestTimeIn: Long? = null
-
-                    for (child in snapshot.children) {
-                        val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java)
-
-                        if (type == "TimeIn" && timestamp != null) {
-                            if (latestTimeIn == null || timestamp > latestTimeIn) {
-                                latestTimeIn = timestamp
-                            }
-                        }
+                    val hasTimedInToday = snapshot.children.any {
+                        it.child("type").getValue(String::class.java) == "TimeIn"
                     }
 
-                    if (latestTimeIn == null) {
+                    if (!hasTimedInToday) {
                         Toast.makeText(this@TimeOutActivity, "You haven't timed in today.", Toast.LENGTH_LONG).show()
                         return
                     }
 
-                    val fiveHoursMillis = 5 * 60 * 60 * 1000
-                    val now = System.currentTimeMillis()
-
-                    if (now - latestTimeIn < fiveHoursMillis) {
-                        val hoursLeft = ((fiveHoursMillis - (now - latestTimeIn)) / (60 * 60 * 1000)).toInt()
-                        AlertDialog.Builder(this@TimeOutActivity)
-                            .setTitle("Too Early to Time-Out")
-                            .setMessage("You can only time-out 5 hours after timing in.\n\nPlease wait about $hoursLeft more hour(s).")
-                            .setPositiveButton("OK", null)
-                            .show()
-                        return
+                    // --- TIME-OUT WINDOW CHECK (gated by ENFORCE_TIMEOUT_WINDOW) ---
+                    val targetTimeOut = Calendar.getInstance().apply {
+                        // Use HOUR for 12-hour format. Calendar treats 12 AM/PM as 0 in this context.
+                        set(Calendar.HOUR, if (TIMEOUT_HOUR == 12) 0 else TIMEOUT_HOUR)
+                        set(Calendar.MINUTE, TIMEOUT_MINUTE)
+                        set(Calendar.AM_PM, TIMEOUT_AM_PM)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
                     }
 
+                    val now = Calendar.getInstance()
+
+                    if (ENFORCE_TIMEOUT_WINDOW) {
+                        if (now.before(targetTimeOut)) {
+                            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                            val formattedTimeOut = timeFormat.format(targetTimeOut.time)
+                            UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You can only time-out after $formattedTimeOut.")
+                            return
+                        }
+                    }
+                    // --- END TIME-OUT WINDOW CHECK ---
+
                     val log = mapOf(
-                        "timestamp" to now,
+                        "timestamp" to now.timeInMillis,
                         "type" to "TimeOut",
                         "email" to userEmail,
                         "firstName" to userFirstName,
@@ -192,12 +176,12 @@ class TimeOutActivity : WifiSecurityActivity() {
                             showTimeOutSuccessDialog()
                         }
                         .addOnFailureListener { e ->
-                            Toast.makeText(this@TimeOutActivity, "Failed to log Time-Out: ${e.message}", Toast.LENGTH_LONG).show()
+                            UiDialogs.showErrorPopup(this@TimeOutActivity, getString(R.string.popup_title_error), "Failed to log Time-Out: ${e.message}")
                         }
                 }
 
                 override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
-                    Toast.makeText(this@TimeOutActivity, "Database error: ${error.message}", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(this@TimeOutActivity, getString(R.string.popup_title_error), "Database error: ${error.message}")
                 }
             })
     }

@@ -95,7 +95,7 @@ class ExcuseLetterHistoryActivity : WifiSecurityActivity() {
         adapter = ExcuseLetterAdapter(excuseList)
         recyclerView.adapter = adapter
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d(TAG, "Swipe to refresh triggered.")
             fetchExcuseLetters(isRefreshing = true)
@@ -110,7 +110,11 @@ class ExcuseLetterHistoryActivity : WifiSecurityActivity() {
         monitorExcuseLetterStatusChanges()
 
         if (uid.isNullOrEmpty()) {
-            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Not Authenticated",
+                message = "User not authenticated. Please log in."
+            )
             if (isRefreshing) swipeRefreshLayout.isRefreshing = false else progressBar.visibility = View.GONE
             emptyText.text = "User not authenticated. Please log in."
             emptyText.animate().alpha(1f).setDuration(FADE_DURATION).setListener(object : AnimatorListenerAdapter() {
@@ -168,7 +172,11 @@ class ExcuseLetterHistoryActivity : WifiSecurityActivity() {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Database error: ${error.message}")
-                Toast.makeText(this@ExcuseLetterHistoryActivity, "Failed to load data: ${error.message}", Toast.LENGTH_LONG).show()
+                UiDialogs.showErrorPopup(
+                    this@ExcuseLetterHistoryActivity,
+                    title = "Load Failed",
+                    message = "Failed to load data: ${error.message}"
+                )
 
                 if (isRefreshing) swipeRefreshLayout.isRefreshing = false else progressBar.visibility = View.GONE
 

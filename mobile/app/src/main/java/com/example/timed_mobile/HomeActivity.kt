@@ -44,11 +44,11 @@ import android.view.ViewGroup
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import androidx.core.app.NotificationCompat
-import com.google.android.material.internal.NavigationMenuView
-
+import android.Manifest
 
 
 class HomeActivity : WifiSecurityActivity() {
@@ -185,6 +185,7 @@ class HomeActivity : WifiSecurityActivity() {
     private lateinit var attendanceStatusBadge: TextView
 
     private lateinit var btnHelp: ImageView
+    private lateinit var btnCalendar: ImageView
     private lateinit var profileImagePlaceholder: ImageView
 
     private var tutorialProgressOnRightNavHeader: LinearLayout? = null
@@ -209,6 +210,26 @@ class HomeActivity : WifiSecurityActivity() {
                         statusSpinner.setSelection(index)
                     }
                 }
+            }
+        }
+
+    // --- Notification Permission Handling ---
+    private var pendingNotification: Pair<String, String>? = null
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                Log.d(TAG, "Notification permission granted by user.")
+                pendingNotification?.let {
+                    showNotification(it.first, it.second)
+                    pendingNotification = null
+                }
+            } else {
+                Log.d(TAG, "Notification permission denied by user.")
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Permission Denied",
+                    message = "Event notifications will not be shown without notification permission."
+                )
             }
         }
 
@@ -271,6 +292,7 @@ class HomeActivity : WifiSecurityActivity() {
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
         btnHelp = findViewById(R.id.btn_help)
+    btnCalendar = findViewById(R.id.btn_calendar)
         noEventsMessage = findViewById(R.id.no_events_message)
         profileImagePlaceholder = findViewById(R.id.profile_image_placeholder)
         statusSpinner = findViewById(R.id.status_spinner)
@@ -306,6 +328,10 @@ class HomeActivity : WifiSecurityActivity() {
 
         btnHelp.setOnClickListener {
             showTutorialDialog()
+        }
+        btnCalendar.setOnClickListener {
+            // Open static calendar bottom sheet
+            com.example.timed_mobile.calendar.EventCalendarBottomSheet().show(supportFragmentManager, "EventCalendar")
         }
 
         firestore = FirebaseFirestore.getInstance()
@@ -387,7 +413,7 @@ class HomeActivity : WifiSecurityActivity() {
         profileImagePlaceholder.setOnClickListener(profileClickListener)
         greetingName.setOnClickListener(profileClickListener)
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.accent_coral)
+    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d("HomeActivity", "Pull-to-refresh triggered")
             loadTodayTimeInPhoto()
@@ -687,6 +713,21 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun sendEventNotification(title: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                showNotification(title, message)
+            } else {
+                // Permission is not granted. Request it.
+                pendingNotification = title to message
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            // No runtime permission needed for older versions
+            showNotification(title, message)
+        }
+    }
+
+    private fun showNotification(title: String, message: String) {
         val channelId = "event_channel_id"
         val notificationId = System.currentTimeMillis().toInt()
         val intent = Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) }
@@ -719,7 +760,9 @@ class HomeActivity : WifiSecurityActivity() {
             }
         } ?: run { sidebarDetails.text = "$idNumber • N/A" }
         sidebarEmail.text = userEmail ?: ""
-        (navigationView.getChildAt(0) as? NavigationMenuView)?.isVerticalScrollBarEnabled = false
+        // The problematic line accessing NavigationMenuView has been removed.
+        // To hide the scrollbar, add `android:scrollbars="none"` to the
+        // <com.google.android.material.navigation.NavigationView> in your home_page.xml file.
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
             override fun onDrawerOpened(drawerView: View) {}
@@ -735,6 +778,7 @@ class HomeActivity : WifiSecurityActivity() {
                     R.id.nav_excuse_letter -> startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
                     R.id.nav_excuse_letter_history -> startActivity(Intent(this, ExcuseLetterHistoryActivity::class.java).putExtra("userId", userId))
                     R.id.nav_profile -> startActivity(Intent(this, ProfileActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
+                    R.id.nav_settings -> UiDialogs.showErrorPopup(this, "Coming Soon", "Settings screen is under development.")
                     R.id.nav_logout -> showLogoutDialog()
                 }
             }, 250)
@@ -832,19 +876,39 @@ class HomeActivity : WifiSecurityActivity() {
         FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { userDoc ->
             val departmentId: String? = userDoc.getString("departmentId")
             if (departmentId.isNullOrEmpty()) {
-                Toast.makeText(this, "No department assigned. Cannot load events.", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Missing Department",
+                    message = "No department assigned. Cannot load events."
+                )
                 showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming); return@addOnSuccessListener
             }
             firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
                 .addOnSuccessListener { result ->
-                    val formatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-                    allEvents.clear(); val nowMillis = System.currentTimeMillis()
+                    val fullFormatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                    val shortDateFormatter = SimpleDateFormat("MMM d", Locale.getDefault())
+                    allEvents.clear()
+
+                    // --- Time Window Setup for Notifications ---
+                    val now = Calendar.getInstance()
+                    val nowMillis = now.timeInMillis
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                    }
+                    val todayStartMillis = todayStart.timeInMillis
+                    val yesterdayStart = (todayStart.clone() as Calendar).apply { add(Calendar.DATE, -1) }
+                    val yesterdayStartMillis = yesterdayStart.timeInMillis
+                    // --- End Time Window Setup ---
+
+                    val notifiedPrefs = getSharedPreferences("EventNotificationPrefs", Context.MODE_PRIVATE)
+
                     for (doc in result) {
                         try {
                             val title = doc.getString("eventName") ?: continue
                             val duration = doc.getString("duration") ?: "1:00:00"
                             val date = doc.getTimestamp("date")?.toDate() ?: continue
-                            val dateFormatted = formatter.format(date)
+                            val venue = doc.getString("venue") ?: "N/A"
+                            val dateFormatted = fullFormatter.format(date)
                             val statusFromDb = doc.getString("status") ?: "upcoming"
                             val durationParts = duration.split(":")
                             val durationMillis = when (durationParts.size) {
@@ -856,53 +920,90 @@ class HomeActivity : WifiSecurityActivity() {
                             val eventStartMillis = date.time; val eventEndMillis = eventStartMillis + durationMillis
                             val dynamicStatus = when {
                                 statusFromDb.equals("cancelled", ignoreCase = true) -> "cancelled"
-                                nowMillis < eventStartMillis -> "upcoming"
-                                nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
-                                else -> "ended"
+                                statusFromDb.equals("ongoing", ignoreCase = true) -> "ongoing"
+                                statusFromDb.equals("ended", ignoreCase = true) -> "ended"
+                                // If status is "upcoming" or not present, calculate based on time
+                                else -> when {
+                                    nowMillis < eventStartMillis -> "upcoming"
+                                    nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
+                                    else -> "ended"
+                                }
                             }
+
+                            // Notification for upcoming event (within 15 mins)
                             if (dynamicStatus == "upcoming" && eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
-                                sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
+                                val notificationKey = "notified_upcoming_${doc.id}"
+                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
                             }
-                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date))
+                            // Notification for when an event becomes ongoing
+                            else if (dynamicStatus == "ongoing") {
+                                val notificationKey = "notified_ongoing_${doc.id}"
+                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event is Ongoing", "\"$title\" has started.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+                            // Notification for events that ended yesterday or today
+                            else if (dynamicStatus == "ended") {
+                                val notificationKey = "notified_ended_${doc.id}"
+                                val endedWithinWindow = eventEndMillis >= yesterdayStartMillis && eventEndMillis <= nowMillis
+                                if (endedWithinWindow && !notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    sendEventNotification("Event Ended", "The event \"$title\" has now ended.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+                            // Notification for events scheduled for yesterday or today that are cancelled
+                            else if (dynamicStatus == "cancelled") {
+                                val notificationKey = "notified_cancelled_${doc.id}"
+                                val scheduledForYesterdayOrToday = eventStartMillis >= yesterdayStartMillis && eventStartMillis < (todayStartMillis + 24 * 60 * 60 * 1000)
+                                if (scheduledForYesterdayOrToday && !notifiedPrefs.getBoolean(notificationKey, false)) {
+                                    val scheduledDateStr = shortDateFormatter.format(date)
+                                    sendEventNotification("Event Cancelled", "The event \"$title\" (for $scheduledDateStr) has been cancelled.")
+                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
+                                }
+                            }
+
+                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date, venue = venue))
                         } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
                     }
-                    showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming)
+
+                    // --- FIX: This logic now runs *after* allEvents is populated ---
+                    val defaultFilter = if (allEvents.any { it.status.equals("ongoing", ignoreCase = true) }) {
+                        "ongoing"
+                    } else {
+                        "upcoming"
+                    }
+                    showEventsByStatus(defaultFilter)
+                    val buttonToSelect = if (defaultFilter == "ongoing") btnOngoing else btnUpcoming
+                    updateFilterButtonStates(buttonToSelect)
                 }
-                .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); Toast.makeText(this, "Failed to load events.", Toast.LENGTH_SHORT).show() }
-        }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); Toast.makeText(this, "Failed to load user info.", Toast.LENGTH_SHORT).show() }
+        .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load events.") }
+    }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load user info.") }
     }
 
-    private fun showEventsByStatus(statusFilter: String?) {
-        val currentDate = Date()
-        val eventsWithDynamicStatus = allEvents.map { event ->
-            val eventDate = event.rawDate; val durationParts = event.duration.split(":")
-            val durationMillis = when (durationParts.size) {
-                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
-                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
-                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L; else -> 3600000L
-            }
-            val eventEndDate = eventDate?.time?.plus(durationMillis)
-            val dynamicStatus = if (event.status.equals("cancelled", ignoreCase = true)) "cancelled" else {
-                when {
-                    eventDate == null || eventEndDate == null -> "unknown"
-                    currentDate.time < eventDate.time -> "upcoming"
-                    currentDate.time in eventDate.time until eventEndDate -> "ongoing"
-                    else -> "ended"
-                }
-            }
-            event.copy(status = dynamicStatus)
-        }
-        val filtered = if (statusFilter == null) eventsWithDynamicStatus else eventsWithDynamicStatus.filter { it.status.equals(statusFilter, ignoreCase = true) }
-        val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
-
-        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
-            ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
-
-
-        val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
-        noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
-        if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
+private fun showEventsByStatus(statusFilter: String?) {
+    // --- FIX: Simplified Filtering Logic ---
+    // The status for each event is now correctly determined in `loadAndStoreEvents`.
+    // This function should ONLY filter and sort the existing `allEvents` list.
+    // The redundant and buggy re-calculation logic has been removed.
+    val filtered = if (statusFilter == null) {
+        allEvents
+    } else {
+        allEvents.filter { it.status.equals(statusFilter, ignoreCase = true) }
     }
+    val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
+
+    (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
+        ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
+
+
+    val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
+    noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+    if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
+}
 
     private fun statusOrder(status: String): Int = when (status.lowercase(Locale.ROOT)) {
         "upcoming" -> 0; "ongoing" -> 1; "ended" -> 2; "cancelled" -> 3; else -> 4
@@ -1373,7 +1474,7 @@ class HomeActivity : WifiSecurityActivity() {
         Log.d(TAG, "Attendance Tutorial: Now showing Time-Out step instruction (placeholder for full interactive logic).")
         // Nav header should reflect 1/4 if Time-In was done. updateNavHeaderTutorialProgress() was called after Time-In.
 
-        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time. (TODO: Make this interactive)", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
@@ -1473,7 +1574,7 @@ class HomeActivity : WifiSecurityActivity() {
         })
     }
 
-    private fun evaluateAndDisplayAttendanceBadge() {
+    /*private fun evaluateAndDisplayAttendanceBadge() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
         val now = Calendar.getInstance(); val currentTime = now.timeInMillis
@@ -1504,6 +1605,46 @@ class HomeActivity : WifiSecurityActivity() {
                         updateAttendanceBadge(determinedBadge)
                         timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
                     }
+                } else */
+// Modified
+    private fun evaluateAndDisplayAttendanceBadge() {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        val now = Calendar.getInstance(); val currentTime = now.timeInMillis
+        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val cutoff9am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val cutoff10am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+
+        ref.orderByChild("timestamp").startAt(todayStart.toDouble()).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var timeInTimestamp: Long? = null; var timeOutTimestamp: Long? = null
+                var timeInLogSnapshot: DataSnapshot? = null
+                for (child in snapshot.children) {
+                    val type = child.child("type").getValue(String::class.java)
+                    val timestamp = child.child("timestamp").getValue(Long::class.java)
+                    if (type == "TimeIn" && timestamp != null) { if (timeInTimestamp == null || timestamp > timeInTimestamp) { timeInTimestamp = timestamp; timeInLogSnapshot = child } }
+                    else if (type == "TimeOut" && timestamp != null) { if (timeOutTimestamp == null || timestamp > timeOutTimestamp) timeOutTimestamp = timestamp }
+                }
+
+                if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
+                    updateUserStatus("Off Duty")
+                    val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!badgeFromLog.isNullOrEmpty()) updateAttendanceBadge(badgeFromLog) else updateAttendanceBadge("Timed-Out")
+                } else if (timeInTimestamp != null) {
+                    val existingBadge = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
+                    if (!existingBadge.isNullOrEmpty()) updateAttendanceBadge(existingBadge)
+                    else {
+                        // --- DEMO MODE: Force "On Time" ---
+                        // The original logic is commented out to ensure any time-in is marked as "On Time".
+                        /*
+                        val determinedBadge = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
+                        */
+                        val determinedBadge = "On Time" // Always set to "On Time" for the demo
+
+                        updateAttendanceBadge(determinedBadge)
+                        timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
+                    }
+                    //MODIFIED
                 } else {
                     val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
                     FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {

@@ -12,6 +12,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.view.animation.AnimationUtils // Added for animation
 import android.widget.Button
+import android.content.Intent
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -58,7 +59,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         }
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Session",
+                message = "Missing user session. Please log in again."
+            )
             finish()
             return
         }
@@ -167,7 +172,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         db.collection("events").document(eventId).get()
             .addOnSuccessListener { eventDocument ->
                 if (!eventDocument.exists()) {
-                    showErrorDialog("Event ID '$eventId' not found. Please check the code.")
+                    UiDialogs.showErrorPopup(
+                        this@TimeInEventManualActivity,
+                        title = "Event Not Found",
+                        message = "Event ID '$eventId' not found. Please check the code."
+                    )
                     resetButton()
                     return@addOnSuccessListener
                 }
@@ -179,7 +188,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                     .get()
                     .addOnSuccessListener { existingRecords ->
                         if (!existingRecords.isEmpty) {
-                            showErrorDialog("You have already timed in for this event.")
+                            UiDialogs.showErrorPopup(
+                                this@TimeInEventManualActivity,
+                                title = "Already Timed-In",
+                                message = "You have already timed in for this event."
+                            )
                             resetButton()
                         } else {
                             // Not timed in yet, proceed to log attendance
@@ -187,12 +200,20 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                         }
                     }
                     .addOnFailureListener { e ->
-                        showErrorDialog("Failed to check existing records: ${e.message}")
+                        UiDialogs.showErrorPopup(
+                            this@TimeInEventManualActivity,
+                            title = "Check Failed",
+                            message = "Failed to check existing records: ${e.message}"
+                        )
                         resetButton()
                     }
             }
             .addOnFailureListener { e ->
-                showErrorDialog("Failed to verify event ID: ${e.message}")
+                UiDialogs.showErrorPopup(
+                    this@TimeInEventManualActivity,
+                    title = "Verification Failed",
+                    message = "Failed to verify event ID: ${e.message}"
+                )
                 resetButton()
             }
     }
@@ -210,7 +231,9 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
             "hasTimedOut" to false,
             // You can include other details; they just won't be used by the log screen
             "firstName" to userFirstName,
-            "email" to userEmail
+            "email" to userEmail,
+            // Indicate this was a manual code entry
+            "checkinMethod" to true
         )
 
         // FIX: Log to the 'attendees' sub-collection, which is where EventLogActivity reads from.
@@ -220,7 +243,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                 showSuccessDialog(eventName)
             }
             .addOnFailureListener { e ->
-                showErrorDialog("Failed to save attendance: ${e.message}")
+                UiDialogs.showErrorPopup(
+                    this@TimeInEventManualActivity,
+                    title = "Save Failed",
+                    message = "Failed to save attendance: ${e.message}"
+                )
                 resetButton()
             }
     }
@@ -250,16 +277,16 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         closeButton.setOnClickListener {
             dialog.dismiss()
             setResult(RESULT_OK)
+            // Navigate explicitly back to Home after manual event time-in
+            val intent = Intent(this@TimeInEventManualActivity, HomeActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(intent)
             finish()
         }
 
         dialog.show()
     }
 
-    private fun showErrorDialog(errorMessage: String) {
-        if (!isFinishing && !isDestroyed) {
-            resetButton()
-            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
-        }
-    }
+    // Removed local Toast-based error dialog in favor of UiDialogs.showErrorPopup usages above.
 }

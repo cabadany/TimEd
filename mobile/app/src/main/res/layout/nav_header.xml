@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
         android:layout_height="200dp"
-        android:background="@color/primary_deep_blue"
+        android:background="@drawable/bg_nav_header_gradient"
         android:padding="16dp">
 
     <LinearLayout
@@ -15,11 +15,12 @@
 
         <ImageView
                 android:id="@+id/sidebar_profile_image"
-                android:layout_width="70dp"
-                android:layout_height="70dp"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
                 android:src="@drawable/ic_profile"
                 android:scaleType="centerCrop"
-                android:padding="4dp" />
+                android:padding="4dp"
+                android:background="@drawable/circle_bg_white_shadow" />
 
         <TextView
                 android:id="@+id/sidebar_user_name"
@@ -28,8 +29,9 @@
                 android:text="User Name"
                 android:textStyle="bold"
                 android:textColor="@color/white"
-                android:textSize="16sp"
-                android:paddingTop="8dp" />
+                android:textSize="18sp"
+                android:paddingTop="10dp"
+                android:letterSpacing="0.02" />
 
         <TextView
                 android:id="@+id/sidebar_user_details"
@@ -37,7 +39,8 @@
                 android:layout_height="wrap_content"
                 android:text="ID • Department"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:alpha="0.9" />
 
         <TextView
                 android:id="@+id/sidebar_user_email"
@@ -45,7 +48,8 @@
                 android:layout_height="wrap_content"
                 android:text="email@example.com"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="13sp"
+                android:alpha="0.85" />
     </LinearLayout>
 
     <LinearLayout
@@ -93,7 +97,7 @@
                 android:layout_height="wrap_content"
                 android:max="100"
                 android:progress="0"
-                android:progressTint="@color/accent_coral"
+                android:progressTint="@color/primary_medium_blue"
                 android:backgroundTint="@color/light_gray" />
     </LinearLayout>
 

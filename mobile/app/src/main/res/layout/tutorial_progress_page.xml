@@ -92,7 +92,7 @@
                             android:max="100"
                             tools:progress="100"
                             android:progress="0"
-                            android:progressTint="@color/accent_coral"
+                            android:progressTint="@color/primary_medium_blue"
                             android:backgroundTint="@color/medium_gray"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -147,7 +147,7 @@
                             android:max="100"
                             tools:progress="50"
                             android:progress="0"
-                            android:progressTint="@color/accent_coral"
+                            android:progressTint="@color/primary_medium_blue"
                             android:backgroundTint="@color/medium_gray"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

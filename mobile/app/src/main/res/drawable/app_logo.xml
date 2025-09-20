@@ -6,12 +6,12 @@
 
     <!-- Circle background -->
     <path
-            android:fillColor="@color/yellow_gold"
+            android:fillColor="@color/primary_light_sky"
             android:pathData="M12,12m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
 
     <!-- Clock design -->
     <path
-            android:fillColor="@color/maroon"
+            android:fillColor="@color/brand_indigo"
             android:pathData="M12,12m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0"
             android:strokeWidth="0.8"
             android:strokeColor="#FFFFFF" />
@@ -23,13 +23,13 @@
 
     <!-- Clock hands -->
     <path
-            android:strokeColor="@color/maroon"
+            android:strokeColor="@color/brand_indigo"
             android:strokeWidth="1"
             android:strokeLineCap="round"
             android:pathData="M12,12L12,7" />
 
     <path
-            android:strokeColor="@color/maroon"
+            android:strokeColor="@color/brand_indigo"
             android:strokeWidth="1"
             android:strokeLineCap="round"
             android:pathData="M12,12L16,12" />

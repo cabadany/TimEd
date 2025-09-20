@@ -3,9 +3,9 @@
 
     <!-- Base application theme -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">@color/maroon</item>
-        <item name="colorPrimaryDark">@color/maroon</item>
-        <item name="colorAccent">@color/yellow_gold</item>
+        <item name="colorPrimary">@color/brand_indigo</item>
+        <item name="colorPrimaryDark">@color/primary_deep_blue</item>
+        <item name="colorAccent">@color/primary_medium_blue</item>
     </style>
 
     <!-- Spinner with smaller size -->
@@ -17,6 +17,55 @@
     <style name="DialogAnimation">
         <item name="android:windowEnterAnimation">@anim/slide_in_bottom</item>
         <item name="android:windowExitAnimation">@anim/fade_out</item>
+    </style>
+
+    <!-- Shapes for Material components -->
+    <style name="Shape.Corner.Small" parent="ShapeAppearance.Material3.Corner.Small" />
+    <style name="Shape.Corner.Medium" parent="ShapeAppearance.Material3.Corner.Medium" />
+    <style name="Shape.Corner.Large" parent="ShapeAppearance.Material3.Corner.Large" />
+
+    <!-- Button style mapping dimensions and typography -->
+    <style name="Widget.TimEd.Button" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_min_height</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:textSize">@dimen/text_sm</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Outlined TextInput with brand stroke -->
+    <style name="Widget.TimEd.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/brand_indigo</item>
+        <item name="hintTextColor">@color/brand_indigo</item>
+        <item name="boxCornerRadiusTopStart">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/card_corner_radius</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/card_corner_radius</item>
+    </style>
+
+    <!-- Activity transition package -->
+    <style name="Animation.TimEd.Activity" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_from_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_to_right</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_from_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_to_right</item>
+    </style>
+
+    <!-- Text appearances to improve readability -->
+    <style name="TextAppearance.TimEd.Body" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textSize">@dimen/text_md</item>
+        <item name="android:textColor">@color/neutral_text_gray</item>
+    </style>
+
+    <style name="TextAppearance.TimEd.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textSize">@dimen/text_sm</item>
+        <item name="android:textColor">@color/neutral_text_gray</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.TimEd.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">@dimen/text_xl</item>
+        <item name="android:textColor">@color/dark_gray</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
 </resources>

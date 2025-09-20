@@ -32,15 +32,44 @@
                 android:textSize="14sp"
                 android:layout_marginTop="4dp" />
 
-        <!-- Status -->
-        <TextView
-                android:id="@+id/text_status"
-                android:layout_width="wrap_content"
+        <!-- Method + Status Row -->
+        <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Haven’t Timed-Out"
-                android:textSize="14sp"
-                android:textColor="#FF0000"
-                android:layout_marginTop="4dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
+            <!-- Check-in Method Chip -->
+            <TextView
+                    android:id="@+id/text_method_chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:text="QR Scan"
+                    android:textSize="12sp"
+                    android:textColor="@color/white"
+                    android:fontFamily="@font/league_spartan_medium"
+                    android:background="@drawable/bg_chip_neutral" />
+
+            <!-- Flexible spacer to push status to the right -->
+            <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+            <!-- Status -->
+            <TextView
+                    android:id="@+id/text_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Haven’t Timed-Out"
+                    android:textSize="14sp"
+                    android:textColor="#FF0000" />
+        </LinearLayout>
 
         <!-- Time-Out Button (Visible only if not yet timed out) -->
         <Button

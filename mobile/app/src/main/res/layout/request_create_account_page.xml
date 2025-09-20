@@ -13,7 +13,7 @@
     <ImageView
             android:id="@+id/top_wave_animation"
             android:layout_width="match_parent"
-            android:layout_height="225dp"
+            android:layout_height="@dimen/wave_height_small"
             android:layout_gravity="top"
             android:contentDescription="@string/content_desc_top_wave"
             android:scaleType="fitXY"
@@ -27,10 +27,10 @@
                 android:id="@+id/titleCreateAccount"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="48dp"
+                android:layout_marginTop="@dimen/hero_margin_top"
                 android:fontFamily="@font/league_spartan_bold"
                 android:letterSpacing="0.05"
-                android:padding="16dp"
+                android:padding="@dimen/space_xl"
                 android:shadowColor="#803538CD"
                 android:shadowDx="0"
                 android:shadowDy="0"
@@ -38,7 +38,7 @@
                 android:text="Create Account"
                 android:textAlignment="center"
                 android:textColor="#37474F"
-                android:textSize="32sp"
+                android:textSize="@dimen/text_title"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -50,19 +50,19 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginEnd="@dimen/space_2xl"
                 app:boxCornerRadiusBottomEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3538CD"
-                app:hintTextColor="#3538CD"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/titleCreateAccount"
                 app:startIconDrawable="@drawable/ic_person"
-                app:startIconTint="#3538CD">
+                app:startIconTint="@color/brand_indigo">
 
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_name"
@@ -70,7 +70,7 @@
                     android:layout_height="wrap_content"
                     android:hint="Full Name"
                     android:inputType="textPersonName"
-                    android:padding="16dp"
+                    android:padding="@dimen/space_xl"
                     android:textColor="#37474F" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -80,20 +80,20 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
                 app:boxCornerRadiusBottomEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3538CD"
-                app:hintTextColor="#3538CD"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/outline_name"
                 app:startIconDrawable="@drawable/ic_badge"
-                app:startIconTint="#3538CD">
+                app:startIconTint="@color/brand_indigo">
 
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_idnumber"
@@ -101,7 +101,7 @@
                     android:layout_height="wrap_content"
                     android:hint="ID Number"
                     android:inputType="text"
-                    android:padding="16dp"
+                    android:padding="@dimen/space_xl"
                     android:textColor="#37474F" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -111,20 +111,20 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
                 app:boxCornerRadiusBottomEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3538CD"
-                app:hintTextColor="#3538CD"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/outline_idnumber"
                 app:startIconDrawable="@drawable/ic_email"
-                app:startIconTint="#3538CD">
+                app:startIconTint="@color/brand_indigo">
 
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_email"
@@ -132,7 +132,7 @@
                     android:layout_height="wrap_content"
                     android:hint="Email"
                     android:inputType="textEmailAddress"
-                    android:padding="16dp"
+                    android:padding="@dimen/space_xl"
                     android:textColor="#37474F" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -142,20 +142,20 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
                 app:boxCornerRadiusBottomEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3538CD"
-                app:hintTextColor="#3538CD"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/outline_email"
                 app:startIconDrawable="@drawable/ic_department"
-                app:startIconTint="#3538CD">
+                app:startIconTint="@color/brand_indigo">
 
             <AutoCompleteTextView
                     android:id="@+id/input_department"
@@ -163,7 +163,7 @@
                     android:layout_height="wrap_content"
                     android:hint="Department"
                     android:inputType="none"
-                    android:padding="16dp"
+                    android:padding="@dimen/space_xl"
                     android:textColor="#37474F"
                     android:focusable="false"
                     android:clickable="true" />
@@ -175,22 +175,22 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
                 app:boxCornerRadiusBottomEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3538CD"
-                app:hintTextColor="#3538CD"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/outline_department"
                 app:passwordToggleEnabled="true"
-                app:passwordToggleTint="#3538CD"
+                app:passwordToggleTint="@color/brand_indigo"
                 app:startIconDrawable="@drawable/ic_lock"
-                app:startIconTint="#3538CD">
+                app:startIconTint="@color/brand_indigo">
 
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_password"
@@ -198,7 +198,7 @@
                     android:layout_height="wrap_content"
                     android:hint="Password"
                     android:inputType="textPassword"
-                    android:padding="16dp"
+                    android:padding="@dimen/space_xl"
                     android:textColor="#37474F" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -206,20 +206,20 @@
                 android:id="@+id/btnSubmitAccount"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginEnd="32dp"
-                android:layout_marginBottom="32dp"
-                android:backgroundTint="#3538CD"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_lg"
+                android:layout_marginEnd="@dimen/space_2xl"
+                android:layout_marginBottom="@dimen/space_2xl"
+                android:backgroundTint="@color/brand_indigo"
                 android:elevation="8dp"
                 android:fontFamily="@font/league_spartan_medium"
-                android:padding="16dp"
+                android:padding="@dimen/space_xl"
                 android:text="Submit Request"
                 android:textColor="@color/white"
-                android:textSize="16sp"
+                android:textSize="@dimen/text_md"
                 android:textStyle="bold"
                 android:translationZ="2dp"
-                app:cornerRadius="32dp"
+                app:cornerRadius="@dimen/button_corner_radius_pill"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -232,13 +232,13 @@
             android:id="@+id/icon_back_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginStart="@dimen/space_lg"
+            android:layout_marginTop="@dimen/space_lg"
             android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
             android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
-            android:padding="12dp"
+            android:padding="@dimen/space_sm"
             android:stateListAnimator="@animator/button_scale_animator"
             app:srcCompat="@drawable/ic_back_button" />
 
@@ -248,12 +248,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top|end"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginEnd="@dimen/space_lg"
             android:background="@drawable/ripple_icon_back_button"
             android:src="@drawable/ic_info"
             android:contentDescription="Show registration guide"
-            android:padding="12dp"
+            android:padding="@dimen/space_sm"
             android:clickable="true"
             android:focusable="true"/>
 

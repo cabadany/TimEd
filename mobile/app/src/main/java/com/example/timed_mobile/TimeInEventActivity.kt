@@ -100,8 +100,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         }
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_LONG).show()
-            finish()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Missing user session. Please log in again.") { finish() }
             return
         }
 
@@ -178,8 +177,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 }
                 .addOnFailureListener { e ->
                     Log.e(TAG, "Anonymous sign-in failed", e)
-                    Toast.makeText(this, "Authentication failed. Please try again.", Toast.LENGTH_LONG).show()
-                    finish()
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Authentication failed. Please try again.") { finish() }
                 }
         } else {
             Log.d(TAG, "Firebase Auth user already exists: ${currentUser.uid}")
@@ -474,6 +472,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -494,6 +493,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             dialog.dismiss()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -562,6 +562,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -576,6 +577,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -590,6 +592,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 dialog.dismiss()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
+                                startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                 finish()
                             }
                             .setCancelable(false)
@@ -612,6 +615,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             dialog.dismiss()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -633,7 +637,9 @@ class TimeInEventActivity : WifiSecurityActivity() {
             "timestamp" to FieldValue.serverTimestamp(),
             "selfieUrl" to selfieUrl,
             "type" to "event_time_in",
-            "hasTimedOut" to false
+            "hasTimedOut" to false,
+            // Indicate this was via QR/selfie (false = QR/selfie)
+            "checkinMethod" to false
         )
 
         val db = FirebaseFirestore.getInstance()
@@ -649,6 +655,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
                         .setCancelable(false)
@@ -664,6 +671,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 .setMessage("Successfully timed in for '${currentScannedEventName}'! Processing certificate...")
                                 .setPositiveButton("OK") { dialog, _ ->
                                     dialog.dismiss()
+                                    startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                     finish()
                                 }
                                 .setCancelable(false)
@@ -701,10 +709,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
 
 
             if (currentUserId.isNullOrEmpty()) {
-                Toast.makeText(this, "Please log in to time-in for the event.", Toast.LENGTH_LONG).show()
-                // Optionally, redirect to login and then back to this event.
-                // For now, just finish if not logged in.
-                finish()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Please log in to time-in for the event.") { finish() }
                 return
             }
             // If user details are not yet set from intent, use from prefs
@@ -857,7 +862,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.d(TAG, "Camera preview bound with ${if (isFrontCamera) "Front" else "Back"} camera.")
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed for preview only", exc)
-                Toast.makeText(this, "Failed to start camera preview: ${exc.message}", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to start camera preview: ${exc.message}")
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -902,7 +907,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.d(TAG, "Camera bound for QR scanning.")
             } catch (exc: Exception) {
                 Log.e(TAG, "QR Scanner Use case binding failed", exc)
-                Toast.makeText(this, "Failed to start QR scanner: ${exc.message}", Toast.LENGTH_LONG).show()
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to start QR scanner: ${exc.message}")
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -1020,7 +1025,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                    Toast.makeText(this@TimeInEventActivity, "Selfie capture failed: ${exc.message}", Toast.LENGTH_LONG).show()
+                    UiDialogs.showErrorPopup(this@TimeInEventActivity, getString(R.string.popup_title_error), "Selfie capture failed: ${exc.message}")
                     scanButton.isEnabled = true // Re-enable
                     shutterButton.isEnabled = true
                     selfieReminder.text = "Capture failed. Try again."
@@ -1043,14 +1048,14 @@ class TimeInEventActivity : WifiSecurityActivity() {
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
             Log.e(TAG, "User is not authenticated for upload.")
-            Toast.makeText(this, "Authentication error. Please retry.", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Authentication error. Please retry.")
             scanButton.isEnabled = true
             shutterButton.isEnabled = true
             return
         }
         
         val currentUserId = userId ?: run {
-            Toast.makeText(this, "User ID missing for upload.", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "User ID missing for upload.")
             Log.e(TAG, "uploadSelfieToFirebase: userId is null")
             scanButton.isEnabled = true // Re-enable
             shutterButton.isEnabled = true
@@ -1071,13 +1076,13 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp) // Pass timestamp if needed by log function
                 }.addOnFailureListener { e ->
                     Log.e(TAG, "Failed to get download URL", e)
-                    showErrorDialog("Failed to get download URL: ${e.message}")
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to get download URL: ${e.message}")
                     scanButton.isEnabled = true; shutterButton.isEnabled = true
                 }
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Selfie upload failed", e)
-                showErrorDialog("Selfie upload failed: ${e.message}")
+                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Selfie upload failed: ${e.message}")
                 scanButton.isEnabled = true; shutterButton.isEnabled = true
             }
             .addOnProgressListener { snapshot ->

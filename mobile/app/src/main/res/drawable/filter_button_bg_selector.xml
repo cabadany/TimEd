@@ -3,7 +3,7 @@
     <!-- State when button is selected -->
     <item android:state_selected="true">
         <shape android:shape="rectangle">
-            <solid android:color="@color/maroon"/> <!-- Changed back to @color/maroon -->
+            <solid android:color="@color/brand_indigo"/>
             <corners android:radius="8dp"/>
         </shape>
     </item>

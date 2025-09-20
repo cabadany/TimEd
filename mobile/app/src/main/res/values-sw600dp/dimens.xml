@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing scaled up for tablets -->
+    <dimen name="space_xs">6dp</dimen>
+    <dimen name="space_sm">10dp</dimen>
+    <dimen name="space_md">14dp</dimen>
+    <dimen name="space_lg">18dp</dimen>
+    <dimen name="space_xl">24dp</dimen>
+    <dimen name="space_2xl">32dp</dimen>
+    <dimen name="space_3xl">44dp</dimen>
+
+    <!-- Text sizes -->
+    <dimen name="text_xs">13sp</dimen>
+    <dimen name="text_sm">15sp</dimen>
+    <dimen name="text_md">17sp</dimen>
+    <dimen name="text_lg">19sp</dimen>
+    <dimen name="text_xl">26sp</dimen>
+    <dimen name="text_display">44sp</dimen>
+    <dimen name="text_h1">40sp</dimen>
+    <dimen name="text_title">38sp</dimen>
+    <dimen name="text_h2">30sp</dimen>
+
+    <!-- Component sizes -->
+    <dimen name="toolbar_icon">26dp</dimen>
+    <dimen name="toolbar_icon_md">30dp</dimen>
+    <dimen name="toolbar_icon_lg">32dp</dimen>
+    <dimen name="icon_touch_target">52dp</dimen>
+    <dimen name="button_min_height">52dp</dimen>
+    <dimen name="button_height_compact">48dp</dimen>
+    <dimen name="button_height_lg">60dp</dimen>
+    <dimen name="button_corner_radius">12dp</dimen>
+    <dimen name="button_corner_radius_pill">32dp</dimen>
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_corner_radius_lg">18dp</dimen>
+    <dimen name="card_elevation">5dp</dimen>
+    <dimen name="card_elevation_lg">8dp</dimen>
+    <dimen name="camera_height">260dp</dimen>
+    <dimen name="qr_box_size">220dp</dimen>
+    <dimen name="wave_max_height">380dp</dimen>
+    <dimen name="wave_height_small">270dp</dimen>
+    <dimen name="wave_height_medium">300dp</dimen>
+    <dimen name="illustration_size">170dp</dimen>
+    <dimen name="chip_height">38dp</dimen>
+    <dimen name="avatar_size">42dp</dimen>
+    <dimen name="event_title_top_margin">180dp</dimen>
+    <dimen name="hero_margin_top">64dp</dimen>
+</resources>
