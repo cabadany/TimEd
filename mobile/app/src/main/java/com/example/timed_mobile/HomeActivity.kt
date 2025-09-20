@@ -772,6 +772,7 @@ class HomeActivity : WifiSecurityActivity() {
                     R.id.nav_excuse_letter -> startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
                     R.id.nav_excuse_letter_history -> startActivity(Intent(this, ExcuseLetterHistoryActivity::class.java).putExtra("userId", userId))
                     R.id.nav_profile -> startActivity(Intent(this, ProfileActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
+                    R.id.nav_settings -> UiDialogs.showErrorPopup(this, "Coming Soon", "Settings screen is under development.")
                     R.id.nav_logout -> showLogoutDialog()
                 }
             }, 250)

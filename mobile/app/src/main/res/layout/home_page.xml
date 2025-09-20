@@ -432,6 +432,6 @@
             app:menu="@menu/drawer_menu"
             app:itemIconTint="@color/nav_item_icon_tint_selector"
             app:itemTextColor="@color/nav_item_text_color_selector"
-            app:itemBackground="@android:color/transparent" />
+            app:itemBackground="@drawable/nav_item_active_background" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
