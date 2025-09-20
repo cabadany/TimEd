@@ -96,6 +96,7 @@ public ResponseEntity<String> markAttendance(
                     userAttendance.put("firstName", firstName);
                     userAttendance.put("lastName", lastName);
                     userAttendance.put("manualEntry", "false");
+                    userAttendance.put("checkinMethod", "false"); // QR code check-in
                     userAttendance.put("timeIn", userDoc.getString("timestamp"));
                     userAttendance.put("timeOut", "");
 
@@ -137,6 +138,7 @@ public ResponseEntity<String> markAttendance(
                                 userAttendance.put("firstName", firstName);
                                 userAttendance.put("lastName", lastName);
                                 userAttendance.put("manualEntry", "false");
+                                userAttendance.put("checkinMethod", "false"); // QR code check-in
                                 userAttendance.put("timeIn", userDoc.getString("timestamp"));
                                 userAttendance.put("timeOut", "");
 

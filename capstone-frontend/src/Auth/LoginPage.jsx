@@ -320,6 +320,25 @@ function LoginPage() {
     }
   };
 
+  // Handle already logged in functionality
+  const handleAlreadyLoggedIn = () => {
+    // Check if there's an existing admin session
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    const role = localStorage.getItem('role');
+
+    if (token && userId && role === 'ADMIN') {
+      // Admin is already logged in, redirect to dashboard
+      setIsAnimating(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800);
+    } else {
+      // No admin logged in, show error
+      showNotification('There is no administrator logged into this device', 'error');
+    }
+  };
+
   // Add useEffect to handle the 'keydown' event for the entire component
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -871,6 +890,14 @@ function LoginPage() {
               </Box>
             )}
           </Box>
+          
+          <button 
+            className="already-logged-in-btn"
+            onClick={handleAlreadyLoggedIn}
+            disabled={isAnimating || isLoading}
+          >
+            Already Logged in
+          </button>
           
           <button 
             className="mobile-app-btn"

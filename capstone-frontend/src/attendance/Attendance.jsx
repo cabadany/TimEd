@@ -46,7 +46,8 @@ import {
   Search,
   ManageAccounts,
   Close,
-  FileDownload
+  FileDownload,
+  QrCode2
 } from '@mui/icons-material';
 import './attendance.css';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
@@ -128,7 +129,7 @@ const AttendanceModal = memo(({
           // Include attendance data if user is already an attendee
           timeIn: timeIn,
           timeOut: timeOut,
-          manualEntry: attendeeData?.manualEntry || 'false',
+          checkinMethod: attendeeData?.checkinMethod === true || attendeeData?.checkinMethod === 'true' || (attendeeData?.checkinMethod === undefined && attendeeData?.manualEntry === true),
           // Make sure department is displayed correctly
           department: user.department?.name || 'N/A'
         };
@@ -337,10 +338,10 @@ const AttendanceModal = memo(({
                             ) : 'N/A'}
                           </TableCell>
                           <TableCell sx={{ color: '#64748B' }}>
-                            {formatTimeInStatus(user.timeIn, user.manualEntry)}
+                            {formatTimeInStatus(user.timeIn, user.checkinMethod)}
                           </TableCell>
                           <TableCell sx={{ color: '#64748B' }}>
-                            {formatTimeoutStatus(user.timeOut, user.manualEntry)}
+                            {formatTimeoutStatus(user.timeOut, user.checkinMethod)}
                           </TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -608,18 +609,40 @@ export default function Attendance() {
         // Fetch attendees
         const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         let attendeesData = attendeesResponse.data;
+        
+        // Debug: Log raw attendee data from backend
+        console.log('[DEBUG] Raw attendees data from backend:', attendeesData.map(att => ({
+          userId: att.userId,
+          firstName: att.firstName,
+          checkinMethod: att.checkinMethod,
+          checkinMethodType: typeof att.checkinMethod
+        })));
         // Fetch user details for each attendee to get profilePictureUrl
         const attendeesWithProfile = await Promise.all(attendeesData.map(async (att) => {
           if (att.profilePictureUrl) return att; // Already present
           const user = await fetchUserById(att.userId);
-          return {
+          const result = {
             ...att,
             profilePictureUrl: user?.profilePictureUrl || null,
             firstName: att.firstName || user?.firstName || '',
             lastName: att.lastName || user?.lastName || '',
             email: att.email || user?.email || '',
             department: att.department || user?.department?.name || 'N/A',
+            checkinMethod: att.checkinMethod === true || att.checkinMethod === 'true' || (att.checkinMethod === undefined && att.manualEntry === true),
           };
+          
+          // Debug: Log checkinMethod for each attendee
+          console.log(`[DEBUG] Attendee ${result.firstName} ${result.lastName}:`, {
+            userId: result.userId,
+            originalCheckinMethod: att.checkinMethod,
+            originalCheckinMethodType: typeof att.checkinMethod,
+            processedCheckinMethod: result.checkinMethod,
+            processedCheckinMethodType: typeof result.checkinMethod,
+            manualEntry: att.manualEntry,
+            conversionLogic: `(${att.checkinMethod} === true || ${att.checkinMethod} === 'true' || (${att.checkinMethod} === undefined && ${att.manualEntry} === true)) = ${result.checkinMethod}`
+          });
+          
+          return result;
         }));
         setAttendees(attendeesWithProfile);
         setFilteredAttendees(attendeesWithProfile);
@@ -878,7 +901,7 @@ export default function Attendance() {
   };
 
   // Format timeout status
-  const formatTimeoutStatus = (timeOut, manualEntry = 'false') => {
+  const formatTimeoutStatus = (timeOut, checkinMethod = false) => {
     if (!timeOut || timeOut === 'N/A') {
       return (
         <Chip 
@@ -901,12 +924,13 @@ export default function Attendance() {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {formattedTime}
-        {manualEntry === 'true' && (
-          <Tooltip title="Manual entry">
-            <CheckCircle 
+        {checkinMethod === true && (
+          <Tooltip title="Manual time-out by administrator" arrow>
+            <ManageAccounts 
               sx={{ 
-                color: '#10B981', 
-                fontSize: 16 
+                color: '#D97706', 
+                fontSize: 16,
+                ml: 0.5 
               }} 
             />
           </Tooltip>
@@ -916,18 +940,19 @@ export default function Attendance() {
   };
 
   // Format timein status with manual entry indicator
-  const formatTimeInStatus = (timeIn, manualEntry = 'false') => {
+  const formatTimeInStatus = (timeIn, checkinMethod = false) => {
     const formattedTime = formatTimestamp(timeIn);
     
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {formattedTime}
-        {manualEntry === 'true' && (
-          <Tooltip title="Manual entry">
-            <CheckCircle 
+        {checkinMethod === true && (
+          <Tooltip title="Manual time-in by administrator" arrow>
+            <ManageAccounts 
               sx={{ 
-                color: '#10B981', 
-                fontSize: 16 
+                color: '#D97706', 
+                fontSize: 16,
+                ml: 0.5 
               }} 
             />
           </Tooltip>
@@ -964,8 +989,21 @@ export default function Attendance() {
       selfieUrl: attendee.selfieUrl || null,
       profilePictureUrl: attendee.profilePictureUrl || null,
       type: attendee.type || 'event_time_in',
-      manualEntry: String(attendee.manualEntry).toLowerCase() === 'true'
+      checkinMethod: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
     };
+    
+    // Debug: Log checkinMethod processing
+    console.log(`[DEBUG] formatAttendanceData for ${baseData.firstName} ${baseData.lastName}:`, {
+      originalCheckinMethod: attendee.checkinMethod,
+      originalType: typeof attendee.checkinMethod,
+      processedCheckinMethod: baseData.checkinMethod,
+      processedType: typeof baseData.checkinMethod,
+      manualEntry: attendee.manualEntry,
+      conversionStep1: attendee.checkinMethod === true,
+      conversionStep2: attendee.checkinMethod === 'true',
+      conversionStep3: attendee.checkinMethod === undefined && attendee.manualEntry === true,
+      finalResult: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
+    });
     
     // Handle old structure (has timeIn in ISO format)
     if (attendee.timeIn && attendee.timeIn.includes('T')) {
@@ -1003,13 +1041,22 @@ export default function Attendance() {
       // Export attendees list
       const attendeesData = filteredAttendees.map(attendee => {
         const formattedAttendee = formatAttendanceData(attendee);
+        const exportMethod = formattedAttendee.checkinMethod ? 'Manual Time in' : 'QR';
+        
+        // Debug: Log export logic
+        console.log(`[DEBUG] Export logic for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
+          checkinMethod: formattedAttendee.checkinMethod,
+          checkinMethodType: typeof formattedAttendee.checkinMethod,
+          exportMethod: exportMethod
+        });
+        
         return {
           'Name': `${formattedAttendee.firstName} ${formattedAttendee.lastName}`,
           'Email': formattedAttendee.email,
           'Department': formattedAttendee.department,
           'Time In': formatTimestamp(formattedAttendee.timeIn),
           'Time Out': formatTimestamp(formattedAttendee.timeOut),
-          'Entry Type': formattedAttendee.manualEntry ? 'Manual Entry' : 'QR Scan'
+          'Check-in Method': exportMethod
         };
       });
 
@@ -1642,7 +1689,7 @@ export default function Attendance() {
                         <TableCell>Department</TableCell>
                         <TableCell>Time In</TableCell>
                        <TableCell>Time Out</TableCell>
-                         {/*<TableCell>Status</TableCell>*/}
+                         <TableCell>Check-in Method</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1719,15 +1766,56 @@ export default function Attendance() {
                                 />
                               )}
                             </TableCell>
-                            {/*
+                           
                             <TableCell>
-                              <Chip 
-                                label={formattedAttendee.manualEntry ? "Manual Entry" : "QR Scan"}
-                                color={formattedAttendee.manualEntry ? "warning" : "info"}
-                                size="small"
-                                variant="outlined"
-                              />
-                            </TableCell>*/}
+                              <Tooltip 
+                                title={formattedAttendee.checkinMethod 
+                                  ? "Faculty was manually checked in by an administrator"
+                                  : "Faculty used QR code to check in automatically" 
+                                } 
+                                arrow
+                              >
+                                <Chip 
+                                  icon={formattedAttendee.checkinMethod 
+                                    ? <ManageAccounts sx={{ fontSize: 16, color: '#D97706' }} /> 
+                                    : <QrCode2 sx={{ fontSize: 16, color: '#0369A1' }} />
+                                  }
+                                  label={(() => {
+                                    // Debug: Log display logic
+                                    const displayText = formattedAttendee.checkinMethod ? "Manual Time in" : "QR";
+                                    console.log(`[DEBUG] Display logic for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
+                                      checkinMethod: formattedAttendee.checkinMethod,
+                                      checkinMethodType: typeof formattedAttendee.checkinMethod,
+                                      booleanCheck: Boolean(formattedAttendee.checkinMethod),
+                                      strictEquality: formattedAttendee.checkinMethod === true,
+                                      displayText: displayText
+                                    });
+                                    return displayText;
+                                  })()}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: formattedAttendee.checkinMethod ? '#FEF3C7' : '#DBEAFE',
+                                    color: formattedAttendee.checkinMethod ? '#D97706' : '#1D4ED8',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    height: 28,
+                                    borderRadius: '6px',
+                                    border: formattedAttendee.checkinMethod 
+                                      ? '1px solid rgba(217, 119, 6, 0.3)' 
+                                      : '1px solid rgba(29, 78, 216, 0.3)',
+                                    '& .MuiChip-label': {
+                                      paddingLeft: '6px',
+                                      paddingRight: '8px'
+                                    },
+                                    '&:hover': {
+                                      backgroundColor: formattedAttendee.checkinMethod ? '#FDE68A' : '#BFDBFE',
+                                      transform: 'scale(1.02)',
+                                      transition: 'all 0.2s ease-in-out'
+                                    }
+                                  }}
+                                />
+                              </Tooltip>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
