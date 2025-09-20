@@ -39,7 +39,7 @@ public class AccountRequestService {
     private BCryptPasswordEncoder passwordEncoder;
 
     @Autowired
-    private FirebaseEmailService firebaseEmailService;
+    private BrevoEmailService brevoEmailService;
 
     @Autowired
     private UserService userService;
@@ -298,12 +298,16 @@ public class AccountRequestService {
         String htmlContent = createApprovalEmailHtml(request);
         String textContent = createApprovalEmailText(request);
 
-        firebaseEmailService.sendNotificationEmail(
-            request.getEmail(),
-            subject,
-            htmlContent,
-            textContent
-        );
+        try {
+            brevoEmailService.sendNotificationEmail(
+                request.getEmail(),
+                subject,
+                htmlContent,
+                textContent
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send approval email: " + e.getMessage());
+        }
     }
 
     // Send rejection email
@@ -312,12 +316,16 @@ public class AccountRequestService {
         String htmlContent = createRejectionEmailHtml(request, reason);
         String textContent = createRejectionEmailText(request, reason);
 
-        firebaseEmailService.sendNotificationEmail(
-            request.getEmail(),
-            subject,
-            htmlContent,
-            textContent
-        );
+        try {
+            brevoEmailService.sendNotificationEmail(
+                request.getEmail(),
+                subject,
+                htmlContent,
+                textContent
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send rejection email: " + e.getMessage());
+        }
     }
 
     // Check if user already exists

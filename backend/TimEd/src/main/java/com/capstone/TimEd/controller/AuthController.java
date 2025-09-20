@@ -155,15 +155,39 @@ public class AuthController {
     @PostMapping("/generate-otp")
     public ResponseEntity<?> generateOtp(@RequestBody OtpRequest request) {
         try {
+            System.out.println("=== OTP GENERATION START ===");
+            System.out.println("School ID: " + request.getSchoolId());
+            
             // Check if user is admin
+            System.out.println("Fetching user from Firestore...");
             User user = userService.getUserBySchoolId(request.getSchoolId());
-            if (user == null || !"ADMIN".equals(user.getRole())) {
+            
+            if (user == null) {
+                System.err.println("ERROR: User not found with school ID: " + request.getSchoolId());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with the provided school ID");
+            }
+            
+            System.out.println("User found - Email: " + user.getEmail() + ", Role: " + user.getRole());
+            
+            if (!"ADMIN".equals(user.getRole())) {
+                System.err.println("ERROR: Non-admin user attempted OTP generation");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("OTP generation is only available for admin users");
             }
 
+            if (user.getEmail() == null || user.getEmail().isEmpty()) {
+                System.err.println("ERROR: User has no email address");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User email address is not available");
+            }
+
+            System.out.println("Attempting to generate OTP for: " + user.getEmail());
             otpService.generateOtp(request.getSchoolId());
+            System.out.println("=== OTP GENERATION SUCCESS ===");
             return ResponseEntity.ok("OTP sent successfully");
+            
         } catch (Exception e) {
+            System.err.println("=== OTP GENERATION FAILED ===");
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate OTP: " + e.getMessage());
         }
     }
