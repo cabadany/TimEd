@@ -7,18 +7,19 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="maroon">#7F0404</color>
-    <color name="yellow_gold">#FFC107</color>
+    <!-- Legacy palette removed: maroon, yellow_gold, accent_coral -->
     <color name="dark_gray">#333333</color>
     <color name="medium_gray">#777777</color>
     <color name="face_box_detected">#4CAF50</color>
     <color name="purple">#800080</color>
     <color name="light_gray">#FAFAFA</color>
 
+    <!-- Project brand indigo used in layouts (#3538CD) -->
+    <color name="brand_indigo">#3538CD</color>
+
     <color name="primary_deep_blue">#0D0084</color> <!-- A deep teal/blue -->
-    <color name="primary_medium_blue">#0288D1</color> <!-- Your existing dark_blue, now a medium -->
-    <color name="primary_light_sky">#B3E5FC</color> <!-- A very light sky blue -->
-    <color name="accent_coral">#FF7043</color> <!-- A vibrant coral/orange -->
+    <color name="primary_medium_blue">#0288D1</color> <!-- Medium brand blue -->
+    <color name="primary_light_sky">#B3E5FC</color> <!-- Very light sky blue -->
     <color name="neutral_text_gray">#616161</color> <!-- A refined neutral gray for text -->
     <color name="light_neutral_gray">#A0A0A0</color> <!-- For hints or less prominent borders -->
 
@@ -33,4 +34,8 @@
     <color name="status_green">#4CAF50</color>
     <color name="status_yellow">#FFC107</color>
     <color name="status_red">#F44336</color>
+
+    <!--FACE -->
+    <color name="valid_green">#4CAF50</color>
+    <color name="invalid_red">#F44336</color>
 </resources>

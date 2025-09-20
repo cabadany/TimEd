@@ -3,13 +3,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="24dp"
+        android:padding="@dimen/space_xl"
         android:gravity="center_vertical"
         android:background="@drawable/dialog_background">
 
     <ProgressBar
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/loading"
             android:indeterminateTint="#3538CD"
             style="?android:attr/progressBarStyle" />
 
@@ -17,9 +18,9 @@
             android:id="@+id/loading_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
+            android:layout_marginStart="@dimen/space_xl"
             android:text="Timing you out... syncing with the system ⏳"
             android:textColor="#37474F"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:fontFamily="@font/league_spartan_medium" />
 </LinearLayout>

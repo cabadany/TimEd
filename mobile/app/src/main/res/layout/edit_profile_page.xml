@@ -15,8 +15,8 @@
     <!-- Top wave -->
     <ImageView
             android:id="@+id/top_wave_animation"
-            android:layout_width="450dp"
-            android:layout_height="390dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/wave_max_height"
             android:layout_gravity="top"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
@@ -28,12 +28,12 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="4dp"
-            android:padding="8dp"
+            android:layout_marginStart="@dimen/space_xs"
+            android:layout_marginTop="@dimen/space_xs"
+            android:padding="@dimen/space_sm"
             android:clickable="true"
             android:focusable="true"
-            android:contentDescription="Back button"
+            android:contentDescription="Back"
             app:srcCompat="@drawable/ic_back_button"
             android:background="@drawable/ripple_icon_back_button"
             android:stateListAnimator="@animator/button_scale_animator" />
@@ -44,17 +44,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
-            android:padding="16dp"
+            android:padding="@dimen/space_md"
             android:shadowColor="#33000000"
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="Edit Profile"
-            android:textColor="#8B0000"
-            android:textSize="32sp"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="@dimen/text_display"
             android:textStyle="bold" />
 
     <!-- Profile Image with Edit Icon -->
@@ -64,23 +64,23 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/edit_profile_title"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp">
+            android:layout_marginTop="@dimen/space_xl">
 
         <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/profile_image"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
+                android:layout_width="@dimen/profile_avatar_size"
+                android:layout_height="@dimen/profile_avatar_size"
                 android:src="@drawable/profile_placeholder"
                 app:civ_border_color="@color/white"
                 app:civ_border_width="2dp" />
 
         <ImageView
                 android:id="@+id/edit_profile_pic_button"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="@dimen/toolbar_icon_md"
+                android:layout_height="@dimen/toolbar_icon_md"
                 android:layout_gravity="bottom|end"
                 android:background="@drawable/edit_profile_circle_yellow"
-                android:padding="6dp"
+                android:padding="@dimen/space_xs"
                 android:src="@drawable/ic_edit"
                 android:clickable="true"
                 android:focusable="true" />
@@ -93,11 +93,12 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/profile_image_container"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/space_lg"
             android:fontFamily="@font/roboto_medium"
-            android:text="ID: 1746"
+            android:text=""
+            tools:text="ID: 1746"
             android:textColor="@color/black"
-            android:textSize="16sp" />
+            android:textSize="@dimen/text_md" />
 
     <!-- Form Fields in ScrollView -->
     <ScrollView
@@ -105,28 +106,28 @@
             android:layout_height="match_parent"
             android:layout_below="@id/teacher_id_label"
             android:layout_above="@id/btn_update_profile"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="@dimen/space_xl"
+            android:layout_marginBottom="@dimen/space_md"
             android:fillViewport="true">
 
         <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="24dp">
+                android:paddingHorizontal="@dimen/space_xl">
 
             <!-- Name Field -->
             <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/name_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="@dimen/space_lg"
                     app:boxCornerRadiusBottomEnd="8dp"
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/name_input"
@@ -135,11 +136,12 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Full Name"
                         android:inputType="textPersonName"
-                        android:text="Kristan Ian D. Cabaña"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
+                        android:text=""
+                        tools:text="Kristan Ian D. Cabaña"
+                        android:paddingStart="@dimen/space_lg"
+                        android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
-                        android:textSize="16sp" />
+                        android:textSize="@dimen/text_md" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Email Field -->
@@ -147,13 +149,13 @@
                     android:id="@+id/email_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="@dimen/space_lg"
                     app:boxCornerRadiusBottomEnd="8dp"
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/email_input"
@@ -162,11 +164,12 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Email Address"
                         android:inputType="textEmailAddress"
-                        android:text="kristanian.cabana@cit.edu"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
+                        android:text=""
+                        tools:text="kristanian.cabana@cit.edu"
+                        android:paddingStart="@dimen/space_lg"
+                        android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
-                        android:textSize="16sp" />
+                        android:textSize="@dimen/text_md" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Phone Number Field -->
@@ -174,13 +177,13 @@
                     android:id="@+id/phone_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="@dimen/space_lg"
                     app:boxCornerRadiusBottomEnd="8dp"
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/phone_input"
@@ -189,11 +192,12 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Phone Number"
                         android:inputType="phone"
-                        android:text="0912 345 6789"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
+                        android:text=""
+                        tools:text="0912 345 6789"
+                        android:paddingStart="@dimen/space_lg"
+                        android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
-                        android:textSize="16sp" />
+                        android:textSize="@dimen/text_md" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Department Field -->
@@ -201,13 +205,13 @@
                     android:id="@+id/department_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="@dimen/space_lg"
                     app:boxCornerRadiusBottomEnd="8dp"
                     app:boxCornerRadiusBottomStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
                     app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/yellow_gold"
-                    app:hintTextColor="@color/yellow_gold">
+                    app:boxStrokeColor="@color/brand_indigo"
+                    app:hintTextColor="@color/brand_indigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/department_input"
@@ -216,11 +220,12 @@
                         android:fontFamily="@font/roboto_medium"
                         android:hint="Department"
                         android:inputType="text"
-                        android:text="College of Computer Science"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
+                        android:text=""
+                        tools:text="College of Computer Science"
+                        android:paddingStart="@dimen/space_lg"
+                        android:paddingEnd="@dimen/space_lg"
                         android:textColor="@color/black"
-                        android:textSize="16sp" />
+                        android:textSize="@dimen/text_md" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </ScrollView>
@@ -229,17 +234,17 @@
     <Button
             android:id="@+id/btn_update_profile"
             android:layout_width="match_parent"
-            android:layout_height="55dp"
+            android:layout_height="@dimen/button_min_height"
             android:layout_alignParentBottom="true"
-            android:layout_marginStart="24dp"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="24dp"
-            android:backgroundTint="@color/yellow_gold"
+            android:layout_marginStart="@dimen/space_xl"
+            android:layout_marginEnd="@dimen/space_xl"
+            android:layout_marginBottom="@dimen/space_xl"
+            android:backgroundTint="@color/brand_indigo"
             android:elevation="4dp"
             android:fontFamily="@font/roboto_bold"
             android:text="Update Profile"
-            android:textColor="#8B0000"
-            android:textSize="16sp"
+            android:textColor="@color/white"
+            android:textSize="@dimen/text_md"
             android:textStyle="bold"
-            app:cornerRadius="8dp" />
+            app:cornerRadius="@dimen/button_corner_radius" />
 </RelativeLayout>

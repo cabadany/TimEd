@@ -21,7 +21,7 @@
             android:layout_alignParentTop="true"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:maxHeight="350dp"
+            android:maxHeight="@dimen/wave_max_height"
             android:scaleType="fitXY"
             android:src="@drawable/animated_wave_top" />
 
@@ -32,13 +32,13 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginStart="@dimen/space_sm"
+            android:layout_marginTop="@dimen/space_sm"
             android:background="@drawable/ripple_icon_back_button"
             android:clickable="true"
             android:contentDescription="@string/content_desc_back_button"
             android:focusable="true"
-            android:padding="8dp"
+            android:padding="@dimen/space_sm"
             android:stateListAnimator="@animator/button_scale_animator"
             app:srcCompat="@drawable/ic_back_button" />
 
@@ -48,17 +48,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_bold"
             android:letterSpacing="0.05"
-            android:padding="8dp"
+            android:padding="@dimen/space_sm"
             android:shadowColor="#33000000"
             android:shadowDx="1"
             android:shadowDy="1"
             android:shadowRadius="2"
             android:text="@string/app_title_timed"
             android:textColor="#37474F"
-            android:textSize="42sp"
+            android:textSize="@dimen/text_display"
             android:textStyle="bold" />
 
     <TextView
@@ -66,15 +66,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/titleName"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="32dp"
+            android:layout_marginStart="@dimen/space_2xl"
+            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginEnd="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
             android:text="Position your face in the camera view"
             android:textColor="@color/medium_gray"
-            android:textSize="16sp" />
+            android:textSize="@dimen/text_md" />
 
     <!-- Camera Box -->
     <androidx.cardview.widget.CardView
@@ -84,12 +84,12 @@
             android:layout_above="@+id/icon_qr_scanner"
             android:layout_below="@id/position_camera_view"
             android:layout_centerHorizontal="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginStart="@dimen/space_3xl"
+            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginEnd="@dimen/space_3xl"
+            android:layout_marginBottom="@dimen/space_lg"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:cardElevation="@dimen/card_elevation">
 
         <ImageView
                 android:id="@+id/camera_preview_placeholder"
@@ -108,11 +108,11 @@
     <!-- QR Scanner Icon -->
     <ImageView
             android:id="@+id/icon_qr_scanner"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/icon_touch_target"
+            android:layout_height="@dimen/icon_touch_target"
             android:layout_above="@id/qr_scanner_click_reminder"
             android:layout_centerHorizontal="true"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/space_sm"
             android:clickable="true"
             android:contentDescription="QR Scanner Button for event time-in"
             android:focusable="true"
@@ -126,35 +126,35 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_above="@id/btntime_in"
-            android:layout_marginStart="32dp"
-            android:layout_marginBottom="24dp"
-            android:layout_marginEnd="32dp"
+            android:layout_marginStart="@dimen/space_2xl"
+            android:layout_marginBottom="@dimen/space_xl"
+            android:layout_marginEnd="@dimen/space_2xl"
             android:fontFamily="@font/league_spartan_medium"
             android:gravity="center"
             android:letterSpacing="0.05"
             android:text="Click here for QR Scan Event"
             android:textColor="@color/medium_gray"
-            android:textSize="16sp" />
+            android:textSize="@dimen/text_md" />
 
     <!-- Time-In Button -->
     <Button
             android:id="@+id/btntime_in"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="@dimen/button_height_lg"
             android:layout_alignParentBottom="true"
-            android:layout_marginStart="40dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginBottom="32dp"
+            android:layout_marginStart="@dimen/space_3xl"
+            android:layout_marginEnd="@dimen/space_3xl"
+            android:layout_marginBottom="@dimen/space_2xl"
             android:backgroundTint="#3538CD"
             android:elevation="6dp"
             android:fontFamily="@font/league_spartan_bold"
-            android:padding="12dp"
+            android:padding="@dimen/space_md"
             android:stateListAnimator="@animator/button_scale_animator"
             android:text="@string/button_time_in"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:textStyle="bold"
-            app:cornerRadius="12dp" />
+            app:cornerRadius="@dimen/button_corner_radius" />
 
     <FrameLayout
             android:id="@+id/time_in_tutorial_overlay"

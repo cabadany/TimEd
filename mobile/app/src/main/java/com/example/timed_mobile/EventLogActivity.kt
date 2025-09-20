@@ -95,7 +95,7 @@ class EventLogActivity : WifiSecurityActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.maroon, R.color.yellow_gold)
+    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener { fetchEventLogs(true) }
 
         fetchEventLogs(false)
@@ -104,7 +104,11 @@ class EventLogActivity : WifiSecurityActivity() {
     private fun fetchEventLogs(isRefreshing: Boolean = false) {
         val userId = intent.getStringExtra("userId")
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing user session. Please log in again.", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Session",
+                message = "Missing user session. Please log in again."
+            )
             if (isRefreshing) swipeRefreshLayout.isRefreshing = false else progressBar.visibility = View.GONE
             showEmptyText("User session not found.")
             return
@@ -156,6 +160,9 @@ class EventLogActivity : WifiSecurityActivity() {
                                     val attendeeDocId = attendeeDoc.id
                                     val timestamp = attendeeDoc.getString("timestamp") ?: "No timestamp"
                                     val hasTimedOut = attendeeDoc.getBoolean("hasTimedOut") ?: false
+                                    // Prefer new flag; fallback to legacy manualEntry if present
+                                    val checkinMethod = attendeeDoc.getBoolean("checkinMethod")
+                                        ?: (attendeeDoc.getBoolean("manualEntry") ?: false)
 
                                     // MERGED: Create the EventLogModel with the attendeeDocId.
                                     // Note: Your EventLogModel class must have the 'attendeeDocId' field.
@@ -167,6 +174,7 @@ class EventLogActivity : WifiSecurityActivity() {
                                             timeInTimestamp = timestamp,
                                             status = if (hasTimedOut) "Timed-Out" else "Timed-In",
                                             showTimeOutButton = !hasTimedOut && isStillActive,
+                                            checkinMethod = checkinMethod,
                                             userId = userId
                                         )
                                     )
@@ -189,7 +197,11 @@ class EventLogActivity : WifiSecurityActivity() {
             }
             .addOnFailureListener {
                 Log.e(TAG, "Error loading events", it)
-                Toast.makeText(this, "Error loading events: ${it.message}", Toast.LENGTH_LONG).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Load Error",
+                    message = "Error loading events: ${it.message}"
+                )
                 swipeRefreshLayout.isRefreshing = false
                 progressBar.visibility = View.GONE
                 showEmptyText("Failed to load event data.")
@@ -210,7 +222,8 @@ class EventLogActivity : WifiSecurityActivity() {
     }
 
     private fun performTimeOut(log: EventLogModel) {
-        Toast.makeText(this, "Processing time-out...", Toast.LENGTH_SHORT).show()
+    // Keep this as a short info toast; not an error.
+    Toast.makeText(this, "Processing time-out...", Toast.LENGTH_SHORT).show()
 
         val db = FirebaseFirestore.getInstance()
         val eventDocRef = db.collection("events").document(log.eventId)
@@ -228,7 +241,11 @@ class EventLogActivity : WifiSecurityActivity() {
             Toast.makeText(this, "Successfully timed out from ${log.eventName}", Toast.LENGTH_SHORT).show()
             fetchEventLogs(true)
         }.addOnFailureListener { e ->
-            Toast.makeText(this, "Failed to time out: ${e.message}", Toast.LENGTH_LONG).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Time-Out Failed",
+                message = "Failed to time out: ${e.message}"
+            )
             Log.e(TAG, "Time-out transaction failed for doc ${log.attendeeDocId}", e)
         }
     }

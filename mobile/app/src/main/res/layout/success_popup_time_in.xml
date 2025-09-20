@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="265dp"
+        android:layout_width="@dimen/dialog_width_sm"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:background="@drawable/popup_background"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="24dp"
+        android:paddingHorizontal="@dimen/space_xl"
+        android:paddingVertical="@dimen/space_xl"
         android:gravity="center_horizontal">
 
     <!-- Success Icon -->
     <ImageView
             android:id="@+id/success_icon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginBottom="16dp"
+            android:layout_width="@dimen/popup_icon_size"
+            android:layout_height="@dimen/popup_icon_size"
+            android:layout_marginBottom="@dimen/space_lg"
             app:srcCompat="@drawable/ic_success"
 
             android:contentDescription="@string/popup_success_icon_desc" />
@@ -27,10 +27,10 @@
             android:gravity="center"
             android:text="@string/popup_title_timed_in_success"
             android:textColor="@color/primary_deep_blue"
-            android:textSize="20sp"
+            android:textSize="@dimen/text_xl"
             android:textStyle="bold"
             android:fontFamily="@font/roboto_bold"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/space_md" />
 
     <TextView
             android:id="@+id/popup_message"
@@ -39,21 +39,21 @@
             android:gravity="center"
             android:text="@string/popup_message_recorded_success"
             android:textColor="@color/neutral_text_gray"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_md"
             android:fontFamily="@font/roboto_medium"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="@dimen/space_xl" />
 
     <Button
             android:id="@+id/popup_close_button"
-            android:layout_width="120dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/dialog_button_width_md"
+            android:layout_height="@dimen/button_min_height"
             android:layout_gravity="center"
             android:backgroundTint="#3538CD"
             android:text="@string/popup_button_ok"
             android:textColor="@color/white"
-            android:textSize="14sp"
+            android:textSize="@dimen/text_sm"
             android:fontFamily="@font/roboto_medium"
-            app:cornerRadius="8dp"
+            app:cornerRadius="@dimen/button_corner_radius"
             android:elevation="4dp" />
 
 </LinearLayout>

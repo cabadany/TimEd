@@ -4,16 +4,31 @@
     <style name="Theme.TimEdMobile" parent="android:Theme.Material.Light.NoActionBar"/>
     <!-- Splash Screen -->
     <style name="Theme.TimEdMobile.NoActionBar" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/maroon</item>
-        <item name="colorPrimaryDark">@color/maroon</item>
-        <item name="colorAccent">@color/yellow_gold</item>
+        <item name="colorPrimary">@color/brand_indigo</item>
+        <item name="colorPrimaryDark">@color/brand_indigo</item>
+        <item name="colorAccent">@color/primary_light_sky</item>
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <!-- App theme using Material3 with custom colors -->
     <style name="Theme.TimEd" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Brand colors mapped into Material roles -->
+    <item name="colorPrimary">@color/brand_indigo</item>
+    <item name="colorSecondary">@color/primary_medium_blue</item>
+    <item name="colorTertiary">@color/primary_light_sky</item>
+    <item name="android:statusBarColor">@color/brand_indigo</item>
+        <item name="android:navigationBarColor">@color/black</item>
 
-        <item name="colorPrimary">@color/maroon</item>
-        <item name="android:statusBarColor">@color/maroon</item>
+        <!-- Default shape for components -->
+        <item name="shapeAppearanceSmallComponent">@style/Shape.Corner.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/Shape.Corner.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/Shape.Corner.Large</item>
 
+        <!-- Buttons -->
+        <item name="materialButtonStyle">@style/Widget.TimEd.Button</item>
+        <!-- Text inputs -->
+        <item name="textInputStyle">@style/Widget.TimEd.TextInputLayout</item>
+        <!-- Activity/window animations -->
+        <item name="android:windowAnimationStyle">@style/Animation.TimEd.Activity</item>
     </style>
 </resources>

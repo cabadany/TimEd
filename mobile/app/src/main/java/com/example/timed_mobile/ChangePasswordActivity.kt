@@ -3,6 +3,8 @@ package com.example.timed_mobile
 import android.app.Dialog
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.Window
 import android.view.animation.AnimationUtils
@@ -29,9 +31,21 @@ class ChangePasswordActivity : WifiSecurityActivity() {
     private lateinit var currentPasswordInput: TextInputEditText
     private lateinit var changePasswordTitle: TextView
     private lateinit var currentPasswordLayout: TextInputLayout
+    private lateinit var changePasswordContentContainer: RelativeLayout
+    private lateinit var changePasswordSkeletonContainer: LinearLayout
 
 
     private var userId: String? = null
+    private val skeletonTimeoutHandler = Handler(Looper.getMainLooper())
+    private val skeletonTimeoutRunnable = Runnable {
+        if (this::changePasswordSkeletonContainer.isInitialized && changePasswordSkeletonContainer.visibility == View.VISIBLE) {
+            changePasswordSkeletonContainer.clearAnimation()
+            changePasswordSkeletonContainer.visibility = View.GONE
+            if (this::changePasswordContentContainer.isInitialized) changePasswordContentContainer.visibility =
+                View.VISIBLE
+            setupEntryAnimations()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +70,8 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         currentPasswordInput = findViewById(R.id.current_password_input)
         changePasswordTitle = findViewById(R.id.change_password_title)
         currentPasswordLayout = findViewById(R.id.current_password_layout)
+        changePasswordContentContainer = findViewById(R.id.change_password_content_container)
+        changePasswordSkeletonContainer = findViewById(R.id.change_password_skeleton_container)
 
 
         updatePasswordButton.setOnClickListener {
@@ -72,8 +88,21 @@ class ChangePasswordActivity : WifiSecurityActivity() {
             }, 50)
         }
 
+        // Show skeleton until data loads
+        changePasswordSkeletonContainer.visibility = View.VISIBLE
+        changePasswordSkeletonContainer.startAnimation(
+            AnimationUtils.loadAnimation(
+                this,
+                R.anim.shimmer_pulse
+            )
+        )
+        changePasswordContentContainer.visibility = View.GONE
+
+        // Load data
         loadCurrentUserInfo()
-        setupEntryAnimations() // Call animation setup
+
+        // Safety fallback: reveal content after 5s if still loading
+        skeletonTimeoutHandler.postDelayed(skeletonTimeoutRunnable, 5000)
     }
 
     private fun setupEntryAnimations() {
@@ -94,7 +123,8 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         )
 
         formElements.forEachIndexed { index, view ->
-            val animSlideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_form_element)
+            val animSlideUp =
+                AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_form_element)
             // Stagger the start of each animation
             animSlideUp.startOffset = (index * 100).toLong()
             view.startAnimation(animSlideUp)
@@ -106,7 +136,14 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
 
         if (userId.isNullOrEmpty()) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Not Logged In",
+                message = "Please log in to change your password."
+            )
+            changePasswordSkeletonContainer.visibility = View.GONE
+            changePasswordContentContainer.visibility = View.VISIBLE
+            setupEntryAnimations()
             return
         }
 
@@ -116,7 +153,15 @@ class ChangePasswordActivity : WifiSecurityActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (!document.exists()) {
-                    Toast.makeText(this, "User profile not found", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Profile Not Found",
+                        message = "We couldn't find your profile. Please try again or contact support."
+                    )
+                    changePasswordSkeletonContainer.clearAnimation()
+                    changePasswordSkeletonContainer.visibility = View.GONE
+                    changePasswordContentContainer.visibility = View.VISIBLE
+                    setupEntryAnimations()
                     return@addOnSuccessListener
                 }
 
@@ -132,12 +177,14 @@ class ChangePasswordActivity : WifiSecurityActivity() {
                     .getReference("timeLogs").child(userId!!)
 
                 timeLogsRef.orderByChild("timestamp").limitToLast(1)
-                    .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                    .addListenerForSingleValueEvent(object :
+                        com.google.firebase.database.ValueEventListener {
                         override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                             var timeInImageUrl: String? = null
                             for (child in snapshot.children) {
                                 val type = child.child("type").getValue(String::class.java)
-                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                                val timestamp =
+                                    child.child("timestamp").getValue(Long::class.java) ?: 0L
 
                                 val todayStart = java.util.Calendar.getInstance().apply {
                                     set(java.util.Calendar.HOUR_OF_DAY, 0)
@@ -147,7 +194,8 @@ class ChangePasswordActivity : WifiSecurityActivity() {
                                 }.timeInMillis
 
                                 if (type == "TimeIn" && timestamp >= todayStart) {
-                                    timeInImageUrl = child.child("imageUrl").getValue(String::class.java)
+                                    timeInImageUrl =
+                                        child.child("imageUrl").getValue(String::class.java)
                                     break
                                 }
                             }
@@ -166,15 +214,34 @@ class ChangePasswordActivity : WifiSecurityActivity() {
                             } else {
                                 profileImage.setImageResource(R.drawable.profile_placeholder)
                             }
+
+                            // Reveal content and animate after data populates
+                            changePasswordSkeletonContainer.clearAnimation()
+                            changePasswordSkeletonContainer.visibility = View.GONE
+                            changePasswordContentContainer.visibility = View.VISIBLE
+                            setupEntryAnimations()
                         }
 
                         override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
                             profileImage.setImageResource(R.drawable.profile_placeholder)
+                            UiDialogs.showErrorPopup(
+                                this@ChangePasswordActivity,
+                                title = "Load Error",
+                                message = "Couldn't load recent time-in image. Please try again later."
+                            )
                         }
                     })
             }
             .addOnFailureListener {
-                Toast.makeText(this, "Failed to load user info", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Load Error",
+                    message = "Failed to load user info. Please check your connection and try again."
+                )
+                changePasswordSkeletonContainer.clearAnimation()
+                changePasswordSkeletonContainer.visibility = View.GONE
+                changePasswordContentContainer.visibility = View.VISIBLE
+                setupEntryAnimations()
             }
     }
 
@@ -187,7 +254,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         reenterPasswordLayout.error = null
 
         if (currentPassword.isEmpty()) {
-            Toast.makeText(this, "Enter your current password", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Current Password",
+                message = "Please enter your current password to proceed."
+            )
             return
         }
 
@@ -207,7 +278,11 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         }
 
         if (userId == null) {
-            Toast.makeText(this, "Missing user session", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Missing Session",
+                message = "Your session is missing or expired. Please log in again."
+            )
             return
         }
 
@@ -218,29 +293,52 @@ class ChangePasswordActivity : WifiSecurityActivity() {
             if (document.exists()) {
                 val storedHash = document.getString("password")
                 if (storedHash.isNullOrEmpty()) {
-                    Toast.makeText(this, "No password stored", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Password Error",
+                        message = "No existing password found for this account."
+                    )
                     return@addOnSuccessListener
                 }
 
                 val passwordMatch = org.mindrot.jbcrypt.BCrypt.checkpw(currentPassword, storedHash)
                 if (!passwordMatch) {
-                    Toast.makeText(this, "Wrong current password", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Incorrect Password",
+                        message = "The current password you entered is incorrect."
+                    )
                     return@addOnSuccessListener
                 }
 
-                val newHashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(newPassword, org.mindrot.jbcrypt.BCrypt.gensalt())
+                val newHashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(
+                    newPassword,
+                    org.mindrot.jbcrypt.BCrypt.gensalt()
+                )
                 userDocRef.update("password", newHashedPassword)
                     .addOnSuccessListener {
                         showSuccessDialog()
                     }
                     .addOnFailureListener {
-                        Toast.makeText(this, "Failed to update password in Firestore", Toast.LENGTH_SHORT).show()
+                        UiDialogs.showErrorPopup(
+                            this,
+                            title = "Update Failed",
+                            message = "Couldn't update your password. Please try again."
+                        )
                     }
             } else {
-                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "User Not Found",
+                    message = "We couldn't find your account. Please re-login and try again."
+                )
             }
         }.addOnFailureListener {
-            Toast.makeText(this, "Error accessing Firestore", Toast.LENGTH_SHORT).show()
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Database Error",
+                message = "Error accessing your account data. Please try again later."
+            )
         }
     }
 
@@ -257,5 +355,10 @@ class ChangePasswordActivity : WifiSecurityActivity() {
         }
 
         dialog.show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        skeletonTimeoutHandler.removeCallbacks(skeletonTimeoutRunnable)
     }
 }

@@ -7,5 +7,6 @@ data class EventLogModel(
     val timeInTimestamp: String,
     val status: String,
     val showTimeOutButton: Boolean = false,
+    val checkinMethod: Boolean = false, // false = QR (default), true = Manual
     val userId: String
 )

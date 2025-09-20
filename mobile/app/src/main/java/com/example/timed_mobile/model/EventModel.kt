@@ -7,5 +7,6 @@ data class EventModel(
     val duration: String = "",
     val dateFormatted: String = "",
     val status: String = "",
-    val rawDate: Date? = null // <-- NEW FIELD for accurate comparison
+    val rawDate: Date? = null, // <-- NEW FIELD for accurate comparison
+    val venue: String? = "N/A"
 )

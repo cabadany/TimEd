@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">24dp</dimen>
+    <dimen name="space_2xl">32dp</dimen>
+    <dimen name="space_3xl">40dp</dimen>
+
+    <!-- Text sizes -->
+    <dimen name="text_xs">12sp</dimen>
+    <dimen name="text_sm">14sp</dimen>
+    <dimen name="text_md">16sp</dimen>
+    <dimen name="text_lg">18sp</dimen>
+    <dimen name="text_xl">24sp</dimen>
+    <dimen name="text_display">42sp</dimen>
+    <dimen name="text_h1">40sp</dimen>
+    <dimen name="text_title">38sp</dimen>
+    <dimen name="text_h2">28sp</dimen>
+
+    <!-- Component sizes -->
+    <dimen name="toolbar_icon">24dp</dimen>
+    <dimen name="toolbar_icon_md">28dp</dimen>
+    <dimen name="toolbar_icon_lg">30dp</dimen>
+    <dimen name="icon_touch_target">48dp</dimen>
+    <dimen name="button_min_height">48dp</dimen>
+    <dimen name="button_height_compact">44dp</dimen>
+    <dimen name="button_height_lg">56dp</dimen>
+    <dimen name="button_corner_radius">12dp</dimen>
+    <dimen name="button_corner_radius_pill">32dp</dimen>
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_corner_radius_lg">16dp</dimen>
+    <dimen name="card_elevation">4dp</dimen>
+    <dimen name="card_elevation_lg">8dp</dimen>
+    <dimen name="camera_height">220dp</dimen>
+    <dimen name="qr_box_size">200dp</dimen>
+    <dimen name="wave_max_height">350dp</dimen>
+    <dimen name="wave_height_small">250dp</dimen>
+    <dimen name="wave_height_medium">280dp</dimen>
+    <dimen name="illustration_size">150dp</dimen>
+    <dimen name="chip_height">36dp</dimen>
+    <dimen name="avatar_size">36dp</dimen>
+    <dimen name="profile_avatar_size">100dp</dimen>
+    <dimen name="event_title_top_margin">180dp</dimen>
+    <dimen name="hero_margin_top">64dp</dimen>
+
+    <!-- Dialog widths -->
+    <dimen name="dialog_width_sm">265dp</dimen>
+    <dimen name="dialog_width_md">285dp</dimen>
+    <dimen name="dialog_width_lg">300dp</dimen>
+    <dimen name="dialog_width_xl">320dp</dimen>
+
+    <!-- Popup icon sizes -->
+    <dimen name="popup_icon_size_sm">56dp</dimen>
+    <dimen name="popup_icon_size_md">60dp</dimen>
+    <dimen name="popup_icon_size">64dp</dimen>
+
+    <!-- Dialog button widths -->
+    <dimen name="dialog_button_width_sm">100dp</dimen>
+    <dimen name="dialog_button_width_md">120dp</dimen>
+
+    <!-- Inputs -->
+    <dimen name="multiline_box_height">150dp</dimen>
+</resources>

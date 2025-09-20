@@ -7,6 +7,7 @@ import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextPaint
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
@@ -58,43 +59,60 @@ class LoginActivity : WifiSecurityActivity() {
             val password = inputPassword.text.toString().trim()
 
             if (idNumber.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please enter ID number and password", Toast.LENGTH_SHORT)
-                    .show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Missing Credentials",
+                    message = "Please enter your ID number and password."
+                )
                 return@setOnClickListener
             }
 
             loginUser(idNumber, password)
         }
 
+        // Navigate to design-only Forgot Password screen
+        val forgotText = findViewById<TextView>(R.id.highlight_forgotPassword)
+        forgotText.setOnClickListener {
+            startActivity(Intent(this@LoginActivity, ForgotPasswordActivity::class.java))
+        }
+
         // --- This block makes "Create Account" a clickable link ---
         val createAccountText = findViewById<TextView>(R.id.highlight_createAccount)
-        val fullText = createAccountText.text.toString()
+        val fullText = "Don't have an account? Create Account"
+        val target = "Create Account"
+        val start = fullText.indexOf(target)
+        val end = start + target.length
         val spannable = SpannableString(fullText)
 
-        val clickablePart = "Create Account"
-        val start = fullText.indexOf(clickablePart)
-        if (start != -1) { // Check if the text exists to avoid errors
-            val end = start + clickablePart.length
+        createAccountText.isClickable = false
+        createAccountText.isFocusable = false
+        createAccountText.setOnClickListener(null)
 
+        if (start >= 0) {
             val clickableSpan = object : ClickableSpan() {
                 override fun onClick(widget: View) {
-                    val intent = Intent(this@LoginActivity, RequestCreateAccountActivity::class.java)
-                    startActivity(intent)
+                    startActivity(Intent(this@LoginActivity, RequestCreateAccountActivity::class.java))
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.isUnderlineText = false
+                    ds.color = Color.parseColor("#3538CD")
                 }
             }
-
-            // Make the text clickable
             spannable.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            // Change the color of the clickable text
+            // Optional distinct color (already same in updateDrawState—can omit)
+            // spannable.setSpan(ForegroundColorSpan(Color.parseColor("#3538CD")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             val color = Color.parseColor("#3538CD") // Your primary button color
             spannable.setSpan(ForegroundColorSpan(color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+
+
 
             createAccountText.text = spannable
             createAccountText.movementMethod = LinkMovementMethod.getInstance()
             createAccountText.highlightColor = Color.TRANSPARENT // Removes the highlight on click
         }
-    }
+
 
     private fun loginUser(idNumber: String, password: String) {
         firestore.collection("users")
@@ -102,7 +120,11 @@ class LoginActivity : WifiSecurityActivity() {
             .get()
             .addOnSuccessListener { documents ->
                 if (documents.isEmpty) {
-                    Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "User Not Found",
+                        message = "No account matches the provided ID number."
+                    )
                     return@addOnSuccessListener
                 }
 
@@ -112,27 +134,31 @@ class LoginActivity : WifiSecurityActivity() {
                 val verified = userDoc.getBoolean("verified") ?: false
 
                 if (role != "USER" && role != "FACULTY") {
-                    Toast.makeText(
+                    UiDialogs.showErrorPopup(
                         this,
-                        "Only USER/FACULTY accounts can log in on mobile.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                        title = "Unsupported Role",
+                        message = "Only USER/FACULTY accounts can log in on mobile."
+                    )
                     return@addOnSuccessListener
                 }
 
                 // Check if user account is verified
                 if (!verified) {
-                    Toast.makeText(
+                    UiDialogs.showErrorPopup(
                         this,
-                        "Your account needs to be verified by an admin first. Please contact the administrator.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                        title = "Account Not Verified",
+                        message = "Your account must be verified by an admin. Please contact the administrator."
+                    )
                     return@addOnSuccessListener
                 }
 
                 val result = BCrypt.verifyer().verify(password.toCharArray(), dbPassword)
                 if (!result.verified) {
-                    Toast.makeText(this, "Incorrect password", Toast.LENGTH_SHORT).show()
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Incorrect Password",
+                        message = "The password you entered is incorrect."
+                    )
                     return@addOnSuccessListener
                 }
 
@@ -197,7 +223,11 @@ class LoginActivity : WifiSecurityActivity() {
             }
             .addOnFailureListener { e ->
                 Log.e("LOGIN", "Firestore error", e)
-                Toast.makeText(this, "Login failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Login Failed",
+                    message = "${e.message ?: "Unexpected error occurred while logging in."}"
+                )
             }
     }
 }

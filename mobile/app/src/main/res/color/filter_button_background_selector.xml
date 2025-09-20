@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_selected="true" android:color="@color/accent_coral" />
-    <item android:state_pressed="true" android:color="@color/accent_coral" /> <!-- Optional: for pressed state -->
+    <item android:state_selected="true" android:color="@color/primary_medium_blue" />
+    <item android:state_pressed="true" android:color="@color/primary_medium_blue" /> <!-- Optional: for pressed state -->
     <item android:color="@color/white" /> <!-- Default background -->
 </selector>

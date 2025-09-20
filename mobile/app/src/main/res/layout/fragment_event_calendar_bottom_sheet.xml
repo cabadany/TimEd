@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageButton
+            android:id="@+id/btn_prev_month"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Previous Month"
+            android:src="@drawable/ic_chevron_left"
+            app:tint="@color/primary_medium_blue" />
+
+        <TextView
+            android:id="@+id/text_month_year"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="September 2025"
+            android:textColor="@color/primary_deep_blue"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_next_month"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next Month"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/primary_medium_blue" />
+    </LinearLayout>
+
+    <GridLayout
+        android:id="@+id/calendar_day_headers"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="7"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp"
+        android:useDefaultMargins="false">
+        <!-- Day of week headers added dynamically -->
+    </GridLayout>
+
+    <GridLayout
+        android:id="@+id/calendar_day_grid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="7"
+        android:rowCount="6"
+        android:useDefaultMargins="false"
+        android:paddingBottom="12dp" />
+
+    <!-- Attendance Legend (Static Demo) -->
+    <LinearLayout
+        android:id="@+id/attendance_legend"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginEnd="16dp"
+            android:gravity="center_vertical">
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/dot_attendance_present" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Present"
+                android:textSize="12sp"
+                android:textColor="@color/neutral_text_gray" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginEnd="16dp"
+            android:gravity="center_vertical">
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/dot_attendance_late" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Late"
+                android:textSize="12sp"
+                android:textColor="@color/neutral_text_gray" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/dot_attendance_absent" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Absent"
+                android:textSize="12sp"
+                android:textColor="@color/neutral_text_gray" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/attendance_legend_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Attendance Legend (Normal Time-In)"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:paddingBottom="4dp"
+        android:textColor="@color/primary_deep_blue" />
+
+    <TextView
+        android:id="@+id/text_selected_date"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select a date to view events"
+        android:textColor="@color/neutral_text_gray"
+        android:textSize="14sp"
+        android:paddingBottom="4dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_calendar_events"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:overScrollMode="ifContentScrolls" />
+
+    <Button
+        android:id="@+id/btn_close_calendar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Close"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/primary_medium_blue"
+        android:textColor="@color/white" />
+
+</LinearLayout>

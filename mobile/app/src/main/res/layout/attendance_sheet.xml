@@ -39,7 +39,7 @@
                 android:fontFamily="@font/league_spartan_bold"
                 android:text="Attendance Sheet"
                 android:textSize="32sp"
-                android:textColor="@color/maroon"
+                android:textColor="@color/brand_indigo"
                 android:shadowColor="#33000000"
                 android:shadowDx="1"
                 android:shadowDy="1"

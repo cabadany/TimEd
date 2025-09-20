@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="285dp"
+        android:layout_width="@dimen/dialog_width_md"
         android:layout_height="wrap_content"
         android:background="@drawable/popup_background"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="32dp"
+        android:paddingHorizontal="@dimen/space_xl"
+        android:paddingVertical="@dimen/space_2xl"
         android:gravity="center_horizontal">
 
     <!-- Success Icon -->
     <ImageView
             android:id="@+id/success_icon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginBottom="16dp"
+            android:layout_width="@dimen/popup_icon_size"
+            android:layout_height="@dimen/popup_icon_size"
+            android:layout_marginBottom="@dimen/space_lg"
             app:srcCompat="@drawable/ic_success"
             android:contentDescription="@string/popup_success_icon_desc" />
 
@@ -26,20 +26,20 @@
             android:gravity="center"
             android:text="@string/popup_title_download_success"
             android:textColor="@color/primary_deep_blue"
-            android:textSize="20sp"
+            android:textSize="@dimen/text_xl"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="@dimen/space_xl" />
 
     <Button
             android:id="@+id/btn_ok"
-            android:layout_width="120dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/dialog_button_width_md"
+            android:layout_height="@dimen/button_min_height"
             android:layout_gravity="center"
             android:backgroundTint="#3538CD"
             android:text="@string/popup_button_ok"
             android:textColor="@color/white"
             android:fontFamily="@font/roboto_medium"
-            android:textSize="14sp"
-            app:cornerRadius="8dp"
+            android:textSize="@dimen/text_sm"
+            app:cornerRadius="@dimen/button_corner_radius"
             android:elevation="4dp" />
 </LinearLayout>
