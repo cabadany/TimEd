@@ -20,6 +20,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import at.favre.lib.crypto.bcrypt.BCrypt
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : WifiSecurityActivity() {
@@ -28,6 +29,7 @@ class LoginActivity : WifiSecurityActivity() {
     private lateinit var inputPassword: EditText
     private lateinit var loginButton: Button
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var firebaseAuth: FirebaseAuth
 
     companion object {
         const val PREFS_NAME = "TimedAppPrefs"
@@ -53,6 +55,7 @@ class LoginActivity : WifiSecurityActivity() {
         inputPassword = findViewById(R.id.input_Password)
         loginButton = findViewById(R.id.btnLogin)
         firestore = FirebaseFirestore.getInstance()
+        firebaseAuth = FirebaseAuth.getInstance()
 
         loginButton.setOnClickListener {
             val idNumber = inputIdNumber.text.toString().trim()
@@ -152,16 +155,7 @@ class LoginActivity : WifiSecurityActivity() {
                     return@addOnSuccessListener
                 }
 
-                val result = BCrypt.verifyer().verify(password.toCharArray(), dbPassword)
-                if (!result.verified) {
-                    UiDialogs.showErrorPopup(
-                        this,
-                        title = "Incorrect Password",
-                        message = "The password you entered is incorrect."
-                    )
-                    return@addOnSuccessListener
-                }
-
+                // Get user data first
                 val userId = userDoc.id // This is the crucial Firebase document ID
                 val firstName = userDoc.getString("firstName") ?: ""
                 val email = userDoc.getString("email") ?: ""
@@ -171,55 +165,9 @@ class LoginActivity : WifiSecurityActivity() {
                 }
                 val schoolIdValue = userDoc.getString("schoolId") ?: idNumber // Use schoolId from doc or fallback
 
-                // Save login session
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                with(prefs.edit()) {
-                    putBoolean(KEY_IS_LOGGED_IN, true)
-                    putString(KEY_USER_ID, userId) // Storing Firebase document ID
-                    putString(KEY_FIRST_NAME, firstName)
-                    putString(KEY_EMAIL, email)
-                    putString(KEY_ID_NUMBER, schoolIdValue) // Storing schoolId
-                    putString(KEY_DEPARTMENT, department)
-                    apply()
-                }
-
-                Toast.makeText(this, "Welcome $firstName!", Toast.LENGTH_SHORT).show()
-
-                // Check if onboarding is completed for this specific user
-                val onboardingPrefs = getSharedPreferences(
-                    NewUserWelcomeActivity.PREFS_ONBOARDING,
-                    Context.MODE_PRIVATE
-                )
-                // Construct the user-specific key
-                val userSpecificOnboardingKey = "${NewUserWelcomeActivity.KEY_ONBOARDING_COMPLETED}_$userId"
-                val isOnboardingCompleted = onboardingPrefs.getBoolean(
-                    userSpecificOnboardingKey, // Check user-specific key
-                    false // Default to false if no entry found for this user
-                )
-
-                if (!isOnboardingCompleted) {
-                    // THIS IS FOR "NEW USERS" (to the onboarding flow)
-                    // Start Onboarding Flow
-                    val intent = Intent(this, NewUserWelcomeActivity::class.java).apply {
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
-                    }
-                    startActivity(intent)
-                } else {
-                    // THIS IS FOR "EXISTING USERS" (who have completed onboarding)
-                    // Go to Home Activity
-                    val intent = Intent(this, HomeActivity::class.java).apply {
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
-                        putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
-                        putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
-                    }
-                    startActivity(intent)
-                }
-                finish()
+                // Try Firebase Auth first (for users who reset their password)
+                // If that fails, fall back to bcrypt verification
+                attemptFirebaseAuthLogin(email, password, userDoc, userId, firstName, department, schoolIdValue)
             }
             .addOnFailureListener { e ->
                 Log.e("LOGIN", "Firestore error", e)
@@ -229,5 +177,146 @@ class LoginActivity : WifiSecurityActivity() {
                     message = "${e.message ?: "Unexpected error occurred while logging in."}"
                 )
             }
+    }
+
+    private fun attemptFirebaseAuthLogin(
+        email: String, 
+        password: String, 
+        userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
+        userId: String, 
+        firstName: String, 
+        department: String, 
+        schoolIdValue: String
+    ) {
+        firebaseAuth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Firebase Auth login successful - user has reset their password
+                    Log.d("LOGIN", "Firebase Auth login successful - new password used")
+                    proceedWithLogin(userId, firstName, email, department, schoolIdValue)
+                } else {
+                    // Check if user exists in Firebase Auth (meaning they've reset their password)
+                    checkIfUserHasFirebaseAccount(email, password, userDoc, userId, firstName, department, schoolIdValue)
+                }
+            }
+    }
+
+    private fun checkIfUserHasFirebaseAccount(
+        email: String, 
+        password: String, 
+        userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
+        userId: String, 
+        firstName: String, 
+        department: String, 
+        schoolIdValue: String
+    ) {
+        // Try to fetch the user by email to see if they exist in Firebase Auth
+        firebaseAuth.fetchSignInMethodsForEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val signInMethods = task.result?.signInMethods ?: emptyList()
+                    if (signInMethods.isNotEmpty()) {
+                        // User exists in Firebase Auth but password is wrong
+                        Log.d("LOGIN", "User has Firebase Auth account but wrong password")
+                        UiDialogs.showErrorPopup(
+                            this,
+                            title = "Incorrect Password",
+                            message = "You have reset your password. Please use your new password to log in."
+                        )
+                    } else {
+                        // User doesn't exist in Firebase Auth, try bcrypt (original password)
+                        Log.d("LOGIN", "User doesn't have Firebase Auth account, trying bcrypt")
+                        attemptBcryptLogin(password, userDoc, userId, firstName, email, department, schoolIdValue)
+                    }
+                } else {
+                    // Error checking Firebase Auth, fallback to bcrypt
+                    Log.d("LOGIN", "Error checking Firebase Auth, trying bcrypt")
+                    attemptBcryptLogin(password, userDoc, userId, firstName, email, department, schoolIdValue)
+                }
+            }
+    }
+
+    private fun attemptBcryptLogin(
+        password: String, 
+        userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
+        userId: String, 
+        firstName: String, 
+        email: String, 
+        department: String, 
+        schoolIdValue: String
+    ) {
+        val dbPassword = userDoc.getString("password") ?: ""
+        val result = BCrypt.verifyer().verify(password.toCharArray(), dbPassword)
+        
+        if (result.verified) {
+            // bcrypt verification successful
+            Log.d("LOGIN", "Bcrypt verification successful")
+            proceedWithLogin(userId, firstName, email, department, schoolIdValue)
+        } else {
+            // Both Firebase Auth and bcrypt failed
+            UiDialogs.showErrorPopup(
+                this,
+                title = "Incorrect Password",
+                message = "The password you entered is incorrect."
+            )
+        }
+    }
+
+    private fun proceedWithLogin(
+        userId: String, 
+        firstName: String, 
+        email: String, 
+        department: String, 
+        schoolIdValue: String
+    ) {
+        // Save login session
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            putBoolean(KEY_IS_LOGGED_IN, true)
+            putString(KEY_USER_ID, userId) // Storing Firebase document ID
+            putString(KEY_FIRST_NAME, firstName)
+            putString(KEY_EMAIL, email)
+            putString(KEY_ID_NUMBER, schoolIdValue) // Storing schoolId
+            putString(KEY_DEPARTMENT, department)
+            apply()
+        }
+
+        Toast.makeText(this, "Welcome $firstName!", Toast.LENGTH_SHORT).show()
+
+        // Check if onboarding is completed for this specific user
+        val onboardingPrefs = getSharedPreferences(
+            NewUserWelcomeActivity.PREFS_ONBOARDING,
+            Context.MODE_PRIVATE
+        )
+        // Construct the user-specific key
+        val userSpecificOnboardingKey = "${NewUserWelcomeActivity.KEY_ONBOARDING_COMPLETED}_$userId"
+        val isOnboardingCompleted = onboardingPrefs.getBoolean(
+            userSpecificOnboardingKey, // Check user-specific key
+            false // Default to false if no entry found for this user
+        )
+
+        if (!isOnboardingCompleted) {
+            // THIS IS FOR "NEW USERS" (to the onboarding flow)
+            // Start Onboarding Flow
+            val intent = Intent(this, NewUserWelcomeActivity::class.java).apply {
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
+            }
+            startActivity(intent)
+        } else {
+            // THIS IS FOR "EXISTING USERS" (who have completed onboarding)
+            // Go to Home Activity
+            val intent = Intent(this, HomeActivity::class.java).apply {
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
+                putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
+            }
+            startActivity(intent)
+        }
+        finish()
     }
 }
