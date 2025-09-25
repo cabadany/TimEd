@@ -10,12 +10,23 @@ import androidx.appcompat.app.AppCompatActivity
 import android.view.View
 import android.content.Intent
 import android.view.animation.AnimationUtils
+import android.util.Log
+import android.util.Patterns
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ForgotPasswordActivity : WifiSecurityActivity() {
+    
+    private lateinit var firebaseAuth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.forgot_password_page)
         setupAnimations()
+
+        // Initialize Firebase
+        firebaseAuth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
@@ -31,7 +42,7 @@ class ForgotPasswordActivity : WifiSecurityActivity() {
             finish()
         }
 
-        // Design-only: no backend, just show a confirmation popup
+        // Implement actual Firebase forgot password functionality
         sendButton.setOnClickListener {
             val email = emailInput.text?.toString()?.trim().orEmpty()
             if (email.isEmpty()) {
@@ -40,12 +51,20 @@ class ForgotPasswordActivity : WifiSecurityActivity() {
                     title = "Missing Email",
                     message = "Please enter your email to continue."
                 )
-            } else {
-                UiDialogs.showForgotPasswordSuccess(this, email) {
-                    // Close the forgot password screen after user acknowledges
-                    finish()
-                }
+                return@setOnClickListener
             }
+
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Invalid Email",
+                    message = "Please enter a valid email address."
+                )
+                return@setOnClickListener
+            }
+
+            // First, check if the email exists in Firestore users collection
+            checkEmailExistsAndSendReset(email)
         }
     }
 
@@ -69,5 +88,79 @@ class ForgotPasswordActivity : WifiSecurityActivity() {
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
+    }
+
+    private fun checkEmailExistsAndSendReset(email: String) {
+        // Disable the button to prevent multiple clicks
+        val sendButton = findViewById<Button>(R.id.btnSendReset)
+        sendButton.isEnabled = false
+        sendButton.text = "Sending..."
+
+        // Check if email exists in Firestore users collection
+        firestore.collection("users")
+            .whereEqualTo("email", email)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (documents.isEmpty) {
+                    // Re-enable button
+                    sendButton.isEnabled = true
+                    sendButton.text = "Send Reset Email"
+                    
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Email Not Found",
+                        message = "No account is associated with this email address."
+                    )
+                    return@addOnSuccessListener
+                }
+
+                // Email exists in Firestore, now send Firebase Auth reset email
+                sendPasswordResetEmail(email)
+            }
+            .addOnFailureListener { e ->
+                // Re-enable button
+                sendButton.isEnabled = true
+                sendButton.text = "Send Reset Email"
+                
+                Log.e("FORGOT_PASSWORD", "Error checking email in Firestore", e)
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Error",
+                    message = "Unable to verify email. Please try again later."
+                )
+            }
+    }
+
+    private fun sendPasswordResetEmail(email: String) {
+        firebaseAuth.sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                val sendButton = findViewById<Button>(R.id.btnSendReset)
+                sendButton.isEnabled = true
+                sendButton.text = "Send Reset Email"
+
+                if (task.isSuccessful) {
+                    Log.d("FORGOT_PASSWORD", "Password reset email sent successfully")
+                    UiDialogs.showForgotPasswordSuccess(this, email) {
+                        // Close the forgot password screen after user acknowledges
+                        finish()
+                    }
+                } else {
+                    Log.e("FORGOT_PASSWORD", "Failed to send password reset email", task.exception)
+                    val errorMessage = when (task.exception?.message) {
+                        "There is no user record corresponding to this identifier. The user may have been deleted." -> 
+                            "No account is associated with this email address."
+                        "The email address is badly formatted." -> 
+                            "Please enter a valid email address."
+                        else -> 
+                            "Unable to send reset email. Please try again later."
+                    }
+                    
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Reset Failed",
+                        message = errorMessage
+                    )
+                }
+            }
     }
 }
