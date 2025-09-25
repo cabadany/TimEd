@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
         android:layout_height="200dp"
-        android:background="@drawable/bg_nav_header_gradient"
+        android:background="@drawable/bg_nav_header_lavalamp"
         android:padding="16dp">
 
-    <LinearLayout
+    <com.example.timed_mobile.ui.LavaLampView
+            android:id="@+id/lava_lamp_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:cornerRadius="26dp"
+            app:roundBottomCorners="false" />
+
+        <LinearLayout
             android:id="@+id/existing_nav_content_wrapper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -52,7 +60,7 @@
                 android:alpha="0.85" />
     </LinearLayout>
 
-    <LinearLayout
+        <LinearLayout
             android:id="@+id/tutorial_progress_on_right_nav_header"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
