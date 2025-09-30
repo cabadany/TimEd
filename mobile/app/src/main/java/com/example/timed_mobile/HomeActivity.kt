@@ -189,6 +189,9 @@ class HomeActivity : WifiSecurityActivity() {
     private lateinit var profileImagePlaceholder: ImageView
 
     private var tutorialProgressOnRightNavHeader: LinearLayout? = null
+    
+    // Department id cached for calendar and event queries
+    private var userDepartmentId: String? = null
     private var tutorialProgressBarOnRight: ProgressBar? = null
     private var tutorialTitleTextOnRight: TextView? = null
     private var tutorialPercentageTextOnRight: TextView? = null
@@ -292,7 +295,7 @@ class HomeActivity : WifiSecurityActivity() {
         btnTimeOut = findViewById(R.id.btntime_out)
         excuseLetterText = findViewById(R.id.excuse_letter_text_button)
         btnHelp = findViewById(R.id.btn_help)
-    btnCalendar = findViewById(R.id.btn_calendar)
+        btnCalendar = findViewById(R.id.btn_calendar)
         noEventsMessage = findViewById(R.id.no_events_message)
         profileImagePlaceholder = findViewById(R.id.profile_image_placeholder)
         statusSpinner = findViewById(R.id.status_spinner)
@@ -330,8 +333,13 @@ class HomeActivity : WifiSecurityActivity() {
             showTutorialDialog()
         }
         btnCalendar.setOnClickListener {
-            // Open static calendar bottom sheet
-            com.example.timed_mobile.calendar.EventCalendarBottomSheet().show(supportFragmentManager, "EventCalendar")
+            val deptId = userDepartmentId
+            if (deptId.isNullOrEmpty()) {
+                Toast.makeText(this, "No department assigned. Cannot open calendar.", Toast.LENGTH_SHORT).show()
+            } else {
+                val sheet = com.example.timed_mobile.calendar.EventCalendarBottomSheet.newInstance(deptId)
+                sheet.show(supportFragmentManager, "EventCalendar")
+            }
         }
 
         firestore = FirebaseFirestore.getInstance()
@@ -373,6 +381,7 @@ class HomeActivity : WifiSecurityActivity() {
                 val fullName = userFirstName ?: "User"
                 greetingName.text = "Hi, $fullName"
                 val departmentId = doc.getString("departmentId")
+                userDepartmentId = departmentId
                 if (!departmentId.isNullOrEmpty()) {
                     FirebaseFirestore.getInstance().collection("departments")
                         .document(departmentId)
@@ -413,7 +422,7 @@ class HomeActivity : WifiSecurityActivity() {
         profileImagePlaceholder.setOnClickListener(profileClickListener)
         greetingName.setOnClickListener(profileClickListener)
 
-    swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
+        swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
         swipeRefreshLayout.setOnRefreshListener {
             Log.d("HomeActivity", "Pull-to-refresh triggered")
             loadTodayTimeInPhoto()

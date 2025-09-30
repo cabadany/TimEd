@@ -16,11 +16,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.timed_mobile.R
 import com.example.timed_mobile.adapter.CalendarEventAdapter
 import com.example.timed_mobile.model.CalendarEvent
+import com.google.gson.Gson
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.random.Random
 
 class EventCalendarBottomSheet : BottomSheetDialogFragment() {
 
@@ -35,9 +37,25 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
     private val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
     private val keyFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+    private val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
+        timeZone = java.util.TimeZone.getTimeZone("Asia/Manila")
+    }
 
     private var selectedDayKey: String? = null
     private val allEvents = mutableListOf<CalendarEvent>()
+    private var departmentId: String? = null
+
+    companion object {
+        private const val ARG_DEPARTMENT_ID = "arg_department_id"
+        private const val API_BASE_URL = "https://timed-utd9.onrender.com/api"
+        fun newInstance(departmentId: String): EventCalendarBottomSheet {
+            val sheet = EventCalendarBottomSheet()
+            val args = Bundle()
+            args.putString(ARG_DEPARTMENT_ID, departmentId)
+            sheet.arguments = args
+            return sheet
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_event_calendar_bottom_sheet, container, false)
@@ -56,7 +74,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         view.findViewById<Button>(R.id.btn_close_calendar).setOnClickListener { dismiss() }
 
         buildHeaders()
-        generateMockEventsForMonth()
+        departmentId = arguments?.getString(ARG_DEPARTMENT_ID)
+        fetchEventsForCurrentMonth()
         renderCalendar()
         return view
     }
@@ -85,31 +104,95 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun generateMockEventsForMonth() {
+    private fun fetchEventsForCurrentMonth() {
         allEvents.clear()
-        val baseCal = calendar.clone() as Calendar
-        baseCal.set(Calendar.DAY_OF_MONTH, 1)
-        val daysInMonth = baseCal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val statuses = listOf("upcoming","ongoing","ended","cancelled")
-        // Generate between 6-12 mock events
-        val eventCount = Random.nextInt(6, 13)
-        for (i in 0 until eventCount) {
-            val day = Random.nextInt(1, daysInMonth + 1)
-            val eventCal = baseCal.clone() as Calendar
-            eventCal.set(Calendar.DAY_OF_MONTH, day)
-            val hour = Random.nextInt(8, 18)
-            eventCal.set(Calendar.HOUR_OF_DAY, hour)
-            eventCal.set(Calendar.MINUTE, listOf(0,15,30,45).random())
-            val status = statuses.random()
-            val timeLabel = SimpleDateFormat("h:mm a", Locale.getDefault()).format(eventCal.time)
-            allEvents.add(CalendarEvent(title = "Mock Event ${i+1}", date = eventCal.time, status = status, timeLabel = timeLabel))
-        }
+        val deptId = departmentId ?: return
+        val monthStart = (calendar.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+        val monthEnd = (calendar.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.time
+
+        val startParam = apiDateFormat.format(monthStart)
+        val endParam = apiDateFormat.format(monthEnd)
+        val url = "$API_BASE_URL/events/getByDateRange?startDate=$startParam&endDate=$endParam"
+
+        val client = OkHttpClient()
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                activity?.runOnUiThread { renderCalendar() }
+            }
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        activity?.runOnUiThread { renderCalendar() }
+                        return
+                    }
+                    val body = it.body?.string() ?: "[]"
+                    try {
+                        val gson = Gson()
+                        val listType = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, java.util.Map::class.java).type
+                        val events = gson.fromJson<List<Map<String, Any?>>>(body, listType)
+                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                        val now = System.currentTimeMillis()
+                        val filtered = events.filter { evt -> (evt["departmentId"] as? String) == deptId }
+                        for (evt in filtered) {
+                            val title = evt["eventName"] as? String ?: continue
+                            val dateStr = evt["date"] as? String ?: continue
+                            val duration = (evt["duration"] as? String) ?: "01:00:00"
+                            val statusFromDb = (evt["status"] as? String) ?: "upcoming"
+
+                            val parsedDate = apiDateFormat.parse(dateStr) ?: continue
+                            val durationParts = duration.split(":")
+                            val durationMillis = when (durationParts.size) {
+                                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
+                                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
+                                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L
+                                else -> 3600000L
+                            }
+                            val startMs = parsedDate.time
+                            val endMs = startMs + durationMillis
+                            val status = when {
+                                statusFromDb.equals("cancelled", true) -> "cancelled"
+                                statusFromDb.equals("ongoing", true) -> "ongoing"
+                                statusFromDb.equals("ended", true) -> "ended"
+                                now < startMs -> "upcoming"
+                                now in startMs..endMs -> "ongoing"
+                                else -> "ended"
+                            }
+                            allEvents.add(
+                                CalendarEvent(
+                                    title = title,
+                                    date = parsedDate,
+                                    status = status,
+                                    timeLabel = timeFormat.format(parsedDate)
+                                )
+                            )
+                        }
+                    } catch (_: Exception) { }
+                    activity?.runOnUiThread {
+                        renderCalendar()
+                        if (selectedDayKey != null) filterForSelected()
+                    }
+                }
+            }
+        })
     }
 
     private fun changeMonth(offset: Int) {
         calendar.add(Calendar.MONTH, offset)
         selectedDayKey = null
-        generateMockEventsForMonth()
+        fetchEventsForCurrentMonth()
         renderCalendar()
     }
 
@@ -162,16 +245,20 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             val baseTextColor = if (hasEvent) R.color.primary_deep_blue else R.color.medium_gray
             numberView.setTextColor(ContextCompat.getColor(requireContext(), baseTextColor))
 
-            // Static demo attendance status rule
-            val attendanceStatus = when {
-                day % 7 == 0 -> "absent"
-                day % 5 == 0 -> "late"
-                else -> "present"
+            // Color status dot based on real event status (maps to existing styles)
+            val dayEvents = allEvents.filter { keyFormat.format(it.date) == dayKey }
+            val statusForDot = when {
+                dayEvents.any { it.status.equals("ongoing", true) } -> "late" // orange
+                dayEvents.any { it.status.equals("upcoming", true) } -> "present" // green
+                dayEvents.any { it.status.equals("cancelled", true) || it.status.equals("ended", true) } -> "absent" // red
+                else -> null
             }
-            when (attendanceStatus) {
-                "present" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_present)
-                "late" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_late)
-                "absent" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_absent)
+            statusForDot?.let {
+                when (it) {
+                    "present" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_present)
+                    "late" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_late)
+                    "absent" -> statusDot.background = ContextCompat.getDrawable(requireContext(), R.drawable.dot_attendance_absent)
+                }
             }
 
             container.addView(numberView)
