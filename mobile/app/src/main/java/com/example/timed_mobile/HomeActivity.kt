@@ -17,6 +17,9 @@ import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.AnimationUtils
 import android.view.animation.TranslateAnimation
+import android.animation.ObjectAnimator
+import android.animation.AnimatorListenerAdapter
+import android.view.animation.DecelerateInterpolator
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -262,10 +265,37 @@ class HomeActivity : WifiSecurityActivity() {
                 tutorialProgressOnRightNavHeader?.isClickable = true
                 tutorialProgressOnRightNavHeader?.isFocusable = true
                 tutorialProgressOnRightNavHeader?.setOnClickListener {
-                    val intent = Intent(this, TutorialProgressActivity::class.java)
-                    intent.putExtra("userId", userId)
-                    startActivity(intent)
-                    Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity.")
+                    // Button-like press animation on the container (scale down then back) and then open the activity.
+                    val container = tutorialProgressOnRightNavHeader
+                    val intent = Intent(this, TutorialProgressActivity::class.java).apply { putExtra("userId", userId) }
+
+                    if (container != null) {
+                        try {
+                            // Prevent double-tap while animating
+                            if (!container.isClickable) return@setOnClickListener
+                            container.isClickable = false
+
+                            // Press in
+                            container.animate().scaleX(0.96f).scaleY(0.96f).setDuration(100).setInterpolator(DecelerateInterpolator()).withEndAction {
+                                // Release back to normal
+                                container.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(DecelerateInterpolator()).withEndAction {
+                                    container.isClickable = true
+                                    // Launch the activity after the visual feedback completes
+                                    startActivity(intent)
+                                    Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity after container press animation.")
+                                }
+                            }.start()
+                        } catch (e: Exception) {
+                            // Fallback: if animation fails, re-enable and launch immediately
+                            container.isClickable = true
+                            startActivity(intent)
+                            Log.w(TAG_TUTORIAL_NAV, "Container animation failed, launching TutorialProgressActivity immediately: ${e.message}")
+                        }
+                    } else {
+                        // If container is null, fallback to immediate launch
+                        startActivity(intent)
+                        Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity (container missing).")
+                    }
                 }
             } else {
                 Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader (LinearLayout) itself was not found in headerView.")

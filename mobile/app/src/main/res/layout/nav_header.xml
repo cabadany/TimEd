@@ -20,7 +20,7 @@
             android:layout_alignParentBottom="true"
             android:layout_marginStart="16dp"
             android:layout_marginBottom="16dp"
-            android:background="@drawable/header_content_shadow"
+
             android:clipToPadding="false">
 
         <ImageView
@@ -30,7 +30,7 @@
                 android:src="@drawable/ic_profile"
                 android:scaleType="centerCrop"
                 android:padding="4dp"
-                android:background="@drawable/circle_bg_white_shadow" />
+                android:background="@drawable/circle_outline_shadow" />
 
         <TextView
                 android:id="@+id/sidebar_user_name"
@@ -41,7 +41,11 @@
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:paddingTop="10dp"
-                android:letterSpacing="0.02" />
+                android:letterSpacing="0.02"
+                android:shadowColor="#660D0084"
+                android:shadowDx="0"
+                android:shadowDy="4"
+                android:shadowRadius="6" />
 
         <TextView
                 android:id="@+id/sidebar_user_details"
@@ -50,7 +54,11 @@
                 android:text="ID • Department"
                 android:textColor="@color/white"
                 android:textSize="14sp"
-                android:alpha="0.9" />
+                android:alpha="0.9"
+                android:shadowColor="#660D0084"
+                android:shadowDx="0"
+                android:shadowDy="4"
+                android:shadowRadius="6" />
 
         <TextView
                 android:id="@+id/sidebar_user_email"
@@ -59,7 +67,11 @@
                 android:text="email@example.com"
                 android:textColor="@color/white"
                 android:textSize="13sp"
-                android:alpha="0.85" />
+                android:alpha="0.85"
+                android:shadowColor="#660D0084"
+                android:shadowDx="0"
+                android:shadowDy="4"
+                android:shadowRadius="6" />
     </LinearLayout>
 
     <LinearLayout
