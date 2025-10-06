@@ -55,11 +55,25 @@ class LavaLampView @JvmOverloads constructor(
     private val rectF = RectF()
     private var cornerRadiusPx: Float = dp(26f)
     private var roundBottomCorners: Boolean = false
-    private val glassSheenPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val edgeFadePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    // Base background brand gradient under blobs (prevents any empty areas inside clip)
-    private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var bgShader: Shader? = null
+    // Removed glass sheen and edge fade paints to keep colors vivid
+    // (no base gradient) the live blobs will draw directly; keep view lightweight
+
+    // Solid base fill (no gradient) to avoid transparency holes and keep color present
+    private val baseFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        // Use a slightly darkened variant of primaryDeep to let blobs pop on top
+        color = boostVibrance(primaryDeep, 1.0f, 0.55f)
+    }
+
+    // Vibrance helpers
+    private fun boostVibrance(color: Int, satMult: Float, valMult: Float): Int {
+        val a = Color.alpha(color)
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        hsv[1] = (hsv[1] * satMult).coerceIn(0f, 1f) // saturation
+        hsv[2] = (hsv[2] * valMult).coerceIn(0f, 1f) // value/brightness
+        return Color.HSVToColor(a, hsv)
+    }
 
     init {
         setLayerType(LAYER_TYPE_HARDWARE, null)
@@ -153,14 +167,7 @@ class LavaLampView @JvmOverloads constructor(
         )
         clipPath.addRoundRect(rectF, radii, Path.Direction.CW)
 
-        // Build/update a diagonal brand gradient that fills the clipped area
-        bgShader = LinearGradient(
-            0f, 0f,
-            w.toFloat(), h.toFloat(),
-            intArrayOf(primaryDeep, primaryMedium, primaryDeep),
-            floatArrayOf(0f, 0.6f, 1f),
-            Shader.TileMode.CLAMP
-        )
+        // No persistent base gradient — the lava lamp will show only the animated blobs.
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -175,13 +182,10 @@ class LavaLampView @JvmOverloads constructor(
         // Clip to rounded rect so blobs don't show a hard edge crop.
         canvas.clipPath(clipPath)
 
-        // Draw base brand background within the rounded clip
-        bgShader?.let { shader ->
-            bgPaint.shader = shader
-            canvas.drawRect(rectF, bgPaint)
-        }
+        // Simple solid base (no gradients)
+        canvas.drawRect(rectF, baseFillPaint)
 
-        // Update & draw each blob
+    // Update & draw each blob (vibrant colors)
         blobs.forEachIndexed { index, b ->
             b.x += b.velocityX * deltaSec
             b.y += b.velocityY * deltaSec
@@ -198,11 +202,13 @@ class LavaLampView @JvmOverloads constructor(
             // slow hue shift between start/end using an additional temporal blend
             val timeBlend = ((System.currentTimeMillis() / 1000f) * 0.015f + index * 0.17f) % 1f
             val blendedEdge = lerpColor(b.colorEnd, b.colorStart, timeBlend)
+            val startV = boostVibrance(b.colorStart, 1.14f, 1.08f)
+            val edgeV  = boostVibrance(blendedEdge, 1.08f, 1.06f)
 
             val gradient = RadialGradient(
                 b.x, b.y, dynamicR,
-                b.colorStart.modifyAlpha(0.38f),
-                blendedEdge.modifyAlpha(0.05f),
+                startV.modifyAlpha(0.44f),
+                edgeV.modifyAlpha(0.06f),
                 Shader.TileMode.CLAMP
             )
             paint.shader = gradient
@@ -216,10 +222,7 @@ class LavaLampView @JvmOverloads constructor(
         }
         paint.shader = null
 
-        // Edge fade overlays (very subtle)
-        drawEdgeFades(canvas)
-        // Glass sheen overlay subtle
-        drawGlassSheen(canvas)
+        // Simplified: no edge fades or glass sheen overlays
         canvas.restoreToCount(save)
     }
 
@@ -237,54 +240,6 @@ class LavaLampView @JvmOverloads constructor(
         return Color.argb(a, r, g, b)
     }
 
-    private fun drawEdgeFades(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0 || h <= 0) return
-
-        val edgeColor = Color.argb(
-            50,
-            Color.red(primaryDeep),
-            Color.green(primaryDeep),
-            Color.blue(primaryDeep)
-        )
-        val transparent = Color.TRANSPARENT
-
-        val fadeW = w * 0.14f
-        val fadeH = h * 0.16f
-
-        // Left
-        edgeFadePaint.shader =
-            LinearGradient(0f, 0f, fadeW, 0f, edgeColor, transparent, Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, fadeW, h, edgeFadePaint)
-        // Right
-        edgeFadePaint.shader =
-            LinearGradient(w - fadeW, 0f, w, 0f, transparent, edgeColor, Shader.TileMode.CLAMP)
-        canvas.drawRect(w - fadeW, 0f, w, h, edgeFadePaint)
-        // Top
-        edgeFadePaint.shader =
-            LinearGradient(0f, 0f, 0f, fadeH, edgeColor, transparent, Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, w, fadeH, edgeFadePaint)
-        // Bottom fade removed to avoid any visible boundary between header and list
-        edgeFadePaint.shader = null
-    }
-
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
-
-    private fun drawGlassSheen(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0 || h <= 0) return
-        // A soft diagonal sheen from top-left to mid
-        val sheen = LinearGradient(
-            0f, 0f,
-            w * 0.6f, h * 0.55f,
-            Color.argb(55, 255, 255, 255),
-            Color.TRANSPARENT,
-            Shader.TileMode.CLAMP
-        )
-        glassSheenPaint.shader = sheen
-        canvas.drawRect(0f, 0f, w, h, glassSheenPaint)
-        glassSheenPaint.shader = null
-    }
+    
 }
