@@ -269,6 +269,14 @@ export default function AccountPage() {
     }
   }, [professors.length, tabValue]);
 
+  // Helper function to get the correct ID for API calls
+  const getCorrectApiId = (user) => {
+    // The backend API expects the Firestore document ID (subcollection ID)
+    // But we only have the userId field from the API response
+    // This is a data consistency issue that needs to be fixed in the backend
+    return user.id || user.documentId || user.userId;
+  };
+
   // Fetch professors from API
   const fetchProfessors = async () => {
     setIsLoading(true);
@@ -278,6 +286,35 @@ export default function AccountPage() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
+      console.log('🔍 FIRESTORE DATA CONSISTENCY CHECK:');
+      console.log('Expected: Document ID should match userId field for each user');
+      
+      let consistentCount = 0;
+      let inconsistentCount = 0;
+      
+      // Analyze data consistency
+      response.data.forEach((user, index) => {
+        const documentId = user.id || user.documentId;
+        const userId = user.userId;
+        const idsMatch = documentId === userId;
+        
+        if (idsMatch) {
+          consistentCount++;
+          console.log(`✅ User ${user.firstName} ${user.lastName}: Data is consistent`);
+        } else {
+          inconsistentCount++;
+          console.warn(`❌ User ${user.firstName} ${user.lastName}: Data inconsistent`);
+          console.warn(`   Document ID: ${documentId || 'MISSING'}`);
+          console.warn(`   userId field: ${userId || 'MISSING'}`);
+        }
+      });
+      
+      console.log(`📊 SUMMARY: ${consistentCount} consistent, ${inconsistentCount} inconsistent users`);
+      if (inconsistentCount > 0) {
+        console.log(`💡 SOLUTION: Click "Fix Data Issues" button to automatically fix inconsistencies`);
+      }
+      
       setProfessors(response.data);
       setError(null);
     } catch (err) {
@@ -1491,11 +1528,44 @@ export default function AccountPage() {
                 },
                 textTransform: 'none',
                 borderRadius: '4px',
-                fontWeight: 500
+                fontWeight: 500,
+                mr: 1
               }}
             >
               Add Faculty
             </Button>
+        {/*    <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={async () => {
+                try {
+                  showSnackbar('🔧 Fixing data consistency...', 'info');
+                  const response = await axios.post(getApiUrl('/user/admin/fix-data-consistency'), {}, {
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  });
+                  showSnackbar('✅ Data consistency fixed successfully!', 'success');
+                  fetchProfessors(); // Refresh the list
+                } catch (err) {
+                  console.error('Error fixing data consistency:', err);
+                  showSnackbar('❌ Failed to fix data consistency', 'error');
+                }
+              }}
+              sx={{
+                borderColor: '#FF9800',
+                color: '#FF9800',
+                '&:hover': {
+                  borderColor: '#F57C00',
+                  bgcolor: 'rgba(255, 152, 0, 0.04)',
+                },
+                textTransform: 'none',
+                borderRadius: '4px',
+                fontWeight: 500
+              }}
+            >
+              Fix Data Issues
+            </Button>*/}
           </Box>
         </Box>
 
@@ -1649,6 +1719,46 @@ export default function AccountPage() {
                           >
                             <Delete fontSize="small" />
                           </IconButton>
+                          {/* Data consistency debug button 
+                          <IconButton 
+                            size="small" 
+                            onClick={async () => {
+                              console.log('🔍 TESTING DATA CONSISTENCY for:', professor);
+                              const documentId = professor.id || professor.documentId;
+                              const userId = professor.userId;
+                              
+                              console.log('Document ID:', documentId);
+                              console.log('User ID field:', userId);
+                              console.log('IDs match:', documentId === userId);
+                              
+                              if (documentId === userId) {
+                                showSnackbar(`✅ ${professor.firstName}: Data is consistent`, 'success');
+                                
+                                // Test API call with the consistent ID
+                                try {
+                                  const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(userId)), {
+                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                  });
+                                  console.log('✅ API call successful:', response.data);
+                                  showSnackbar(`✅ API works for ${professor.firstName}`, 'success');
+                                } catch (err) {
+                                  console.error('❌ API call failed even with consistent data:', err);
+                                  showSnackbar(`❌ API failed for ${professor.firstName}: ${err.response?.status}`, 'error');
+                                }
+                              } else {
+                                showSnackbar(`❌ ${professor.firstName}: Data inconsistent - Document ID ≠ userId field`, 'error');
+                                console.error('❌ DATA INCONSISTENCY:');
+                                console.error(`   Document ID: ${documentId || 'MISSING'}`);
+                                console.error(`   userId field: ${userId || 'MISSING'}`);
+                                console.error('   This will cause 404 errors on edit/delete operations');
+                                console.error('   SOLUTION: Fix Firestore data so document ID matches userId field');
+                              }
+                            }}
+                            sx={{ color: '#9C27B0' }}
+                            title="Debug - Check data consistency"
+                          >
+                            🔍
+                          </IconButton>*/}
                         </Box>
                       </TableCell>
                     </TableRow>

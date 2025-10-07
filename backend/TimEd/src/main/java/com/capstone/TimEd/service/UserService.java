@@ -32,13 +32,20 @@ public class UserService {
             throw new RuntimeException("User already exists with School ID: " + user.getSchoolId());
         }
 
-        // Generate a unique document ID (or use a custom one)
-        DocumentReference docRef = db.collection(COLLECTION_NAME).document();
-
-        // Ensure the userId is set (usually the Firebase UID)
-        if (user.getUserId() == null) {
-            user.setUserId(docRef.getId()); // Use Firestore document ID as fallback
+        // CRITICAL FIX: Always ensure document ID matches userId field
+        String documentId;
+        if (user.getUserId() != null && !user.getUserId().isEmpty()) {
+            // Use provided userId as document ID for consistency
+            documentId = user.getUserId();
+        } else {
+            // Generate new ID and use it for both document ID and userId field
+            DocumentReference tempRef = db.collection(COLLECTION_NAME).document();
+            documentId = tempRef.getId();
+            user.setUserId(documentId);
         }
+        
+        // Create document with consistent ID
+        DocumentReference docRef = db.collection(COLLECTION_NAME).document(documentId);
 
         // Set default verified status if not specified
         // Admin-created accounts are verified by default, mobile requests are not
@@ -51,7 +58,9 @@ public class UserService {
         ApiFuture<WriteResult> result = docRef.set(user);
         result.get(); // Wait for the operation to complete
 
-        return docRef.getId(); // Return the document ID
+        System.out.println("✅ Created user with consistent IDs - Document ID: " + documentId + ", User ID field: " + user.getUserId());
+
+        return documentId; // Return the document ID
     }
     public List<User> getAllUsers() throws InterruptedException, ExecutionException {
         Firestore db = FirestoreClient.getFirestore();
@@ -62,6 +71,23 @@ public class UserService {
         List<User> userList = new ArrayList<>();
         for (QueryDocumentSnapshot doc : documents) {
             User user = doc.toObject(User.class);
+            
+            // CRITICAL FIX: Ensure userId field matches document ID for consistency
+            String documentId = doc.getId();
+            if (!documentId.equals(user.getUserId())) {
+                System.out.println("⚠️ Data inconsistency detected for user: " + user.getEmail());
+                System.out.println("   Document ID: " + documentId + ", User ID field: " + user.getUserId());
+                // Fix the inconsistency by setting userId to match document ID
+                user.setUserId(documentId);
+                // Update the document to fix the inconsistency
+                try {
+                    doc.getReference().update("userId", documentId);
+                    System.out.println("✅ Fixed userId field to match document ID");
+                } catch (Exception e) {
+                    System.out.println("❌ Failed to fix userId field: " + e.getMessage());
+                }
+            }
+            
             userList.add(user);
         }
 
