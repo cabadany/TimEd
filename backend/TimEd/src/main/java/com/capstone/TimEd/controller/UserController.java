@@ -162,4 +162,28 @@ public class UserController {
             ));
         }
     }
+
+    // ADMIN ENDPOINT: Trigger data consistency fix
+    @PostMapping("/admin/fix-data-consistency")
+    public ResponseEntity<?> fixDataConsistency() {
+        try {
+            // This will be automatically handled by the modified getAllUsers method
+            // Just call getAllUsers to trigger the fix
+            List<User> users = userService.getAllUsers();
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Data consistency check and fix completed",
+                "totalUsers", users.size(),
+                "timestamp", System.currentTimeMillis()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Failed to fix data consistency: " + e.getMessage(),
+                        "timestamp", System.currentTimeMillis()
+                    ));
+        }
+    }
 }
