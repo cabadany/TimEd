@@ -11,7 +11,10 @@ import com.example.timed_mobile.EventDetailActivity
 import com.example.timed_mobile.R
 import com.example.timed_mobile.model.EventModel
 
-class EventAdapter(private var eventList: MutableList<EventModel>) : // Changed to MutableList and var
+class EventAdapter(
+    private var eventList: MutableList<EventModel>,
+    private val onEventClick: ((EventModel) -> Boolean)? = null
+) : // Changed to MutableList and var
     RecyclerView.Adapter<EventAdapter.EventViewHolder>() {
 
     inner class EventViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -34,19 +37,25 @@ class EventAdapter(private var eventList: MutableList<EventModel>) : // Changed 
         holder.eventDate.text = "📅 ${event.dateFormatted}"
 
         holder.itemView.setOnClickListener {
-            val context = it.context
-            val intent = Intent(context, EventDetailActivity::class.java).apply {
-                putExtra("eventTitle", event.title)
-                putExtra("eventDate", event.dateFormatted)
-                putExtra("eventStatus", event.status)
-                // Pass rawDate as well if needed by EventDetailActivity
-                // putExtra("eventRawDate", event.rawDate?.time) // Example if rawDate is Date?
+            val handled = onEventClick?.invoke(event) ?: false
+            if (!handled) {
+                val context = it.context
+                val intent = Intent(context, EventDetailActivity::class.java).apply {
+                    putExtra("eventTitle", event.title)
+                    putExtra("eventDate", event.dateFormatted)
+                    putExtra("eventStatus", event.status)
+                    putExtra("eventVenue", event.venue ?: "N/A")
+                    // Pass rawDate as well if needed by EventDetailActivity
+                    // putExtra("eventRawDate", event.rawDate?.time) // Example if rawDate is Date?
+                }
+                context.startActivity(intent)
             }
-            context.startActivity(intent)
         }
     }
 
     override fun getItemCount(): Int = eventList.size
+
+    fun getEventAt(position: Int): EventModel? = eventList.getOrNull(position)
 
     @SuppressLint("NotifyDataSetChanged")
     fun updateData(newEventList: List<EventModel>) {

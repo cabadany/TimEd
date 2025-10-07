@@ -34,6 +34,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.example.timed_mobile.HomeActivity
+import com.example.timed_mobile.tutorial.EventTutorialState
 // import com.google.mlkit.vision.barcode.BarcodeScannerOptions // Not used, can be removed
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -463,6 +465,13 @@ class TimeInEventActivity : WifiSecurityActivity() {
         }.start()
     }
     
+    private fun notifyEventTutorialTimeInCompleted() {
+        if (EventTutorialState.isActive(this)) {
+            EventTutorialState.completeStep(this, 3, markCompleted = false)
+            EventTutorialState.setExpectedAction(this, HomeActivity.ACTION_EVENT_TIME_OUT)
+        }
+    }
+
     private fun handleBackendResponse(responseCode: Int, responseMessage: String, eventId: String) {
         when (responseCode) {
             200 -> {
@@ -472,6 +481,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            notifyEventTutorialTimeInCompleted()
                             startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                             finish()
                         }
@@ -491,6 +501,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            notifyEventTutorialTimeInCompleted()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
                             startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -560,6 +571,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
                             .setPositiveButton("OK") { dialog, _ ->
                                 dialog.dismiss()
+                                notifyEventTutorialTimeInCompleted()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
                                 startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -575,6 +587,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             .setMessage("Successfully timed in for '${currentScannedEventName}'! Certificate will be processed shortly.")
                             .setPositiveButton("OK") { dialog, _ ->
                                 dialog.dismiss()
+                                notifyEventTutorialTimeInCompleted()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
                                 startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -590,6 +603,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                             .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
                             .setPositiveButton("OK") { dialog, _ ->
                                 dialog.dismiss()
+                                notifyEventTutorialTimeInCompleted()
                                 val resultIntent = Intent()
                                 setResult(RESULT_OK, resultIntent)
                                 startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -613,6 +627,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                         .setMessage("Successfully timed in for '${currentScannedEventName}'! Certificate will be processed shortly.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
+                            notifyEventTutorialTimeInCompleted()
                             val resultIntent = Intent()
                             setResult(RESULT_OK, resultIntent)
                             startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -671,6 +686,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                                 .setMessage("Successfully timed in for '${currentScannedEventName}'! Processing certificate...")
                                 .setPositiveButton("OK") { dialog, _ ->
                                     dialog.dismiss()
+                                    notifyEventTutorialTimeInCompleted()
                                     startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
                                     finish()
                                 }

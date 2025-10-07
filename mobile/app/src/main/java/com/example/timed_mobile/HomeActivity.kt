@@ -20,6 +20,7 @@ import android.view.animation.TranslateAnimation
 import android.animation.ObjectAnimator
 import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -32,8 +33,10 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.example.timed_mobile.EventDetailActivity
 import com.example.timed_mobile.adapter.EventAdapter
 import com.example.timed_mobile.model.EventModel
+import com.example.timed_mobile.tutorial.EventTutorialState
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
@@ -64,21 +67,32 @@ class HomeActivity : WifiSecurityActivity() {
 
         // --- Quick Tour Keys ---
         const val TOTAL_QUICK_TOUR_STEPS = 4
-        const val KEY_QUICK_TOUR_COMPLETED = "quickTourCompleted" // Renamed from KEY_TUTORIAL_COMPLETED
-        const val KEY_QUICK_TOUR_CURRENT_STEP = "quickTourCurrentStep" // Added for progress tracking
+        const val KEY_QUICK_TOUR_COMPLETED =
+            "quickTourCompleted" // Renamed from KEY_TUTORIAL_COMPLETED
+        const val KEY_QUICK_TOUR_CURRENT_STEP =
+            "quickTourCurrentStep" // Added for progress tracking
 
         const val EXTRA_IS_TUTORIAL_MODE = "is_tutorial_mode"
 
         // --- Attendance Workflow Guide Keys ---
-        const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 4
+        const val TOTAL_ATTENDANCE_TUTORIAL_STEPS = 6
         const val KEY_ATTENDANCE_TUTORIAL_COMPLETED = "attendanceTutorialCompleted"
-        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP = "attendanceGuideCurrentStep" // Added for progress tracking
+        const val KEY_ATTENDANCE_GUIDE_CURRENT_STEP =
+            "attendanceGuideCurrentStep" // Added for progress tracking
+
+        const val TOTAL_EVENT_TUTORIAL_STEPS = 4
+        const val KEY_EVENT_TUTORIAL_COMPLETED = "eventTutorialCompleted"
+        const val KEY_EVENT_TUTORIAL_CURRENT_STEP = "eventTutorialCurrentStep"
+        const val KEY_EVENT_TUTORIAL_EXPECTED_ACTION = "eventTutorialExpectedAction"
+        const val KEY_EVENT_TUTORIAL_ACTIVE = "eventTutorialActive"
 
         // --- Interactive Tutorial Action Constants ---
         private const val TUTORIAL_NAME_QUICK_TOUR = "TUTORIAL_NAME_QUICK_TOUR"
         private const val TUTORIAL_NAME_ATTENDANCE = "TUTORIAL_NAME_ATTENDANCE"
+        private const val TUTORIAL_NAME_EVENT = "TUTORIAL_NAME_EVENT"
         private const val ACTION_USER_CLICK_TIME_IN = "ACTION_USER_CLICK_TIME_IN"
         private const val ACTION_USER_PERFORMED_TIME_IN = "ACTION_USER_PERFORMED_TIME_IN"
+
         // TODO: Add more for other interactive steps:
         // private const val ACTION_USER_CLICK_TIME_OUT = "ACTION_USER_CLICK_TIME_OUT"
         // private const val ACTION_USER_PERFORMED_TIME_OUT = "ACTION_USER_PERFORMED_TIME_OUT"
@@ -86,9 +100,14 @@ class HomeActivity : WifiSecurityActivity() {
         // private const val ACTION_USER_PERFORMED_STATUS_SELECT = "ACTION_USER_PERFORMED_STATUS_SELECT"
         // private const val ACTION_USER_CLICK_EXCUSE_LETTER = "ACTION_USER_CLICK_EXCUSE_LETTER"
         // private const val ACTION_USER_PERFORMED_EXCUSE_LETTER = "ACTION_USER_PERFORMED_EXCUSE_LETTER"
+        const val ACTION_EVENT_OPEN_CALENDAR = "ACTION_EVENT_OPEN_CALENDAR"
+        const val ACTION_EVENT_SELECT_EVENT = "ACTION_EVENT_SELECT_EVENT"
+        const val ACTION_EVENT_TIME_IN = "ACTION_EVENT_TIME_IN"
+        const val ACTION_EVENT_TIME_OUT = "ACTION_EVENT_TIME_OUT"
     }
 
     private var currentTutorialPopupWindow: PopupWindow? = null
+
     // These will be set when a specific tutorial flow starts.
     private var activeTutorialCompletionKey: String = KEY_QUICK_TOUR_COMPLETED
     private var activeTutorialStepKey: String = KEY_QUICK_TOUR_CURRENT_STEP
@@ -107,18 +126,25 @@ class HomeActivity : WifiSecurityActivity() {
         if (result.resultCode == RESULT_OK) {
             if (isInteractiveTutorialActive &&
                 currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
-                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN
+            ) {
 
                 Log.d(TAG, "Attendance Tutorial: TimeInActivity successful (Step 1).")
                 tutorialPrefs.edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 1).apply()
                 updateNavHeaderTutorialProgress() // Update nav header after step completion
-                Log.d(TAG, "Attendance tutorial: TimeInActivity part (step 1) completed. Saved step 1.")
+                Log.d(
+                    TAG,
+                    "Attendance tutorial: TimeInActivity part (step 1) completed. Saved step 1."
+                )
 
                 // Proceed to the next tutorial step instruction
-                showTimeOutButtonTutorialStep()
+                showEventCalendarTutorialStep()
             } else {
                 // TimeInActivity was successful, but not as part of the expected tutorial action
-                Log.w(TAG, "TimeInActivity (tutorial mode) returned OK, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
+                Log.w(
+                    TAG,
+                    "TimeInActivity (tutorial mode) returned OK, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName"
+                )
                 // Handle normal successful time-in UI updates
                 Toast.makeText(this, "Time-In recorded.", Toast.LENGTH_SHORT).show()
                 updateUserStatus("On Duty")
@@ -131,21 +157,33 @@ class HomeActivity : WifiSecurityActivity() {
                     isUserChangingStatus = false
                     statusSpinner.setSelection(index)
                 }
-                if(isInteractiveTutorialActive) handleTutorialCancellation() // Cancel tutorial if state is unexpected
+                if (isInteractiveTutorialActive) handleTutorialCancellation() // Cancel tutorial if state is unexpected
             }
         } else { // Result was not OK (e.g., user cancelled TimeInActivity)
             if (isInteractiveTutorialActive &&
                 currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
-                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN) {
+                expectedInteractiveTutorialAction == ACTION_USER_PERFORMED_TIME_IN
+            ) {
 
-                Log.d(TAG, "Attendance Tutorial: TimeInActivity cancelled or failed by user (Step 1).")
-                Toast.makeText(this, "Time-In was not completed. Please tap the 'Time-In' button again to try.", Toast.LENGTH_LONG).show()
-                expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN // Reset to expect click again
+                Log.d(
+                    TAG,
+                    "Attendance Tutorial: TimeInActivity cancelled or failed by user (Step 1)."
+                )
+                Toast.makeText(
+                    this,
+                    "Time-In was not completed. Please tap the 'Time-In' button again to try.",
+                    Toast.LENGTH_LONG
+                ).show()
+                expectedInteractiveTutorialAction =
+                    ACTION_USER_CLICK_TIME_IN // Reset to expect click again
                 hideOverlay()
                 updateNavHeaderTutorialProgress() // Reflect current (unchanged) progress
             } else {
-                Log.w(TAG, "TimeInActivity (tutorial mode) cancelled, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName")
-                if(isInteractiveTutorialActive) handleTutorialCancellation()
+                Log.w(
+                    TAG,
+                    "TimeInActivity (tutorial mode) cancelled, but not as expected by interactive tutorial state ($expectedInteractiveTutorialAction). Current tutorial: $currentInteractiveTutorialName"
+                )
+                if (isInteractiveTutorialActive) handleTutorialCancellation()
                 else Toast.makeText(this, "Time-In was not completed.", Toast.LENGTH_SHORT).show()
             }
         }
@@ -173,6 +211,8 @@ class HomeActivity : WifiSecurityActivity() {
 
     private lateinit var greetingCardNavIcon: ImageView
     private lateinit var tutorialOverlay: FrameLayout
+    private var tutorialCalendarSheet: com.example.timed_mobile.calendar.EventCalendarBottomSheet? =
+        null
     private lateinit var noEventsMessage: TextView
 
     private val allEvents = mutableListOf<EventModel>()
@@ -192,7 +232,7 @@ class HomeActivity : WifiSecurityActivity() {
     private lateinit var profileImagePlaceholder: ImageView
 
     private var tutorialProgressOnRightNavHeader: LinearLayout? = null
-    
+
     // Department id cached for calendar and event queries
     private var userDepartmentId: String? = null
     private var tutorialProgressBarOnRight: ProgressBar? = null
@@ -255,11 +295,16 @@ class HomeActivity : WifiSecurityActivity() {
 
         val headerView: View? = navigationView.getHeaderView(0)
         if (headerView != null) {
-            tutorialProgressOnRightNavHeader = headerView.findViewById(R.id.tutorial_progress_on_right_nav_header)
-            tutorialProgressBarOnRight = headerView.findViewById(R.id.tutorial_bar_on_right_nav_header)
+            tutorialProgressOnRightNavHeader =
+                headerView.findViewById(R.id.tutorial_progress_on_right_nav_header)
+            tutorialProgressBarOnRight =
+                headerView.findViewById(R.id.tutorial_bar_on_right_nav_header)
             tutorialTitleTextOnRight = headerView.findViewById(R.id.tutorial_title_text)
             tutorialPercentageTextOnRight = headerView.findViewById(R.id.tutorial_percentage_text)
-            Log.d(TAG_TUTORIAL_NAV, "Nav Header Tutorial Views Initialized: Container=${tutorialProgressOnRightNavHeader != null}, Bar=${tutorialProgressBarOnRight != null}, Title=${tutorialTitleTextOnRight != null}, Percentage=${tutorialPercentageTextOnRight != null}")
+            Log.d(
+                TAG_TUTORIAL_NAV,
+                "Nav Header Tutorial Views Initialized: Container=${tutorialProgressOnRightNavHeader != null}, Bar=${tutorialProgressBarOnRight != null}, Title=${tutorialTitleTextOnRight != null}, Percentage=${tutorialPercentageTextOnRight != null}"
+            )
 
             if (tutorialProgressOnRightNavHeader != null) {
                 tutorialProgressOnRightNavHeader?.isClickable = true
@@ -267,7 +312,10 @@ class HomeActivity : WifiSecurityActivity() {
                 tutorialProgressOnRightNavHeader?.setOnClickListener {
                     // Button-like press animation on the container (scale down then back) and then open the activity.
                     val container = tutorialProgressOnRightNavHeader
-                    val intent = Intent(this, TutorialProgressActivity::class.java).apply { putExtra("userId", userId) }
+                    val intent = Intent(
+                        this,
+                        TutorialProgressActivity::class.java
+                    ).apply { putExtra("userId", userId) }
 
                     if (container != null) {
                         try {
@@ -276,33 +324,50 @@ class HomeActivity : WifiSecurityActivity() {
                             container.isClickable = false
 
                             // Press in
-                            container.animate().scaleX(0.96f).scaleY(0.96f).setDuration(100).setInterpolator(DecelerateInterpolator()).withEndAction {
-                                // Release back to normal
-                                container.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(DecelerateInterpolator()).withEndAction {
-                                    container.isClickable = true
-                                    // Launch the activity after the visual feedback completes
-                                    startActivity(intent)
-                                    Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity after container press animation.")
-                                }
-                            }.start()
+                            container.animate().scaleX(0.96f).scaleY(0.96f).setDuration(100)
+                                .setInterpolator(DecelerateInterpolator()).withEndAction {
+                                    // Release back to normal
+                                    container.animate().scaleX(1f).scaleY(1f).setDuration(140)
+                                        .setInterpolator(DecelerateInterpolator()).withEndAction {
+                                            container.isClickable = true
+                                            // Launch the activity after the visual feedback completes
+                                            startActivity(intent)
+                                            Log.d(
+                                                TAG_TUTORIAL_NAV,
+                                                "Tutorial progress header clicked, launching TutorialProgressActivity after container press animation."
+                                            )
+                                        }
+                                }.start()
                         } catch (e: Exception) {
                             // Fallback: if animation fails, re-enable and launch immediately
                             container.isClickable = true
                             startActivity(intent)
-                            Log.w(TAG_TUTORIAL_NAV, "Container animation failed, launching TutorialProgressActivity immediately: ${e.message}")
+                            Log.w(
+                                TAG_TUTORIAL_NAV,
+                                "Container animation failed, launching TutorialProgressActivity immediately: ${e.message}"
+                            )
                         }
                     } else {
                         // If container is null, fallback to immediate launch
                         startActivity(intent)
-                        Log.d(TAG_TUTORIAL_NAV, "Tutorial progress header clicked, launching TutorialProgressActivity (container missing).")
+                        Log.d(
+                            TAG_TUTORIAL_NAV,
+                            "Tutorial progress header clicked, launching TutorialProgressActivity (container missing)."
+                        )
                     }
                 }
             } else {
-                Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader (LinearLayout) itself was not found in headerView.")
+                Log.e(
+                    TAG_TUTORIAL_NAV,
+                    "tutorialProgressOnRightNavHeader (LinearLayout) itself was not found in headerView."
+                )
             }
 
         } else {
-            Log.e(TAG_TUTORIAL_NAV, "Navigation headerView is NULL. Cannot find tutorial progress views.")
+            Log.e(
+                TAG_TUTORIAL_NAV,
+                "Navigation headerView is NULL. Cannot find tutorial progress views."
+            )
         }
 
         greetingCardNavIcon.setOnClickListener {
@@ -334,10 +399,15 @@ class HomeActivity : WifiSecurityActivity() {
 
         val greetingCardView = findViewById<androidx.cardview.widget.CardView>(R.id.greeting_card)
         val filterButtonsLayout = findViewById<LinearLayout>(R.id.filter_buttons)
-        val attendancePromptView: TextView? = try { findViewById(R.id.attendance_prompt) } catch (e: Exception) { null }
+        val attendancePromptView: TextView? = try {
+            findViewById(R.id.attendance_prompt)
+        } catch (e: Exception) {
+            null
+        }
         val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
         greetingCardView.startAnimation(animSlideDownFadeIn)
-        val animSlideDownFilters = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        val animSlideDownFilters =
+            AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
         animSlideDownFilters.startOffset = 200L
         filterButtonsLayout.startAnimation(animSlideDownFilters)
         val animFadeInRecycler = AnimationUtils.loadAnimation(this, R.anim.fade_in)
@@ -345,18 +415,23 @@ class HomeActivity : WifiSecurityActivity() {
         recyclerEvents.startAnimation(animFadeInRecycler)
         val baseDelayBottom = 600L
         attendancePromptView?.let {
-            val animSlideUpPrompt = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+            val animSlideUpPrompt =
+                AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
             animSlideUpPrompt.startOffset = baseDelayBottom
             it.startAnimation(animSlideUpPrompt)
         }
         val animSlideUpTimeIn = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
-        animSlideUpTimeIn.startOffset = baseDelayBottom + (if (attendancePromptView != null) 100L else 0L)
+        animSlideUpTimeIn.startOffset =
+            baseDelayBottom + (if (attendancePromptView != null) 100L else 0L)
         btnTimeIn.startAnimation(animSlideUpTimeIn)
         val animSlideUpTimeOut = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
-        animSlideUpTimeOut.startOffset = baseDelayBottom + (if (attendancePromptView != null) 200L else 100L)
+        animSlideUpTimeOut.startOffset =
+            baseDelayBottom + (if (attendancePromptView != null) 200L else 100L)
         btnTimeOut.startAnimation(animSlideUpTimeOut)
-        val animSlideUpExcuseLetter = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
-        animSlideUpExcuseLetter.startOffset = baseDelayBottom + (if (attendancePromptView != null) 300L else 200L)
+        val animSlideUpExcuseLetter =
+            AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in_bottom)
+        animSlideUpExcuseLetter.startOffset =
+            baseDelayBottom + (if (attendancePromptView != null) 300L else 200L)
         excuseLetterText.startAnimation(animSlideUpExcuseLetter)
 
         btnHelp.setOnClickListener {
@@ -365,10 +440,29 @@ class HomeActivity : WifiSecurityActivity() {
         btnCalendar.setOnClickListener {
             val deptId = userDepartmentId
             if (deptId.isNullOrEmpty()) {
-                Toast.makeText(this, "No department assigned. Cannot open calendar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "No department assigned. Cannot open calendar.",
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
-                val sheet = com.example.timed_mobile.calendar.EventCalendarBottomSheet.newInstance(deptId)
+                val sheet =
+                    com.example.timed_mobile.calendar.EventCalendarBottomSheet.newInstance(deptId)
+                tutorialCalendarSheet = sheet
+                sheet.onDismissed = {
+                    if (tutorialCalendarSheet === sheet) {
+                        tutorialCalendarSheet = null
+                    }
+                }
                 sheet.show(supportFragmentManager, "EventCalendar")
+
+                if (isInteractiveTutorialActive &&
+                    currentInteractiveTutorialName == TUTORIAL_NAME_EVENT
+                ) {
+                    if (expectedInteractiveTutorialAction == ACTION_EVENT_SELECT_EVENT) {
+                        tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
+                    }
+                }
             }
         }
 
@@ -380,7 +474,12 @@ class HomeActivity : WifiSecurityActivity() {
             false
         }
         statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
                 if (!isSpinnerInitialized) {
                     isSpinnerInitialized = true
                     return
@@ -392,11 +491,12 @@ class HomeActivity : WifiSecurityActivity() {
                 }
                 isUserChangingStatus = false
             }
+
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         recyclerEvents.layoutManager = LinearLayoutManager(this)
-        recyclerEvents.adapter = EventAdapter(mutableListOf())
+        recyclerEvents.adapter = EventAdapter(mutableListOf(), ::onEventItemClicked)
 
         val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
         userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
@@ -452,7 +552,10 @@ class HomeActivity : WifiSecurityActivity() {
         profileImagePlaceholder.setOnClickListener(profileClickListener)
         greetingName.setOnClickListener(profileClickListener)
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.primary_deep_blue, R.color.primary_medium_blue)
+        swipeRefreshLayout.setColorSchemeResources(
+            R.color.primary_deep_blue,
+            R.color.primary_medium_blue
+        )
         swipeRefreshLayout.setOnRefreshListener {
             Log.d("HomeActivity", "Pull-to-refresh triggered")
             loadTodayTimeInPhoto()
@@ -465,7 +568,8 @@ class HomeActivity : WifiSecurityActivity() {
         drawerLayout.post {
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             val quickTourDone = tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)
-            val attendanceGuideDone = tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+            val attendanceGuideDone =
+                tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
 
             if (!quickTourDone && !attendanceGuideDone) { // Neither completed, show dialog
                 showTutorialDialog()
@@ -491,19 +595,26 @@ class HomeActivity : WifiSecurityActivity() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(
+                        Calendar.SECOND,
+                        0
+                    ); set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
 
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                        val timestamp =
+                            child.child("timestamp").getValue(Long::class.java) ?: continue
                         if (type == "TimeIn" && timestamp >= todayStart) {
                             callback(true); return
                         }
                     }
                     callback(false)
                 }
-                override fun onCancelled(error: DatabaseError) { callback(false) }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false)
+                }
             })
     }
 
@@ -516,7 +627,10 @@ class HomeActivity : WifiSecurityActivity() {
                         .setMessage("You haven't timed in yet. Do you want to time in now?")
                         .setPositiveButton("Yes") { _, _ ->
                             val intent = Intent(this, TimeInActivity::class.java).apply {
-                                putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
+                                putExtra("userId", userId); putExtra(
+                                "email",
+                                userEmail ?: ""
+                            ); putExtra("firstName", userFirstName ?: "User")
                             }
                             timeInLauncher.launch(intent)
                         }
@@ -554,8 +668,18 @@ class HomeActivity : WifiSecurityActivity() {
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
         firestore.collection("users").document(userId)
             .update("status", status)
-            .addOnSuccessListener { Log.d("HomeActivity", "Status updated to $status in Firestore") }
-            .addOnFailureListener { Log.e("HomeActivity", "Failed to update status in Firestore: ${it.message}") }
+            .addOnSuccessListener {
+                Log.d(
+                    "HomeActivity",
+                    "Status updated to $status in Firestore"
+                )
+            }
+            .addOnFailureListener {
+                Log.e(
+                    "HomeActivity",
+                    "Failed to update status in Firestore: ${it.message}"
+                )
+            }
     }
 
     private fun updateTimeLogsStatus(status: String) {
@@ -567,30 +691,66 @@ class HomeActivity : WifiSecurityActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     for (child in snapshot.children) {
                         val logTimestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0); set(
+                            Calendar.MINUTE,
+                            0
+                        ); set(
+                            Calendar.SECOND,
+                            0
+                        ); set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
                         if (logTimestamp >= todayStart) {
                             child.ref.child("status").setValue(status)
-                                .addOnSuccessListener { Log.d("HomeActivity", "Status updated to $status in RealtimeDB for log ${child.key}") }
-                                .addOnFailureListener { Log.e("HomeActivity", "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}") }
+                                .addOnSuccessListener {
+                                    Log.d(
+                                        "HomeActivity",
+                                        "Status updated to $status in RealtimeDB for log ${child.key}"
+                                    )
+                                }
+                                .addOnFailureListener {
+                                    Log.e(
+                                        "HomeActivity",
+                                        "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}"
+                                    )
+                                }
                         }
                     }
                 }
-                override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to update timeLogs status: ${error.message}") }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to update timeLogs status: ${error.message}")
+                }
             })
     }
 
     private fun handleTimeOutOnOffDuty() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
-        val userEmail = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_EMAIL, null)
-        val userFirstName = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_FIRST_NAME, "User")
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userEmail = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_EMAIL, null)
+        val userFirstName = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_FIRST_NAME, "User")
         val intent = Intent(this, TimeOutActivity::class.java).apply {
-            putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
+            putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra(
+            "firstName",
+            userFirstName ?: "User"
+        )
         }
         startActivity(intent)
     }
 
     private fun loadUserStatus() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
                 val firestoreStatus = doc.getString("status") ?: "Off Duty"
@@ -599,21 +759,31 @@ class HomeActivity : WifiSecurityActivity() {
                     isUserChangingStatus = false
                     statusSpinner.setSelection(index, false)
                 }
-                val realtimeRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                val realtimeRef =
+                    FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
                 realtimeRef.orderByChild("timestamp").limitToLast(10)
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
-                            var latestTimeIn: Long? = null; var latestTimeOut: Long? = null
+                            var latestTimeIn: Long? = null;
+                            var latestTimeOut: Long? = null
                             var statusFromLogs = firestoreStatus
                             val todayStart = Calendar.getInstance().apply {
-                                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                                set(Calendar.HOUR_OF_DAY, 0); set(
+                                Calendar.MINUTE,
+                                0
+                            ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
                             }.timeInMillis
                             for (child in snapshot.children) {
                                 val type = child.child("type").getValue(String::class.java)
                                 val timestamp = child.child("timestamp").getValue(Long::class.java)
                                 if (timestamp != null && timestamp >= todayStart) {
-                                    if (type == "TimeIn") { if (latestTimeIn == null || timestamp > latestTimeIn) latestTimeIn = timestamp }
-                                    else if (type == "TimeOut") { if (latestTimeOut == null || timestamp > latestTimeOut) latestTimeOut = timestamp }
+                                    if (type == "TimeIn") {
+                                        if (latestTimeIn == null || timestamp > latestTimeIn) latestTimeIn =
+                                            timestamp
+                                    } else if (type == "TimeOut") {
+                                        if (latestTimeOut == null || timestamp > latestTimeOut) latestTimeOut =
+                                            timestamp
+                                    }
                                 }
                             }
                             statusFromLogs = when {
@@ -621,20 +791,30 @@ class HomeActivity : WifiSecurityActivity() {
                                 latestTimeIn != null -> "On Duty"
                                 else -> firestoreStatus
                             }
-                            if (statusFromLogs != firestoreStatus) { updateUserStatus(statusFromLogs) }
+                            if (statusFromLogs != firestoreStatus) {
+                                updateUserStatus(statusFromLogs)
+                            }
                             val finalIndex = statusOptions.indexOf(statusFromLogs)
                             if (finalIndex != -1) {
                                 isUserChangingStatus = false
                                 statusSpinner.setSelection(finalIndex)
                             }
                         }
-                        override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to load user status from RealtimeDB: ${error.message}") }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e(
+                                "HomeActivity",
+                                "Failed to load user status from RealtimeDB: ${error.message}"
+                            )
+                        }
                     })
             }
             .addOnFailureListener {
                 Log.e("HomeActivity", "Failed to load user status from Firestore: ${it.message}")
                 val index = statusOptions.indexOf("Off Duty")
-                if (index != -1) { isUserChangingStatus = false; statusSpinner.setSelection(index) }
+                if (index != -1) {
+                    isUserChangingStatus = false; statusSpinner.setSelection(index)
+                }
             }
     }
 
@@ -642,7 +822,10 @@ class HomeActivity : WifiSecurityActivity() {
         val filterButtons = listOf(btnUpcoming, btnOngoing, btnEnded, btnCancelled)
         filterButtons.forEach { button ->
             button.isSelected = (button.id == selectedButton.id)
-            button.backgroundTintList = ContextCompat.getColorStateList(this, if (button.isSelected) R.color.primary_deep_blue else R.color.white)
+            button.backgroundTintList = ContextCompat.getColorStateList(
+                this,
+                if (button.isSelected) R.color.primary_deep_blue else R.color.white
+            )
         }
     }
 
@@ -664,96 +847,142 @@ class HomeActivity : WifiSecurityActivity() {
         loadUserStatus()
         if (hasTimedOutToday()) {
             profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image).setImageResource(R.drawable.ic_profile)
+            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+                .setImageResource(R.drawable.ic_profile)
         } else {
             loadTodayTimeInPhoto()
             updateSidebarProfileImage()
         }
         evaluateAndDisplayAttendanceBadge()
+        syncEventTutorialStateFromPrefs()
     }
 
     private fun loadTodayTimeInPhoto() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
-        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { document ->
-            val userStatus = document.getString("status") ?: "Off Duty"
-            val profileUrl = document.getString("profilePictureUrl")
-            if (userStatus == "On Duty") {
-                FirebaseDatabase.getInstance().getReference("timeLogs").child(userId).orderByChild("timestamp").limitToLast(1)
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            var foundTodaysTimeIn = false
-                            for (child in snapshot.children) {
-                                val type = child.child("type").getValue(String::class.java)
-                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-                                if (type == "TimeIn" && timestamp >= todayStart) {
-                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                                    if (!imageUrl.isNullOrEmpty()) {
-                                        Glide.with(this@HomeActivity).load(imageUrl).circleCrop().diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).into(profileImagePlaceholder)
-                                        foundTodaysTimeIn = true; return
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val userStatus = document.getString("status") ?: "Off Duty"
+                val profileUrl = document.getString("profilePictureUrl")
+                if (userStatus == "On Duty") {
+                    FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                        .orderByChild("timestamp").limitToLast(1)
+                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                var foundTodaysTimeIn = false
+                                for (child in snapshot.children) {
+                                    val type = child.child("type").getValue(String::class.java)
+                                    val timestamp =
+                                        child.child("timestamp").getValue(Long::class.java) ?: 0L
+                                    val todayStart = Calendar.getInstance().apply {
+                                        set(Calendar.HOUR_OF_DAY, 0); set(
+                                        Calendar.MINUTE,
+                                        0
+                                    ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                                    }.timeInMillis
+                                    if (type == "TimeIn" && timestamp >= todayStart) {
+                                        val imageUrl =
+                                            child.child("imageUrl").getValue(String::class.java)
+                                        if (!imageUrl.isNullOrEmpty()) {
+                                            Glide.with(this@HomeActivity).load(imageUrl)
+                                                .circleCrop()
+                                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                                .skipMemoryCache(true).into(profileImagePlaceholder)
+                                            foundTodaysTimeIn = true; return
+                                        }
                                     }
                                 }
+                                if (!foundTodaysTimeIn) {
+                                    if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity)
+                                        .load(profileUrl).circleCrop().into(profileImagePlaceholder)
+                                    else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                                }
                             }
-                            if (!foundTodaysTimeIn) {
-                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
+
+                            override fun onCancelled(error: DatabaseError) {
+                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity)
+                                    .load(profileUrl).circleCrop().into(profileImagePlaceholder)
                                 else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
                             }
-                        }
-                        override fun onCancelled(error: DatabaseError) {
-                            if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
-                            else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-                        }
-                    })
-            } else {
-                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(profileImagePlaceholder)
-                else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                        })
+                } else {
+                    if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl)
+                        .circleCrop().into(profileImagePlaceholder)
+                    else profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                }
             }
-        }.addOnFailureListener { profileImagePlaceholder.setImageResource(R.drawable.ic_profile) }
+            .addOnFailureListener { profileImagePlaceholder.setImageResource(R.drawable.ic_profile) }
     }
 
     private fun updateSidebarProfileImage() {
-        val sidebarImage = navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
-        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { document ->
-            val userStatus = document.getString("status") ?: "Off Duty"
-            val profileUrl = document.getString("profilePictureUrl")
-            if (userStatus == "On Duty") {
-                FirebaseDatabase.getInstance().getReference("timeLogs").child(userId).orderByChild("timestamp").limitToLast(1)
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            var foundTodaysTimeIn = false
-                            for (child in snapshot.children) {
-                                val type = child.child("type").getValue(String::class.java)
-                                val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-                                if (type == "TimeIn" && timestamp >= todayStart) {
-                                    val imageUrl = child.child("imageUrl").getValue(String::class.java)
-                                    if (!imageUrl.isNullOrEmpty()) {
-                                        Glide.with(this@HomeActivity).load(imageUrl).circleCrop().diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).into(sidebarImage)
-                                        foundTodaysTimeIn = true; return
+        val sidebarImage =
+            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val userStatus = document.getString("status") ?: "Off Duty"
+                val profileUrl = document.getString("profilePictureUrl")
+                if (userStatus == "On Duty") {
+                    FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+                        .orderByChild("timestamp").limitToLast(1)
+                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                var foundTodaysTimeIn = false
+                                for (child in snapshot.children) {
+                                    val type = child.child("type").getValue(String::class.java)
+                                    val timestamp =
+                                        child.child("timestamp").getValue(Long::class.java) ?: 0L
+                                    val todayStart = Calendar.getInstance().apply {
+                                        set(Calendar.HOUR_OF_DAY, 0); set(
+                                        Calendar.MINUTE,
+                                        0
+                                    ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                                    }.timeInMillis
+                                    if (type == "TimeIn" && timestamp >= todayStart) {
+                                        val imageUrl =
+                                            child.child("imageUrl").getValue(String::class.java)
+                                        if (!imageUrl.isNullOrEmpty()) {
+                                            Glide.with(this@HomeActivity).load(imageUrl)
+                                                .circleCrop()
+                                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                                .skipMemoryCache(true).into(sidebarImage)
+                                            foundTodaysTimeIn = true; return
+                                        }
                                     }
                                 }
+                                if (!foundTodaysTimeIn) {
+                                    if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity)
+                                        .load(profileUrl).circleCrop().into(sidebarImage)
+                                    else sidebarImage.setImageResource(R.drawable.ic_profile)
+                                }
                             }
-                            if (!foundTodaysTimeIn) {
-                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
+
+                            override fun onCancelled(error: DatabaseError) {
+                                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity)
+                                    .load(profileUrl).circleCrop().into(sidebarImage)
                                 else sidebarImage.setImageResource(R.drawable.ic_profile)
                             }
-                        }
-                        override fun onCancelled(error: DatabaseError) {
-                            if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
-                            else sidebarImage.setImageResource(R.drawable.ic_profile)
-                        }
-                    })
-            } else {
-                if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl).circleCrop().into(sidebarImage)
-                else sidebarImage.setImageResource(R.drawable.ic_profile)
-            }
-        }.addOnFailureListener { sidebarImage.setImageResource(R.drawable.ic_profile) }
+                        })
+                } else {
+                    if (!profileUrl.isNullOrEmpty()) Glide.with(this@HomeActivity).load(profileUrl)
+                        .circleCrop().into(sidebarImage)
+                    else sidebarImage.setImageResource(R.drawable.ic_profile)
+                }
+            }.addOnFailureListener { sidebarImage.setImageResource(R.drawable.ic_profile) }
     }
 
     private fun sendEventNotification(title: String, message: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
                 showNotification(title, message)
             } else {
                 // Permission is not granted. Request it.
@@ -769,14 +998,28 @@ class HomeActivity : WifiSecurityActivity() {
     private fun showNotification(title: String, message: String) {
         val channelId = "event_channel_id"
         val notificationId = System.currentTimeMillis().toInt()
-        val intent = Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) }
-        val pendingIntent = PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT)
+        val intent = Intent(
+            this,
+            HomeActivity::class.java
+        ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT
+        )
         val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification).setContentTitle(title).setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true).setContentIntent(pendingIntent)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Event Notifications", NotificationManager.IMPORTANCE_HIGH).apply { description = "Notifications for Timed events" }
+            val channel = NotificationChannel(
+                channelId,
+                "Event Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Notifications for Timed events" }
             notificationManager.createNotificationChannel(channel)
         }
         notificationManager.notify(notificationId, builder.build())
@@ -789,14 +1032,21 @@ class HomeActivity : WifiSecurityActivity() {
         val sidebarEmail = headerView.findViewById<TextView>(R.id.sidebar_user_email)
         sidebarName.text = userFirstName ?: "User"
         userId?.let { uid ->
-            FirebaseFirestore.getInstance().collection("users").document(uid).get().addOnSuccessListener { userDoc ->
-                val departmentId = userDoc.getString("departmentId")
-                if (!departmentId.isNullOrEmpty()) {
-                    FirebaseFirestore.getInstance().collection("departments").document(departmentId).get()
-                        .addOnSuccessListener { deptDoc -> sidebarDetails.text = "$idNumber • ${deptDoc.getString("abbreviation") ?: "N/A"}" }
-                        .addOnFailureListener { sidebarDetails.text = "$idNumber • N/A" }
-                } else { sidebarDetails.text = "$idNumber • N/A" }
-            }
+            FirebaseFirestore.getInstance().collection("users").document(uid).get()
+                .addOnSuccessListener { userDoc ->
+                    val departmentId = userDoc.getString("departmentId")
+                    if (!departmentId.isNullOrEmpty()) {
+                        FirebaseFirestore.getInstance().collection("departments")
+                            .document(departmentId).get()
+                            .addOnSuccessListener { deptDoc ->
+                                sidebarDetails.text =
+                                    "$idNumber • ${deptDoc.getString("abbreviation") ?: "N/A"}"
+                            }
+                            .addOnFailureListener { sidebarDetails.text = "$idNumber • N/A" }
+                    } else {
+                        sidebarDetails.text = "$idNumber • N/A"
+                    }
+                }
         } ?: run { sidebarDetails.text = "$idNumber • N/A" }
         sidebarEmail.text = userEmail ?: ""
         // The problematic line accessing NavigationMenuView has been removed.
@@ -813,11 +1063,54 @@ class HomeActivity : WifiSecurityActivity() {
             Handler(mainLooper).postDelayed({
                 when (menuItem.itemId) {
                     R.id.nav_home -> {}
-                    R.id.nav_event_log -> startActivity(Intent(this, EventLogActivity::class.java).putExtra("userId", userId))
-                    R.id.nav_excuse_letter -> startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
-                    R.id.nav_excuse_letter_history -> startActivity(Intent(this, ExcuseLetterHistoryActivity::class.java).putExtra("userId", userId))
-                    R.id.nav_profile -> startActivity(Intent(this, ProfileActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
-                    R.id.nav_settings -> UiDialogs.showErrorPopup(this, "Coming Soon", "Settings screen is under development.")
+                    R.id.nav_event_log -> startActivity(
+                        Intent(
+                            this,
+                            EventLogActivity::class.java
+                        ).putExtra("userId", userId)
+                    )
+
+                    R.id.nav_excuse_letter -> startActivity(
+                        Intent(
+                            this,
+                            ExcuseLetterActivity::class.java
+                        ).apply {
+                            putExtra("userId", userId); putExtra(
+                            "email",
+                            userEmail
+                        ); putExtra("firstName", userFirstName); putExtra(
+                            "idNumber",
+                            idNumber
+                        ); putExtra("department", department)
+                        })
+
+                    R.id.nav_excuse_letter_history -> startActivity(
+                        Intent(
+                            this,
+                            ExcuseLetterHistoryActivity::class.java
+                        ).putExtra("userId", userId)
+                    )
+
+                    R.id.nav_profile -> startActivity(
+                        Intent(
+                            this,
+                            ProfileActivity::class.java
+                        ).apply {
+                            putExtra("userId", userId); putExtra(
+                            "email",
+                            userEmail
+                        ); putExtra("firstName", userFirstName); putExtra(
+                            "idNumber",
+                            idNumber
+                        ); putExtra("department", department)
+                        })
+
+                    R.id.nav_settings -> UiDialogs.showErrorPopup(
+                        this,
+                        "Coming Soon",
+                        "Settings screen is under development."
+                    )
+
                     R.id.nav_logout -> showLogoutDialog()
                 }
             }, 250)
@@ -826,9 +1119,11 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun showLogoutDialog() {
-        AlertDialog.Builder(this).setTitle("Log Out").setMessage("Are you sure you want to log out?")
+        AlertDialog.Builder(this).setTitle("Log Out")
+            .setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes") { _, _ ->
-                getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear()
+                    .apply()
                 getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
                 startActivity(Intent(this, LoginActivity::class.java))
                 finishAffinity()
@@ -840,7 +1135,11 @@ class HomeActivity : WifiSecurityActivity() {
         btnUpcoming.setOnClickListener { updateFilterButtonStates(btnUpcoming); showEventsByStatus("upcoming") }
         btnOngoing.setOnClickListener { updateFilterButtonStates(btnOngoing); showEventsByStatus("ongoing") }
         btnEnded.setOnClickListener { updateFilterButtonStates(btnEnded); showEventsByStatus("ended") }
-        btnCancelled.setOnClickListener { updateFilterButtonStates(btnCancelled); showEventsByStatus("cancelled") }
+        btnCancelled.setOnClickListener {
+            updateFilterButtonStates(btnCancelled); showEventsByStatus(
+            "cancelled"
+        )
+        }
         updateFilterButtonStates(btnUpcoming)
     }
 
@@ -848,25 +1147,32 @@ class HomeActivity : WifiSecurityActivity() {
         btnTimeIn.setOnClickListener {
             if (isInteractiveTutorialActive &&
                 currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
-                expectedInteractiveTutorialAction == ACTION_USER_CLICK_TIME_IN) {
+                expectedInteractiveTutorialAction == ACTION_USER_CLICK_TIME_IN
+            ) {
 
                 Log.d(TAG, "Attendance Tutorial: Time-In button clicked by user during tutorial.")
-                expectedInteractiveTutorialAction = ACTION_USER_PERFORMED_TIME_IN // Expect TimeInActivity result
+                expectedInteractiveTutorialAction =
+                    ACTION_USER_PERFORMED_TIME_IN // Expect TimeInActivity result
 
                 val intent = Intent(this, TimeInActivity::class.java).apply {
-                    putExtra(EXTRA_IS_TUTORIAL_MODE, true) // Signal TimeInActivity it's in tutorial mode
+                    putExtra(
+                        EXTRA_IS_TUTORIAL_MODE,
+                        true
+                    ) // Signal TimeInActivity it's in tutorial mode
                     putExtra("userId", userId)
                     putExtra("email", userEmail ?: "")
                     putExtra("firstName", userFirstName ?: "User")
                 }
                 timeInActivityTutorialLauncher.launch(intent)
             } else if (isInteractiveTutorialActive && currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE) {
-                Log.w(TAG, "Attendance Tutorial: Time-In button clicked, but not the expected action ($expectedInteractiveTutorialAction). Guiding user or allowing normal flow.")
+                Log.w(
+                    TAG,
+                    "Attendance Tutorial: Time-In button clicked, but not the expected action ($expectedInteractiveTutorialAction). Guiding user or allowing normal flow."
+                )
                 // Optionally, show a message to guide the user back to the correct tutorial action
                 // For now, let normal flow happen or show the default dialog
                 showDefaultTimeInDialog()
-            }
-            else {
+            } else {
                 // Normal Time-In button click
                 showDefaultTimeInDialog()
             }
@@ -875,14 +1181,27 @@ class HomeActivity : WifiSecurityActivity() {
             // TODO: Implement interactive tutorial logic for Time-Out if this is a tutorial step
             hasTimedInToday { alreadyTimedIn ->
                 if (!alreadyTimedIn) {
-                    AlertDialog.Builder(this).setTitle("Cannot Time-Out").setMessage("You haven't timed in yet. Please time in first before timing out.").setPositiveButton("OK", null).show()
+                    AlertDialog.Builder(this).setTitle("Cannot Time-Out")
+                        .setMessage("You haven't timed in yet. Please time in first before timing out.")
+                        .setPositiveButton("OK", null).show()
                 } else {
-                    AlertDialog.Builder(this).setTitle("Time - Out Confirmation").setMessage("Are you sure you want to time out for today?")
+                    AlertDialog.Builder(this).setTitle("Time - Out Confirmation")
+                        .setMessage("Are you sure you want to time out for today?")
                         .setPositiveButton("Yes") { _, _ ->
                             profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-                            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image).setImageResource(R.drawable.ic_profile)
+                            navigationView.getHeaderView(0)
+                                .findViewById<ImageView>(R.id.sidebar_profile_image)
+                                .setImageResource(R.drawable.ic_profile)
                             setTimedOutToday()
-                            val intent = Intent(this, TimeOutActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User") }
+                            val intent = Intent(this, TimeOutActivity::class.java).apply {
+                                putExtra(
+                                    "userId",
+                                    userId
+                                ); putExtra("email", userEmail ?: ""); putExtra(
+                                "firstName",
+                                userFirstName ?: "User"
+                            )
+                            }
                             startActivity(intent)
                         }
                         .setNegativeButton("Cancel", null).show()
@@ -892,10 +1211,14 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun showDefaultTimeInDialog() {
-        AlertDialog.Builder(this).setTitle("Time - In Confirmation").setMessage("Are you ready to time in for today?")
+        AlertDialog.Builder(this).setTitle("Time - In Confirmation")
+            .setMessage("Are you ready to time in for today?")
             .setPositiveButton("Yes") { _, _ ->
                 val intent = Intent(this, TimeInActivity::class.java).apply {
-                    putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra("firstName", userFirstName ?: "User")
+                    putExtra("userId", userId); putExtra(
+                    "email",
+                    userEmail ?: ""
+                ); putExtra("firstName", userFirstName ?: "User")
                 }
                 timeInLauncher.launch(intent) // Use the normal launcher
             }
@@ -906,143 +1229,370 @@ class HomeActivity : WifiSecurityActivity() {
     private fun setupExcuseLetterRedirect() {
         excuseLetterText.setOnClickListener {
             // TODO: Implement interactive tutorial logic if this is a tutorial step
-            startActivity(Intent(this, ExcuseLetterActivity::class.java).apply { putExtra("userId", userId); putExtra("email", userEmail); putExtra("firstName", userFirstName); putExtra("idNumber", idNumber); putExtra("department", department) })
+            startActivity(Intent(this, ExcuseLetterActivity::class.java).apply {
+                putExtra(
+                    "userId",
+                    userId
+                ); putExtra("email", userEmail); putExtra(
+                "firstName",
+                userFirstName
+            ); putExtra("idNumber", idNumber); putExtra("department", department)
+            })
         }
     }
 
     private fun loadAndStoreEvents() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
-        FirebaseFirestore.getInstance().collection("users").document(userId).get().addOnSuccessListener { userDoc ->
-            val departmentId: String? = userDoc.getString("departmentId")
-            if (departmentId.isNullOrEmpty()) {
-                UiDialogs.showErrorPopup(
-                    this,
-                    title = "Missing Department",
-                    message = "No department assigned. Cannot load events."
-                )
-                showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming); return@addOnSuccessListener
-            }
-            firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
-                .addOnSuccessListener { result ->
-                    val fullFormatter = SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-                    val shortDateFormatter = SimpleDateFormat("MMM d", Locale.getDefault())
-                    allEvents.clear()
-
-                    // --- Time Window Setup for Notifications ---
-                    val now = Calendar.getInstance()
-                    val nowMillis = now.timeInMillis
-                    val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                    }
-                    val todayStartMillis = todayStart.timeInMillis
-                    val yesterdayStart = (todayStart.clone() as Calendar).apply { add(Calendar.DATE, -1) }
-                    val yesterdayStartMillis = yesterdayStart.timeInMillis
-                    // --- End Time Window Setup ---
-
-                    val notifiedPrefs = getSharedPreferences("EventNotificationPrefs", Context.MODE_PRIVATE)
-
-                    for (doc in result) {
-                        try {
-                            val title = doc.getString("eventName") ?: continue
-                            val duration = doc.getString("duration") ?: "1:00:00"
-                            val date = doc.getTimestamp("date")?.toDate() ?: continue
-                            val venue = doc.getString("venue") ?: "N/A"
-                            val dateFormatted = fullFormatter.format(date)
-                            val statusFromDb = doc.getString("status") ?: "upcoming"
-                            val durationParts = duration.split(":")
-                            val durationMillis = when (durationParts.size) {
-                                3 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L + (durationParts[2].toLongOrNull() ?: 0)*1000L
-                                2 -> (durationParts[0].toLongOrNull() ?: 0)*3600000L + (durationParts[1].toLongOrNull() ?: 0)*60000L
-                                1 -> (durationParts[0].toLongOrNull() ?: 0)*60000L
-                                else -> 3600000L
-                            }
-                            val eventStartMillis = date.time; val eventEndMillis = eventStartMillis + durationMillis
-                            val dynamicStatus = when {
-                                statusFromDb.equals("cancelled", ignoreCase = true) -> "cancelled"
-                                statusFromDb.equals("ongoing", ignoreCase = true) -> "ongoing"
-                                statusFromDb.equals("ended", ignoreCase = true) -> "ended"
-                                // If status is "upcoming" or not present, calculate based on time
-                                else -> when {
-                                    nowMillis < eventStartMillis -> "upcoming"
-                                    nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
-                                    else -> "ended"
-                                }
-                            }
-
-                            // Notification for upcoming event (within 15 mins)
-                            if (dynamicStatus == "upcoming" && eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
-                                val notificationKey = "notified_upcoming_${doc.id}"
-                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
-                                    sendEventNotification("Event Starting Soon", "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s).")
-                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
-                                }
-                            }
-                            // Notification for when an event becomes ongoing
-                            else if (dynamicStatus == "ongoing") {
-                                val notificationKey = "notified_ongoing_${doc.id}"
-                                if (!notifiedPrefs.getBoolean(notificationKey, false)) {
-                                    sendEventNotification("Event is Ongoing", "\"$title\" has started.")
-                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
-                                }
-                            }
-                            // Notification for events that ended yesterday or today
-                            else if (dynamicStatus == "ended") {
-                                val notificationKey = "notified_ended_${doc.id}"
-                                val endedWithinWindow = eventEndMillis >= yesterdayStartMillis && eventEndMillis <= nowMillis
-                                if (endedWithinWindow && !notifiedPrefs.getBoolean(notificationKey, false)) {
-                                    sendEventNotification("Event Ended", "The event \"$title\" has now ended.")
-                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
-                                }
-                            }
-                            // Notification for events scheduled for yesterday or today that are cancelled
-                            else if (dynamicStatus == "cancelled") {
-                                val notificationKey = "notified_cancelled_${doc.id}"
-                                val scheduledForYesterdayOrToday = eventStartMillis >= yesterdayStartMillis && eventStartMillis < (todayStartMillis + 24 * 60 * 60 * 1000)
-                                if (scheduledForYesterdayOrToday && !notifiedPrefs.getBoolean(notificationKey, false)) {
-                                    val scheduledDateStr = shortDateFormatter.format(date)
-                                    sendEventNotification("Event Cancelled", "The event \"$title\" (for $scheduledDateStr) has been cancelled.")
-                                    notifiedPrefs.edit().putBoolean(notificationKey, true).apply()
-                                }
-                            }
-
-                            allEvents.add(EventModel(title, duration, dateFormatted, dynamicStatus, rawDate = date, venue = venue))
-                        } catch (e: Exception) { Log.e("FirestoreEvents", "Skipping event due to error: ${e.message}", e) }
-                    }
-
-                    // --- FIX: This logic now runs *after* allEvents is populated ---
-                    val defaultFilter = if (allEvents.any { it.status.equals("ongoing", ignoreCase = true) }) {
-                        "ongoing"
-                    } else {
-                        "upcoming"
-                    }
-                    showEventsByStatus(defaultFilter)
-                    val buttonToSelect = if (defaultFilter == "ongoing") btnOngoing else btnUpcoming
-                    updateFilterButtonStates(buttonToSelect)
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+            .addOnSuccessListener { userDoc ->
+                val departmentId: String? = userDoc.getString("departmentId")
+                if (departmentId.isNullOrEmpty()) {
+                    UiDialogs.showErrorPopup(
+                        this,
+                        title = "Missing Department",
+                        message = "No department assigned. Cannot load events."
+                    )
+                    showEventsByStatus("upcoming"); updateFilterButtonStates(btnUpcoming); return@addOnSuccessListener
                 }
-        .addOnFailureListener { Log.e("Firestore", "Failed to load events: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load events.") }
-    }.addOnFailureListener { Log.e("Firestore", "Failed to fetch user document: ${it.message}", it); UiDialogs.showErrorPopup(this, title = "Load Error", message = "Failed to load user info.") }
+                firestore.collection("events").whereEqualTo("departmentId", departmentId).get()
+                    .addOnSuccessListener { result ->
+                        val fullFormatter =
+                            SimpleDateFormat("MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
+                        val shortDateFormatter = SimpleDateFormat("MMM d", Locale.getDefault())
+                        allEvents.clear()
+
+                        // --- Time Window Setup for Notifications ---
+                        val now = Calendar.getInstance()
+                        val nowMillis = now.timeInMillis
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0); set(
+                            Calendar.MINUTE,
+                            0
+                        ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                        }
+                        val todayStartMillis = todayStart.timeInMillis
+                        val yesterdayStart =
+                            (todayStart.clone() as Calendar).apply { add(Calendar.DATE, -1) }
+                        val yesterdayStartMillis = yesterdayStart.timeInMillis
+                        // --- End Time Window Setup ---
+
+                        val notifiedPrefs =
+                            getSharedPreferences("EventNotificationPrefs", Context.MODE_PRIVATE)
+
+                        for (doc in result) {
+                            try {
+                                val title = doc.getString("eventName") ?: continue
+                                val duration = doc.getString("duration") ?: "1:00:00"
+                                val date = doc.getTimestamp("date")?.toDate() ?: continue
+                                val venue = doc.getString("venue") ?: "N/A"
+                                val dateFormatted = fullFormatter.format(date)
+                                val statusFromDb = doc.getString("status") ?: "upcoming"
+                                val durationParts = duration.split(":")
+                                val durationMillis = when (durationParts.size) {
+                                    3 -> (durationParts[0].toLongOrNull()
+                                        ?: 0) * 3600000L + (durationParts[1].toLongOrNull()
+                                        ?: 0) * 60000L + (durationParts[2].toLongOrNull()
+                                        ?: 0) * 1000L
+
+                                    2 -> (durationParts[0].toLongOrNull()
+                                        ?: 0) * 3600000L + (durationParts[1].toLongOrNull()
+                                        ?: 0) * 60000L
+
+                                    1 -> (durationParts[0].toLongOrNull() ?: 0) * 60000L
+                                    else -> 3600000L
+                                }
+                                val eventStartMillis = date.time;
+                                val eventEndMillis = eventStartMillis + durationMillis
+                                val dynamicStatus = when {
+                                    statusFromDb.equals(
+                                        "cancelled",
+                                        ignoreCase = true
+                                    ) -> "cancelled"
+
+                                    statusFromDb.equals("ongoing", ignoreCase = true) -> "ongoing"
+                                    statusFromDb.equals("ended", ignoreCase = true) -> "ended"
+                                    // If status is "upcoming" or not present, calculate based on time
+                                    else -> when {
+                                        nowMillis < eventStartMillis -> "upcoming"
+                                        nowMillis in eventStartMillis..eventEndMillis -> "ongoing"
+                                        else -> "ended"
+                                    }
+                                }
+
+                                // Notification for upcoming event (within 15 mins)
+                                if (dynamicStatus == "upcoming" && eventStartMillis - nowMillis in 1..(15 * 60 * 1000)) {
+                                    val notificationKey = "notified_upcoming_${doc.id}"
+                                    if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                        sendEventNotification(
+                                            "Event Starting Soon",
+                                            "\"$title\" starts in ${((eventStartMillis - nowMillis) / 60000).toInt()} minute(s)."
+                                        )
+                                        notifiedPrefs.edit().putBoolean(notificationKey, true)
+                                            .apply()
+                                    }
+                                }
+                                // Notification for when an event becomes ongoing
+                                else if (dynamicStatus == "ongoing") {
+                                    val notificationKey = "notified_ongoing_${doc.id}"
+                                    if (!notifiedPrefs.getBoolean(notificationKey, false)) {
+                                        sendEventNotification(
+                                            "Event is Ongoing",
+                                            "\"$title\" has started."
+                                        )
+                                        notifiedPrefs.edit().putBoolean(notificationKey, true)
+                                            .apply()
+                                    }
+                                }
+                                // Notification for events that ended yesterday or today
+                                else if (dynamicStatus == "ended") {
+                                    val notificationKey = "notified_ended_${doc.id}"
+                                    val endedWithinWindow =
+                                        eventEndMillis >= yesterdayStartMillis && eventEndMillis <= nowMillis
+                                    if (endedWithinWindow && !notifiedPrefs.getBoolean(
+                                            notificationKey,
+                                            false
+                                        )
+                                    ) {
+                                        sendEventNotification(
+                                            "Event Ended",
+                                            "The event \"$title\" has now ended."
+                                        )
+                                        notifiedPrefs.edit().putBoolean(notificationKey, true)
+                                            .apply()
+                                    }
+                                }
+                                // Notification for events scheduled for yesterday or today that are cancelled
+                                else if (dynamicStatus == "cancelled") {
+                                    val notificationKey = "notified_cancelled_${doc.id}"
+                                    val scheduledForYesterdayOrToday =
+                                        eventStartMillis >= yesterdayStartMillis && eventStartMillis < (todayStartMillis + 24 * 60 * 60 * 1000)
+                                    if (scheduledForYesterdayOrToday && !notifiedPrefs.getBoolean(
+                                            notificationKey,
+                                            false
+                                        )
+                                    ) {
+                                        val scheduledDateStr = shortDateFormatter.format(date)
+                                        sendEventNotification(
+                                            "Event Cancelled",
+                                            "The event \"$title\" (for $scheduledDateStr) has been cancelled."
+                                        )
+                                        notifiedPrefs.edit().putBoolean(notificationKey, true)
+                                            .apply()
+                                    }
+                                }
+
+                                allEvents.add(
+                                    EventModel(
+                                        title,
+                                        duration,
+                                        dateFormatted,
+                                        dynamicStatus,
+                                        rawDate = date,
+                                        venue = venue
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "FirestoreEvents",
+                                    "Skipping event due to error: ${e.message}",
+                                    e
+                                )
+                            }
+                        }
+
+                        // --- FIX: This logic now runs *after* allEvents is populated ---
+                        val defaultFilter =
+                            if (allEvents.any { it.status.equals("ongoing", ignoreCase = true) }) {
+                                "ongoing"
+                            } else {
+                                "upcoming"
+                            }
+                        showEventsByStatus(defaultFilter)
+                        val buttonToSelect =
+                            if (defaultFilter == "ongoing") btnOngoing else btnUpcoming
+                        updateFilterButtonStates(buttonToSelect)
+                    }
+                    .addOnFailureListener {
+                        Log.e(
+                            "Firestore",
+                            "Failed to load events: ${it.message}",
+                            it
+                        ); UiDialogs.showErrorPopup(
+                        this,
+                        title = "Load Error",
+                        message = "Failed to load events."
+                    )
+                    }
+            }.addOnFailureListener {
+                Log.e(
+                    "Firestore",
+                    "Failed to fetch user document: ${it.message}",
+                    it
+                ); UiDialogs.showErrorPopup(
+                this,
+                title = "Load Error",
+                message = "Failed to load user info."
+            )
+            }
     }
 
-private fun showEventsByStatus(statusFilter: String?) {
-    // --- FIX: Simplified Filtering Logic ---
-    // The status for each event is now correctly determined in `loadAndStoreEvents`.
-    // This function should ONLY filter and sort the existing `allEvents` list.
-    // The redundant and buggy re-calculation logic has been removed.
-    val filtered = if (statusFilter == null) {
-        allEvents
-    } else {
-        allEvents.filter { it.status.equals(statusFilter, ignoreCase = true) }
+    private fun showEventsByStatus(statusFilter: String?) {
+        // --- FIX: Simplified Filtering Logic ---
+        // The status for each event is now correctly determined in `loadAndStoreEvents`.
+        // This function should ONLY filter and sort the existing `allEvents` list.
+        // The redundant and buggy re-calculation logic has been removed.
+        val filtered = if (statusFilter == null) {
+            allEvents
+        } else {
+            allEvents.filter { it.status.equals(statusFilter, ignoreCase = true) }
+        }
+        val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
+
+        (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
+            ?: run {
+                recyclerEvents.adapter = EventAdapter(sorted.toMutableList(), ::onEventItemClicked)
+            }
+
+
+        val readableStatus =
+            statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                ?: "Selected"
+        noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+        if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
     }
-    val sorted = filtered.sortedWith(compareBy({ statusOrder(it.status) }, { it.rawDate }))
 
-    (recyclerEvents.adapter as? EventAdapter)?.updateData(sorted)
-        ?: run { recyclerEvents.adapter = EventAdapter(sorted.toMutableList()) }
+    private fun onEventItemClicked(event: EventModel): Boolean {
+        if (isInteractiveTutorialActive &&
+            currentInteractiveTutorialName == TUTORIAL_NAME_EVENT &&
+            expectedInteractiveTutorialAction == ACTION_EVENT_SELECT_EVENT
+        ) {
+            handleEventSelectionForTutorial(event, advanceStep = true)
+            return true
+        }
+        return false
+    }
 
+    private fun openCalendarForEventGuide() {
+        val calendarButton = findViewById<View>(R.id.btn_calendar)
+            ?: run {
+                Log.e(
+                    TAG,
+                    "Calendar button missing while trying to auto-open calendar for tutorial"
+                )
+                handleTutorialCancellation()
+                return
+            }
 
-    val readableStatus = statusFilter?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "Selected"
-    noEventsMessage.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
-    if (sorted.isEmpty()) noEventsMessage.text = "No $readableStatus event/s at the moment."
-}
+        val deptId = userDepartmentId
+        if (deptId.isNullOrEmpty()) {
+            Toast.makeText(
+                this,
+                "No department assigned. Cannot open calendar.",
+                Toast.LENGTH_SHORT
+            ).show()
+            handleTutorialCancellation()
+            return
+        }
+
+        calendarButton.post {
+            calendarButton.performClick()
+        }
+    }
+
+    private fun openFirstEventForEventGuide() {
+        val adapter = recyclerEvents.adapter as? EventAdapter
+        val firstEvent = adapter?.getEventAt(0)
+        if (firstEvent == null) {
+            Toast.makeText(
+                this,
+                "No events available right now. Choose any event manually to keep going.",
+                Toast.LENGTH_LONG
+            ).show()
+            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+            return
+        }
+
+        recyclerEvents.smoothScrollToPosition(0)
+        Handler(mainLooper).postDelayed({
+            handleEventSelectionForTutorial(firstEvent, advanceStep = true)
+        }, 350)
+    }
+
+    private fun openStoredEventForEventGuide() {
+        val storedEvent = EventTutorialState.readSelectedEvent(this)
+        if (storedEvent != null) {
+            Handler(mainLooper).postDelayed({
+                val nextAction = expectedInteractiveTutorialAction
+                handleEventSelectionForTutorial(
+                    storedEvent,
+                    advanceStep = false,
+                    nextExpectedAction = nextAction
+                )
+            }, 150)
+        } else {
+            Toast.makeText(
+                this,
+                "Let's pick an event again so I can reopen the details.",
+                Toast.LENGTH_SHORT
+            ).show()
+            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+            tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
+        }
+    }
+
+    private fun closeTutorialCalendarSheetIfOpen() {
+        val sheet = tutorialCalendarSheet
+        if (sheet != null) {
+            try {
+                sheet.dismissAllowingStateLoss()
+            } catch (ex: IllegalStateException) {
+                Log.w(TAG, "Failed to dismiss tutorial calendar sheet cleanly: ${ex.message}")
+            }
+            tutorialCalendarSheet = null
+        }
+    }
+
+    private fun handleEventSelectionForTutorial(
+        event: EventModel,
+        advanceStep: Boolean,
+        nextExpectedAction: String? = ACTION_EVENT_TIME_IN
+    ) {
+        if (!isInteractiveTutorialActive || currentInteractiveTutorialName != TUTORIAL_NAME_EVENT) {
+            launchEventDetail(event, tutorialMode = false)
+            return
+        }
+
+        if (advanceStep) {
+            completeEventGuideStep(2)
+        }
+
+        EventTutorialState.rememberSelectedEvent(this, event)
+        nextExpectedAction?.let { setEventTutorialExpectedAction(it) }
+
+        if (tutorialOverlay.visibility == View.VISIBLE) {
+            tutorialOverlay.visibility = View.GONE
+        }
+
+        Handler(mainLooper).postDelayed({
+            launchEventDetail(event, tutorialMode = true)
+        }, if (advanceStep) 220 else 120)
+    }
+
+    private fun launchEventDetail(event: EventModel, tutorialMode: Boolean) {
+        val intent = Intent(this, EventDetailActivity::class.java).apply {
+            putExtra("eventTitle", event.title)
+            putExtra("eventDate", event.dateFormatted)
+            putExtra("eventStatus", event.status)
+            putExtra("eventVenue", event.venue ?: "N/A")
+            if (tutorialMode) {
+                putExtra(EXTRA_IS_TUTORIAL_MODE, true)
+            }
+        }
+        startActivity(intent)
+    }
 
     private fun statusOrder(status: String): Int = when (status.lowercase(Locale.ROOT)) {
         "upcoming" -> 0; "ongoing" -> 1; "ended" -> 2; "cancelled" -> 3; else -> 4
@@ -1053,9 +1603,11 @@ private fun showEventsByStatus(statusFilter: String?) {
         if (tutorialOverlay.visibility == View.VISIBLE) {
             tutorialOverlay.visibility = View.GONE
         }
+        closeTutorialCalendarSheetIfOpen()
         isInteractiveTutorialActive = false
         currentInteractiveTutorialName = null
-        expectedInteractiveTutorialAction = null
+        setEventTutorialExpectedAction(null)
+        markEventTutorialActive(false)
 
         Log.d(TAG_TUTORIAL_NAV, "Tutorial CANCELED.")
         updateNavHeaderTutorialProgress() // Update nav header to show progress at cancellation
@@ -1092,6 +1644,7 @@ private fun showEventsByStatus(statusFilter: String?) {
 
         val layoutQuickTour = dialog.findViewById<LinearLayout>(R.id.layout_quick_tour)
         val layoutAttendanceGuide = dialog.findViewById<LinearLayout?>(R.id.layout_attendance_guide)
+        val layoutEventGuide = dialog.findViewById<LinearLayout?>(R.id.layout_event_guide)
         val btnCancel = dialog.findViewById<Button>(R.id.btn_cancel_tutorial_dialog)
 
         layoutQuickTour.setOnClickListener {
@@ -1106,18 +1659,29 @@ private fun showEventsByStatus(statusFilter: String?) {
             dialog.dismiss()
         }
 
+        layoutEventGuide?.setOnClickListener {
+            previousTargetLocationForAnimation = null
+            startEventWorkflowTutorial(resetProgress = true)
+            dialog.dismiss()
+        }
+
         btnCancel.setOnClickListener {
             dialog.dismiss()
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false) ||
-                !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
+                !tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
+            ) {
                 tutorialPrefs.edit()
                     .putBoolean(KEY_QUICK_TOUR_COMPLETED, true)
                     .putInt(KEY_QUICK_TOUR_CURRENT_STEP, TOTAL_QUICK_TOUR_STEPS)
                     .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, true)
                     .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
                     .apply()
-                Toast.makeText(this, "Tutorials skipped. You can access them again via the help button.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Tutorials skipped. You can access them again via the help button.",
+                    Toast.LENGTH_LONG
+                ).show()
                 // Temporarily set active keys to update and then hide one of the bars
                 activeTutorialCompletionKey = KEY_QUICK_TOUR_COMPLETED
                 activeTutorialStepKey = KEY_QUICK_TOUR_CURRENT_STEP
@@ -1131,7 +1695,10 @@ private fun showEventsByStatus(statusFilter: String?) {
 
     private fun updateNavHeaderTutorialProgress() {
         if (tutorialProgressOnRightNavHeader == null) {
-            Log.e(TAG_TUTORIAL_NAV, "Nav header tutorial views not initialized. Cannot update progress.")
+            Log.e(
+                TAG_TUTORIAL_NAV,
+                "Nav header tutorial views not initialized. Cannot update progress."
+            )
             return
         }
 
@@ -1158,8 +1725,9 @@ private fun showEventsByStatus(statusFilter: String?) {
         }
 
         // Manage visibility
-        val shouldBeVisible = (currentInteractiveTutorialName != null || currentStep > 0 || isCompleted) &&
-                (activeTutorialStepKey == KEY_QUICK_TOUR_CURRENT_STEP || activeTutorialStepKey == KEY_ATTENDANCE_GUIDE_CURRENT_STEP)
+        val shouldBeVisible =
+            (currentInteractiveTutorialName != null || currentStep > 0 || isCompleted) &&
+                    (activeTutorialStepKey == KEY_QUICK_TOUR_CURRENT_STEP || activeTutorialStepKey == KEY_ATTENDANCE_GUIDE_CURRENT_STEP)
 
 
         if (shouldBeVisible) {
@@ -1177,20 +1745,31 @@ private fun showEventsByStatus(statusFilter: String?) {
                     fadeOut.setAnimationListener(object : Animation.AnimationListener {
                         override fun onAnimationStart(p0: Animation?) {}
                         override fun onAnimationEnd(p0: Animation?) {
-                            if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility = View.GONE
+                            if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility =
+                                View.GONE
                         }
+
                         override fun onAnimationRepeat(p0: Animation?) {}
                     })
                     tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
                 }
             }
         }
-        Log.d(TAG_TUTORIAL_NAV, "Updated nav header progress for $activeTutorialStepKey: $percentage% (Step $currentStep/$totalSteps). Completed: $isCompleted. Visible: $shouldBeVisible")
+        Log.d(
+            TAG_TUTORIAL_NAV,
+            "Updated nav header progress for $activeTutorialStepKey: $percentage% (Step $currentStep/$totalSteps). Completed: $isCompleted. Visible: $shouldBeVisible"
+        )
     }
 
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun showCustomTutorialDialog(message: String, targetView: View, currentStepToShow: Int, totalStepsInTutorial: Int, onNext: () -> Unit) {
+    private fun showCustomTutorialDialog(
+        message: String,
+        targetView: View,
+        currentStepToShow: Int,
+        totalStepsInTutorial: Int,
+        onNext: () -> Unit
+    ) {
         tutorialOverlay.visibility = View.VISIBLE
 
         if (tutorialProgressOnRightNavHeader != null) {
@@ -1204,7 +1783,10 @@ private fun showEventsByStatus(statusFilter: String?) {
                 tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
             }
         } else {
-            Log.e(TAG_TUTORIAL_NAV, "tutorialProgressOnRightNavHeader is NULL in showCustomTutorialDialog.")
+            Log.e(
+                TAG_TUTORIAL_NAV,
+                "tutorialProgressOnRightNavHeader is NULL in showCustomTutorialDialog."
+            )
         }
 
         currentTutorialPopupWindow?.dismiss()
@@ -1216,29 +1798,49 @@ private fun showEventsByStatus(statusFilter: String?) {
         val nextButton = dialogView.findViewById<Button>(R.id.tutorial_next_button)
         val closeButton = dialogView.findViewById<ImageButton>(R.id.btn_close_tutorial_step)
 
-        progressTextView.text = "Step $currentStepToShow of $totalStepsInTutorial"; messageTextView.text = message
-        dialogView.measure(View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST))
+        progressTextView.text =
+            "Step $currentStepToShow of $totalStepsInTutorial"; messageTextView.text = message
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(
+                resources.displayMetrics.widthPixels,
+                View.MeasureSpec.AT_MOST
+            ),
+            View.MeasureSpec.makeMeasureSpec(
+                resources.displayMetrics.heightPixels,
+                View.MeasureSpec.AT_MOST
+            )
+        )
 
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
         val margin = (16 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
         val measuredWidth = dialogView.measuredWidth
-        val initialDialogWidth = if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
+        val initialDialogWidth =
+            if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
         val upperWidthBound = (screenWidth - 2 * margin).coerceAtLeast(margin * 2)
         val lowerWidthBound = (margin * 2).coerceAtLeast(1)
         val dialogWidth = initialDialogWidth.coerceIn(lowerWidthBound, upperWidthBound)
-        val dialogHeight = dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
-        var finalDialogX: Int; var finalDialogY: Int
-        val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(currentTargetLocationOnScreen)
+        val dialogHeight =
+            dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        var finalDialogX: Int;
+        var finalDialogY: Int
+        val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(
+            currentTargetLocationOnScreen
+        )
         val spaceBelow = screenHeight - (currentTargetLocationOnScreen[1] + targetView.height)
         val spaceAbove = currentTargetLocationOnScreen[1]
         val minXPlacement = margin
         val maxXPlacement = screenWidth - dialogWidth - margin
-        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(minXPlacement, maxXPlacement.coerceAtLeast(minXPlacement))
+        finalDialogX =
+            (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2).coerceIn(
+                minXPlacement,
+                maxXPlacement.coerceAtLeast(minXPlacement)
+            )
         if (targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0 && targetView.isAttachedToWindow) {
-            finalDialogY = if (spaceBelow >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] + targetView.height + margin / 2
-            else if (spaceAbove >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
-            else (screenHeight - dialogHeight) / 2
+            finalDialogY =
+                if (spaceBelow >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] + targetView.height + margin / 2
+                else if (spaceAbove >= dialogHeight + margin / 2) currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
+                else (screenHeight - dialogHeight) / 2
         } else {
             finalDialogX = (screenWidth - dialogWidth) / 2
             finalDialogY = (screenHeight - dialogHeight) / 2
@@ -1246,17 +1848,29 @@ private fun showEventsByStatus(statusFilter: String?) {
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow
         popupWindow.isFocusable = true; popupWindow.isOutsideTouchable = true
-        popupWindow.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)))
+        popupWindow.setBackgroundDrawable(
+            ColorDrawable(
+                ContextCompat.getColor(
+                    this,
+                    android.R.color.transparent
+                )
+            )
+        )
         var isProceedingToNextStepOrCompleting = false
         popupWindow.setOnDismissListener { if (!isProceedingToNextStepOrCompleting) handleTutorialCancellation() }
-        val animationSet = AnimationSet(true); val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
+        val animationSet = AnimationSet(true);
+        val alphaAnimation = AlphaAnimation(0.0f, 1.0f)
         alphaAnimation.duration = 300
-        alphaAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
+        alphaAnimation.interpolator =
+            AnimationUtils.loadInterpolator(this, android.R.anim.decelerate_interpolator)
         animationSet.addAnimation(alphaAnimation)
-        var startTranslateX = 0f; var startTranslateY = 0f
+        var startTranslateX = 0f;
+        var startTranslateY = 0f
         if (previousTargetLocationForAnimation != null) {
-            val prevDialogEstimateX = previousTargetLocationForAnimation!![0] + targetView.width / 2 - dialogWidth / 2
-            val prevDialogEstimateY = previousTargetLocationForAnimation!![1] + targetView.height + margin / 2
+            val prevDialogEstimateX =
+                previousTargetLocationForAnimation!![0] + targetView.width / 2 - dialogWidth / 2
+            val prevDialogEstimateY =
+                previousTargetLocationForAnimation!![1] + targetView.height + margin / 2
             startTranslateX = (prevDialogEstimateX - finalDialogX).toFloat()
             startTranslateY = (prevDialogEstimateY - finalDialogY).toFloat()
         } else {
@@ -1265,11 +1879,19 @@ private fun showEventsByStatus(statusFilter: String?) {
         }
         val translateAnimation = TranslateAnimation(startTranslateX, 0f, startTranslateY, 0f)
         translateAnimation.duration = 450
-        translateAnimation.interpolator = AnimationUtils.loadInterpolator(this, android.R.anim.overshoot_interpolator)
+        translateAnimation.interpolator =
+            AnimationUtils.loadInterpolator(this, android.R.anim.overshoot_interpolator)
         animationSet.addAnimation(translateAnimation)
         dialogView.startAnimation(animationSet)
-        popupWindow.showAtLocation(targetView.rootView, Gravity.NO_GRAVITY, finalDialogX, finalDialogY)
-        val currentTargetScreenPos = IntArray(2); targetView.getLocationOnScreen(currentTargetScreenPos)
+        popupWindow.showAtLocation(
+            targetView.rootView,
+            Gravity.NO_GRAVITY,
+            finalDialogX,
+            finalDialogY
+        )
+        val currentTargetScreenPos = IntArray(2); targetView.getLocationOnScreen(
+            currentTargetScreenPos
+        )
         previousTargetLocationForAnimation = currentTargetScreenPos
 
         nextButton.setOnClickListener {
@@ -1284,18 +1906,26 @@ private fun showEventsByStatus(statusFilter: String?) {
                     if (!isInteractiveTutorialActive) { // Passive tutorial step advancement
                         // currentStepToShow is the step whose instruction was just shown.
                         // So, we save this as the completed step.
-                        tutorialPrefs.edit().putInt(activeTutorialStepKey, currentStepToShow).apply()
+                        tutorialPrefs.edit().putInt(activeTutorialStepKey, currentStepToShow)
+                            .apply()
                         updateNavHeaderTutorialProgress() // Reflect this completed step
                     }
                     // For interactive tutorials, progress is saved upon action completion, not here.
 
                     if (currentStepToShow == totalStepsInTutorial) { // Last instruction of a tutorial
                         if (!isInteractiveTutorialActive) { // Passive tutorial completion
-                            tutorialPrefs.edit().putBoolean(activeTutorialCompletionKey, true).apply()
-                            Log.d(TAG, "$activeTutorialCompletionKey marked as completed (passive).")
+                            tutorialPrefs.edit().putBoolean(activeTutorialCompletionKey, true)
+                                .apply()
+                            Log.d(
+                                TAG,
+                                "$activeTutorialCompletionKey marked as completed (passive)."
+                            )
                             updateNavHeaderTutorialProgress() // Show 100%
                         } else { // Interactive tutorial - last instruction shown
-                            Log.d(TAG, "Last instruction for interactive tutorial $activeTutorialCompletionKey shown. Completion depends on final action.")
+                            Log.d(
+                                TAG,
+                                "Last instruction for interactive tutorial $activeTutorialCompletionKey shown. Completion depends on final action."
+                            )
                             // Completion and final nav header update will be handled by the action's callback
                         }
                         // Common cleanup for last step of any tutorial type if not handled by action
@@ -1306,6 +1936,7 @@ private fun showEventsByStatus(statusFilter: String?) {
                         currentTutorialPopupWindow = null
                     }
                 }
+
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
             dialogView.startAnimation(fadeOutPopup)
@@ -1317,14 +1948,19 @@ private fun showEventsByStatus(statusFilter: String?) {
             val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
-                override fun onAnimationEnd(animation: Animation?) { popupWindow.dismiss() }
+                override fun onAnimationEnd(animation: Animation?) {
+                    popupWindow.dismiss()
+                }
+
                 override fun onAnimationRepeat(animation: Animation?) {}
             })
             dialogView.startAnimation(fadeOut)
         }
     }
 
-    private fun hideOverlay() { if (tutorialOverlay.visibility == View.VISIBLE) tutorialOverlay.visibility = View.GONE }
+    private fun hideOverlay() {
+        if (tutorialOverlay.visibility == View.VISIBLE) tutorialOverlay.visibility = View.GONE
+    }
 
     private fun hideNavHeaderTutorialProgressAfterCompletion() {
         Handler(mainLooper).postDelayed({
@@ -1333,8 +1969,10 @@ private fun showEventsByStatus(statusFilter: String?) {
                 fadeOut.setAnimationListener(object : Animation.AnimationListener {
                     override fun onAnimationStart(p0: Animation?) {}
                     override fun onAnimationEnd(p0: Animation?) {
-                        if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility = View.GONE
+                        if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility =
+                            View.GONE
                     }
+
                     override fun onAnimationRepeat(p0: Animation?) {}
                 })
                 tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
@@ -1366,7 +2004,11 @@ private fun showEventsByStatus(statusFilter: String?) {
             if (!tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
                 stepToStartFrom = tutorialPrefs.getInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
             } else { // Already completed, but resetProgress was false (e.g. user chose from dialog again)
-                Toast.makeText(this, "Quick Tour already completed. Restarting.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Quick Tour already completed. Restarting.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 tutorialPrefs.edit()
                     .putInt(KEY_QUICK_TOUR_CURRENT_STEP, 0)
                     .putBoolean(KEY_QUICK_TOUR_COMPLETED, false)
@@ -1377,8 +2019,12 @@ private fun showEventsByStatus(statusFilter: String?) {
 
         updateNavHeaderTutorialProgress() // Update nav header based on current/reset progress
 
-        val stepToDisplayInstructionFor = stepToStartFrom + 1 // We show instruction for step N, meaning N-1 are done.
-        Log.d(TAG, "Starting/Resuming Quick Tour. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)")
+        val stepToDisplayInstructionFor =
+            stepToStartFrom + 1 // We show instruction for step N, meaning N-1 are done.
+        Log.d(
+            TAG,
+            "Starting/Resuming Quick Tour. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)"
+        )
 
         when (stepToDisplayInstructionFor) {
             1 -> showGreetingCardTourStep()
@@ -1387,45 +2033,365 @@ private fun showEventsByStatus(statusFilter: String?) {
             4 -> showAttendanceSectionTour()
             else -> { // Handles if already completed (stepToStartFrom = TOTAL_QUICK_TOUR_STEPS) or error
                 if (tutorialPrefs.getBoolean(KEY_QUICK_TOUR_COMPLETED, false)) {
-                    Log.d(TAG, "Quick Tour was already completed. Not restarting automatically unless reset.")
+                    Log.d(
+                        TAG,
+                        "Quick Tour was already completed. Not restarting automatically unless reset."
+                    )
                     Toast.makeText(this, "Quick Tour already completed!", Toast.LENGTH_SHORT).show()
                     hideNavHeaderTutorialProgressAfterCompletion()
                 } else {
-                    Log.e(TAG, "Quick Tour: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1.")
+                    Log.e(
+                        TAG,
+                        "Quick Tour: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1."
+                    )
                     showGreetingCardTourStep() // Should ideally not happen if logic is correct
                 }
             }
         }
     }
+
     private fun showGreetingCardTourStep() { // Instruction for step 1
         val greetingCard = findViewById<View>(R.id.greeting_card)
-        if (greetingCard == null) { Log.e(TAG, "Greeting card view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("Welcome! This is your personalized greeting card, showing your name and details.", greetingCard, 1, TOTAL_QUICK_TOUR_STEPS) {
+        if (greetingCard == null) {
+            Log.e(
+                TAG,
+                "Greeting card view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+        showCustomTutorialDialog(
+            "Welcome! This is your personalized greeting card, showing your name and details.",
+            greetingCard,
+            1,
+            TOTAL_QUICK_TOUR_STEPS
+        ) {
             // Passive: On "Next", step 1 is done. showCustomTutorialDialog's listener saves step 1 and updates nav header.
             showFilterButtonsTour() // Show instruction for step 2
         }
     }
+
     private fun showFilterButtonsTour() { // Instruction for step 2
         val filterButtons = findViewById<View>(R.id.filter_buttons)
-        if (filterButtons == null) { Log.e(TAG, "Filter buttons view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.", filterButtons, 2, TOTAL_QUICK_TOUR_STEPS) {
+        if (filterButtons == null) {
+            Log.e(
+                TAG,
+                "Filter buttons view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+        showCustomTutorialDialog(
+            "Here you can filter events: view Upcoming, Ongoing, Ended, or Cancelled events.",
+            filterButtons,
+            2,
+            TOTAL_QUICK_TOUR_STEPS
+        ) {
             showEventListTour() // Show instruction for step 3
         }
     }
+
     private fun showEventListTour() { // Instruction for step 3
         val eventList = findViewById<View>(R.id.recycler_events)
-        if (eventList == null) { Log.e(TAG, "Event list view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("Your selected events will appear here. Scroll to see more if available.", eventList, 3, TOTAL_QUICK_TOUR_STEPS) {
+        if (eventList == null) {
+            Log.e(
+                TAG,
+                "Event list view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+        showCustomTutorialDialog(
+            "Your selected events will appear here. Scroll to see more if available.",
+            eventList,
+            3,
+            TOTAL_QUICK_TOUR_STEPS
+        ) {
             showAttendanceSectionTour() // Show instruction for step 4
         }
     }
+
     private fun showAttendanceSectionTour() { // Instruction for step 4 (Last step of Quick Tour)
         val attendanceButton = findViewById<View>(R.id.btntime_in)
-        if (attendanceButton == null) { Log.e(TAG, "Attendance button view not found for tutorial"); handleTutorialCancellation(); return }
-        showCustomTutorialDialog("Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.", attendanceButton, TOTAL_QUICK_TOUR_STEPS, TOTAL_QUICK_TOUR_STEPS) {
+        if (attendanceButton == null) {
+            Log.e(
+                TAG,
+                "Attendance button view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+        showCustomTutorialDialog(
+            "Ready for an event? Tap 'Time-In' here. You can also 'Time-Out' or send an excuse.",
+            attendanceButton,
+            TOTAL_QUICK_TOUR_STEPS,
+            TOTAL_QUICK_TOUR_STEPS
+        ) {
             // Passive: On "Next", step 4 is done. showCustomTutorialDialog's listener saves step 4, marks completed, updates nav header.
             Toast.makeText(this@HomeActivity, "Quick Tour Completed! 🎉", Toast.LENGTH_SHORT).show()
             hideNavHeaderTutorialProgressAfterCompletion()
+        }
+    }
+
+    private fun pulseView(target: View?) {
+        target ?: return
+        target.animate().cancel()
+        target.scaleX = 1f
+        target.scaleY = 1f
+        target.animate()
+            .scaleX(1.05f)
+            .scaleY(1.05f)
+            .setDuration(180)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                target.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(180)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+            }
+            .start()
+    }
+
+    private fun setEventTutorialExpectedAction(action: String?) {
+        if (expectedInteractiveTutorialAction == action) return
+        expectedInteractiveTutorialAction = action
+        EventTutorialState.setExpectedAction(this, action)
+    }
+
+    private fun markEventTutorialActive(isActive: Boolean) {
+        EventTutorialState.setActive(this, isActive)
+        if (!isActive) {
+            expectedInteractiveTutorialAction = null
+        }
+    }
+
+    private fun syncEventTutorialStateFromPrefs() {
+        val eventGuideActive = EventTutorialState.isActive(this)
+        if (eventGuideActive) {
+            isInteractiveTutorialActive = true
+            currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
+            activeTutorialCompletionKey = KEY_EVENT_TUTORIAL_COMPLETED
+            activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
+            activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
+            setEventTutorialExpectedAction(EventTutorialState.getExpectedAction(this))
+            updateNavHeaderTutorialProgress()
+
+            when (expectedInteractiveTutorialAction) {
+                ACTION_EVENT_SELECT_EVENT -> tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
+                ACTION_EVENT_TIME_IN -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckInStep() }
+                ACTION_EVENT_TIME_OUT -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckOutStep() }
+            }
+        } else if (currentInteractiveTutorialName == TUTORIAL_NAME_EVENT) {
+            isInteractiveTutorialActive = false
+            currentInteractiveTutorialName = null
+            setEventTutorialExpectedAction(null)
+            updateNavHeaderTutorialProgress()
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            if (tutorialPrefs.getBoolean(KEY_EVENT_TUTORIAL_COMPLETED, false)) {
+                hideNavHeaderTutorialProgressAfterCompletion()
+            }
+        }
+    }
+
+    private fun completeEventGuideStep(step: Int, markCompleted: Boolean = false) {
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        tutorialPrefs.edit().apply {
+            putInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, step)
+            if (markCompleted) {
+                putBoolean(KEY_EVENT_TUTORIAL_COMPLETED, true)
+            }
+        }.apply()
+        if (markCompleted) {
+            markEventTutorialActive(false)
+            setEventTutorialExpectedAction(null)
+        } else {
+            markEventTutorialActive(true)
+        }
+        updateNavHeaderTutorialProgress()
+    }
+
+
+    // --- Event Check-In Tutorial Steps ---
+    private fun startEventWorkflowTutorial(resetProgress: Boolean = false) {
+        activeTutorialCompletionKey = KEY_EVENT_TUTORIAL_COMPLETED
+        activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
+        activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
+
+        isInteractiveTutorialActive = true
+        currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
+        markEventTutorialActive(true)
+        setEventTutorialExpectedAction(null)
+        closeTutorialCalendarSheetIfOpen()
+
+        val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+        var stepToStartFrom = 0
+
+        if (resetProgress) {
+            tutorialPrefs.edit()
+                .putInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, 0)
+                .putBoolean(KEY_EVENT_TUTORIAL_COMPLETED, false)
+                .apply()
+            Log.d(TAG, "Event guide progress reset.")
+            EventTutorialState.clearSelectedEvent(this)
+            setEventTutorialExpectedAction(null)
+        } else {
+            if (!tutorialPrefs.getBoolean(KEY_EVENT_TUTORIAL_COMPLETED, false)) {
+                stepToStartFrom = tutorialPrefs.getInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, 0)
+            } else {
+                Toast.makeText(
+                    this,
+                    "Event check-in guide already completed. Restarting.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                tutorialPrefs.edit()
+                    .putInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, 0)
+                    .putBoolean(KEY_EVENT_TUTORIAL_COMPLETED, false)
+                    .apply()
+                EventTutorialState.clearSelectedEvent(this)
+                setEventTutorialExpectedAction(null)
+            }
+        }
+
+        updateNavHeaderTutorialProgress()
+
+        val stepToDisplayInstructionFor = stepToStartFrom + 1
+        Log.d(
+            TAG,
+            "Starting/Resuming Event guide. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)"
+        )
+
+        when (stepToDisplayInstructionFor) {
+            1 -> showEventGuideCalendarStep()
+            2 -> showEventGuideSelectEventStep()
+            3 -> showEventGuideCheckInStep()
+            4 -> showEventGuideCheckOutStep()
+            else -> {
+                if (tutorialPrefs.getBoolean(KEY_EVENT_TUTORIAL_COMPLETED, false)) {
+                    Toast.makeText(
+                        this,
+                        "Event check-in guide already completed!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    hideNavHeaderTutorialProgressAfterCompletion()
+                } else {
+                    Log.e(
+                        TAG,
+                        "Event guide: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1."
+                    )
+                    showEventGuideCalendarStep()
+                }
+            }
+        }
+    }
+
+    private fun showEventGuideCalendarStep() {
+        val calendarButton = findViewById<View>(R.id.btn_calendar)
+        if (calendarButton == null) {
+            Log.e(
+                TAG,
+                "Calendar button view not found for event guide"
+            ); handleTutorialCancellation(); return
+        }
+
+        setEventTutorialExpectedAction(null)
+        pulseView(calendarButton)
+
+        showCustomTutorialDialog(
+            "Let's kick things off together. Hit Continue and I'll pop open the Event Calendar so we can scan today's lineup side-by-side.",
+            calendarButton,
+            1,
+            TOTAL_EVENT_TUTORIAL_STEPS
+        ) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            completeEventGuideStep(1)
+            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+            openCalendarForEventGuide()
+        }
+    }
+
+    private fun showEventGuideSelectEventStep() {
+        closeTutorialCalendarSheetIfOpen()
+        val eventList = findViewById<View>(R.id.recycler_events)
+        if (eventList == null) {
+            Log.e(
+                TAG,
+                "Event list view not found for event guide"
+            ); handleTutorialCancellation(); return
+        }
+
+        setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+        pulseView(eventList)
+
+        showCustomTutorialDialog(
+            "I'll open the first event so you can see exactly how check-ins work. If you prefer a different one later, you can always switch.",
+            eventList,
+            2,
+            TOTAL_EVENT_TUTORIAL_STEPS
+        ) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            openFirstEventForEventGuide()
+        }
+    }
+
+    private fun showEventGuideCheckInStep() {
+        closeTutorialCalendarSheetIfOpen()
+        val anchorView = tutorialProgressOnRightNavHeader ?: findViewById(R.id.recycler_events)
+        if (anchorView == null) {
+            Log.e(
+                TAG,
+                "No anchor view found for check-in step"
+            ); handleTutorialCancellation(); return
+        }
+
+        setEventTutorialExpectedAction(ACTION_EVENT_TIME_IN)
+        pulseView(anchorView)
+
+        val storedEvent = EventTutorialState.readSelectedEvent(this)
+        val message = storedEvent?.let {
+            "I've opened \"${it.title}\" for you. Use the Time-In button there when you're ready and I'll queue up the next move."
+        }
+            ?: "Follow the prompt in the event detail screen to complete Time-In. Hit Continue if you'd like me to reopen it."
+
+        showCustomTutorialDialog(
+            message,
+            anchorView,
+            3,
+            TOTAL_EVENT_TUTORIAL_STEPS
+        ) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            openStoredEventForEventGuide()
+        }
+    }
+
+    private fun showEventGuideCheckOutStep() {
+        closeTutorialCalendarSheetIfOpen()
+        val anchorView = tutorialProgressOnRightNavHeader ?: findViewById(R.id.recycler_events)
+        if (anchorView == null) {
+            Log.e(
+                TAG,
+                "No anchor view found for check-out step"
+            ); handleTutorialCancellation(); return
+        }
+
+        setEventTutorialExpectedAction(ACTION_EVENT_TIME_OUT)
+        pulseView(anchorView)
+
+        val storedEvent = EventTutorialState.readSelectedEvent(this)
+        val message = storedEvent?.let {
+            "Once \"${it.title}\" wraps up, reopen its details and tap Time-Out. Need a refresher? Press Continue and I'll bring it back up."
+        }
+            ?: "Head back to the event detail screen and tap Time-Out when you're finished. Want me to reopen it? Just press Continue."
+
+        showCustomTutorialDialog(
+            message,
+            anchorView,
+            TOTAL_EVENT_TUTORIAL_STEPS,
+            TOTAL_EVENT_TUTORIAL_STEPS
+        ) {
+            if (tutorialOverlay.visibility == View.VISIBLE) {
+                tutorialOverlay.visibility = View.GONE
+            }
+            openStoredEventForEventGuide()
         }
     }
 
@@ -1452,7 +2418,11 @@ private fun showEventsByStatus(statusFilter: String?) {
             if (!tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
                 stepToStartFrom = tutorialPrefs.getInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
             } else { // Already completed, but resetProgress was false
-                Toast.makeText(this, "Attendance Guide already completed. Restarting.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Attendance Guide already completed. Restarting.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 tutorialPrefs.edit()
                     .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 0)
                     .putBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)
@@ -1463,20 +2433,32 @@ private fun showEventsByStatus(statusFilter: String?) {
         updateNavHeaderTutorialProgress() // Update nav header based on current/reset progress
 
         val stepToDisplayInstructionFor = stepToStartFrom + 1
-        Log.d(TAG, "Starting/Resuming Interactive Attendance Guide. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)")
+        Log.d(
+            TAG,
+            "Starting/Resuming Interactive Attendance Guide. Will show instruction for step: $stepToDisplayInstructionFor (Saved completed steps: $stepToStartFrom)"
+        )
 
         when (stepToDisplayInstructionFor) {
             1 -> showTimeInButtonTutorialStep_New()
-            2 -> showTimeOutButtonTutorialStep()
-            3 -> showStatusSpinnerTutorialStep_New()
-            4 -> showExcuseLetterButtonTutorialStep_New()
+            2 -> showEventCalendarTutorialStep()
+            3 -> showEventTimeInTutorialStep()
+            4 -> showTimeOutButtonTutorialStep()
+            5 -> showStatusSpinnerTutorialStep_New()
+            6 -> showExcuseLetterButtonTutorialStep_New()
             else -> {
                 if (tutorialPrefs.getBoolean(KEY_ATTENDANCE_TUTORIAL_COMPLETED, false)) {
-                    Log.d(TAG, "Attendance Guide was already completed. Not restarting automatically unless reset.")
-                    Toast.makeText(this, "Attendance Guide already completed!", Toast.LENGTH_SHORT).show()
+                    Log.d(
+                        TAG,
+                        "Attendance Guide was already completed. Not restarting automatically unless reset."
+                    )
+                    Toast.makeText(this, "Attendance Guide already completed!", Toast.LENGTH_SHORT)
+                        .show()
                     hideNavHeaderTutorialProgressAfterCompletion()
                 } else {
-                    Log.e(TAG, "Attendance Guide: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1.")
+                    Log.e(
+                        TAG,
+                        "Attendance Guide: Invalid step to display $stepToDisplayInstructionFor. Defaulting to step 1."
+                    )
                     showTimeInButtonTutorialStep_New()
                 }
             }
@@ -1485,35 +2467,99 @@ private fun showEventsByStatus(statusFilter: String?) {
 
     private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Interactive)
         val timeInButton = findViewById<View>(R.id.btntime_in)
-        if (timeInButton == null) { Log.e(TAG, "Time-In button view not found for tutorial"); handleTutorialCancellation(); return }
+        if (timeInButton == null) {
+            Log.e(
+                TAG,
+                "Time-In button view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
 
         expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN
-        Log.d(TAG, "Attendance Tutorial: Expecting user to click Time-In button (Instruction for step 1).")
+        Log.d(
+            TAG,
+            "Attendance Tutorial: Expecting user to click Time-In button (Instruction for step 1)."
+        )
         // Nav header progress already updated by startAttendanceWorkflowTutorial to reflect 0/4 (or current saved step)
 
         showCustomTutorialDialog(
             "This guide focuses on attendance. First, let's Time-In. Please tap the 'Time-In' button now.",
-            timeInButton, 1, TOTAL_ATTENDANCE_TUTORIAL_STEPS // currentStepToShow is 1 (instruction for step 1)
+            timeInButton,
+            1,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS // currentStepToShow is 1 (instruction for step 1)
         ) {
             // This onNext is for the tutorial dialog's "Next" button.
             // For interactive step, we just hide overlay to allow user to click the actual UI element.
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            Log.d(TAG, "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button.")
+            Log.d(
+                TAG,
+                "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button."
+            )
             // Actual progress update for step 1 happens in timeInActivityTutorialLauncher
+        }
+    }
+
+    private fun showEventCalendarTutorialStep() { // Instruction for Step 2 – Event Calendar overview
+        val calendarButton = findViewById<View>(R.id.btn_calendar)
+        if (calendarButton == null) {
+            Log.e(
+                TAG,
+                "Calendar button view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+
+        showCustomTutorialDialog(
+            "Need to browse upcoming events? Tap here to open the Event Calendar and see what's scheduled for your department.",
+            calendarButton,
+            2,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS
+        ) {
+            showEventTimeInTutorialStep()
+        }
+    }
+
+    private fun showEventTimeInTutorialStep() { // Instruction for Step 3 – Event Time-In guidance
+        val eventListView = findViewById<View>(R.id.recycler_events)
+        if (eventListView == null) {
+            Log.e(
+                TAG,
+                "Event list view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
+
+        showCustomTutorialDialog(
+            "After opening the calendar, pick an event to view its details. Use the Time-In option there to log your attendance before it starts.",
+            eventListView,
+            3,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS
+        ) {
+            showTimeOutButtonTutorialStep()
         }
     }
 
     fun showTimeOutButtonTutorialStep() { // Instruction for Step 2 - TODO: Make fully interactive
         val timeOutButton = findViewById<View>(R.id.btntime_out)
-        if (timeOutButton == null) { Log.e(TAG, "Time-Out button view not found for tutorial"); handleTutorialCancellation(); return }
+        if (timeOutButton == null) {
+            Log.e(
+                TAG,
+                "Time-Out button view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
 
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_OUT
-        Log.d(TAG, "Attendance Tutorial: Now showing Time-Out step instruction (placeholder for full interactive logic).")
-        // Nav header should reflect 1/4 if Time-In was done. updateNavHeaderTutorialProgress() was called after Time-In.
+        Log.d(
+            TAG,
+            "Attendance Tutorial: Now showing Time-Out step instruction (placeholder for full interactive logic)."
+        )
+        // Nav header should reflect progress once previous steps are completed.
 
-        showCustomTutorialDialog("After your event or duty, tap 'Time-Out' here to record your end time.", timeOutButton, 2, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        showCustomTutorialDialog(
+            "After wrapping up your event, tap 'Time-Out' here so the system knows you're done.",
+            timeOutButton,
+            4,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS
+        ) {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
@@ -1522,18 +2568,31 @@ private fun showEventsByStatus(statusFilter: String?) {
             // This would be removed once Time-Out is fully interactive.
             // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
             // updateNavHeaderTutorialProgress()
-            // showStatusSpinnerTutorialStep_New() // Manually call next instruction for now
+            showStatusSpinnerTutorialStep_New() // Continue tutorial flow
         }
     }
 
-    private fun showStatusSpinnerTutorialStep_New() { // Instruction for Step 3 - TODO: Make fully interactive
+    private fun showStatusSpinnerTutorialStep_New() { // Instruction for Step 5 - TODO: Make fully interactive
         val statusSpinnerView = findViewById<View>(R.id.status_spinner)
-        if (statusSpinnerView == null) { Log.e(TAG, "Status spinner view not found for tutorial"); handleTutorialCancellation(); return }
+        if (statusSpinnerView == null) {
+            Log.e(
+                TAG,
+                "Status spinner view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
 
-        Log.d(TAG, "Attendance Tutorial: Now showing Status Spinner step instruction (placeholder for full interactive logic).")
+        Log.d(
+            TAG,
+            "Attendance Tutorial: Now showing Status Spinner step instruction (placeholder for full interactive logic)."
+        )
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_SELECT_STATUS
 
-        showCustomTutorialDialog("You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)", statusSpinnerView, 3, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        showCustomTutorialDialog(
+            "You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)",
+            statusSpinnerView,
+            5,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS
+        ) {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
@@ -1542,17 +2601,31 @@ private fun showEventsByStatus(statusFilter: String?) {
             // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
             // updateNavHeaderTutorialProgress()
             // showExcuseLetterButtonTutorialStep_New() // Manually call next instruction
+            showExcuseLetterButtonTutorialStep_New()
         }
     }
 
-    private fun showExcuseLetterButtonTutorialStep_New() { // Instruction for Step 4 - TODO: Make fully interactive
+    private fun showExcuseLetterButtonTutorialStep_New() { // Instruction for Step 6 - TODO: Make fully interactive
         val excuseLetterButton = findViewById<View>(R.id.excuse_letter_text_button)
-        if (excuseLetterButton == null) { Log.e(TAG, "Excuse letter button view not found for tutorial"); handleTutorialCancellation(); return }
+        if (excuseLetterButton == null) {
+            Log.e(
+                TAG,
+                "Excuse letter button view not found for tutorial"
+            ); handleTutorialCancellation(); return
+        }
 
-        Log.d(TAG, "Attendance Tutorial: Now showing Excuse Letter step instruction (placeholder for full interactive logic).")
+        Log.d(
+            TAG,
+            "Attendance Tutorial: Now showing Excuse Letter step instruction (placeholder for full interactive logic)."
+        )
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_EXCUSE_LETTER
 
-        showCustomTutorialDialog("If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)", excuseLetterButton, TOTAL_ATTENDANCE_TUTORIAL_STEPS, TOTAL_ATTENDANCE_TUTORIAL_STEPS) {
+        showCustomTutorialDialog(
+            "If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)",
+            excuseLetterButton,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS,
+            TOTAL_ATTENDANCE_TUTORIAL_STEPS
+        ) {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
@@ -1566,7 +2639,11 @@ private fun showEventsByStatus(statusFilter: String?) {
                 .apply()
             updateNavHeaderTutorialProgress() // Show 100%
 
-            Toast.makeText(this@HomeActivity, "Attendance Workflow Guide Completed! 🎉 (Partially interactive)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this@HomeActivity,
+                "Attendance Workflow Guide Completed! 🎉 (Partially interactive)",
+                Toast.LENGTH_SHORT
+            ).show()
             isInteractiveTutorialActive = false
             currentInteractiveTutorialName = null
             expectedInteractiveTutorialAction = null
@@ -1580,37 +2657,91 @@ private fun showEventsByStatus(statusFilter: String?) {
         attendanceStatusBadge.visibility = View.VISIBLE
         writeAttendanceStatusToRealtime(status)
         when (status.trim().lowercase(Locale.ROOT)) {
-            "on time" -> { attendanceStatusBadge.text = "On Time"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_green)); attendanceStatusBadge.background = null }
-            "late" -> { attendanceStatusBadge.text = "Late"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_yellow)); attendanceStatusBadge.background = null }
-            "absent" -> { attendanceStatusBadge.text = "Absent"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.attendance_red)); attendanceStatusBadge.background = null }
-            "has not timed-in" -> { attendanceStatusBadge.text = "Has not Timed-In"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray)); attendanceStatusBadge.background = null }
-            "timed-out" -> { attendanceStatusBadge.text = "Timed-Out"; attendanceStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.medium_gray)); attendanceStatusBadge.background = null }
+            "on time" -> {
+                attendanceStatusBadge.text = "On Time"; attendanceStatusBadge.setTextColor(
+                    ContextCompat.getColor(this, R.color.attendance_green)
+                ); attendanceStatusBadge.background = null
+            }
+
+            "late" -> {
+                attendanceStatusBadge.text = "Late"; attendanceStatusBadge.setTextColor(
+                    ContextCompat.getColor(this, R.color.attendance_yellow)
+                ); attendanceStatusBadge.background = null
+            }
+
+            "absent" -> {
+                attendanceStatusBadge.text = "Absent"; attendanceStatusBadge.setTextColor(
+                    ContextCompat.getColor(this, R.color.attendance_red)
+                ); attendanceStatusBadge.background = null
+            }
+
+            "has not timed-in" -> {
+                attendanceStatusBadge.text = "Has not Timed-In"; attendanceStatusBadge.setTextColor(
+                    ContextCompat.getColor(this, R.color.medium_gray)
+                ); attendanceStatusBadge.background = null
+            }
+
+            "timed-out" -> {
+                attendanceStatusBadge.text = "Timed-Out"; attendanceStatusBadge.setTextColor(
+                    ContextCompat.getColor(this, R.color.medium_gray)
+                ); attendanceStatusBadge.background = null
+            }
+
             else -> attendanceStatusBadge.visibility = View.GONE
         }
     }
 
     private fun writeAttendanceStatusToRealtime(status: String) {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        ref.orderByChild("timestamp").limitToLast(10).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                var latestTimeInLogKey: String? = null; var latestTimeInTimestamp: Long = 0
-                val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-                for (child in snapshot.children) {
-                    val type = child.child("type").getValue(String::class.java)
-                    val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
-                    if (type == "TimeIn" && timestamp >= todayStart) {
-                        if (timestamp > latestTimeInTimestamp) { latestTimeInTimestamp = timestamp; latestTimeInLogKey = child.key }
+        ref.orderByChild("timestamp").limitToLast(10)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var latestTimeInLogKey: String? = null;
+                    var latestTimeInTimestamp: Long = 0
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0); set(
+                        Calendar.MINUTE,
+                        0
+                    ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp =
+                            child.child("timestamp").getValue(Long::class.java) ?: continue
+                        if (type == "TimeIn" && timestamp >= todayStart) {
+                            if (timestamp > latestTimeInTimestamp) {
+                                latestTimeInTimestamp = timestamp; latestTimeInLogKey = child.key
+                            }
+                        }
+                    }
+                    latestTimeInLogKey?.let { key ->
+                        ref.child(key).child("attendanceBadge").setValue(status)
+                            .addOnSuccessListener {
+                                Log.d(
+                                    TAG,
+                                    "Attendance badge '$status' written to log $key"
+                                )
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e(
+                                    TAG,
+                                    "Failed to write badge to log $key: ${e.message}"
+                                )
+                            }
                     }
                 }
-                latestTimeInLogKey?.let { key ->
-                    ref.child(key).child("attendanceBadge").setValue(status)
-                        .addOnSuccessListener { Log.d(TAG, "Attendance badge '$status' written to log $key") }
-                        .addOnFailureListener { e -> Log.e(TAG, "Failed to write badge to log $key: ${e.message}") }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(
+                        "HomeActivity",
+                        "Failed to find TimeIn log to write badge: ${error.message}"
+                    )
                 }
-            }
-            override fun onCancelled(error: DatabaseError) { Log.e("HomeActivity", "Failed to find TimeIn log to write badge: ${error.message}") }
-        })
+            })
     }
 
     /*private fun evaluateAndDisplayAttendanceBadge() {
@@ -1647,66 +2778,109 @@ private fun showEventsByStatus(statusFilter: String?) {
                 } else */
 // Modified
     private fun evaluateAndDisplayAttendanceBadge() {
-        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE).getString(LoginActivity.KEY_USER_ID, null) ?: return
+        val userId = getSharedPreferences(
+            LoginActivity.PREFS_NAME,
+            MODE_PRIVATE
+        ).getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
-        val now = Calendar.getInstance(); val currentTime = now.timeInMillis
-        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-        val cutoff9am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-        val cutoff10am = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val now = Calendar.getInstance();
+        val currentTime = now.timeInMillis
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(
+            Calendar.SECOND,
+            0
+        ); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val cutoff9am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(
+            Calendar.SECOND,
+            0
+        ); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val cutoff10am = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 0); set(
+            Calendar.SECOND,
+            0
+        ); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
-        ref.orderByChild("timestamp").startAt(todayStart.toDouble()).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                var timeInTimestamp: Long? = null; var timeOutTimestamp: Long? = null
-                var timeInLogSnapshot: DataSnapshot? = null
-                for (child in snapshot.children) {
-                    val type = child.child("type").getValue(String::class.java)
-                    val timestamp = child.child("timestamp").getValue(Long::class.java)
-                    if (type == "TimeIn" && timestamp != null) { if (timeInTimestamp == null || timestamp > timeInTimestamp) { timeInTimestamp = timestamp; timeInLogSnapshot = child } }
-                    else if (type == "TimeOut" && timestamp != null) { if (timeOutTimestamp == null || timestamp > timeOutTimestamp) timeOutTimestamp = timestamp }
-                }
-
-                if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
-                    updateUserStatus("Off Duty")
-                    val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
-                    if (!badgeFromLog.isNullOrEmpty()) updateAttendanceBadge(badgeFromLog) else updateAttendanceBadge("Timed-Out")
-                } else if (timeInTimestamp != null) {
-                    val existingBadge = timeInLogSnapshot?.child("attendanceBadge")?.getValue(String::class.java)
-                    if (!existingBadge.isNullOrEmpty()) updateAttendanceBadge(existingBadge)
-                    else {
-                        // --- DEMO MODE: Force "On Time" ---
-                        // The original logic is commented out to ensure any time-in is marked as "On Time".
-                        /*
-                        val determinedBadge = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
-                        */
-                        val determinedBadge = "On Time" // Always set to "On Time" for the demo
-
-                        updateAttendanceBadge(determinedBadge)
-                        timeInLogSnapshot?.ref?.child("attendanceBadge")?.setValue(determinedBadge)
-                    }
-                    //MODIFIED
-                } else {
-                    val todayFormatted = SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
-                    FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(excuseSnapshot: DataSnapshot) {
-                            var isExcused = false
-                            for (doc in excuseSnapshot.children) {
-                                if (doc.child("date").getValue(String::class.java) == todayFormatted && doc.child("status").getValue(String::class.java).equals("Approved", ignoreCase = true)) {
-                                    isExcused = true; break
-                                }
+        ref.orderByChild("timestamp").startAt(todayStart.toDouble())
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var timeInTimestamp: Long? = null;
+                    var timeOutTimestamp: Long? = null
+                    var timeInLogSnapshot: DataSnapshot? = null
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
+                        if (type == "TimeIn" && timestamp != null) {
+                            if (timeInTimestamp == null || timestamp > timeInTimestamp) {
+                                timeInTimestamp = timestamp; timeInLogSnapshot = child
                             }
-                            if (isExcused) updateAttendanceBadge("Absent")
-                            else if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In")
-                            else attendanceStatusBadge.visibility = View.GONE
+                        } else if (type == "TimeOut" && timestamp != null) {
+                            if (timeOutTimestamp == null || timestamp > timeOutTimestamp) timeOutTimestamp =
+                                timestamp
                         }
-                        override fun onCancelled(error: DatabaseError) {
-                            if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility = View.GONE
+                    }
+
+                    if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
+                        updateUserStatus("Off Duty")
+                        val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")
+                            ?.getValue(String::class.java)
+                        if (!badgeFromLog.isNullOrEmpty()) updateAttendanceBadge(badgeFromLog) else updateAttendanceBadge(
+                            "Timed-Out"
+                        )
+                    } else if (timeInTimestamp != null) {
+                        val existingBadge = timeInLogSnapshot?.child("attendanceBadge")
+                            ?.getValue(String::class.java)
+                        if (!existingBadge.isNullOrEmpty()) updateAttendanceBadge(existingBadge)
+                        else {
+                            // --- DEMO MODE: Force "On Time" ---
+                            // The original logic is commented out to ensure any time-in is marked as "On Time".
+                            /*
+                            val determinedBadge = when { timeInTimestamp < cutoff9am -> "On Time"; timeInTimestamp < cutoff10am -> "Late"; else -> "Absent" }
+                            */
+                            val determinedBadge = "On Time" // Always set to "On Time" for the demo
+
+                            updateAttendanceBadge(determinedBadge)
+                            timeInLogSnapshot?.ref?.child("attendanceBadge")
+                                ?.setValue(determinedBadge)
                         }
-                    })
+                        //MODIFIED
+                    } else {
+                        val todayFormatted =
+                            SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(Date())
+                        FirebaseDatabase.getInstance().getReference("excuseLetters").child(userId)
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(excuseSnapshot: DataSnapshot) {
+                                    var isExcused = false
+                                    for (doc in excuseSnapshot.children) {
+                                        if (doc.child("date")
+                                                .getValue(String::class.java) == todayFormatted && doc.child(
+                                                "status"
+                                            ).getValue(String::class.java)
+                                                .equals("Approved", ignoreCase = true)
+                                        ) {
+                                            isExcused = true; break
+                                        }
+                                    }
+                                    if (isExcused) updateAttendanceBadge("Absent")
+                                    else if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In")
+                                    else attendanceStatusBadge.visibility = View.GONE
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {
+                                    if (currentTime > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility =
+                                        View.GONE
+                                }
+                            })
+                    }
                 }
-            }
-            override fun onCancelled(error: DatabaseError) {
-                if (Calendar.getInstance().timeInMillis > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility = View.GONE
-            }
-        })
+
+                override fun onCancelled(error: DatabaseError) {
+                    if (Calendar.getInstance().timeInMillis > cutoff10am) updateAttendanceBadge("Has not Timed-In") else attendanceStatusBadge.visibility =
+                        View.GONE
+                }
+            })
     }
 }

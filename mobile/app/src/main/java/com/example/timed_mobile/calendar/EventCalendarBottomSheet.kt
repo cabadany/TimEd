@@ -26,6 +26,8 @@ import java.util.Locale
 
 class EventCalendarBottomSheet : BottomSheetDialogFragment() {
 
+    var onDismissed: (() -> Unit)? = null
+
     private lateinit var monthYearText: TextView
     private lateinit var dayGrid: GridLayout
     private lateinit var headersGrid: GridLayout
@@ -78,6 +80,11 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         fetchEventsForCurrentMonth()
         renderCalendar()
         return view
+    }
+
+    override fun onDismiss(dialog: android.content.DialogInterface) {
+        super.onDismiss(dialog)
+        onDismissed?.invoke()
     }
 
     private fun buildHeaders() {

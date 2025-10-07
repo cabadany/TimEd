@@ -4,7 +4,9 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
+import android.view.View
 import android.view.animation.AnimationUtils
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.ScrollView // Ensure this import is present
@@ -13,12 +15,17 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.timed_mobile.HomeActivity
+import com.example.timed_mobile.tutorial.EventTutorialState
 
 class EventDetailActivity : WifiSecurityActivity() {
 
     private lateinit var backButton: ImageView
     private lateinit var descriptionView: TextView
     private lateinit var venueView: TextView // Add a class-level variable for the venue TextView
+    private lateinit var timeInButton: Button
+    private var lastShownTutorialAction: String? = null
+    private var tutorialDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +53,7 @@ class EventDetailActivity : WifiSecurityActivity() {
         val statusView = findViewById<TextView>(R.id.detail_event_status)
         descriptionView = findViewById(R.id.detail_event_description)
         venueView = findViewById(R.id.detail_event_venue) // Initialize the venue TextView
-        val timeInButton = findViewById<Button>(R.id.detail_time_in_button)
+    timeInButton = findViewById(R.id.detail_time_in_button)
         val contentScrollView = findViewById<ScrollView>(R.id.content_scroll_view)
 
         val title = intent.getStringExtra("eventTitle") ?: "No Title Provided"
@@ -98,12 +105,12 @@ class EventDetailActivity : WifiSecurityActivity() {
             val sharedPrefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             val userId = sharedPrefs.getString(LoginActivity.KEY_USER_ID, null)
             val title = intent.getStringExtra("eventTitle") ?: "No Title Provided"
-            val timeInButton = findViewById<Button>(R.id.detail_time_in_button)
 
             if (userId != null) {
                 checkUserAttendanceStatus(title, userId, timeInButton, sharedPrefs)
             }
         }
+        timeInButton.post { maybeShowEventTutorialPrompt() }
     }
 
     private fun fetchEventDetailsFromFirestore(title: String) {
@@ -178,6 +185,7 @@ class EventDetailActivity : WifiSecurityActivity() {
                                     startActivity(intent)
                                 }
                             }
+                            timeInButton.post { maybeShowEventTutorialPrompt() }
                         }
                         .addOnFailureListener {
                             timeInButton.text = "Time In"
@@ -196,13 +204,16 @@ class EventDetailActivity : WifiSecurityActivity() {
                                 }
                                 startActivity(intent)
                             }
+                            timeInButton.post { maybeShowEventTutorialPrompt() }
                         }
                 } else {
                     timeInButton.visibility = Button.GONE
+                    timeInButton.post { maybeShowEventTutorialPrompt() }
                 }
             }
             .addOnFailureListener {
                 timeInButton.visibility = Button.GONE
+                timeInButton.post { maybeShowEventTutorialPrompt() }
             }
     }
 
@@ -230,11 +241,87 @@ class EventDetailActivity : WifiSecurityActivity() {
 
         attendeeRef.update(updates)
             .addOnSuccessListener {
-                Toast.makeText(this, "Successfully timed out from $eventTitle", Toast.LENGTH_SHORT).show()
-                findViewById<Button>(R.id.detail_time_in_button).visibility = Button.GONE
+                val baseMessage = "Successfully timed out from $eventTitle"
+                if (EventTutorialState.isActive(this)) {
+                    EventTutorialState.completeStep(this, HomeActivity.TOTAL_EVENT_TUTORIAL_STEPS, markCompleted = true)
+                    EventTutorialState.setActive(this, false)
+                    Toast.makeText(this, "$baseMessage • Event guide completed! 🎉", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, baseMessage, Toast.LENGTH_SHORT).show()
+                }
+                timeInButton.visibility = Button.GONE
+                lastShownTutorialAction = null
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Error timing out: ${e.message}", Toast.LENGTH_LONG).show()
             }
+    }
+
+    private fun maybeShowEventTutorialPrompt() {
+        if (!EventTutorialState.isActive(this)) {
+            tutorialDialog?.dismiss()
+            tutorialDialog = null
+            lastShownTutorialAction = null
+            return
+        }
+
+        val expected = EventTutorialState.getExpectedAction(this) ?: return
+        if (expected == lastShownTutorialAction) return
+
+        val target = when (expected) {
+            HomeActivity.ACTION_EVENT_TIME_IN,
+            HomeActivity.ACTION_EVENT_TIME_OUT -> timeInButton.takeIf { it.visibility == View.VISIBLE }
+            else -> null
+        } ?: return
+
+        val message = when (expected) {
+            HomeActivity.ACTION_EVENT_TIME_IN -> "Here's the Time-In button. Tap it when you're ready and I'll line up the next step for you."
+            HomeActivity.ACTION_EVENT_TIME_OUT -> "When the activity wraps up, use Time-Out right here to finish logging your attendance."
+            else -> return
+        }
+
+        lastShownTutorialAction = expected
+        pulseView(target)
+
+        tutorialDialog?.dismiss()
+        tutorialDialog = AlertDialog.Builder(this)
+            .setTitle("Event Guide")
+            .setMessage(message)
+            .setPositiveButton("Got it") { dialog, _ -> dialog.dismiss() }
+            .setOnDismissListener { tutorialDialog = null }
+            .create()
+        tutorialDialog?.show()
+    }
+
+    private fun pulseView(target: View) {
+        target.animate().cancel()
+        target.scaleX = 1f
+        target.scaleY = 1f
+        target.animate()
+            .scaleX(1.05f)
+            .scaleY(1.05f)
+            .setDuration(180)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                target.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(180)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+            }
+            .start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        tutorialDialog?.dismiss()
+        tutorialDialog = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tutorialDialog?.dismiss()
+        tutorialDialog = null
     }
 }
