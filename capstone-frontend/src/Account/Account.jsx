@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
-  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
+  CircularProgress, LinearProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
   Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import {
@@ -84,6 +84,40 @@ const formatTime = (timeString) => {
   } catch (e) {
     return 'Invalid time';
   }
+};
+
+// Password validation helper
+const getPasswordChecks = (password) => {
+  const length = typeof password === 'string' && password.length >= 6;
+  const uppercase = /[A-Z]/.test(password || '');
+  const lowercase = /[a-z]/.test(password || '');
+  const number = /[0-9]/.test(password || '');
+  return { length, uppercase, lowercase, number };
+};
+
+// Password strength helper (visual indicator only; not required for submission)
+const getPasswordStrength = (password) => {
+  const checks = getPasswordChecks(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password || '');
+
+  const score =
+    (checks.length ? 1 : 0) +
+    (checks.uppercase ? 1 : 0) +
+    (checks.lowercase ? 1 : 0) +
+    (checks.number ? 1 : 0) +
+    (hasSpecial ? 1 : 0);
+
+  if (!password) {
+    return { label: 'None', score: 0, chipBg: '#F1F5F9', chipColor: '#64748B', barColor: '#CBD5E1' };
+  }
+
+  if (score <= 2) {
+    return { label: 'Weak', score, chipBg: 'rgba(239,68,68,0.12)', chipColor: '#B91C1C', barColor: '#EF4444' };
+  }
+  if (score <= 4) {
+    return { label: 'Medium', score, chipBg: 'rgba(245,158,11,0.14)', chipColor: '#9A3412', barColor: '#F59E0B' };
+  }
+  return { label: 'Strong', score, chipBg: 'rgba(22,163,74,0.14)', chipColor: '#166534', barColor: '#16A34A' };
 };
 
 // Account table loading placeholder
@@ -218,6 +252,12 @@ export default function AccountPage() {
 
   // Add new state for selected date
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Derived validation for Add Faculty password
+  const passwordChecks = getPasswordChecks(newProfessor.password);
+  const isAddPasswordValid = passwordChecks.length && passwordChecks.uppercase && passwordChecks.lowercase && passwordChecks.number;
+  const passwordStrength = getPasswordStrength(newProfessor.password);
+  const [addingFaculty, setAddingFaculty] = useState(false);
 
   // Add function to handle date changes
   const handleDateChange = (direction) => {
@@ -456,9 +496,15 @@ export default function AccountPage() {
   };
 
   const handleAddProfessor = async () => {
+    if (!isAddPasswordValid) {
+      showSnackbar('Password does not meet requirements', 'warning');
+      return;
+    }
     try {
+      setAddingFaculty(true);
       // First register the user to get their Firebase Auth UID
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), newProfessor, {
+      // Explicitly mark as verified when adding via admin Accounts page
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), { ...newProfessor, verified: true }, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -501,6 +547,9 @@ export default function AccountPage() {
     } catch (err) {
       console.error('Error adding professor:', err);
       showSnackbar(`Failed to add professor: ${err.response?.data?.message || err.message}`, 'error');
+    }
+    finally {
+      setAddingFaculty(false);
     }
   };
 
@@ -2541,6 +2590,69 @@ export default function AccountPage() {
                   },
                 }}
               />
+              <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={`Strength: ${passwordStrength.label}`}
+                  size="small"
+                  sx={{
+                    bgcolor: passwordStrength.chipBg,
+                    color: passwordStrength.chipColor,
+                    fontWeight: 600,
+                  }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(passwordStrength.score / 5) * 100}
+                    sx={{
+                      height: 6,
+                      borderRadius: 1,
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: passwordStrength.barColor
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748B' }}>
+                Password must contain:
+              </Typography>
+              <List dense sx={{ py: 0 }}>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.length ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.length ? '#16A34A' : '#94A3B8' }}>At least 6 characters</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }}>At least 1 uppercase letter (A-Z)</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }}>At least 1 lowercase letter (a-z)</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.number ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.number ? '#16A34A' : '#94A3B8' }}>At least 1 number (0-9)</Typography>}
+                  />
+                </ListItem>
+              </List>
+            </Box>
             </Box>
           </Box>
           <Box sx={{ 
@@ -2571,6 +2683,7 @@ export default function AccountPage() {
             <Button 
               variant="contained" 
               onClick={handleAddProfessor}
+              disabled={!isAddPasswordValid || addingFaculty}
               sx={{
                 bgcolor: darkMode ? '#90caf9' : '#0288d1',
                 color: darkMode ? '#1e1e1e' : '#ffffff',
@@ -2581,7 +2694,7 @@ export default function AccountPage() {
                 fontWeight: 500
               }}
             >
-              Add Faculty
+              {addingFaculty ? 'Adding...' : 'Add Faculty'}
             </Button>
           </Box>
         </Box>
