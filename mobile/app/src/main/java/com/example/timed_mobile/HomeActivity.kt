@@ -139,6 +139,7 @@ class HomeActivity : WifiSecurityActivity() {
 
                 // Proceed to the next tutorial step instruction
                 showEventCalendarTutorialStep()
+                
             } else {
                 // TimeInActivity was successful, but not as part of the expected tutorial action
                 Log.w(

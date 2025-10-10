@@ -233,8 +233,17 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                 val message = responseJson["message"] as? String ?: "Request submitted successfully"
                                 
                                 if (success) {
-                                    Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
-                                    finish()
+                                    val successMessage = message.ifBlank {
+                                        "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                                    }
+                                    UiDialogs.showSuccessPopup(
+                                        this@RequestCreateAccountActivity,
+                                        title = "Request Submitted",
+                                        message = successMessage
+                                    ) {
+                                        setResult(RESULT_OK)
+                                        finish()
+                                    }
                                 } else {
                                     UiDialogs.showErrorPopup(
                                         this@RequestCreateAccountActivity,
@@ -243,8 +252,14 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                     )
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
-                                finish()
+                                UiDialogs.showSuccessPopup(
+                                    this@RequestCreateAccountActivity,
+                                    title = "Request Submitted",
+                                    message = "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                                ) {
+                                    setResult(RESULT_OK)
+                                    finish()
+                                }
                             }
                         } else {
                             val errorMessage = when (it.code) {
