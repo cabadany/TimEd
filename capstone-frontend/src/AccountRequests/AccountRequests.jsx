@@ -39,7 +39,8 @@ import {
   Business,
   Schedule,
   Close,
-  Refresh
+  Refresh,
+  Outbox
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
@@ -62,6 +63,7 @@ const AccountRequests = () => {
   const [tabValue, setTabValue] = useState(0);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [remindingRequestId, setRemindingRequestId] = useState(null);
 
   // Memoize fetchAccountRequests to prevent unnecessary re-renders
   const fetchAccountRequests = useCallback(async (isRefresh = false) => {
@@ -218,6 +220,34 @@ const AccountRequests = () => {
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSendPendingReminder = async (request) => {
+    setRemindingRequestId(request.requestId);
+    try {
+      const response = await axios.post(
+        getApiUrl(API_ENDPOINTS.SEND_PENDING_REQUEST_REMINDER),
+        null,
+        {
+          params: { requestId: request.requestId },
+          timeout: 15000,
+        }
+      );
+
+      if (response.data.success) {
+        showSnackbar(`Reminder email sent to ${request.email}`, 'success');
+      } else {
+        throw new Error(response.data.message || 'Failed to send reminder email');
+      }
+    } catch (error) {
+      console.error('Error sending reminder email:', error);
+      showSnackbar(
+        `Failed to send reminder email: ${error.response?.data?.message || error.message}`,
+        'error'
+      );
+    } finally {
+      setRemindingRequestId(null);
+    }
   };
 
   const getStatusChip = (status) => {
@@ -553,6 +583,23 @@ const AccountRequests = () => {
                               >
                                 <Cancel fontSize="small" />
                               </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Send Pending Reminder Email">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleSendPendingReminder(request)}
+                                  sx={{ color: darkMode ? 'var(--accent-color)' : 'primary.main' }}
+                                  disabled={remindingRequestId === request.requestId}
+                                >
+                                  {remindingRequestId === request.requestId ? (
+                                    <CircularProgress size={16} />
+                                  ) : (
+                                    <Outbox fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
                             </Tooltip>
                           </>
                         )}

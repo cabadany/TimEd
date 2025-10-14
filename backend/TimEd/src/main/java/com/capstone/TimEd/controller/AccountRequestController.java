@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.capstone.TimEd.dto.AccountRequestDto;
@@ -185,6 +186,30 @@ public class AccountRequestController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Failed to review account request: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Send reminder email for pending account request
+    @PostMapping("/send-pending-reminder")
+    public ResponseEntity<Map<String, Object>> sendPendingReminder(@RequestParam String requestId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String message = accountRequestService.sendPendingReminderEmail(requestId);
+
+            response.put("success", true);
+            response.put("message", message);
+
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to send reminder email: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
