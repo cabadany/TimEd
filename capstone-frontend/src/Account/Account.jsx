@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
-  CircularProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
+  CircularProgress, LinearProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
   Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import {
@@ -84,6 +84,40 @@ const formatTime = (timeString) => {
   } catch (e) {
     return 'Invalid time';
   }
+};
+
+// Password validation helper
+const getPasswordChecks = (password) => {
+  const length = typeof password === 'string' && password.length >= 6;
+  const uppercase = /[A-Z]/.test(password || '');
+  const lowercase = /[a-z]/.test(password || '');
+  const number = /[0-9]/.test(password || '');
+  return { length, uppercase, lowercase, number };
+};
+
+// Password strength helper (visual indicator only; not required for submission)
+const getPasswordStrength = (password) => {
+  const checks = getPasswordChecks(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password || '');
+
+  const score =
+    (checks.length ? 1 : 0) +
+    (checks.uppercase ? 1 : 0) +
+    (checks.lowercase ? 1 : 0) +
+    (checks.number ? 1 : 0) +
+    (hasSpecial ? 1 : 0);
+
+  if (!password) {
+    return { label: 'None', score: 0, chipBg: '#F1F5F9', chipColor: '#64748B', barColor: '#CBD5E1' };
+  }
+
+  if (score <= 2) {
+    return { label: 'Weak', score, chipBg: 'rgba(239,68,68,0.12)', chipColor: '#B91C1C', barColor: '#EF4444' };
+  }
+  if (score <= 4) {
+    return { label: 'Medium', score, chipBg: 'rgba(245,158,11,0.14)', chipColor: '#9A3412', barColor: '#F59E0B' };
+  }
+  return { label: 'Strong', score, chipBg: 'rgba(22,163,74,0.14)', chipColor: '#166534', barColor: '#16A34A' };
 };
 
 // Account table loading placeholder
@@ -219,6 +253,12 @@ export default function AccountPage() {
   // Add new state for selected date
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Derived validation for Add Faculty password
+  const passwordChecks = getPasswordChecks(newProfessor.password);
+  const isAddPasswordValid = passwordChecks.length && passwordChecks.uppercase && passwordChecks.lowercase && passwordChecks.number;
+  const passwordStrength = getPasswordStrength(newProfessor.password);
+  const [addingFaculty, setAddingFaculty] = useState(false);
+
   // Add function to handle date changes
   const handleDateChange = (direction) => {
     const newDate = new Date(selectedDate);
@@ -269,6 +309,14 @@ export default function AccountPage() {
     }
   }, [professors.length, tabValue]);
 
+  // Helper function to get the correct ID for API calls
+  const getCorrectApiId = (user) => {
+    // The backend API expects the Firestore document ID (subcollection ID)
+    // But we only have the userId field from the API response
+    // This is a data consistency issue that needs to be fixed in the backend
+    return user.id || user.documentId || user.userId;
+  };
+
   // Fetch professors from API
   const fetchProfessors = async () => {
     setIsLoading(true);
@@ -278,6 +326,35 @@ export default function AccountPage() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
+      console.log('🔍 FIRESTORE DATA CONSISTENCY CHECK:');
+      console.log('Expected: Document ID should match userId field for each user');
+      
+      let consistentCount = 0;
+      let inconsistentCount = 0;
+      
+      // Analyze data consistency
+      response.data.forEach((user, index) => {
+        const documentId = user.id || user.documentId;
+        const userId = user.userId;
+        const idsMatch = documentId === userId;
+        
+        if (idsMatch) {
+          consistentCount++;
+          console.log(`✅ User ${user.firstName} ${user.lastName}: Data is consistent`);
+        } else {
+          inconsistentCount++;
+          console.warn(`❌ User ${user.firstName} ${user.lastName}: Data inconsistent`);
+          console.warn(`   Document ID: ${documentId || 'MISSING'}`);
+          console.warn(`   userId field: ${userId || 'MISSING'}`);
+        }
+      });
+      
+      console.log(`📊 SUMMARY: ${consistentCount} consistent, ${inconsistentCount} inconsistent users`);
+      if (inconsistentCount > 0) {
+        console.log(`💡 SOLUTION: Click "Fix Data Issues" button to automatically fix inconsistencies`);
+      }
+      
       setProfessors(response.data);
       setError(null);
     } catch (err) {
@@ -419,9 +496,15 @@ export default function AccountPage() {
   };
 
   const handleAddProfessor = async () => {
+    if (!isAddPasswordValid) {
+      showSnackbar('Password does not meet requirements', 'warning');
+      return;
+    }
     try {
+      setAddingFaculty(true);
       // First register the user to get their Firebase Auth UID
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), newProfessor, {
+      // Explicitly mark as verified when adding via admin Accounts page
+      const response = await axios.post(getApiUrl(API_ENDPOINTS.REGISTER), { ...newProfessor, verified: true }, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -464,6 +547,9 @@ export default function AccountPage() {
     } catch (err) {
       console.error('Error adding professor:', err);
       showSnackbar(`Failed to add professor: ${err.response?.data?.message || err.message}`, 'error');
+    }
+    finally {
+      setAddingFaculty(false);
     }
   };
 
@@ -1491,11 +1577,44 @@ export default function AccountPage() {
                 },
                 textTransform: 'none',
                 borderRadius: '4px',
-                fontWeight: 500
+                fontWeight: 500,
+                mr: 1
               }}
             >
               Add Faculty
             </Button>
+        {/*    <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={async () => {
+                try {
+                  showSnackbar('🔧 Fixing data consistency...', 'info');
+                  const response = await axios.post(getApiUrl('/user/admin/fix-data-consistency'), {}, {
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  });
+                  showSnackbar('✅ Data consistency fixed successfully!', 'success');
+                  fetchProfessors(); // Refresh the list
+                } catch (err) {
+                  console.error('Error fixing data consistency:', err);
+                  showSnackbar('❌ Failed to fix data consistency', 'error');
+                }
+              }}
+              sx={{
+                borderColor: '#FF9800',
+                color: '#FF9800',
+                '&:hover': {
+                  borderColor: '#F57C00',
+                  bgcolor: 'rgba(255, 152, 0, 0.04)',
+                },
+                textTransform: 'none',
+                borderRadius: '4px',
+                fontWeight: 500
+              }}
+            >
+              Fix Data Issues
+            </Button>*/}
           </Box>
         </Box>
 
@@ -1649,6 +1768,46 @@ export default function AccountPage() {
                           >
                             <Delete fontSize="small" />
                           </IconButton>
+                          {/* Data consistency debug button 
+                          <IconButton 
+                            size="small" 
+                            onClick={async () => {
+                              console.log('🔍 TESTING DATA CONSISTENCY for:', professor);
+                              const documentId = professor.id || professor.documentId;
+                              const userId = professor.userId;
+                              
+                              console.log('Document ID:', documentId);
+                              console.log('User ID field:', userId);
+                              console.log('IDs match:', documentId === userId);
+                              
+                              if (documentId === userId) {
+                                showSnackbar(`✅ ${professor.firstName}: Data is consistent`, 'success');
+                                
+                                // Test API call with the consistent ID
+                                try {
+                                  const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(userId)), {
+                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                  });
+                                  console.log('✅ API call successful:', response.data);
+                                  showSnackbar(`✅ API works for ${professor.firstName}`, 'success');
+                                } catch (err) {
+                                  console.error('❌ API call failed even with consistent data:', err);
+                                  showSnackbar(`❌ API failed for ${professor.firstName}: ${err.response?.status}`, 'error');
+                                }
+                              } else {
+                                showSnackbar(`❌ ${professor.firstName}: Data inconsistent - Document ID ≠ userId field`, 'error');
+                                console.error('❌ DATA INCONSISTENCY:');
+                                console.error(`   Document ID: ${documentId || 'MISSING'}`);
+                                console.error(`   userId field: ${userId || 'MISSING'}`);
+                                console.error('   This will cause 404 errors on edit/delete operations');
+                                console.error('   SOLUTION: Fix Firestore data so document ID matches userId field');
+                              }
+                            }}
+                            sx={{ color: '#9C27B0' }}
+                            title="Debug - Check data consistency"
+                          >
+                            🔍
+                          </IconButton>*/}
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -2431,6 +2590,69 @@ export default function AccountPage() {
                   },
                 }}
               />
+              <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={`Strength: ${passwordStrength.label}`}
+                  size="small"
+                  sx={{
+                    bgcolor: passwordStrength.chipBg,
+                    color: passwordStrength.chipColor,
+                    fontWeight: 600,
+                  }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(passwordStrength.score / 5) * 100}
+                    sx={{
+                      height: 6,
+                      borderRadius: 1,
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: passwordStrength.barColor
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748B' }}>
+                Password must contain:
+              </Typography>
+              <List dense sx={{ py: 0 }}>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.length ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.length ? '#16A34A' : '#94A3B8' }}>At least 6 characters</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }}>At least 1 uppercase letter (A-Z)</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }}>At least 1 lowercase letter (a-z)</Typography>}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.number ? '#16A34A' : '#94A3B8' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ color: passwordChecks.number ? '#16A34A' : '#94A3B8' }}>At least 1 number (0-9)</Typography>}
+                  />
+                </ListItem>
+              </List>
+            </Box>
             </Box>
           </Box>
           <Box sx={{ 
@@ -2461,6 +2683,7 @@ export default function AccountPage() {
             <Button 
               variant="contained" 
               onClick={handleAddProfessor}
+              disabled={!isAddPasswordValid || addingFaculty}
               sx={{
                 bgcolor: darkMode ? '#90caf9' : '#0288d1',
                 color: darkMode ? '#1e1e1e' : '#ffffff',
@@ -2471,7 +2694,7 @@ export default function AccountPage() {
                 fontWeight: 500
               }}
             >
-              Add Faculty
+              {addingFaculty ? 'Adding...' : 'Add Faculty'}
             </Button>
           </Box>
         </Box>

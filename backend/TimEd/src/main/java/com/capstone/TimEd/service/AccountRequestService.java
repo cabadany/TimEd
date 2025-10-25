@@ -235,6 +235,26 @@ public class AccountRequestService {
         }
     }
 
+    // Send reminder email for pending account request
+    public String sendPendingReminderEmail(String requestId) throws InterruptedException, ExecutionException {
+        AccountRequest request = getAccountRequestById(requestId);
+
+        if (request == null) {
+            throw new RuntimeException("Account request not found");
+        }
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Reminder emails can only be sent for pending requests");
+        }
+
+        try {
+            sendPendingReminderEmailInternal(request);
+            return "Reminder email sent successfully";
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send reminder email: " + e.getMessage());
+        }
+    }
+
     // Create user account from approved request
     private void createUserFromRequest(AccountRequest request) throws InterruptedException, ExecutionException {
         // Create user directly through UserService since we already have hashed password
@@ -326,6 +346,20 @@ public class AccountRequestService {
         } catch (Exception e) {
             System.err.println("Failed to send rejection email: " + e.getMessage());
         }
+    }
+
+    // Send pending reminder email
+    private void sendPendingReminderEmailInternal(AccountRequest request) throws Exception {
+        String subject = "Reminder: Your TimEd account request is pending";
+        String htmlContent = createPendingReminderEmailHtml(request);
+        String textContent = createPendingReminderEmailText(request);
+
+        brevoEmailService.sendNotificationEmail(
+            request.getEmail(),
+            subject,
+            htmlContent,
+            textContent
+        );
     }
 
     // Check if user already exists
@@ -481,6 +515,77 @@ public class AccountRequestService {
             """,
             request.getFirstName(),
             reason != null ? reason : "No specific reason provided"
+        );
+    }
+
+    // Create pending reminder email HTML
+    private String createPendingReminderEmailHtml(AccountRequest request) {
+        return String.format("""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 20px; margin-bottom: 20px;">
+                        <h1 style="color: #0d6efd; margin: 0;">TimEd Account Request Update</h1>
+                    </div>
+                    
+                    <h2>Hello %s,</h2>
+                    
+                    <p>This is a friendly reminder that your TimEd account creation request is still <strong>pending review</strong>.</p>
+                    <p>Our administrators are working on processing requests as quickly as possible. We'll notify you as soon as a decision has been made.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0d6efd;">
+                        <p style="margin: 0;"><strong>Request Details:</strong></p>
+                        <p style="margin: 5px 0 0 0;"><strong>Name:</strong> %s %s</p>
+                        <p style="margin: 5px 0 0 0;"><strong>School ID:</strong> %s</p>
+                        <p style="margin: 5px 0 0 0;"><strong>Email:</strong> %s</p>
+                        <p style="margin: 5px 0 0 0;"><strong>Department:</strong> %s</p>
+                    </div>
+                    
+                    <p>If you have any questions or need to update your request details, please reach out to us.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                        <p style="color: #6c757d; font-size: 14px;">
+                            Best regards,<br>
+                            <strong>TimEd Team</strong><br>
+                            <em>Your Attendance Management System</em>
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            request.getFirstName(),
+            request.getFirstName(), request.getLastName(),
+            request.getSchoolId(),
+            request.getEmail(),
+            request.getDepartment() != null ? request.getDepartment() : "Not specified"
+        );
+    }
+
+    // Create pending reminder email text
+    private String createPendingReminderEmailText(AccountRequest request) {
+        return String.format("""
+            Hello %s,
+            
+            This is a friendly reminder that your TimEd account creation request is still pending review. Our administrators are working on processing requests as quickly as possible and we will notify you as soon as a decision has been made.
+            
+            Request Details:
+            Name: %s %s
+            School ID: %s
+            Email: %s
+            Department: %s
+            
+            If you have any questions or need to update your request details, please reach out to us.
+            
+            Best regards,
+            TimEd Team
+            Your Attendance Management System
+            """,
+            request.getFirstName(),
+            request.getFirstName(), request.getLastName(),
+            request.getSchoolId(),
+            request.getEmail(),
+            request.getDepartment() != null ? request.getDepartment() : "Not specified"
         );
     }
 } 
