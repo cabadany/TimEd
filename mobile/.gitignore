@@ -1,11 +1,42 @@
 *.iml
+.gradle/
 .gradle
 /local.properties
+local.properties
 /.idea/
 .DS_Store
-/build
+/build/
+build/
 /captures
-.externalNativeBuild
-.cxx
-local.properties
+.externalNativeBuild/
+/captures/
+.cxx/
+
+# Android build cache
+**/build/
+**/.gradle/
+**/.cxx/
+
+# Keystore files
+*.jks
+*.keystore
+*.pem
+*.p12
+
+# Google/Firebase configs
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase-debug.log
+
+# Secrets and environment files
+*.env
+*.env.*
+.env
+.env.*
+/secrets/
+secrets/
+
+# OS specific
+Thumbs.db
+
 .kotlin/

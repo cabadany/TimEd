@@ -38,6 +38,11 @@
             android:theme="@style/Theme.TimEd"
             tools:targetApi="26">
 
+        <!-- Google Play Services version metadata -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
         <!-- SPLASH SCREEN PAGE -->
         <activity
                 android:name=".SplashActivity"
