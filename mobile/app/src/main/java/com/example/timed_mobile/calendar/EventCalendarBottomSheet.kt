@@ -60,7 +60,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val view = inflater.inflate(R.layout.fragment_event_calendar_bottom_sheet, container, false)
+        val view = inflater.inflate(R.layout.event_calendar_bottom_sheet, container, false)
         monthYearText = view.findViewById(R.id.text_month_year)
         dayGrid = view.findViewById(R.id.calendar_day_grid)
         headersGrid = view.findViewById(R.id.calendar_day_headers)

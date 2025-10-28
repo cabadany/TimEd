@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/light_gray">
+
+    <!-- Header Section -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="2dp"
+        android:layout_marginBottom="@dimen/space_xs">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_lg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Attendance Calendar"
+                android:textSize="@dimen/text_xl"
+                android:textStyle="bold"
+                android:textColor="@color/primary_deep_blue"
+                android:fontFamily="@font/league_spartan_bold"
+                android:letterSpacing="0.02"
+                android:layout_marginBottom="@dimen/space_md"
+                android:layout_gravity="center_horizontal"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageButton
+                    android:id="@+id/btn_prev_month"
+                    android:layout_width="@dimen/toolbar_icon_lg"
+                    android:layout_height="@dimen/toolbar_icon_lg"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Previous Month"
+                    android:src="@drawable/ic_chevron_left"
+                    android:padding="@dimen/space_xs"
+                    app:tint="@color/primary_medium_blue" />
+
+                <TextView
+                    android:id="@+id/text_month_year"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="September 2025"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="@dimen/text_lg"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/btn_next_month"
+                    android:layout_width="@dimen/toolbar_icon_lg"
+                    android:layout_height="@dimen/toolbar_icon_lg"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Next Month"
+                    android:src="@drawable/ic_chevron_right"
+                    android:padding="@dimen/space_xs"
+                    app:tint="@color/primary_medium_blue" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Calendar Grid Section -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="@dimen/card_elevation"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginEnd="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_md">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_md">
+
+            <GridLayout
+                android:id="@+id/calendar_day_headers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="7"
+                android:paddingTop="@dimen/space_xs"
+                android:paddingBottom="@dimen/space_xs"
+                android:useDefaultMargins="false">
+                <!-- Day of week headers added dynamically -->
+            </GridLayout>
+
+            <GridLayout
+                android:id="@+id/calendar_day_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="7"
+                android:rowCount="6"
+                android:useDefaultMargins="false"
+                android:paddingBottom="@dimen/space_sm" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Attendance Legend Section -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="@dimen/card_elevation"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginEnd="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_md">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_lg">
+
+            <TextView
+                android:id="@+id/attendance_legend_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Time-In Status Legend"
+                android:textSize="@dimen/text_md"
+                android:textStyle="bold"
+                android:layout_marginBottom="@dimen/space_sm"
+                android:textColor="@color/primary_deep_blue" />
+
+            <LinearLayout
+                android:id="@+id/attendance_legend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/dot_attendance_present" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_xs"
+                        android:text="On Time"
+                        android:textSize="@dimen/text_sm"
+                        android:textColor="@color/neutral_text_gray" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/dot_attendance_late" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_xs"
+                        android:text="Active"
+                        android:textSize="@dimen/text_sm"
+                        android:textColor="@color/neutral_text_gray" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/dot_attendance_absent" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_xs"
+                        android:text="Missed"
+                        android:textSize="@dimen/text_sm"
+                        android:textColor="@color/neutral_text_gray" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Events List Section -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="@dimen/card_elevation"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginEnd="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_md">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_lg">
+
+            <TextView
+                android:id="@+id/text_selected_date"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Select a date to view events"
+                android:textColor="@color/primary_deep_blue"
+                android:textSize="@dimen/text_md"
+                android:textStyle="bold"
+                android:layout_marginBottom="@dimen/space_sm" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_calendar_events"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:overScrollMode="ifContentScrolls" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Close Button -->
+    <Button
+        android:id="@+id/btn_close_calendar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/button_height_compact"
+        android:text="Close"
+        android:textStyle="bold"
+        android:textSize="@dimen/text_md"
+        android:layout_marginStart="@dimen/space_2xl"
+        android:layout_marginEnd="@dimen/space_2xl"
+        android:layout_marginTop="@dimen/space_xs"
+        android:layout_marginBottom="@dimen/space_lg"
+        android:backgroundTint="@color/primary_medium_blue"
+        android:textColor="@color/white"
+        app:cornerRadius="@dimen/button_corner_radius"
+        android:elevation="4dp"
+        android:stateListAnimator="@animator/button_scale_animator" />
+
+</LinearLayout>
