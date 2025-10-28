@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
-        android:layout_height="200dp">
+        android:layout_height="220dp">
 
     <com.example.timed_mobile.ui.LavaLampView
             android:id="@+id/lava_lamp_background"
@@ -18,19 +18,19 @@
             android:orientation="vertical"
             android:layout_alignParentStart="true"
             android:layout_alignParentBottom="true"
-            android:layout_marginStart="16dp"
-            android:layout_marginBottom="16dp"
-
+            android:layout_marginStart="@dimen/space_lg"
+            android:layout_marginBottom="@dimen/space_lg"
             android:clipToPadding="false">
 
         <ImageView
                 android:id="@+id/sidebar_profile_image"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
                 android:src="@drawable/ic_profile"
                 android:scaleType="centerCrop"
-                android:padding="4dp"
-                android:background="@drawable/circle_outline_shadow" />
+                android:padding="@dimen/space_xs"
+                android:background="@drawable/circle_outline_shadow"
+                android:elevation="6dp" />
 
         <TextView
                 android:id="@+id/sidebar_user_name"
@@ -39,13 +39,14 @@
                 android:text="User Name"
                 android:textStyle="bold"
                 android:textColor="@color/white"
-                android:textSize="18sp"
-                android:paddingTop="10dp"
+                android:textSize="@dimen/text_xl"
+                android:fontFamily="@font/league_spartan_bold"
+                android:paddingTop="@dimen/space_md"
                 android:letterSpacing="0.02"
-                android:shadowColor="#660D0084"
+                android:shadowColor="#80000000"
                 android:shadowDx="0"
-                android:shadowDy="4"
-                android:shadowRadius="6" />
+                android:shadowDy="2"
+                android:shadowRadius="8" />
 
         <TextView
                 android:id="@+id/sidebar_user_details"
@@ -53,11 +54,12 @@
                 android:layout_height="wrap_content"
                 android:text="ID • Department"
                 android:textColor="@color/white"
-                android:textSize="14sp"
-                android:alpha="0.9"
-                android:shadowColor="#660D0084"
+                android:textSize="@dimen/text_md"
+                android:layout_marginTop="@dimen/space_xs"
+                android:alpha="0.95"
+                android:shadowColor="#80000000"
                 android:shadowDx="0"
-                android:shadowDy="4"
+                android:shadowDy="2"
                 android:shadowRadius="6" />
 
         <TextView
@@ -66,11 +68,11 @@
                 android:layout_height="wrap_content"
                 android:text="email@example.com"
                 android:textColor="@color/white"
-                android:textSize="13sp"
-                android:alpha="0.85"
-                android:shadowColor="#660D0084"
+                android:textSize="@dimen/text_sm"
+                android:alpha="0.90"
+                android:shadowColor="#80000000"
                 android:shadowDx="0"
-                android:shadowDy="4"
+                android:shadowDy="2"
                 android:shadowRadius="6" />
     </LinearLayout>
 
@@ -85,25 +87,26 @@
             android:focusable="true"
             android:gravity="end"
             android:visibility="visible"
-            android:layout_marginEnd="16dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginEnd="@dimen/space_lg"
+            android:layout_marginTop="@dimen/space_lg"
             android:background="@drawable/header_content_shadow"
+            android:padding="@dimen/space_sm"
             android:clipToPadding="false">
 
         <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:layout_marginBottom="@dimen/space_xs">
 
             <TextView
                     android:id="@+id/tutorial_title_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tutorial Progress:"
+                    android:text="Tutorial:"
                     android:textColor="@android:color/white"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="4dp" />
+                    android:textSize="@dimen/text_xs"
+                    android:layout_marginEnd="@dimen/space_xs" />
 
             <TextView
                     android:id="@+id/tutorial_percentage_text"
@@ -112,19 +115,20 @@
                     android:text="0%"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="12sp" />
+                    android:textSize="@dimen/text_sm" />
 
         </LinearLayout>
 
         <ProgressBar
                 android:id="@+id/tutorial_bar_on_right_nav_header"
                 style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
+                android:layout_width="130dp"
+                android:layout_height="8dp"
                 android:max="100"
                 android:progress="0"
-                android:progressTint="@color/primary_medium_blue"
-                android:backgroundTint="@color/light_gray" />
+                android:progressTint="@color/white"
+                android:backgroundTint="#40FFFFFF"
+                android:elevation="2dp" />
     </LinearLayout>
 
 </RelativeLayout>

@@ -24,12 +24,12 @@
     <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_profile"
-        android:title="Profile Information" />
+        android:title="Profile" />
 
     <item
         android:id="@+id/nav_settings"
         android:icon="@drawable/ic_settings"
-        android:title="Settings (Coming Soon)" />
+        android:title="Settings" />
 
     <item
         android:id="@+id/nav_logout"

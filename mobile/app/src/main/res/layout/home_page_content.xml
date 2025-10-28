@@ -230,6 +230,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:background="@drawable/nav_drawer_gradient"
         app:menu="@menu/drawer_menu"
         app:headerLayout="@layout/nav_header" />
 </androidx.drawerlayout.widget.DrawerLayout>
