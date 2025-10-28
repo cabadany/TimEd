@@ -231,6 +231,16 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:background="@drawable/nav_drawer_gradient"
+        android:fitsSystemWindows="true"
         app:menu="@menu/drawer_menu"
-        app:headerLayout="@layout/nav_header" />
+        app:headerLayout="@layout/nav_header"
+        app:itemIconTint="@color/nav_item_icon_tint_selector"
+        app:itemTextColor="@color/nav_item_text_color_selector"
+        app:itemBackground="@drawable/nav_item_active_background"
+        app:itemIconPadding="@dimen/space_lg"
+        app:itemVerticalPadding="@dimen/space_md"
+        app:itemHorizontalPadding="@dimen/space_lg"
+        app:itemShapeFillColor="@color/primary_light_sky"
+        app:itemShapeInsetStart="@dimen/space_md"
+        app:itemShapeInsetEnd="@dimen/space_md" />
 </androidx.drawerlayout.widget.DrawerLayout>

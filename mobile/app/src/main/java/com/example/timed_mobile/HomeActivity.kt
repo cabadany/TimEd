@@ -291,6 +291,7 @@ class HomeActivity : WifiSecurityActivity() {
         attendanceStatusBadge = findViewById(R.id.attendance_status_badge)
         tutorialOverlay = findViewById(R.id.tutorial_overlay)
         drawerLayout = findViewById(R.id.drawer_layout)
+        drawerLayout.setScrimColor(0x44000000) // Semi-transparent black overlay
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
 
@@ -1054,9 +1055,20 @@ class HomeActivity : WifiSecurityActivity() {
         // To hide the scrollbar, add `android:scrollbars="none"` to the
         // <com.google.android.material.navigation.NavigationView> in your home_page.xml file.
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
-            override fun onDrawerOpened(drawerView: View) {}
-            override fun onDrawerClosed(drawerView: View) {}
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                // Smooth fade-in effect
+                drawerView.alpha = slideOffset
+                // Subtle elevation animation
+                drawerView.translationX = -30f * (1 - slideOffset)
+            }
+            override fun onDrawerOpened(drawerView: View) {
+                drawerView.alpha = 1f
+                drawerView.translationX = 0f
+            }
+            override fun onDrawerClosed(drawerView: View) {
+                drawerView.alpha = 1f
+                drawerView.translationX = 0f
+            }
             override fun onDrawerStateChanged(newState: Int) {}
         })
         navigationView.setNavigationItemSelectedListener { menuItem ->
