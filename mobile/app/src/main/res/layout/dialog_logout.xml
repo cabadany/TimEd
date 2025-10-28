@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/space_lg"
+    android:maxWidth="400dp"
+    app:cardCornerRadius="@dimen/card_corner_radius"
+    app:cardElevation="8dp"
+    app:cardBackgroundColor="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_xl">
+
+        <!-- Icon -->
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center_horizontal"
+            android:src="@drawable/ic_logout"
+            app:tint="@color/error_red"
+            android:contentDescription="Logout icon"
+            android:layout_marginBottom="@dimen/space_lg" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="Log Out"
+            android:textSize="@dimen/text_xl"
+            android:textStyle="bold"
+            android:textColor="@color/primary_deep_blue"
+            android:fontFamily="@font/league_spartan_bold"
+            android:letterSpacing="0.02"
+            android:layout_marginBottom="@dimen/space_sm" />
+
+        <!-- Message -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_md"
+            android:layout_marginEnd="@dimen/space_md"
+            android:text="Are you sure you want to log out?"
+            android:textSize="@dimen/text_md"
+            android:textColor="@color/neutral_text_gray"
+            android:textAlignment="center"
+            android:gravity="center"
+            android:layout_marginBottom="@dimen/space_xl" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Cancel Button -->
+            <Button
+                android:id="@+id/btn_cancel"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_compact"
+                android:layout_weight="1"
+                android:text="Cancel"
+                android:textColor="@color/primary_deep_blue"
+                android:textStyle="bold"
+                android:textSize="@dimen/text_md"
+                android:backgroundTint="@color/primary_light_sky"
+                app:cornerRadius="@dimen/button_corner_radius"
+                android:layout_marginEnd="@dimen/space_sm"
+                android:minWidth="100dp"
+                android:stateListAnimator="@animator/button_scale_animator" />
+
+            <!-- Logout Button -->
+            <Button
+                android:id="@+id/btn_logout"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_compact"
+                android:layout_weight="1"
+                android:text="Log Out"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textSize="@dimen/text_md"
+                android:backgroundTint="@color/error_red"
+                app:cornerRadius="@dimen/button_corner_radius"
+                android:layout_marginStart="@dimen/space_sm"
+                android:minWidth="100dp"
+                android:stateListAnimator="@animator/button_scale_animator" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

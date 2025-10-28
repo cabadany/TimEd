@@ -4,6 +4,7 @@ import com.example.timed_mobile.adapter.StatusAdapter
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import android.util.Log
@@ -1132,16 +1133,28 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun showLogoutDialog() {
-        AlertDialog.Builder(this).setTitle("Log Out")
-            .setMessage("Are you sure you want to log out?")
-            .setPositiveButton("Yes") { _, _ ->
-                getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear()
-                    .apply()
-                getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
-                startActivity(Intent(this, LoginActivity::class.java))
-                finishAffinity()
-            }
-            .setNegativeButton("Cancel", null).show()
+        val dialogView = layoutInflater.inflate(R.layout.dialog_logout, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+        
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        dialogView.findViewById<Button>(R.id.btn_cancel).setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        dialogView.findViewById<Button>(R.id.btn_logout).setOnClickListener {
+            dialog.dismiss()
+            getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE).edit().clear()
+                .apply()
+            getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().clear().apply()
+            startActivity(Intent(this, LoginActivity::class.java))
+            finishAffinity()
+        }
+        
+        dialog.show()
     }
 
     private fun setupFilterButtons() {
@@ -1224,18 +1237,42 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun showDefaultTimeInDialog() {
-        AlertDialog.Builder(this).setTitle("Time - In Confirmation")
-            .setMessage("Are you ready to time in for today?")
-            .setPositiveButton("Yes") { _, _ ->
-                val intent = Intent(this, TimeInActivity::class.java).apply {
-                    putExtra("userId", userId); putExtra(
-                    "email",
-                    userEmail ?: ""
-                ); putExtra("firstName", userFirstName ?: "User")
-                }
-                timeInLauncher.launch(intent) // Use the normal launcher
+        val dialogView = layoutInflater.inflate(R.layout.dialog_confirmation, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+        
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        // Configure dialog
+        dialogView.findViewById<ImageView>(R.id.dialog_icon).apply {
+            setImageResource(R.drawable.ic_clock)
+            setColorFilter(ContextCompat.getColor(this@HomeActivity, R.color.brand_indigo))
+        }
+        dialogView.findViewById<TextView>(R.id.dialog_title).text = "Time-In Confirmation"
+        dialogView.findViewById<TextView>(R.id.dialog_message).text = "Are you ready to time in for today?"
+        dialogView.findViewById<Button>(R.id.btn_negative).text = "Cancel"
+        dialogView.findViewById<Button>(R.id.btn_positive).apply {
+            text = "Time In"
+            backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this@HomeActivity, R.color.brand_indigo))
+        }
+        
+        dialogView.findViewById<Button>(R.id.btn_negative).setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        dialogView.findViewById<Button>(R.id.btn_positive).setOnClickListener {
+            dialog.dismiss()
+            val intent = Intent(this, TimeInActivity::class.java).apply {
+                putExtra("userId", userId)
+                putExtra("email", userEmail ?: "")
+                putExtra("firstName", userFirstName ?: "User")
             }
-            .setNegativeButton("Cancel", null).show()
+            timeInLauncher.launch(intent)
+        }
+        
+        dialog.show()
     }
 
 
