@@ -24,7 +24,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Attendance Calendar"
+                android:text="Event Calendar"
                 android:textSize="@dimen/text_xl"
                 android:textStyle="bold"
                 android:textColor="@color/primary_deep_blue"
@@ -39,36 +39,65 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <ImageButton
-                    android:id="@+id/btn_prev_month"
-                    android:layout_width="@dimen/toolbar_icon_lg"
-                    android:layout_height="@dimen/toolbar_icon_lg"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Previous Month"
-                    android:src="@drawable/ic_chevron_left"
-                    android:padding="@dimen/space_xs"
-                    app:tint="@color/primary_medium_blue" />
-
-                <TextView
-                    android:id="@+id/text_month_year"
+                <!-- Left Section: Month Name with Navigation -->
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="September 2025"
-                    android:textColor="@color/primary_deep_blue"
-                    android:textSize="@dimen/text_lg"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal"
+                    android:gravity="start|center_vertical">
 
-                <ImageButton
-                    android:id="@+id/btn_next_month"
-                    android:layout_width="@dimen/toolbar_icon_lg"
-                    android:layout_height="@dimen/toolbar_icon_lg"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Next Month"
-                    android:src="@drawable/ic_chevron_right"
-                    android:padding="@dimen/space_xs"
-                    app:tint="@color/primary_medium_blue" />
+                    <ImageButton
+                        android:id="@+id/btn_prev_month"
+                        android:layout_width="@dimen/toolbar_icon_lg"
+                        android:layout_height="@dimen/toolbar_icon_lg"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Previous Month"
+                        android:src="@drawable/ic_chevron_left"
+                        android:padding="@dimen/space_xs"
+                        app:tint="@color/primary_medium_blue" />
+
+                    <TextView
+                        android:id="@+id/text_month_year"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_sm"
+                        android:text="October"
+                        android:textColor="@color/primary_deep_blue"
+                        android:textSize="18sp"
+                        android:fontFamily="@font/league_spartan_bold"
+                        android:textStyle="bold" />
+
+                    <ImageButton
+                        android:id="@+id/btn_next_month"
+                        android:layout_width="@dimen/toolbar_icon_lg"
+                        android:layout_height="@dimen/toolbar_icon_lg"
+                        android:layout_marginStart="@dimen/space_sm"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Next Month"
+                        android:src="@drawable/ic_chevron_right"
+                        android:padding="@dimen/space_xs"
+                        app:tint="@color/primary_medium_blue" />
+                </LinearLayout>
+
+                <!-- Right Section: Year Button -->
+                <Button
+                    android:id="@+id/btn_select_year"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:minWidth="100dp"
+                    android:background="@drawable/bg_calendar_year_button"
+                    android:paddingStart="@dimen/space_lg"
+                    android:paddingEnd="@dimen/space_lg"
+                    android:text="2025"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:drawableEnd="@drawable/ic_chevron_down"
+                    android:drawablePadding="4dp"
+                    android:drawableTint="@color/white"
+                    android:gravity="center"
+                    android:stateListAnimator="@animator/button_scale_animator" />
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -133,9 +162,10 @@
                 android:id="@+id/attendance_legend_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Time-In Status Legend"
+                android:text="Event Status Legend"
                 android:textSize="@dimen/text_md"
                 android:textStyle="bold"
+                android:fontFamily="@font/league_spartan_bold"
                 android:layout_marginBottom="@dimen/space_sm"
                 android:textColor="@color/primary_deep_blue" />
 
@@ -159,7 +189,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/space_xs"
-                        android:text="On Time"
+                        android:text="Upcoming"
                         android:textSize="@dimen/text_sm"
                         android:textColor="@color/neutral_text_gray" />
                 </LinearLayout>
@@ -177,7 +207,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/space_xs"
-                        android:text="Active"
+                        android:text="Ongoing"
                         android:textSize="@dimen/text_sm"
                         android:textColor="@color/neutral_text_gray" />
                 </LinearLayout>
@@ -195,7 +225,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/space_xs"
-                        android:text="Missed"
+                        android:text="Ended"
                         android:textSize="@dimen/text_sm"
                         android:textColor="@color/neutral_text_gray" />
                 </LinearLayout>

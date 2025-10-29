@@ -1,5 +1,6 @@
 package com.example.timed_mobile.calendar
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +10,7 @@ import android.widget.Button
 import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.NumberPicker
 import androidx.core.content.ContextCompat
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -29,6 +31,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     var onDismissed: (() -> Unit)? = null
 
     private lateinit var monthYearText: TextView
+    private lateinit var yearButton: Button
     private lateinit var dayGrid: GridLayout
     private lateinit var headersGrid: GridLayout
     private lateinit var recycler: RecyclerView
@@ -38,6 +41,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private val calendar: Calendar = Calendar.getInstance()
     private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
     private val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    private val monthFormat = SimpleDateFormat("MMMM", Locale.getDefault())
     private val keyFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
     private val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
         timeZone = java.util.TimeZone.getTimeZone("Asia/Manila")
@@ -62,6 +66,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.event_calendar_bottom_sheet, container, false)
         monthYearText = view.findViewById(R.id.text_month_year)
+        yearButton = view.findViewById(R.id.btn_select_year)
         dayGrid = view.findViewById(R.id.calendar_day_grid)
         headersGrid = view.findViewById(R.id.calendar_day_headers)
         recycler = view.findViewById(R.id.recycler_calendar_events)
@@ -73,6 +78,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
 
         view.findViewById<ImageButton>(R.id.btn_prev_month).setOnClickListener { changeMonth(-1) }
         view.findViewById<ImageButton>(R.id.btn_next_month).setOnClickListener { changeMonth(1) }
+        yearButton.setOnClickListener { showYearPicker() }
         view.findViewById<Button>(R.id.btn_close_calendar).setOnClickListener { dismiss() }
 
         buildHeaders()
@@ -97,7 +103,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             val tv = TextView(requireContext())
             tv.text = d
             tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.medium_gray))
-            tv.textSize = 12f
+            tv.textSize = 13f
+            tv.setTypeface(null, android.graphics.Typeface.BOLD)
             tv.gravity = android.view.Gravity.CENTER
             val params = GridLayout.LayoutParams()
             params.width = 0
@@ -204,7 +211,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun renderCalendar() {
-        monthYearText.text = monthYearFormat.format(calendar.time)
+        monthYearText.text = monthFormat.format(calendar.time)
+        yearButton.text = calendar.get(Calendar.YEAR).toString()
         dayGrid.removeAllViews()
 
         val tempCal = calendar.clone() as Calendar
@@ -237,7 +245,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             container.gravity = android.view.Gravity.CENTER
             val numberView = TextView(requireContext())
             numberView.text = day.toString()
-            numberView.textSize = 14f
+            numberView.textSize = 16f
+            numberView.setTypeface(null, android.graphics.Typeface.NORMAL)
             numberView.gravity = android.view.Gravity.CENTER
 
             val statusDot = View(requireContext())
@@ -335,6 +344,47 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             "No events for the selected date"
         } else {
             SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed!!)
+        }
+    }
+
+    private fun showYearPicker() {
+        val dialogView = layoutInflater.inflate(R.layout.event_calendar_year_dialog, null)
+        val numberPicker = dialogView.findViewById<NumberPicker>(R.id.year_number_picker)
+        val currentYear = calendar.get(Calendar.YEAR)
+        numberPicker.minValue = currentYear - 5
+        numberPicker.maxValue = currentYear + 5
+        numberPicker.value = currentYear
+        numberPicker.wrapSelectorWheel = false
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("Confirm") { dialog, _ ->
+                val selectedYear = numberPicker.value
+                if (selectedYear != calendar.get(Calendar.YEAR)) {
+                    calendar.set(Calendar.YEAR, selectedYear)
+                    selectedDayKey = null
+                    fetchEventsForCurrentMonth()
+                }
+                renderCalendar()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .create()
+        
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
+        
+        // Style buttons after dialog is shown
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.brand_indigo))
+            isAllCaps = false
+            textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.medium_gray))
+            isAllCaps = false
+            textSize = 16f
         }
     }
 }

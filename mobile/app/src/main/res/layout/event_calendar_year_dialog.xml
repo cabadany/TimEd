@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/white">
+
+    <!-- Header with gradient -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_year_dialog_header"
+        android:padding="@dimen/space_lg"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/year_dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select Year"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:textSize="@dimen/text_xl"
+            android:fontFamily="@font/league_spartan_bold"
+            android:letterSpacing="0.02"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
+
+    <!-- Number Picker Container -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_xl">
+
+        <NumberPicker
+            android:id="@+id/year_number_picker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:theme="@style/NumberPickerTheme" />
+    </LinearLayout>
+</LinearLayout>
