@@ -31,7 +31,7 @@
                 android:fontFamily="@font/league_spartan_bold"
                 android:letterSpacing="0.02"
                 android:layout_marginBottom="@dimen/space_md"
-                android:layout_gravity="center_horizontal"/>
+                android:layout_gravity="center_horizontal" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -39,65 +39,58 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Left Section: Month Name with Navigation -->
-                <LinearLayout
-                    android:layout_width="0dp"
+                <ImageButton
+                    android:id="@+id/btn_prev_month"
+                    android:layout_width="@dimen/toolbar_icon_lg"
+                    android:layout_height="@dimen/toolbar_icon_lg"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Previous Month"
+                    android:padding="@dimen/space_xs"
+                    android:src="@drawable/ic_chevron_left"
+                    app:tint="@color/primary_medium_blue" />
+
+                <TextView
+                    android:id="@+id/text_month_year"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="start|center_vertical">
+                    android:layout_marginStart="@dimen/space_sm"
+                    android:fontFamily="@font/league_spartan_bold"
+                    android:text="October"
+                    android:textColor="@color/primary_deep_blue"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-                    <ImageButton
-                        android:id="@+id/btn_prev_month"
-                        android:layout_width="@dimen/toolbar_icon_lg"
-                        android:layout_height="@dimen/toolbar_icon_lg"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Previous Month"
-                        android:src="@drawable/ic_chevron_left"
-                        android:padding="@dimen/space_xs"
-                        app:tint="@color/primary_medium_blue" />
+                <ImageButton
+                    android:id="@+id/btn_next_month"
+                    android:layout_width="@dimen/toolbar_icon_lg"
+                    android:layout_height="@dimen/toolbar_icon_lg"
+                    android:layout_marginStart="@dimen/space_sm"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Next Month"
+                    android:padding="@dimen/space_xs"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/primary_medium_blue" />
 
-                    <TextView
-                        android:id="@+id/text_month_year"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="@dimen/space_sm"
-                        android:text="October"
-                        android:textColor="@color/primary_deep_blue"
-                        android:textSize="18sp"
-                        android:fontFamily="@font/league_spartan_bold"
-                        android:textStyle="bold" />
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
 
-                    <ImageButton
-                        android:id="@+id/btn_next_month"
-                        android:layout_width="@dimen/toolbar_icon_lg"
-                        android:layout_height="@dimen/toolbar_icon_lg"
-                        android:layout_marginStart="@dimen/space_sm"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Next Month"
-                        android:src="@drawable/ic_chevron_right"
-                        android:padding="@dimen/space_xs"
-                        app:tint="@color/primary_medium_blue" />
-                </LinearLayout>
-
-                <!-- Right Section: Year Button -->
-                <Button
+                <!-- Year TextView Button -->
+                <TextView
                     android:id="@+id/btn_select_year"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:minWidth="100dp"
                     android:background="@drawable/bg_calendar_year_button"
-                    android:paddingStart="@dimen/space_lg"
-                    android:paddingEnd="@dimen/space_lg"
-                    android:text="2025"
-                    android:textColor="@color/white"
-                    android:textStyle="bold"
-                    android:textSize="16sp"
-                    android:drawableEnd="@drawable/ic_chevron_down"
-                    android:drawablePadding="4dp"
-                    android:drawableTint="@color/white"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
-                    android:stateListAnimator="@animator/button_scale_animator" />
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="2025 ▼"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>

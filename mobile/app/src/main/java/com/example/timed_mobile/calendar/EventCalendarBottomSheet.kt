@@ -5,8 +5,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.TextView
@@ -31,7 +31,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     var onDismissed: (() -> Unit)? = null
 
     private lateinit var monthYearText: TextView
-    private lateinit var yearButton: Button
+    private lateinit var yearButton: TextView
     private lateinit var dayGrid: GridLayout
     private lateinit var headersGrid: GridLayout
     private lateinit var recycler: RecyclerView
@@ -66,7 +66,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.event_calendar_bottom_sheet, container, false)
         monthYearText = view.findViewById(R.id.text_month_year)
-        yearButton = view.findViewById(R.id.btn_select_year)
+        yearButton = view.findViewById<TextView>(R.id.btn_select_year)
         dayGrid = view.findViewById(R.id.calendar_day_grid)
         headersGrid = view.findViewById(R.id.calendar_day_headers)
         recycler = view.findViewById(R.id.recycler_calendar_events)
@@ -212,7 +212,7 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
 
     private fun renderCalendar() {
         monthYearText.text = monthFormat.format(calendar.time)
-        yearButton.text = calendar.get(Calendar.YEAR).toString()
+        yearButton.text = "${calendar.get(Calendar.YEAR)} ▼"
         dayGrid.removeAllViews()
 
         val tempCal = calendar.clone() as Calendar
