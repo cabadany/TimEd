@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
@@ -18,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.timed_mobile.R
 import com.example.timed_mobile.adapter.CalendarEventAdapter
 import com.example.timed_mobile.model.CalendarEvent
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,6 +37,15 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private lateinit var recycler: RecyclerView
     private lateinit var selectedDateText: TextView
     private lateinit var adapter: CalendarEventAdapter
+    private lateinit var calendarTitle: TextView
+    private lateinit var toggleGroup: MaterialButtonToggleGroup
+    private lateinit var eventLayout: LinearLayout
+    private lateinit var attendanceLayout: LinearLayout
+    private lateinit var attendanceHeaders: GridLayout
+    private lateinit var attendanceGrid: GridLayout
+    private lateinit var attendanceSelectedDateText: TextView
+    private lateinit var attendancePlaceholder: TextView
+    private lateinit var attendanceRecycler: RecyclerView
 
     private val calendar: Calendar = Calendar.getInstance()
     private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
@@ -65,23 +74,52 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.event_calendar_bottom_sheet, container, false)
+        calendarTitle = view.findViewById(R.id.text_calendar_title)
         monthYearText = view.findViewById(R.id.text_month_year)
         yearButton = view.findViewById<TextView>(R.id.btn_select_year)
         dayGrid = view.findViewById(R.id.calendar_day_grid)
         headersGrid = view.findViewById(R.id.calendar_day_headers)
         recycler = view.findViewById(R.id.recycler_calendar_events)
         selectedDateText = view.findViewById(R.id.text_selected_date)
+        toggleGroup = view.findViewById(R.id.calendar_toggle_group)
+        eventLayout = view.findViewById(R.id.layout_event_calendar)
+        attendanceLayout = view.findViewById(R.id.layout_attendance_calendar)
+        attendanceHeaders = view.findViewById(R.id.attendance_day_headers)
+        attendanceGrid = view.findViewById(R.id.attendance_day_grid)
+        attendanceSelectedDateText = view.findViewById(R.id.text_attendance_selected_date)
+        attendancePlaceholder = view.findViewById(R.id.text_attendance_placeholder)
+        attendanceRecycler = view.findViewById(R.id.recycler_attendance_records)
 
         recycler.layoutManager = LinearLayoutManager(requireContext())
         adapter = CalendarEventAdapter(emptyList())
         recycler.adapter = adapter
 
+        attendanceRecycler.layoutManager = LinearLayoutManager(requireContext())
+
         view.findViewById<ImageButton>(R.id.btn_prev_month).setOnClickListener { changeMonth(-1) }
         view.findViewById<ImageButton>(R.id.btn_next_month).setOnClickListener { changeMonth(1) }
         yearButton.setOnClickListener { showYearPicker() }
-        view.findViewById<Button>(R.id.btn_close_calendar).setOnClickListener { dismiss() }
+
+        toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            when (checkedId) {
+                R.id.btn_toggle_events -> {
+                    calendarTitle.text = getString(R.string.event_calendar_title)
+                    eventLayout.visibility = View.VISIBLE
+                    attendanceLayout.visibility = View.GONE
+                }
+                R.id.btn_toggle_attendance -> {
+                    calendarTitle.text = getString(R.string.attendance_calendar_title)
+                    eventLayout.visibility = View.GONE
+                    attendanceLayout.visibility = View.VISIBLE
+                    renderAttendanceCalendarPlaceholder()
+                }
+            }
+        }
+        toggleGroup.check(R.id.btn_toggle_events)
 
         buildHeaders()
+        buildAttendanceHeaders()
         departmentId = arguments?.getString(ARG_DEPARTMENT_ID)
         fetchEventsForCurrentMonth()
         renderCalendar()
@@ -264,8 +302,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             // Color status dot based on real event status (maps to existing styles)
             val dayEvents = allEvents.filter { keyFormat.format(it.date) == dayKey }
             val statusForDot = when {
-                dayEvents.any { it.status.equals("ongoing", true) } -> "late" // orange
-                dayEvents.any { it.status.equals("upcoming", true) } -> "present" // green
+                dayEvents.any { it.status.equals("ongoing", true) } -> "present" // green
+                dayEvents.any { it.status.equals("upcoming", true) } -> "late" // yellow
                 dayEvents.any { it.status.equals("cancelled", true) || it.status.equals("ended", true) } -> "absent" // red
                 else -> null
             }
@@ -299,10 +337,11 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         // Clear list if selection cleared
         if (selectedDayKey == null) {
             adapter.submit(emptyList())
-            selectedDateText.text = "Select a date to view events"
+            selectedDateText.text = getString(R.string.calendar_select_date_prompt)
         } else {
             filterForSelected()
         }
+        renderAttendanceCalendarPlaceholder()
     }
 
     private fun styleDayContainer(container: LinearLayout, numberView: TextView, selected: Boolean) {
@@ -334,17 +373,118 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private fun filterForSelected() {
         if (selectedDayKey == null) {
             adapter.submit(emptyList())
-            selectedDateText.text = "Select a date to view events"
+            selectedDateText.text = getString(R.string.calendar_select_date_prompt)
             return
         }
         val filtered = allEvents.filter { keyFormat.format(it.date) == selectedDayKey }
         adapter.submit(filtered.sortedBy { it.date })
         val parsed = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedDayKey!!)
         selectedDateText.text = if (filtered.isEmpty()) {
-            "No events for the selected date"
+            getString(R.string.calendar_no_events_for_selected)
         } else {
             SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed!!)
         }
+    }
+
+    private fun buildAttendanceHeaders() {
+        attendanceHeaders.removeAllViews()
+        val days = listOf("Sun","Mon","Tue","Wed","Thu","Fri","Sat")
+        val size = resources.getDimensionPixelSize(R.dimen.calendar_cell_size)
+        val colGap = resources.getDimensionPixelSize(R.dimen.calendar_cell_col_spacing)
+        val rowGap = resources.getDimensionPixelSize(R.dimen.calendar_cell_row_spacing)
+        days.forEachIndexed { index, d ->
+            val tv = TextView(requireContext())
+            tv.text = d
+            tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.medium_gray))
+            tv.textSize = 13f
+            tv.setTypeface(null, android.graphics.Typeface.BOLD)
+            tv.gravity = android.view.Gravity.CENTER
+            val params = GridLayout.LayoutParams()
+            params.width = 0
+            params.height = size
+            val left = if (index == 0) 0 else colGap
+            params.setMargins(left, 0, 0, rowGap/2)
+            params.columnSpec = GridLayout.spec(index,1f)
+            tv.layoutParams = params
+            attendanceHeaders.addView(tv)
+        }
+    }
+
+    private fun renderAttendanceCalendarPlaceholder() {
+        attendanceGrid.removeAllViews()
+        val tempCal = calendar.clone() as Calendar
+        tempCal.set(Calendar.DAY_OF_MONTH, 1)
+        val firstDayOfWeekIndex = tempCal.get(Calendar.DAY_OF_WEEK) - 1
+        val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val totalCells = firstDayOfWeekIndex + daysInMonth
+        val rows = ((totalCells + 6) / 7)
+        attendanceGrid.rowCount = rows
+
+        val size = resources.getDimensionPixelSize(R.dimen.calendar_cell_size)
+        val colGap = resources.getDimensionPixelSize(R.dimen.calendar_cell_col_spacing)
+        val rowGap = resources.getDimensionPixelSize(R.dimen.calendar_cell_row_spacing)
+
+        for (i in 0 until firstDayOfWeekIndex) {
+            val placeholder = View(requireContext())
+            val params = GridLayout.LayoutParams()
+            params.width = 0
+            params.height = size
+            val left = if (i == 0) 0 else colGap
+            params.setMargins(left, rowGap/2, 0, rowGap/2)
+            params.columnSpec = GridLayout.spec(i,1f)
+            placeholder.layoutParams = params
+            attendanceGrid.addView(placeholder)
+        }
+
+        val dayFormatLocal = SimpleDateFormat("d", Locale.getDefault())
+        for (day in 1..daysInMonth) {
+            val container = LinearLayout(requireContext())
+            container.orientation = LinearLayout.VERTICAL
+            container.gravity = android.view.Gravity.CENTER
+
+            val numberView = TextView(requireContext())
+            numberView.text = dayFormatLocal.format(tempCal.apply { set(Calendar.DAY_OF_MONTH, day) }.time)
+            numberView.textSize = 16f
+            numberView.setTypeface(null, android.graphics.Typeface.NORMAL)
+            numberView.gravity = android.view.Gravity.CENTER
+            numberView.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary_deep_blue))
+
+            val statusDot = View(requireContext())
+            val dotParams = LinearLayout.LayoutParams(12,12)
+            dotParams.topMargin = 2
+            statusDot.layoutParams = dotParams
+
+            val statusDrawable = when {
+                day % 6 == 0 -> R.drawable.dot_attendance_absent
+                day % 3 == 0 -> R.drawable.dot_attendance_late
+                day % 2 == 0 -> R.drawable.dot_attendance_present
+                else -> null
+            }
+            statusDrawable?.let {
+                statusDot.background = ContextCompat.getDrawable(requireContext(), it)
+            } ?: run {
+                statusDot.visibility = View.INVISIBLE
+            }
+
+            container.addView(numberView)
+            container.addView(statusDot)
+
+            val absoluteIndex = firstDayOfWeekIndex + (day - 1)
+            val column = absoluteIndex % 7
+            val params = GridLayout.LayoutParams()
+            params.width = 0
+            params.height = size
+            val left = if (column == 0) 0 else colGap
+            params.setMargins(left, rowGap/2, 0, rowGap/2)
+            params.columnSpec = GridLayout.spec(column,1f)
+            container.layoutParams = params
+            container.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_calendar_day_unselected)
+            attendanceGrid.addView(container)
+        }
+
+        attendanceSelectedDateText.text = getString(R.string.attendance_select_date_prompt)
+        attendancePlaceholder.visibility = View.VISIBLE
+        attendanceRecycler.visibility = View.GONE
     }
 
     private fun showYearPicker() {

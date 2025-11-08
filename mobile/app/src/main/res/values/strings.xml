@@ -44,6 +44,15 @@
     <string name="content_desc_check_circle">Checkmark icon</string>
 
     <string name="selected_date_format">Selected Date: %1$d/%2$d/%3$d</string>
+    <string name="event_calendar_title">Event Calendar</string>
+    <string name="attendance_calendar_title">Attendance Calendar</string>
+    <string name="calendar_select_date_prompt">Select a date to view events</string>
+    <string name="calendar_no_events_for_selected">No events for the selected date</string>
+    <string name="attendance_select_date_prompt">Select a date to view attendance</string>
+    <string name="attendance_no_records_for_selected">No attendance records for the selected date</string>
+    <string name="calendar_toggle_events">Events</string>
+    <string name="calendar_toggle_attendance">Attendance</string>
+    <string name="attendance_placeholder_message">Attendance tracking view will appear here soon.</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
