@@ -11,6 +11,8 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.NumberPicker
 import androidx.core.content.ContextCompat
+import androidx.annotation.StringRes
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -55,6 +57,8 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
         timeZone = java.util.TimeZone.getTimeZone("Asia/Manila")
     }
+    private val switchInterpolator = FastOutSlowInInterpolator()
+    private val switchDuration = 220L
 
     private var selectedDayKey: String? = null
     private val allEvents = mutableListOf<CalendarEvent>()
@@ -104,15 +108,15 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             if (!isChecked) return@addOnButtonCheckedListener
             when (checkedId) {
                 R.id.btn_toggle_events -> {
-                    calendarTitle.text = getString(R.string.event_calendar_title)
-                    eventLayout.visibility = View.VISIBLE
-                    attendanceLayout.visibility = View.GONE
+                    if (eventLayout.visibility != View.VISIBLE) {
+                        animateCalendarSwitch(eventLayout, attendanceLayout, R.string.event_calendar_title)
+                    }
                 }
                 R.id.btn_toggle_attendance -> {
-                    calendarTitle.text = getString(R.string.attendance_calendar_title)
-                    eventLayout.visibility = View.GONE
-                    attendanceLayout.visibility = View.VISIBLE
                     renderAttendanceCalendarPlaceholder()
+                    if (attendanceLayout.visibility != View.VISIBLE) {
+                        animateCalendarSwitch(attendanceLayout, eventLayout, R.string.attendance_calendar_title)
+                    }
                 }
             }
         }
@@ -485,6 +489,43 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         attendanceSelectedDateText.text = getString(R.string.attendance_select_date_prompt)
         attendancePlaceholder.visibility = View.VISIBLE
         attendanceRecycler.visibility = View.GONE
+    }
+
+    private fun animateCalendarSwitch(show: View, hide: View, @StringRes titleRes: Int) {
+        calendarTitle.text = getString(titleRes)
+
+        val translation = resources.displayMetrics.density * 20f
+
+        show.animate().cancel()
+        hide.animate().cancel()
+
+        if (hide.visibility == View.VISIBLE) {
+            hide.animate()
+                .alpha(0f)
+                .translationY(-translation)
+                .setDuration(switchDuration)
+                .setInterpolator(switchInterpolator)
+                .withEndAction {
+                    hide.visibility = View.GONE
+                    hide.alpha = 1f
+                    hide.translationY = 0f
+                }
+                .start()
+        } else {
+            hide.visibility = View.GONE
+            hide.alpha = 1f
+            hide.translationY = 0f
+        }
+
+        show.alpha = 0f
+        show.translationY = translation
+        show.visibility = View.VISIBLE
+        show.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(switchDuration)
+            .setInterpolator(switchInterpolator)
+            .start()
     }
 
     private fun showYearPicker() {
