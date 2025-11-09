@@ -52,7 +52,15 @@
     <string name="attendance_no_records_for_selected">No attendance records for the selected date</string>
     <string name="calendar_toggle_events">Events</string>
     <string name="calendar_toggle_attendance">Attendance</string>
-    <string name="attendance_placeholder_message">Attendance tracking view will appear here soon.</string>
+    <string name="attendance_placeholder_message" translatable="false"></string>
+    <string name="attendance_statistics_title">Monthly Attendance Overview</string>
+    <string name="attendance_status_on_time">On Time</string>
+    <string name="attendance_status_late">Late</string>
+    <string name="attendance_status_absent">Absent</string>
+    <string name="attendance_present_count_format">On Time: %1$d</string>
+    <string name="attendance_late_count_format">Late: %1$d</string>
+    <string name="attendance_absent_count_format">Absent: %1$d</string>
+    <string name="attendance_stats_center_label">Total %1$d Days</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

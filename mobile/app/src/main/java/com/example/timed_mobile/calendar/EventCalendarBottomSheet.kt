@@ -21,6 +21,16 @@ import com.example.timed_mobile.adapter.CalendarEventAdapter
 import com.example.timed_mobile.model.CalendarEvent
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.gson.Gson
+import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.components.Legend
+import com.github.mikephil.charting.components.Legend.LegendOrientation
+import com.github.mikephil.charting.components.Legend.LegendVerticalAlignment
+import com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment
+import com.github.mikephil.charting.components.Legend.LegendForm
+import com.github.mikephil.charting.data.PieData
+import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.PieEntry
+import com.github.mikephil.charting.formatter.ValueFormatter
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.text.SimpleDateFormat
@@ -45,9 +55,10 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private lateinit var attendanceLayout: LinearLayout
     private lateinit var attendanceHeaders: GridLayout
     private lateinit var attendanceGrid: GridLayout
-    private lateinit var attendanceSelectedDateText: TextView
-    private lateinit var attendancePlaceholder: TextView
-    private lateinit var attendanceRecycler: RecyclerView
+    private lateinit var monthlyPieChart: PieChart
+    private lateinit var monthlyPresentCount: TextView
+    private lateinit var monthlyLateCount: TextView
+    private lateinit var monthlyAbsentCount: TextView
 
     private val calendar: Calendar = Calendar.getInstance()
     private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
@@ -90,15 +101,14 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         attendanceLayout = view.findViewById(R.id.layout_attendance_calendar)
         attendanceHeaders = view.findViewById(R.id.attendance_day_headers)
         attendanceGrid = view.findViewById(R.id.attendance_day_grid)
-        attendanceSelectedDateText = view.findViewById(R.id.text_attendance_selected_date)
-        attendancePlaceholder = view.findViewById(R.id.text_attendance_placeholder)
-        attendanceRecycler = view.findViewById(R.id.recycler_attendance_records)
+        monthlyPieChart = view.findViewById(R.id.chart_attendance_monthly)
+        monthlyPresentCount = view.findViewById(R.id.text_attendance_present_count)
+        monthlyLateCount = view.findViewById(R.id.text_attendance_late_count)
+        monthlyAbsentCount = view.findViewById(R.id.text_attendance_absent_count)
 
         recycler.layoutManager = LinearLayoutManager(requireContext())
         adapter = CalendarEventAdapter(emptyList())
         recycler.adapter = adapter
-
-        attendanceRecycler.layoutManager = LinearLayoutManager(requireContext())
 
         view.findViewById<ImageButton>(R.id.btn_prev_month).setOnClickListener { changeMonth(-1) }
         view.findViewById<ImageButton>(R.id.btn_next_month).setOnClickListener { changeMonth(1) }
@@ -486,9 +496,64 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             attendanceGrid.addView(container)
         }
 
-        attendanceSelectedDateText.text = getString(R.string.attendance_select_date_prompt)
-        attendancePlaceholder.visibility = View.VISIBLE
-        attendanceRecycler.visibility = View.GONE
+        renderSampleAttendanceStatistics()
+    }
+
+    private fun renderSampleAttendanceStatistics() {
+        val samplePresent = 18
+        val sampleLate = 6
+        val sampleAbsent = 3
+        val total = samplePresent + sampleLate + sampleAbsent
+
+        monthlyPresentCount.text = getString(R.string.attendance_present_count_format, samplePresent)
+        monthlyLateCount.text = getString(R.string.attendance_late_count_format, sampleLate)
+        monthlyAbsentCount.text = getString(R.string.attendance_absent_count_format, sampleAbsent)
+
+        val entries = listOf(
+            PieEntry(samplePresent.toFloat(), getString(R.string.attendance_status_on_time)),
+            PieEntry(sampleLate.toFloat(), getString(R.string.attendance_status_late)),
+            PieEntry(sampleAbsent.toFloat(), getString(R.string.attendance_status_absent))
+        ).filter { it.value > 0f }
+
+        val colors = listOf(
+            ContextCompat.getColor(requireContext(), R.color.attendance_green),
+            ContextCompat.getColor(requireContext(), R.color.attendance_yellow),
+            ContextCompat.getColor(requireContext(), R.color.attendance_red)
+        )
+
+        val dataSet = PieDataSet(entries, "").apply {
+            setColors(colors)
+            sliceSpace = 3f
+            valueTextSize = 13f
+            valueTextColor = ContextCompat.getColor(requireContext(), R.color.primary_deep_blue)
+            valueFormatter = object : ValueFormatter() {
+                override fun getFormattedValue(value: Float): String = value.toInt().toString()
+            }
+        }
+
+        val pieData = PieData(dataSet)
+
+        monthlyPieChart.apply {
+            data = pieData
+            setUsePercentValues(false)
+            setDrawEntryLabels(false)
+            description.isEnabled = false
+            setHoleColor(ContextCompat.getColor(requireContext(), R.color.white))
+            setCenterTextColor(ContextCompat.getColor(requireContext(), R.color.primary_deep_blue))
+            centerText = getString(R.string.attendance_stats_center_label, total)
+            setCenterTextSize(14f)
+            legend.apply {
+                verticalAlignment = LegendVerticalAlignment.BOTTOM
+                horizontalAlignment = LegendHorizontalAlignment.CENTER
+                orientation = LegendOrientation.HORIZONTAL
+                form = LegendForm.CIRCLE
+                textColor = ContextCompat.getColor(requireContext(), R.color.neutral_text_gray)
+                textSize = 12f
+                isWordWrapEnabled = true
+            }
+            setTouchEnabled(false)
+            invalidate()
+        }
     }
 
     private fun animateCalendarSwitch(show: View, hide: View, @StringRes titleRes: Int) {

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/light_gray"
@@ -460,7 +461,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Attendance Records Section -->
+        <!-- Attendance Statistics Section -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -478,31 +479,93 @@
                 android:padding="@dimen/space_lg">
 
                 <TextView
-                    android:id="@+id/text_attendance_selected_date"
+                    android:id="@+id/text_attendance_statistics_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/attendance_select_date_prompt"
+                    android:text="@string/attendance_statistics_title"
                     android:textColor="@color/primary_deep_blue"
                     android:textSize="@dimen/text_md"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="@dimen/space_sm" />
+                    android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/text_attendance_placeholder"
+                <com.github.mikephil.charting.charts.PieChart
+                    android:id="@+id/chart_attendance_monthly"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:layout_marginTop="@dimen/space_md" />
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/attendance_placeholder_message"
-                    android:textColor="@color/neutral_text_gray"
-                    android:textSize="@dimen/text_sm"
-                    android:lineSpacingExtra="2dp"
-                    android:layout_marginBottom="@dimen/space_sm" />
+                    android:layout_marginTop="@dimen/space_md"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recycler_attendance_records"
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:overScrollMode="ifContentScrolls"
-                    android:visibility="gone" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/dot_attendance_present" />
+
+                        <TextView
+                            android:id="@+id/text_attendance_present_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_xs"
+                            android:textColor="@color/neutral_text_gray"
+                            android:textSize="@dimen/text_sm"
+                            tools:text="On Time: 0" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/dot_attendance_late" />
+
+                        <TextView
+                            android:id="@+id/text_attendance_late_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_xs"
+                            android:textColor="@color/neutral_text_gray"
+                            android:textSize="@dimen/text_sm"
+                            tools:text="Late: 0" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/dot_attendance_absent" />
+
+                        <TextView
+                            android:id="@+id/text_attendance_absent_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_xs"
+                            android:textColor="@color/neutral_text_gray"
+                            android:textSize="@dimen/text_sm"
+                            tools:text="Absent: 0" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
