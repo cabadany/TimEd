@@ -22,6 +22,7 @@ import com.example.timed_mobile.model.CalendarEvent
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.gson.Gson
 import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.components.Legend
 import com.github.mikephil.charting.components.Legend.LegendOrientation
 import com.github.mikephil.charting.components.Legend.LegendVerticalAlignment
@@ -552,6 +553,9 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
                 isWordWrapEnabled = true
             }
             setTouchEnabled(false)
+            alpha = 0f
+            animateY(900, Easing.EaseInOutQuad)
+            animate().alpha(1f).setDuration(400).start()
             invalidate()
         }
     }
