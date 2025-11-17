@@ -1768,8 +1768,6 @@ class HomeActivity : WifiSecurityActivity() {
             else -> "Tutorial:"
         }
 
-        // Manage visibility
-        val shouldBeVisible =
         if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE && !isFinishing && !isDestroyed) {
             tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
             val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
