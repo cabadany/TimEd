@@ -606,6 +606,21 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun renderEmptyAttendanceCalendar(daysInMonth: Int, firstDayOfWeekIndex: Int, size: Int, colGap: Int, rowGap: Int) {
+        attendanceGrid.removeAllViews()
+        val totalCells = firstDayOfWeekIndex + daysInMonth
+        attendanceGrid.rowCount = ((totalCells + 6) / 7)
+
+        for (i in 0 until firstDayOfWeekIndex) {
+            val placeholder = View(requireContext())
+            val params = GridLayout.LayoutParams()
+            params.width = 0
+            params.height = size
+            val left = if (i == 0) 0 else colGap
+            params.setMargins(left, rowGap / 2, 0, rowGap / 2)
+            params.columnSpec = GridLayout.spec(i, 1f)
+            placeholder.layoutParams = params
+            attendanceGrid.addView(placeholder)
+        }
         val dayFormatLocal = SimpleDateFormat("d", Locale.getDefault())
         val tempCal = calendar.clone() as Calendar
         
@@ -645,6 +660,21 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun renderAttendanceCalendarWithData(daysInMonth: Int, firstDayOfWeekIndex: Int, size: Int, colGap: Int, rowGap: Int, dayStatusMap: Map<Int, String>) {
+        attendanceGrid.removeAllViews()
+        val totalCells = firstDayOfWeekIndex + daysInMonth
+        attendanceGrid.rowCount = ((totalCells + 6) / 7)
+
+        for (i in 0 until firstDayOfWeekIndex) {
+            val placeholder = View(requireContext())
+            val params = GridLayout.LayoutParams()
+            params.width = 0
+            params.height = size
+            val left = if (i == 0) 0 else colGap
+            params.setMargins(left, rowGap / 2, 0, rowGap / 2)
+            params.columnSpec = GridLayout.spec(i, 1f)
+            placeholder.layoutParams = params
+            attendanceGrid.addView(placeholder)
+        }
         val dayFormatLocal = SimpleDateFormat("d", Locale.getDefault())
         val tempCal = calendar.clone() as Calendar
         

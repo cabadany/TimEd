@@ -1119,12 +1119,6 @@ class HomeActivity : WifiSecurityActivity() {
                         ); putExtra("department", department)
                         })
 
-                    R.id.nav_settings -> UiDialogs.showErrorPopup(
-                        this,
-                        "Coming Soon",
-                        "Settings screen is under development."
-                    )
-
                     R.id.nav_logout -> showLogoutDialog()
                 }
             }, 250)
@@ -1776,38 +1770,14 @@ class HomeActivity : WifiSecurityActivity() {
 
         // Manage visibility
         val shouldBeVisible =
-            (currentInteractiveTutorialName != null || currentStep > 0 || isCompleted) &&
-                    (activeTutorialStepKey == KEY_QUICK_TOUR_CURRENT_STEP || activeTutorialStepKey == KEY_ATTENDANCE_GUIDE_CURRENT_STEP)
-
-
-        if (shouldBeVisible) {
-            if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE) {
-                if (!isFinishing && !isDestroyed) {
-                    tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
-                    val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
-                    tutorialProgressOnRightNavHeader?.startAnimation(fadeIn)
-                }
-            }
-        } else {
-            if (tutorialProgressOnRightNavHeader?.visibility == View.VISIBLE) {
-                if (!isFinishing && !isDestroyed) {
-                    val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-                    fadeOut.setAnimationListener(object : Animation.AnimationListener {
-                        override fun onAnimationStart(p0: Animation?) {}
-                        override fun onAnimationEnd(p0: Animation?) {
-                            if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility =
-                                View.GONE
-                        }
-
-                        override fun onAnimationRepeat(p0: Animation?) {}
-                    })
-                    tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
-                }
-            }
+        if (tutorialProgressOnRightNavHeader?.visibility != View.VISIBLE && !isFinishing && !isDestroyed) {
+            tutorialProgressOnRightNavHeader?.visibility = View.VISIBLE
+            val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+            tutorialProgressOnRightNavHeader?.startAnimation(fadeIn)
         }
         Log.d(
             TAG_TUTORIAL_NAV,
-            "Updated nav header progress for $activeTutorialStepKey: $percentage% (Step $currentStep/$totalSteps). Completed: $isCompleted. Visible: $shouldBeVisible"
+            "Updated nav header progress for $activeTutorialStepKey: $percentage% (Step $currentStep/$totalSteps). Completed: $isCompleted. Visible: true"
         )
     }
 
@@ -2014,20 +1984,7 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun hideNavHeaderTutorialProgressAfterCompletion() {
         Handler(mainLooper).postDelayed({
-            if (tutorialProgressOnRightNavHeader?.visibility == View.VISIBLE && !isFinishing && !isDestroyed) {
-                val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-                fadeOut.setAnimationListener(object : Animation.AnimationListener {
-                    override fun onAnimationStart(p0: Animation?) {}
-                    override fun onAnimationEnd(p0: Animation?) {
-                        if (!isFinishing && !isDestroyed) tutorialProgressOnRightNavHeader?.visibility =
-                            View.GONE
-                    }
-
-                    override fun onAnimationRepeat(p0: Animation?) {}
-                })
-                tutorialProgressOnRightNavHeader?.startAnimation(fadeOut)
-            }
-            currentInteractiveTutorialName = null // Clear active tutorial name after hiding
+            currentInteractiveTutorialName = null
         }, 1500)
     }
 
@@ -2613,7 +2570,9 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            Toast.makeText(this, "TODO: Click Time-Out button now.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Click Time-Out button now.", Toast.LENGTH_SHORT).show()
+
+            // TODO: Click Time-Out button now.
             // For now, to simulate progress for testing and move to next instruction:
             // This would be removed once Time-Out is fully interactive.
             // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
@@ -2646,7 +2605,9 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            Toast.makeText(this, "TODO: Select a status now.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Select a status now.", Toast.LENGTH_SHORT).show()
+
+            // TODO: Select a status now.
             // For now, to simulate progress for testing:
             // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
             // updateNavHeaderTutorialProgress()

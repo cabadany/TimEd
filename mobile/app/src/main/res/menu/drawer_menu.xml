@@ -34,11 +34,6 @@
         android:icon="@drawable/ic_profile"
         android:title="Profile" />
 
-    <item
-        android:id="@+id/nav_settings"
-        android:icon="@drawable/ic_settings"
-        android:title="Settings" />
-
     <!-- Session -->
     <item
         android:id="@+id/nav_logout"
