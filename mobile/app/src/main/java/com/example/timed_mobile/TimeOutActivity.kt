@@ -40,9 +40,9 @@ class TimeOutActivity : WifiSecurityActivity() {
         // Toggle to enforce the app-level Time-Out window.
         // Set to false to allow time-out anytime (for demo/admin overrides).
         private const val ENFORCE_TIMEOUT_WINDOW = false
-        private const val TIMEOUT_HOUR = 11 // e.g., 5 for 5 o'clock
+        private const val TIMEOUT_HOUR = 17 // e.g., 5 for 5 o'clock
         private const val TIMEOUT_MINUTE = 0 // e.g., 0 for on the hour
-        private const val TIMEOUT_AM_PM = Calendar.AM // Use Calendar.AM or Calendar.PM
+        private const val TIMEOUT_AM_PM = Calendar.PM // Use Calendar.AM or Calendar.PM
     }
     // --- END MODIFIABLE TIME SETTING ---
 
