@@ -146,6 +146,12 @@ export default function Dashboard() {
   });
   const [lateThreshold, setLateThreshold] = useState('09:00');
   const [showLateThresholdModal, setShowLateThresholdModal] = useState(false);
+  const [timeWindow, setTimeWindow] = useState({
+    start: '13:30',
+    end: '17:00'
+  });
+  const [showTimeWindowModal, setShowTimeWindowModal] = useState(false);
+  const [timeWindowError, setTimeWindowError] = useState(null);
   const [showLateFacultyModal, setShowLateFacultyModal] = useState(false);
   const [lateFacultyList, setLateFacultyList] = useState([]);
   const [showNoTimeInModal, setShowNoTimeInModal] = useState(false);
@@ -617,6 +623,23 @@ export default function Dashboard() {
     return `${hours}h ${minutes}m`;
   };
 
+  const formatTimeDisplay = (timeString) => {
+    if (!timeString) return '--:--';
+    try {
+      const [hour, minute] = timeString.split(':').map(Number);
+      if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
+      const date = new Date();
+      date.setHours(hour);
+      date.setMinutes(minute);
+      date.setSeconds(0);
+      date.setMilliseconds(0);
+      return format(date, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time string:', error);
+      return timeString;
+    }
+  };
+
   const handleMainTabChange = (event, newValue) => {
     setMainTab(newValue);
     
@@ -823,6 +846,40 @@ export default function Dashboard() {
     }
   };
 
+  const loadTimeWindow = async () => {
+    try {
+      const db = getDatabase();
+      const timeWindowRef = ref(db, 'settings/timeWindow');
+
+      const snapshot = await get(timeWindowRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setTimeWindow({
+          start: data.start || '13:30',
+          end: data.end || '17:00'
+        });
+        setTimeWindowError(null);
+      }
+
+      onValue(timeWindowRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          setTimeWindow({
+            start: data.start || '13:30',
+            end: data.end || '17:00'
+          });
+          setTimeWindowError(null);
+        }
+      }, (error) => {
+        console.error('Error loading time window:', error);
+        setTimeWindowError('Failed to load time-in window. Please check your permissions.');
+      });
+    } catch (error) {
+      console.error('Error loading time window:', error);
+      setTimeWindowError('Failed to load time-in window. Please check your permissions.');
+    }
+  };
+
   // Update saveLateThreshold function
   const saveLateThreshold = async (newThreshold) => {
     try {
@@ -850,9 +907,40 @@ export default function Dashboard() {
     }
   };
 
+  const saveTimeWindow = async (start, end) => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        setTimeWindowError('You must be logged in to change the time-in window.');
+        return false;
+      }
+
+      const db = getDatabase();
+      const timeWindowRef = ref(db, 'settings/timeWindow');
+      await set(timeWindowRef, { start, end });
+      setTimeWindow({
+        start,
+        end
+      });
+      setTimeWindowError(null);
+      return true;
+    } catch (error) {
+      console.error('Error saving time window:', error);
+      if (error.message?.includes('permission_denied')) {
+        setTimeWindowError('You do not have permission to change the time-in window. Only administrators can modify this setting.');
+      } else {
+        setTimeWindowError('Failed to save time-in window. Please try again.');
+      }
+      return false;
+    }
+  };
+
   // Load late threshold when component mounts
   useEffect(() => {
     loadLateThreshold();
+    loadTimeWindow();
   }, []);
 
   // Update the LateThresholdModal component
@@ -923,6 +1011,121 @@ export default function Dashboard() {
             </Button>
             <Button 
               variant="contained" 
+              onClick={handleSave}
+              disabled={saving}
+              sx={{
+                bgcolor: darkMode ? 'var(--accent-color)' : undefined,
+                '&:hover': {
+                  bgcolor: darkMode ? 'var(--accent-hover)' : undefined
+                }
+              }}
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+    );
+  };
+
+  const TimeWindowModal = () => {
+    const [tempStart, setTempStart] = useState(timeWindow.start);
+    const [tempEnd, setTempEnd] = useState(timeWindow.end);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      if (showTimeWindowModal) {
+        setTempStart(timeWindow.start);
+        setTempEnd(timeWindow.end);
+      }
+    }, [showTimeWindowModal, timeWindow]);
+
+    const handleSave = async () => {
+      setTimeWindowError(null);
+
+      if (!tempStart || !tempEnd) {
+        setTimeWindowError('Both start and end times are required.');
+        return;
+      }
+
+      if (tempStart >= tempEnd) {
+        setTimeWindowError('Start time must be earlier than end time.');
+        return;
+      }
+
+      setSaving(true);
+      const success = await saveTimeWindow(tempStart, tempEnd);
+      setSaving(false);
+      if (success) {
+        setShowTimeWindowModal(false);
+      }
+    };
+
+    return (
+      <Modal
+        open={showTimeWindowModal}
+        onClose={() => {
+          setShowTimeWindowModal(false);
+          setTimeWindowError(null);
+        }}
+        aria-labelledby="time-window-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 420,
+          bgcolor: darkMode ? 'var(--card-bg)' : 'background.paper',
+          boxShadow: 24,
+          borderRadius: 2,
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          border: darkMode ? '1px solid var(--border-color)' : 'none'
+        }}>
+          <Typography variant="h6" sx={{ color: darkMode ? 'var(--text-primary)' : 'inherit' }}>
+            Set Allowed Time-In Window
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Faculty members may only time-in between these times. This setting applies across all devices.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              type="time"
+              label="Start Time"
+              value={tempStart}
+              onChange={(e) => setTempStart(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1, minWidth: 150 }}
+            />
+            <TextField
+              type="time"
+              label="End Time"
+              value={tempEnd}
+              onChange={(e) => setTempEnd(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1, minWidth: 150 }}
+            />
+          </Box>
+          {timeWindowError && (
+            <Typography color="error" variant="body2">
+              {timeWindowError}
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button
+              onClick={() => {
+                setShowTimeWindowModal(false);
+                setTimeWindowError(null);
+              }}
+              sx={{ color: darkMode ? 'var(--text-secondary)' : 'inherit' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
               onClick={handleSave}
               disabled={saving}
               sx={{
@@ -1698,38 +1901,140 @@ export default function Dashboard() {
 
               {/* Today's Attendance Summary */}
               <Box sx={{ mb: 4 }}>
-                <Box sx={{ 
+                <Box sx={{
                   display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: { xs: 'flex-start', md: 'center' },
+                  gap: 2,
                   mb: 2
                 }}>
                   <Typography variant="h6" fontWeight="600" color="#1E293B">
                     Today's Attendance Summary
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                 {/*   <Typography variant="body2" color="text.secondary">
-                      Late after: {lateThreshold}
-                    </Typography>*/}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<AccessTime />}
-                      onClick={() => setShowLateThresholdModal(true)}
+                </Box>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={6}>
+                    <Paper
+                      elevation={0}
                       sx={{
-                        textTransform: 'none',
-                        borderColor: '#E2E8F0',
-                        color: '#64748B'
+                        p: 2,
+                        borderRadius: 2,
+                        border: darkMode ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E2E8F0',
+                        bgcolor: darkMode ? 'rgba(79, 70, 229, 0.12)' : 'rgba(79, 70, 229, 0.08)',
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: 2,
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        justifyContent: 'space-between'
                       }}
                     >
-                      Change Time
-                    </Button>
-                  </Box>
-                </Box>
-
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: darkMode ? 'var(--accent-color)' : '#4F46E5'
+                          }}
+                        >
+                          <AccessTime sx={{ fontSize: 20 }} />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            Late Threshold
+                          </Typography>
+                          <Typography variant="h6" fontWeight="700" color={darkMode ? 'var(--text-primary)' : '#312E81'}>
+                            After {formatTimeDisplay(lateThreshold)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<AccessTime />}
+                        onClick={() => setShowLateThresholdModal(true)}
+                        sx={{
+                          textTransform: 'none',
+                          borderRadius: '8px',
+                          borderColor: darkMode ? 'var(--border-color)' : '#C7D2FE',
+                          color: darkMode ? 'var(--text-primary)' : '#4F46E5',
+                          '&:hover': {
+                            borderColor: darkMode ? 'var(--text-tertiary)' : '#4338CA',
+                            backgroundColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(79, 70, 229, 0.08)'
+                          }
+                        }}
+                      >
+                        Adjust Threshold
+                      </Button>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        border: darkMode ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #BAE6FD',
+                        bgcolor: darkMode ? 'rgba(14, 165, 233, 0.12)' : 'rgba(14, 165, 233, 0.1)',
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: 2,
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: darkMode ? 'rgba(14, 165, 233, 0.6)' : '#0EA5E9'
+                          }}
+                        >
+                          <CalendarToday sx={{ fontSize: 20 }} />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            Allowed Time-In Window
+                          </Typography>
+                          <Typography variant="h6" fontWeight="700" color={darkMode ? 'var(--text-primary)' : '#0F172A'}>
+                            {`${formatTimeDisplay(timeWindow.start)} - ${formatTimeDisplay(timeWindow.end)}`}
+                          </Typography>
+                          {timeWindowError && (
+                            <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+                              {timeWindowError}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<CalendarToday sx={{ fontSize: 18 }} />}
+                        onClick={() => {
+                          setTimeWindowError(null);
+                          setShowTimeWindowModal(true);
+                        }}
+                        sx={{
+                          textTransform: 'none',
+                          borderRadius: '8px',
+                          bgcolor: darkMode ? 'var(--accent-color)' : '#0284C7',
+                          boxShadow: 'none',
+                          '&:hover': {
+                            bgcolor: darkMode ? 'var(--accent-hover)' : '#0369A1',
+                            boxShadow: darkMode ? '0 4px 12px rgba(14, 165, 233, 0.25)' : '0 4px 12px rgba(2, 132, 199, 0.3)'
+                          }
+                        }}
+                      >
+                        Edit Window
+                      </Button>
+                    </Paper>
+                  </Grid>
+                </Grid>
                 <Box sx={{ 
                   display: 'flex', 
                   gap: 2,
+                  flexDirection: { xs: 'column', md: 'row' },
                   mb: 4
                 }}>
                   {/* Present Card */}
@@ -2682,7 +2987,8 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Add the Late Threshold Modal */}
+      {/* Add the Time Window & Late Threshold Modals */}
+      <TimeWindowModal />
       <LateThresholdModal />
 
       {/* Add the Late Faculty Modal */}
