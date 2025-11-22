@@ -2029,7 +2029,44 @@ export default function Dashboard() {
                         Edit Window
                       </Button>
                     </Paper>
+                        
                   </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        border: darkMode ? '1px solid rgba(252, 211, 77, 0.25)' : '1px solid #FDE68A',
+                        bgcolor: darkMode ? 'rgba(253, 224, 71, 0.12)' : 'rgba(253, 224, 71, 0.12)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: darkMode ? 'rgba(250, 204, 21, 0.4)' : '#F59E0B'
+                          }}
+                        >
+                        
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            Faculty Break Window
+                          </Typography>
+                          <Typography variant="h6" fontWeight="700" color={darkMode ? 'var(--text-primary)' : '#92400E'}>
+                          12:00 PM - 1:00 PM
+                          </Typography>
+                         
+                        </Box>
+                      </Box>                           
+                    </Paper>
+                  </Grid>
+
                 </Grid>
                 <Box sx={{ 
                   display: 'flex', 
