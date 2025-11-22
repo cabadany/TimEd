@@ -399,8 +399,8 @@ class TimeInActivity : WifiSecurityActivity() {
 
         // 2. Define the start time (1:30 PM)
         val startTime = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 13) // 1 PM in 24-hour format
-            set(Calendar.MINUTE, 30)
+            set(Calendar.HOUR_OF_DAY, 7) // 7 AM in 24-hour format
+            set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
         }
 
@@ -411,9 +411,9 @@ class TimeInActivity : WifiSecurityActivity() {
             set(Calendar.SECOND, 0)
         }
 
-        // 4. Create user-friendly time strings for messages
-        val formattedStartTime = "1:30 PM"
-        val formattedEndTime = "5:00 PM"
+            // 4. Create user-friendly time strings for messages
+            val formattedStartTime = "7:30 AM"
+            val formattedEndTime = "5:00 PM"
 
         // 5. Respect the ENFORCE_TIME_WINDOW toggle. If enforcement is disabled,
         //    allow Time-In at any time (useful for demo or administrative overrides).

@@ -3,6 +3,7 @@ package com.example.timed_mobile
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.ColorDrawable
@@ -16,14 +17,19 @@ import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.AnimationUtils
 import android.view.animation.TranslateAnimation
+import android.view.animation.DecelerateInterpolator
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import android.text.Editable
+import android.text.TextWatcher
 import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
+import java.util.Locale
 
 class RequestCreateAccountActivity : WifiSecurityActivity() {
 
@@ -52,10 +58,25 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
     private lateinit var departmentDropdown: AutoCompleteTextView
     private var selectedDepartment: Department? = null
 
+    // --- Password Strength UI ---
+    private lateinit var passwordInput: EditText
+    private lateinit var passwordStrengthLabel: TextView
+    private lateinit var passwordStrengthBar: ProgressBar
+    private lateinit var passwordRequirementIcon: ImageView
+    private lateinit var passwordRequirementText: TextView
+    private lateinit var passwordRequirementRow: View
+    private var passwordMeetsRequirements: Boolean = false
+    private var lastRequirementIndex: Int = Int.MIN_VALUE
+
     companion object {
         private const val PREFS_NAME = "TimedAppPrefs"
         private const val KEY_SEEN_REG_GUIDE = "hasSeenRegistrationGuide"
         private const val API_BASE_URL = "https://timed-utd9.onrender.com/api"
+        private val COMMON_PASSWORDS = setOf(
+            "password", "123456", "12345678", "123456789", "12345",
+            "qwerty", "abc123", "test", "testing", "timed", "admin",
+            "letmein", "welcome", "iloveyou", "monkey", "dragon"
+        )
     }
     // --- End Guidance System Members ---
 
@@ -69,12 +90,13 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val backButton = findViewById<ImageView>(R.id.icon_back_button)
         backButton.setOnClickListener { finish() }
 
-        helpButton = findViewById(R.id.btn_help_guidance)
-        guidanceOverlay = findViewById(R.id.guidance_overlay)
-        helpButton.setOnClickListener { startRegistrationGuidance(it) }
+    helpButton = findViewById(R.id.btn_help_guidance)
+    guidanceOverlay = findViewById(R.id.guidance_overlay)
+    helpButton.setOnClickListener { startRegistrationGuidance(it) }
 
-        setupDepartmentDropdown()
-        setupFormSubmission()
+    setupDepartmentDropdown()
+    setupPasswordStrengthChecker()
+    setupFormSubmission()
 
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (!prefs.getBoolean(KEY_SEEN_REG_GUIDE, false)) {
@@ -102,6 +124,7 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
             findViewById(R.id.outline_email),
             findViewById(R.id.outline_department),
             findViewById(R.id.outline_password),
+            findViewById(R.id.password_requirements_container),
             findViewById(R.id.btnSubmitAccount)
         )
 
@@ -132,20 +155,28 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val inputName = findViewById<EditText>(R.id.input_name)
         val inputIdNumber = findViewById<EditText>(R.id.input_idnumber)
         val inputEmail = findViewById<EditText>(R.id.input_email)
-        val inputPassword = findViewById<EditText>(R.id.input_password)
 
         submitButton.setOnClickListener {
             val name = inputName.text.toString().trim()
             val idNumber = inputIdNumber.text.toString().trim()
             val email = inputEmail.text.toString().trim()
             val department = selectedDepartment?.name ?: ""
-            val password = inputPassword.text.toString().trim()
+            val password = passwordInput.text.toString()
 
             if (listOf(name, idNumber, email, password).any { it.isEmpty() } || selectedDepartment == null) {
                 UiDialogs.showErrorPopup(
                     this,
                     title = "Incomplete Form",
                     message = "Please fill in all fields and select a department."
+                )
+                return@setOnClickListener
+            }
+
+            if (!passwordMeetsRequirements) {
+                UiDialogs.showErrorPopup(
+                    this,
+                    title = "Weak Password",
+                    message = "Please meet all password requirements before submitting."
                 )
                 return@setOnClickListener
             }
@@ -163,6 +194,121 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
             // Submit request to backend
             submitAccountRequest(name, idNumber, email, department, password)
         }
+    }
+
+    private fun setupPasswordStrengthChecker() {
+        passwordInput = findViewById(R.id.input_password)
+        passwordStrengthLabel = findViewById(R.id.password_strength_label)
+        passwordStrengthBar = findViewById(R.id.password_strength_bar)
+        passwordRequirementIcon = findViewById(R.id.password_requirement_icon)
+        passwordRequirementText = findViewById(R.id.password_requirement_text)
+        passwordRequirementRow = findViewById(R.id.password_requirement_row)
+
+        passwordInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                updatePasswordStrengthUI(s?.toString().orEmpty())
+            }
+        })
+
+        updatePasswordStrengthUI(passwordInput.text?.toString().orEmpty())
+    }
+
+    private fun updatePasswordStrengthUI(password: String) {
+        val lengthMet = password.length >= 6
+        val upperMet = password.any { it.isUpperCase() }
+        val lowerMet = password.any { it.isLowerCase() }
+        val numberMet = password.any { it.isDigit() }
+
+        val requirements = listOf(
+            lengthMet to "At least 6 characters",
+            upperMet to "At least 1 uppercase letter (A-Z)",
+            lowerMet to "At least 1 lowercase letter (a-z)",
+            numberMet to "At least 1 number (0-9)"
+        )
+
+        val focusIndex = requirements.indexOfFirst { !it.first }
+
+        val commonPassword = password.lowercase(Locale.ROOT) in COMMON_PASSWORDS && password.isNotEmpty()
+
+        val displayState = when {
+            focusIndex >= 0 -> {
+                val error = ContextCompat.getColor(this, R.color.error_red)
+                DisplayState(focusIndex, R.drawable.ic_warning, error, requirements[focusIndex].second)
+            }
+            commonPassword -> {
+                val error = ContextCompat.getColor(this, R.color.error_red)
+                DisplayState(requirements.size, R.drawable.ic_warning, error, "Avoid common passwords like \"password\" or \"test\"")
+            }
+            else -> {
+                val success = ContextCompat.getColor(this, R.color.success_green)
+                DisplayState(requirements.size + 1, R.drawable.ic_check_circle, success, "Password meets all requirements")
+            }
+        }
+
+        if (displayState.index != lastRequirementIndex) {
+            animateRequirementChange(displayState.iconRes, displayState.tintColor, displayState.message)
+            lastRequirementIndex = displayState.index
+        } else {
+            applyRequirementDisplay(displayState.iconRes, displayState.tintColor, displayState.message)
+        }
+
+        val metCount = requirements.count { it.first }
+        val (labelText, colorRes, progress) = when {
+            metCount <= 1 || commonPassword -> Triple("Strength: Weak", R.color.error_red, 25)
+            metCount == 2 -> Triple("Strength: Fair", R.color.status_yellow, 50)
+            metCount == 3 -> Triple("Strength: Good", R.color.primary_medium_blue, 75)
+            else -> Triple("Strength: Strong", R.color.success_green, 100)
+        }
+
+        val color = ContextCompat.getColor(this, colorRes)
+        passwordStrengthLabel.text = labelText
+        passwordStrengthLabel.setTextColor(color)
+        passwordStrengthBar.progress = progress
+        passwordStrengthBar.progressTintList = ColorStateList.valueOf(color)
+        passwordStrengthBar.progressBackgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.primary_light_sky)
+        )
+
+        passwordMeetsRequirements = metCount == 4 && !commonPassword
+    }
+
+    private data class DisplayState(
+        val index: Int,
+        val iconRes: Int,
+        val tintColor: Int,
+        val message: String
+    )
+
+    private fun animateRequirementChange(iconRes: Int, tintColor: Int, message: String) {
+        passwordRequirementRow.animate().cancel()
+        passwordRequirementRow.animate()
+            .alpha(0f)
+            .translationY(-12f)
+            .setDuration(120)
+            .setInterpolator(DecelerateInterpolator())
+            .withEndAction {
+                applyRequirementDisplay(iconRes, tintColor, message)
+                passwordRequirementRow.alpha = 0f
+                passwordRequirementRow.translationY = 12f
+                passwordRequirementRow.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(150)
+                    .setInterpolator(DecelerateInterpolator())
+                    .start()
+            }
+            .start()
+    }
+
+    private fun applyRequirementDisplay(iconRes: Int, tintColor: Int, message: String) {
+        passwordRequirementIcon.setImageResource(iconRes)
+        passwordRequirementIcon.imageTintList = ColorStateList.valueOf(tintColor)
+        passwordRequirementText.text = message
+        passwordRequirementText.setTextColor(tintColor)
     }
 
     private fun isValidEmail(email: String): Boolean {
@@ -233,8 +379,17 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                 val message = responseJson["message"] as? String ?: "Request submitted successfully"
                                 
                                 if (success) {
-                                    Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
-                                    finish()
+                                    val successMessage = message.ifBlank {
+                                        "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                                    }
+                                    UiDialogs.showSuccessPopup(
+                                        this@RequestCreateAccountActivity,
+                                        title = "Request Submitted",
+                                        message = successMessage
+                                    ) {
+                                        setResult(RESULT_OK)
+                                        finish()
+                                    }
                                 } else {
                                     UiDialogs.showErrorPopup(
                                         this@RequestCreateAccountActivity,
@@ -243,8 +398,14 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                     )
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(this@RequestCreateAccountActivity, "Account request submitted successfully! Please wait for admin approval.", Toast.LENGTH_LONG).show()
-                                finish()
+                                UiDialogs.showSuccessPopup(
+                                    this@RequestCreateAccountActivity,
+                                    title = "Request Submitted",
+                                    message = "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                                ) {
+                                    setResult(RESULT_OK)
+                                    finish()
+                                }
                             }
                         } else {
                             val errorMessage = when (it.code) {
