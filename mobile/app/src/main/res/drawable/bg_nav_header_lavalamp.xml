@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base gradient (brand colors) -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="@color/primary_deep_blue"
+                android:centerColor="@color/primary_medium_blue"
+                android:endColor="@color/primary_deep_blue"
+                android:angle="135" />
+        </shape>
+    </item>
+
+    <!-- Soft dark overlay for text contrast -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#1A000000" />
+        </shape>
+    </item>
+
+    <!-- Subtle vignette to frame content -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#00000000"
+                android:endColor="#26000000"
+                android:angle="270" />
+        </shape>
+    </item>
+</layer-list>

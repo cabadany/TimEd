@@ -68,4 +68,12 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <!-- NumberPicker theme for year selection -->
+    <style name="NumberPickerTheme" parent="AppTheme">
+        <item name="colorControlNormal">@color/primary_medium_blue</item>
+        <item name="android:textColorPrimary">@color/primary_deep_blue</item>
+        <item name="android:textSize">@dimen/text_xl</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
 </resources>

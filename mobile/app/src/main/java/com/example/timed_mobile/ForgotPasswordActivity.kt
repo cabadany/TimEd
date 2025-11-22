@@ -64,7 +64,9 @@ class ForgotPasswordActivity : WifiSecurityActivity() {
             }
 
             // First, check if the email exists in Firestore users collection
-            checkEmailExistsAndSendReset(email)
+            performWifiChecksAndProceed {
+                checkEmailExistsAndSendReset(email)
+            }
         }
     }
 
@@ -146,15 +148,17 @@ class ForgotPasswordActivity : WifiSecurityActivity() {
                     }
                 } else {
                     Log.e("FORGOT_PASSWORD", "Failed to send password reset email", task.exception)
-                    val errorMessage = when (task.exception?.message) {
-                        "There is no user record corresponding to this identifier. The user may have been deleted." -> 
+                    val errorMessage = when (task.exception) {
+                        is com.google.firebase.FirebaseNetworkException ->
+                            "A network error occurred. Please check your connection. If debugging, ensure your App Check debug token is registered in Firebase."
+                        is com.google.firebase.auth.FirebaseAuthInvalidUserException ->
                             "No account is associated with this email address."
-                        "The email address is badly formatted." -> 
+                        is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException ->
                             "Please enter a valid email address."
-                        else -> 
+                        else ->
                             "Unable to send reset email. Please try again later."
                     }
-                    
+
                     UiDialogs.showErrorPopup(
                         this,
                         title = "Reset Failed",

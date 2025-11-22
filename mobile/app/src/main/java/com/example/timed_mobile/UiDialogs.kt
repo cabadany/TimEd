@@ -47,7 +47,8 @@ class UiDialogs {
         ) {
             val dialog = Dialog(ctx)
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-            dialog.setCancelable(true)
+            dialog.setCancelable(false)
+            dialog.setCanceledOnTouchOutside(false)
             // Reuse an existing success layout with generic title/message/close button
             dialog.setContentView(R.layout.success_popup_time_in)
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -59,11 +60,8 @@ class UiDialogs {
             titleView?.text = title
             messageView?.text = message
 
-            closeBtn?.setOnClickListener {
-                dialog.dismiss()
-                onClose?.invoke()
-            }
-            dialog.setOnCancelListener { onClose?.invoke() }
+            closeBtn?.setOnClickListener { dialog.dismiss() }
+            dialog.setOnDismissListener { onClose?.invoke() }
             dialog.show()
         }
 

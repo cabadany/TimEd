@@ -1,15 +1,47 @@
 *.iml
+.gradle/
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
 local.properties
+/.idea/
+.DS_Store
+/build/
+build/
+/captures
+.externalNativeBuild/
+/captures/
+.cxx/
+.idea/
+
+# Android build cache
+**/build/
+**/.gradle/
+**/.cxx/
+
+# Keystore files
+*.jks
+*.keystore
+*.pem
+*.p12
+
+# Google/Firebase configs
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase-debug.log
+
+# Secrets and environment files
+*.env
+*.env.*
+.env
+.env.*
+/secrets/
+secrets/
+
+# OS specific
+Thumbs.db
+
+.kotlin/
+.idea/
+
+# Folder Task Documentation
+/tasks

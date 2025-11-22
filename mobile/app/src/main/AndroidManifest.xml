@@ -28,6 +28,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+            android:name=".TimEdApplication"
             android:allowBackup="true"
             android:dataExtractionRules="@xml/data_extraction_rules"
             android:fullBackupContent="@xml/backup_rules"
@@ -38,10 +39,16 @@
             android:theme="@style/Theme.TimEd"
             tools:targetApi="26">
 
+        <!-- Google Play Services version metadata -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
         <!-- SPLASH SCREEN PAGE -->
         <activity
                 android:name=".SplashActivity"
-                android:exported="true">
+                android:exported="true"
+                android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -72,6 +79,7 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="true"
                 android:windowSoftInputMode="adjustPan"
+                android:screenOrientation="portrait"
                 />
 
         <!--NEW USER WELCOME PAGE-->
@@ -106,7 +114,8 @@
                 android:name=".MainActivity"
                 android:exported="false"
                 android:label="@string/app_name"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--HOME PAGE-->
         <activity
@@ -115,14 +124,16 @@
                 android:hardwareAccelerated="true"
                 android:exported="false"
                 android:label="@string/home_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--TUTORIAL PROGRESS PAGE-->
         <activity
                 android:name=".TutorialProgressActivity"
                 android:exported="false"
                 android:label="Tutorial Progress"
-                android:parentActivityName=".HomeActivity">
+                android:parentActivityName=".HomeActivity"
+                android:screenOrientation="portrait">
             <meta-data
                     android:name="android.support.PARENT_ACTIVITY"
                     android:value=".HomeActivity" />
@@ -134,7 +145,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/time_in_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--PROFILE PAGE-->
         <activity
@@ -142,7 +154,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/profile_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--CHANGE PASSWORD PAGE-->
         <activity
@@ -150,7 +163,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/change_password_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--EDIT PROFILE PAGE-->
         <activity
@@ -158,7 +172,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/edit_profile_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--EXCUSE LETTER PAGE-->
         <activity
@@ -166,7 +181,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/excuse_letter_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--TIME IN EVENT PAGE-->
         <activity
@@ -202,7 +218,8 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="@string/time_out_page"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--EVENT DETAIL PAGE-->
         <activity
@@ -210,33 +227,38 @@
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
                 android:label="Event Details"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--EXCUSE LETTER HISTORY PAGE-->
         <activity
                 android:name=".ExcuseLetterHistoryActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--EVENT LOG PAGE-->
         <activity
                 android:name=".EventLogActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <!--MANUAL TIME OUT PAGE-->
         <activity
                 android:name=".ManualTimeOutActivity"
                 android:theme="@style/Theme.TimEd"
                 android:exported="false"
-                android:windowSoftInputMode="adjustResize" />
+                android:windowSoftInputMode="adjustResize"
+                android:screenOrientation="portrait" />
 
         <activity
             android:name=".AttendanceSheetActivity"
             android:theme="@style/Theme.TimEd"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

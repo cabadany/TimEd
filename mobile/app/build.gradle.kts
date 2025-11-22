@@ -44,6 +44,8 @@ dependencies {
     implementation ("com.github.bumptech.glide:glide:4.16.0")
     implementation(libs.androidx.swiperefreshlayout)
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
+    implementation(libs.mpandroidchart)
+
     // Compose dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -54,6 +56,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // Firebase BOM
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
@@ -61,6 +66,8 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    debugImplementation("com.google.firebase:firebase-appcheck-debug")
 
     // General Android libraries
     implementation ("androidx.core:core-ktx:1.9.0")

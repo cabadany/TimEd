@@ -1,48 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Primary -->
-    <group android:id="@+id/group_primary">
-        <item
-            android:id="@+id/nav_home"
-            android:icon="@drawable/ic_home"
-            android:title="Home" />
-        <item
-            android:id="@+id/nav_event_log"
-            android:icon="@drawable/ic_event_log"
-            android:title="Event Records" />
-    </group>
+    <!-- TAKE NOTE NOT TO GROUP ITEM -->
 
-    <!-- Attendance & Requests -->
-    <group android:id="@+id/group_attendance">
-        <item
-            android:id="@+id/nav_excuse_letter"
-            android:icon="@drawable/ic_excuse_letter"
-            android:title="Submit Excuse Letter" />
-        <item
-            android:id="@+id/nav_excuse_letter_history"
-            android:icon="@drawable/ic_excuse_letter_history"
-            android:title="Excuse Letter History" />
-    </group>
+    <!-- Featured Primary Item -->
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="Home"
+        android:checkable="true"
+        android:checked="true" />
 
-    <!-- Profile -->
-    <group android:id="@+id/group_profile">
-        <item
-            android:id="@+id/nav_profile"
-            android:icon="@drawable/ic_profile"
-            android:title="Profile Information" />
-    </group>
+    <!-- Main Navigation -->
+    <item
+        android:id="@+id/nav_event_log"
+        android:icon="@drawable/ic_event_log"
+        android:title="Event Records" />
 
-    <!-- App / Account -->
-    <group android:id="@+id/group_app_account">
-        <item
-            android:id="@+id/nav_settings"
-            android:icon="@drawable/ic_settings"
-            android:title="Settings (Coming Soon)" />
-        <item
-            android:id="@+id/nav_logout"
-            android:icon="@drawable/ic_logout"
-            android:title="Log Out" />
-    </group>
+    <!-- Excuse Letters -->
+    <item
+        android:id="@+id/nav_excuse_letter"
+        android:icon="@drawable/ic_excuse_letter"
+        android:title="Submit Excuse Letter" />
+
+    <item
+        android:id="@+id/nav_excuse_letter_history"
+        android:icon="@drawable/ic_excuse_letter_history"
+        android:title="Letter History" />
+
+    <!-- Account Settings -->
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_profile"
+        android:title="Profile" />
+
+    <!-- Session -->
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@drawable/ic_logout"
+        android:title="Log Out" />
 
 </menu>
+
+        <!-- TAKE NOTE NOT TO GROUP ITEM -->

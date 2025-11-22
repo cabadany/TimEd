@@ -202,6 +202,76 @@
                     android:textColor="#37474F" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <LinearLayout
+                android:id="@+id/password_requirements_container"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
+                android:background="@drawable/password_requirements_card"
+                android:elevation="4dp"
+                android:orientation="vertical"
+                android:padding="@dimen/space_lg"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/outline_password">
+
+            <TextView
+                    android:id="@+id/password_strength_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Strength: Weak"
+                    android:textColor="@color/error_red"
+                    android:textSize="@dimen/text_sm"
+                    android:fontFamily="@font/roboto_medium" />
+
+            <ProgressBar
+                    android:id="@+id/password_strength_bar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:max="100"
+                    android:progress="0" />
+
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:text="Password must contain:"
+                    android:textColor="@color/neutral_text_gray"
+                    android:textSize="@dimen/text_sm"
+                    android:fontFamily="@font/roboto_medium" />
+
+            <LinearLayout
+                    android:id="@+id/password_requirement_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                <ImageView
+                        android:id="@+id/password_requirement_icon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_warning" />
+
+                <TextView
+                        android:id="@+id/password_requirement_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_sm"
+                        android:layout_weight="1"
+                        android:text="At least 6 characters"
+                        android:textColor="@color/neutral_text_gray"
+                        android:textSize="@dimen/text_sm"
+                        android:fontFamily="@font/roboto_medium" />
+            </LinearLayout>
+
+        </LinearLayout>
+
         <Button
                 android:id="@+id/btnSubmitAccount"
                 android:layout_width="0dp"
@@ -223,7 +293,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/outline_password" />
+                app:layout_constraintTop_toBottomOf="@id/password_requirements_container" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
