@@ -24,5 +24,7 @@ class TimEdApplication : Application() {
                 PlayIntegrityAppCheckProviderFactory.getInstance()
             )
         }
+        
+        com.example.timed_mobile.utils.TimeSettingsManager.initialize()
     }
 }
