@@ -41,28 +41,27 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         private const val TAG = "WifiSecurityActivity"
         private const val LOCATION_PERMISSION_REQUEST_CODE = 123
         // Toggle: When true, require strict BSSID match. When false, allow SSID match as secure.
-        private const val ENFORCE_STRICT_BSSID = false
+        private const val ENFORCE_STRICT_BSSID = true
 
         // List of authorized BSSIDs (MAC Addresses). This is the primary security check.
         private val ALLOWED_WIFI_BSSIDS = listOf(
-            "6c:a4:d1:c8:28:f8", //TIMED-AP2.4G //Timeduser12345!
-            "00:13:10:85:fe:01", // Example BSSID for AndroidWifi
-            "dc:9f:db:f7:40:91", // Example BSSID for NAVACOM AP
-            "6e:16:1b:e9:06:08" // Example BSSID for CITU_WILSTUDENT
+            "00:00:00:00:00:00"// SAMPLE
+
         )
 
         // List of authorized SSIDs (Wi-Fi Names). Used for the rogue AP warning.
         private val ALLOWED_WIFI_SSIDS = listOf(
-            "TIMED-AP2.4G",
-            "AndroidWifi",
-            "CITU_WILSTUDENT",
-            "NAVACOM AP"
+            "Sample Wifi"
+
         )
     }
 
     private var pendingAction: (() -> Unit)? = null
     private var networkChangeReceiver: BroadcastReceiver? = null
     private var blockingDialog: AlertDialog? = null
+
+    protected open val allowedWifiSsids: List<String>
+        get() = ALLOWED_WIFI_SSIDS
 
     override fun onResume() {
         super.onResume()
