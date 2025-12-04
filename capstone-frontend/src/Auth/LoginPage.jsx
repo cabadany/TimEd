@@ -242,22 +242,13 @@ function LoginPage() {
   
       if (data.success) {
         if (data.role === 'ADMIN') {
-          // For admin users, request OTP
-          try {
-            await axios.post(getApiUrl(API_ENDPOINTS.GENERATE_OTP), {
-              schoolId: idNumber
-            });
-            
-            // Store temporary data and show OTP input
-            setTempToken(data.token);
-            setTempUserId(data.userId);
-            setShowOtpInput(true);
-            setIsLoading(false);
-            showNotification('Please check your email for OTP', 'info');
-          } catch (error) {
-            setIsLoading(false);
-            showNotification('Failed to send OTP. Please try again.', 'error');
-          }
+          // For admin users, use mock OTP (42067)
+          // Store temporary data and show OTP input
+          setTempToken(data.token);
+          setTempUserId(data.userId);
+          setShowOtpInput(true);
+          setIsLoading(false);
+          showNotification('Please enter the OTP code to continue', 'info');
         } else {
           setIsLoading(false);
           showNotification('Access denied. Only admins can log in.');
@@ -290,34 +281,30 @@ function LoginPage() {
 
     setIsLoading(true);
 
-    try {
-      const response = await axios.post(getApiUrl(API_ENDPOINTS.VERIFY_OTP), {
-        schoolId: idNumber,
-        otp: otp
-      });
+    // Mock OTP verification - check if OTP matches "42067"
+    const MOCK_OTP = '42067';
+    
+    // Simulate a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (response.data === 'OTP verified successfully') {
-        // Complete the login process
-        localStorage.setItem('token', tempToken);
-        localStorage.setItem('userId', tempUserId);
-        localStorage.setItem('role', 'ADMIN');
-        
-        // Dispatch auth change event
-        window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: tempUserId } }));
-        
-        setIsAnimating(true);
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 800);
-      } else {
-        showNotification('Invalid OTP. Please try again.', 'error');
-      }
-    } catch (error) {
-      console.error('OTP verification failed:', error);
-      showNotification('Failed to verify OTP. Please try again.', 'error');
-    } finally {
-      setIsLoading(false);
+    if (otp === MOCK_OTP) {
+      // Complete the login process
+      localStorage.setItem('token', tempToken);
+      localStorage.setItem('userId', tempUserId);
+      localStorage.setItem('role', 'ADMIN');
+      
+      // Dispatch auth change event
+      window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: tempUserId } }));
+      
+      setIsAnimating(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800);
+    } else {
+      showNotification('Invalid OTP. Please try again.', 'error');
     }
+    
+    setIsLoading(false);
   };
 
   // Handle already logged in functionality
