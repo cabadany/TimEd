@@ -40,19 +40,19 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "WifiSecurityActivity"
         private const val LOCATION_PERMISSION_REQUEST_CODE = 123
-        // Toggle: When true, require strict BSSID match. When false, allow SSID match as secure.
-        private const val ENFORCE_STRICT_BSSID = true
+
+        // Toggle: When true, enforce strict BSSID and SSID checks.
+        // When false, allow ANY Wi-Fi network (useful for testing or off-site usage).
+        var ENFORCE_STRICT_SECURITY = false
 
         // List of authorized BSSIDs (MAC Addresses). This is the primary security check.
         private val ALLOWED_WIFI_BSSIDS = listOf(
             "00:00:00:00:00:00"// SAMPLE
-
         )
 
         // List of authorized SSIDs (Wi-Fi Names). Used for the rogue AP warning.
         private val ALLOWED_WIFI_SSIDS = listOf(
-            "Sample Wifi"
-
+            "SAMPLE WIFI"
         )
     }
 
@@ -208,6 +208,11 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
             return WifiCheckResult.NO_WIFI
         }
 
+        // If strict security is disabled, allow any Wi-Fi network.
+        if (!ENFORCE_STRICT_SECURITY) {
+            return WifiCheckResult.SECURE
+        }
+
         val wifiInfo: WifiInfo? = wifiManager.connectionInfo
         val currentBssid = wifiInfo?.bssid
         val currentSsid = wifiInfo?.ssid?.replace("\"", "")
@@ -225,9 +230,9 @@ abstract class WifiSecurityActivity : AppCompatActivity() {
         }
 
         // Secondary check: If BSSID failed, is the SSID a known name?
-        // If strict BSSID enforcement is disabled, treat SSID match as SECURE; otherwise warn.
         if (ALLOWED_WIFI_SSIDS.any { it.equals(currentSsid, ignoreCase = true) }) {
-            return if (ENFORCE_STRICT_BSSID) WifiCheckResult.INSECURE_SSID else WifiCheckResult.SECURE
+            // Strict security is ON, so a match on SSID but not BSSID is a warning (Insecure SSID).
+            return WifiCheckResult.INSECURE_SSID
         }
 
         // If both checks fail, it's just a random, unauthorized network.
