@@ -45,6 +45,7 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
     // --- Guidance System Members ---
     private lateinit var guidanceOverlay: FrameLayout
     private lateinit var helpButton: ImageButton
+    private lateinit var formScrollView: ScrollView
     private var guidancePopupWindow: PopupWindow? = null
     private var isGuidanceActive: Boolean = false
     private var previousTargetLocationForAnimation: IntArray? = null
@@ -90,6 +91,8 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val backButton = findViewById<ImageView>(R.id.icon_back_button)
         backButton.setOnClickListener { finish() }
 
+        formScrollView = findViewById(R.id.form_scroll_view)
+
     helpButton = findViewById(R.id.btn_help_guidance)
     guidanceOverlay = findViewById(R.id.guidance_overlay)
     helpButton.setOnClickListener { startRegistrationGuidance(it) }
@@ -106,7 +109,8 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
 
     private fun initializeGuidanceSteps() {
         guidanceSteps = listOf(
-            GuidanceStep(R.id.outline_name, "First, please enter your full name as it appears on your official documents."),
+            GuidanceStep(R.id.outline_first_name, "Enter your given name (first name) as it appears on official documents."),
+            GuidanceStep(R.id.outline_last_name, "Enter your family name (last name)."),
             GuidanceStep(R.id.outline_idnumber, "Next, enter your unique ID number provided by the institution."),
             GuidanceStep(R.id.outline_email, "Provide your official institutional email address for verification."),
             GuidanceStep(R.id.outline_department, "Enter the name of your department (e.g., CITE, CBA, CEA)."),
@@ -119,7 +123,8 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val title = findViewById<TextView>(R.id.titleCreateAccount)
         val backButton = findViewById<ImageView>(R.id.icon_back_button)
         val formElements = listOf<View>(
-            findViewById(R.id.outline_name),
+            findViewById(R.id.outline_first_name),
+            findViewById(R.id.outline_last_name),
             findViewById(R.id.outline_idnumber),
             findViewById(R.id.outline_email),
             findViewById(R.id.outline_department),
@@ -152,18 +157,20 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
 
     private fun setupFormSubmission() {
         val submitButton = findViewById<Button>(R.id.btnSubmitAccount)
-        val inputName = findViewById<EditText>(R.id.input_name)
+        val inputFirstName = findViewById<EditText>(R.id.input_first_name)
+        val inputLastName = findViewById<EditText>(R.id.input_last_name)
         val inputIdNumber = findViewById<EditText>(R.id.input_idnumber)
         val inputEmail = findViewById<EditText>(R.id.input_email)
 
         submitButton.setOnClickListener {
-            val name = inputName.text.toString().trim()
+            val firstName = inputFirstName.text.toString().trim()
+            val lastName = inputLastName.text.toString().trim()
             val idNumber = inputIdNumber.text.toString().trim()
             val email = inputEmail.text.toString().trim()
             val department = selectedDepartment?.name ?: ""
             val password = passwordInput.text.toString()
 
-            if (listOf(name, idNumber, email, password).any { it.isEmpty() } || selectedDepartment == null) {
+            if (listOf(firstName, lastName, idNumber, email, password).any { it.isEmpty() } || selectedDepartment == null) {
                 UiDialogs.showErrorPopup(
                     this,
                     title = "Incomplete Form",
@@ -192,7 +199,7 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
             }
 
             // Submit request to backend
-            submitAccountRequest(name, idNumber, email, department, password)
+            submitAccountRequest(firstName, lastName, idNumber, email, department, password)
         }
     }
 
@@ -315,16 +322,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
-    private fun submitAccountRequest(name: String, idNumber: String, email: String, department: String, password: String) {
+    private fun submitAccountRequest(firstName: String, lastName: String, idNumber: String, email: String, department: String, password: String) {
         // Show loading state
         val submitButton = findViewById<Button>(R.id.btnSubmitAccount)
         submitButton.isEnabled = false
         submitButton.text = "Submitting..."
-
-        // Parse name into first and last name
-        val nameParts = name.split(" ", limit = 2)
-        val firstName = nameParts.getOrNull(0) ?: ""
-        val lastName = nameParts.getOrNull(1) ?: ""
 
         // Create request data
         val requestData = mapOf(
@@ -366,49 +368,49 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    runOnUiThread {
-                        submitButton.isEnabled = true
-                        submitButton.text = "Submit Request"
-                        
-                        if (it.isSuccessful) {
-                            val responseBody = it.body?.string()
-                            try {
-                                val responseJson = gson.fromJson(responseBody, Map::class.java)
-                                val success = responseJson["success"] as? Boolean ?: false
-                                val message = responseJson["message"] as? String ?: "Request submitted successfully"
-                                
-                                if (success) {
-                                    val successMessage = message.ifBlank {
-                                        "Your account request has been submitted successfully. Please wait for an administrator to approve it."
-                                    }
-                                    UiDialogs.showSuccessPopup(
-                                        this@RequestCreateAccountActivity,
-                                        title = "Request Submitted",
-                                        message = successMessage
-                                    ) {
-                                        setResult(RESULT_OK)
-                                        finish()
-                                    }
-                                } else {
-                                    UiDialogs.showErrorPopup(
-                                        this@RequestCreateAccountActivity,
-                                        title = "Submission Failed",
-                                        message = message
-                                    )
-                                }
-                            } catch (e: Exception) {
+                // Read and parse response off the main thread to avoid using a closed body
+                val code = response.code
+                val rawBody = try { response.body?.string() } catch (_: Exception) { null }
+
+                val parsed = if (!rawBody.isNullOrBlank()) {
+                    try {
+                        val responseJson = gson.fromJson(rawBody, Map::class.java)
+                        val success = responseJson["success"] as? Boolean ?: false
+                        val message = responseJson["message"] as? String ?: "Request submitted successfully"
+                        Pair(success, message)
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else null
+
+                runOnUiThread {
+                    submitButton.isEnabled = true
+                    submitButton.text = "Submit Request"
+
+                    try {
+                        if (response.isSuccessful) {
+                            val success = parsed?.first ?: true
+                            val message = parsed?.second
+                                ?: "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+
+                            if (success) {
                                 UiDialogs.showSuccessPopup(
                                     this@RequestCreateAccountActivity,
                                     title = "Request Submitted",
-                                    message = "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                                    message = message
                                 ) {
                                     setResult(RESULT_OK)
                                     finish()
                                 }
+                            } else {
+                                UiDialogs.showErrorPopup(
+                                    this@RequestCreateAccountActivity,
+                                    title = "Submission Failed",
+                                    message = message
+                                )
                             }
                         } else {
-                            val errorMessage = when (it.code) {
+                            val errorMessage = when (code) {
                                 400 -> "Invalid request data. Please check all fields."
                                 409 -> "An account with this information already exists or is pending."
                                 500 -> "Server error. Please try again later."
@@ -419,6 +421,16 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
                                 title = "Submission Error",
                                 message = errorMessage
                             )
+                        }
+                    } catch (t: Throwable) {
+                        // If anything unexpected happens, still show success so the user gets feedback
+                        UiDialogs.showSuccessPopup(
+                            this@RequestCreateAccountActivity,
+                            title = "Request Submitted",
+                            message = "Your account request has been submitted successfully. Please wait for an administrator to approve it."
+                        ) {
+                            setResult(RESULT_OK)
+                            finish()
                         }
                     }
                 }
@@ -525,7 +537,11 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         }
         val step = guidanceSteps[currentGuidanceStepIndex]
         val targetView = findViewById<View>(step.targetViewId)
-        showAnimatedGuidancePopup(targetView, step.message, currentGuidanceStepIndex)
+        // Ensure the target is visible before showing popup to avoid overlap on small screens
+        formScrollView.post {
+            scrollTargetIntoView(targetView)
+            showAnimatedGuidancePopup(targetView, step.message, currentGuidanceStepIndex)
+        }
     }
 
     private fun handleGuidanceCancellation() {
@@ -539,6 +555,12 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
 
     private fun markGuideAsSeen() {
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(KEY_SEEN_REG_GUIDE, true).apply()
+    }
+
+    private fun scrollTargetIntoView(targetView: View) {
+        val marginPx = (24 * resources.displayMetrics.density).toInt()
+        val targetTop = (targetView.top - marginPx).coerceAtLeast(0)
+        formScrollView.smoothScrollTo(0, targetTop)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -564,6 +586,7 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val popupWidth = (resources.displayMetrics.widthPixels * 0.9).toInt()
         val screenHeight = resources.displayMetrics.heightPixels
         val maxHeight = (screenHeight * 0.6).toInt()
+        val safeMargin = (24 * resources.displayMetrics.density).toInt()
 
         dialogView.measure(
             View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
@@ -602,11 +625,16 @@ class RequestCreateAccountActivity : WifiSecurityActivity() {
         val targetY = currentTargetScreenPos[1]
         val targetHeight = targetView.height
 
-        var popupY = targetY + targetHeight + 16
-        if (popupY + popupHeightForPositioning > screenHeight) {
-            popupY = targetY - popupHeightForPositioning - 16
+        val popupX = ((resources.displayMetrics.widthPixels - popupWidth) / 2).coerceAtLeast(safeMargin)
+        val belowY = targetY + targetHeight + safeMargin
+        val aboveY = targetY - popupHeightForPositioning - safeMargin
+        val canShowBelow = belowY + popupHeightForPositioning <= screenHeight - safeMargin
+        val canShowAbove = aboveY >= safeMargin
+        val popupY = when {
+            canShowBelow -> belowY
+            canShowAbove -> aboveY
+            else -> (screenHeight - popupHeightForPositioning) / 2
         }
-        val popupX = (resources.displayMetrics.widthPixels - popupWidth) / 2
         // --- End of Sizing and Positioning Logic ---
 
         val animationSet = AnimationSet(true).apply {

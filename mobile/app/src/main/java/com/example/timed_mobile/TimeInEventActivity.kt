@@ -76,6 +76,35 @@ class TimeInEventActivity : WifiSecurityActivity() {
 
     private var currentScannedEventId: String? = null
     private var currentScannedEventName: String? = null
+    private var currentScannedDepartmentId: String? = null
+    private var currentScannedVenue: String? = null
+    private var currentScannedDateIso: String? = null
+
+    // Optional expectations passed from caller to enforce title/department consistency
+    private val expectedEventId: String? by lazy {
+        intent.getStringExtra("expectedEventId")?.trim()
+            ?: intent.getStringExtra("eventId")?.trim()
+    }
+    private val expectedEventName: String? by lazy {
+        intent.getStringExtra("expectedEventName")?.trim()
+            ?: intent.getStringExtra("eventTitle")?.trim()
+            ?: intent.getStringExtra("eventName")?.trim()
+    }
+    private val expectedDepartmentId: String? by lazy {
+        intent.getStringExtra("expectedDepartmentId")?.trim()
+            ?: intent.getStringExtra("departmentId")?.trim()
+    }
+    private val expectedVenue: String? by lazy {
+        intent.getStringExtra("expectedVenue")?.trim()
+            ?: intent.getStringExtra("eventVenue")?.trim()
+            ?: intent.getStringExtra("venue")?.trim()
+    }
+    private val expectedDateIso: String? by lazy {
+        intent.getStringExtra("expectedDateIso")?.trim()
+            ?: intent.getStringExtra("eventDateIso")?.trim()
+            ?: intent.getStringExtra("dateIso")?.trim()
+            ?: intent.getStringExtra("eventDate")?.trim()
+    } // e.g., 2025-12-11
 
     private lateinit var manualCodeButton: Button
 
@@ -288,9 +317,85 @@ class TimeInEventActivity : WifiSecurityActivity() {
         eventDocRef.get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val eventName = document.getString("eventName") ?: "Unnamed Event"
+                    val eventName = document.getString("eventName")?.trim()
+                    val status = document.getString("status")?.lowercase(Locale.getDefault())
+                    val departmentId = document.getString("departmentId")?.trim()
+                    val venue = document.getString("venue")?.trim()
+                    val dateIso = run {
+                        val raw = document.get("date")
+                        when (raw) {
+                            is com.google.firebase.Timestamp -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw.toDate())
+                            is java.util.Date -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw)
+                            else -> document.getString("date")?.trim()
+                        }
+                    }
+
+                    if (expectedEventId.isNullOrBlank().not() && !eventId.equals(expectedEventId, ignoreCase = true)) {
+                        showInvalidEventDialog("This QR belongs to a different event ID. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (eventName.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing or empty title. Please use a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (departmentId.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing department. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (venue.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing venue. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (dateIso.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing date. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedEventName.isNullOrBlank() && !eventName.equals(expectedEventName, ignoreCase = true)) {
+                        showInvalidEventDialog("This QR belongs to '$eventName', not the expected '${expectedEventName}'. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedDepartmentId.isNullOrBlank() && !departmentId.isNullOrBlank() && !departmentId.equals(expectedDepartmentId, ignoreCase = true)) {
+                        showInvalidEventDialog("This event belongs to another department. Please use the correct event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedVenue.isNullOrBlank() && !venue.isNullOrBlank() && !venue.equals(expectedVenue, ignoreCase = true)) {
+                        showInvalidEventDialog("This event is at '$venue', not the expected '${expectedVenue}'. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedDateIso.isNullOrBlank() && !dateIso.isNullOrBlank() && !dateIso.equals(expectedDateIso, ignoreCase = true)) {
+                        showInvalidEventDialog("This event date does not match the expected date. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    val allowedActiveStatuses = setOf("ongoing", "active", "open", "in_progress")
+                    if (status.isNullOrBlank() || status !in allowedActiveStatuses) {
+                        showInvalidEventDialog("This event is not active (status: ${status ?: "unknown"}). Please scan an ongoing event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
                     currentScannedEventId = eventId // Store for later use (e.g., selfie)
                     currentScannedEventName = eventName
+                    currentScannedDepartmentId = departmentId
+                    currentScannedVenue = venue
+                    currentScannedDateIso = dateIso
 
                     // Show "Joining event" message for a moment, then proceed to selfie
                     Handler(Looper.getMainLooper()).postDelayed({
@@ -478,7 +583,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (responseMessage.contains("Already timed in", ignoreCase = true)) {
                     AlertDialog.Builder(this)
                         .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
+                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate. Please check Event Records to confirm your attendance.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                             notifyEventTutorialTimeInCompleted()
@@ -667,7 +772,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (document.exists()) {
                     AlertDialog.Builder(this)
                         .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
+                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate. Please check Event Records to confirm your attendance.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                             startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -798,6 +903,12 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
                 putExtra("firstName", userFirstName)
+                // Prefer the currently scanned event details; fall back to pre-set expectations if not scanned yet
+                putExtra("expectedEventId", currentScannedEventId ?: expectedEventId)
+                putExtra("expectedEventName", currentScannedEventName ?: expectedEventName)
+                putExtra("expectedDepartmentId", currentScannedDepartmentId ?: expectedDepartmentId)
+                putExtra("expectedVenue", currentScannedVenue ?: expectedVenue)
+                putExtra("expectedDateIso", currentScannedDateIso ?: expectedDateIso)
             }
             startActivity(intent)
         }
@@ -1132,6 +1243,19 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 .show()
         } else {
             Log.w(TAG, "Activity is finishing, cannot show error dialog: $message")
+        }
+    }
+
+    private fun showInvalidEventDialog(message: String) {
+        if (isFinishing || isDestroyed) return
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            AlertDialog.Builder(this)
+                .setTitle("Invalid Event")
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .setCancelable(false)
+                .show()
         }
     }
 

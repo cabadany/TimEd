@@ -15,6 +15,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.Locale
 import com.example.timed_mobile.HomeActivity
 import com.example.timed_mobile.tutorial.EventTutorialState
 
@@ -146,6 +148,37 @@ class EventDetailActivity : WifiSecurityActivity() {
                 if (!eventResult.isEmpty) {
                     val eventDoc = eventResult.documents.first()
                     val eventId = eventDoc.id
+                    val departmentId = eventDoc.getString("departmentId")?.trim()
+                    val venueFromDoc = eventDoc.getString("venue")?.trim()
+                    val dateIso = run {
+                        val raw = eventDoc.get("date")
+                        when (raw) {
+                            is com.google.firebase.Timestamp -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw.toDate())
+                            is java.util.Date -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw)
+                            else -> eventDoc.getString("date")?.trim()
+                        }
+                    }
+
+                    fun launchTimeInIntent() {
+                        val email = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
+                        val firstName = sharedPrefs.getString(LoginActivity.KEY_FIRST_NAME, null)
+
+                        val intent = Intent(this, TimeInEventActivity::class.java).apply {
+                            putExtra("userId", userId)
+                            putExtra("email", email)
+                            putExtra("firstName", firstName)
+                            putExtra("expectedEventId", eventId)
+                            putExtra("expectedEventName", eventTitle)
+                            putExtra("expectedDepartmentId", departmentId)
+                            putExtra("expectedVenue", venueFromDoc ?: venueView.text.toString())
+                            putExtra("expectedDateIso", dateIso)
+                            // Legacy extras kept for backward compatibility
+                            putExtra("eventTitle", eventTitle)
+                            putExtra("eventVenue", venueView.text.toString())
+                            putExtra("eventDescription", descriptionView.text.toString())
+                        }
+                        startActivity(intent)
+                    }
 
                     FirebaseFirestore.getInstance()
                         .collection("events")
@@ -170,40 +203,14 @@ class EventDetailActivity : WifiSecurityActivity() {
                             } else {
                                 timeInButton.text = "Time In"
                                 timeInButton.visibility = Button.VISIBLE
-                                timeInButton.setOnClickListener {
-                                    val email = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
-                                    val firstName = sharedPrefs.getString(LoginActivity.KEY_FIRST_NAME, null)
-
-                                    val intent = Intent(this, TimeInEventActivity::class.java).apply {
-                                        putExtra("userId", userId)
-                                        putExtra("email", email)
-                                        putExtra("firstName", firstName)
-                                        putExtra("eventTitle", eventTitle)
-                                        putExtra("eventDescription", descriptionView.text.toString())
-                                        putExtra("eventVenue", venueView.text.toString()) // Pass venue to next activity
-                                    }
-                                    startActivity(intent)
-                                }
+                                timeInButton.setOnClickListener { launchTimeInIntent() }
                             }
                             timeInButton.post { maybeShowEventTutorialPrompt() }
                         }
                         .addOnFailureListener {
                             timeInButton.text = "Time In"
                             timeInButton.visibility = Button.VISIBLE
-                            timeInButton.setOnClickListener {
-                                val email = sharedPrefs.getString(LoginActivity.KEY_EMAIL, null)
-                                val firstName = sharedPrefs.getString(LoginActivity.KEY_FIRST_NAME, null)
-
-                                val intent = Intent(this, TimeInEventActivity::class.java).apply {
-                                    putExtra("userId", userId)
-                                    putExtra("email", email)
-                                    putExtra("firstName", firstName)
-                                    putExtra("eventTitle", eventTitle)
-                                    putExtra("eventDescription", descriptionView.text.toString())
-                                    putExtra("eventVenue", venueView.text.toString()) // Pass venue to next activity
-                                }
-                                startActivity(intent)
-                            }
+                            timeInButton.setOnClickListener { launchTimeInIntent() }
                             timeInButton.post { maybeShowEventTutorialPrompt() }
                         }
                 } else {
