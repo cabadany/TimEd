@@ -1,177 +1,162 @@
-/* Sidebar Styles */
+/* Sidebar Styles - Modern Design */
 .sidebar-container {
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
   z-index: 100;
+  backdrop-filter: blur(10px);
 }
 
 .dark-mode .sidebar-container {
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Enhanced Menu Item Hover Effect */
+/* Enhanced Menu Item Styling */
 .sidebar-menu-item {
-  transition: all 0.3s ease !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative;
   overflow: hidden !important;
-  border-left: 4px solid transparent;
+  border: 1px solid transparent !important;
+  margin: 2px 0;
 }
 
 .sidebar-menu-item::before {
-  content: none; /* Remove gradient animation */
-}
-
-.sidebar-menu-item:hover {
-  background-color: rgba(25, 118, 210, 0.04) !important;
-  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
-}
-
-.dark-mode .sidebar-menu-item:hover {
-  background-color: rgba(66, 165, 245, 0.05) !important;
-  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
-}
-
-/* Improved active item styling */
-.sidebar-item-active {
-  box-shadow: none;
-  background-color: rgba(25, 118, 210, 0.08) !important;
-  border-left: 4px solid #1976d2 !important;
-  position: relative;
-  font-weight: 600 !important;
-}
-
-/* Add a subtle gradient to active items */
-.sidebar-item-active::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    rgba(25, 118, 210, 0.12),
-    rgba(25, 118, 210, 0.04),
-    rgba(25, 118, 210, 0.01)
-  );
-  z-index: -1;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
   pointer-events: none;
+}
+
+.sidebar-menu-item:hover::before {
+  opacity: 1;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(25, 118, 210, 0.06) !important;
+  border-color: rgba(25, 118, 210, 0.12) !important;
+  transform: translateX(4px);
+}
+
+.dark-mode .sidebar-menu-item:hover {
+  background-color: rgba(66, 165, 245, 0.08) !important;
+  border-color: rgba(66, 165, 245, 0.15) !important;
+}
+
+/* Improved active item styling */
+.sidebar-item-active {
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.12) 0%, rgba(25, 118, 210, 0.06) 100%) !important;
+  border: 1px solid rgba(25, 118, 210, 0.2) !important;
+  position: relative;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+}
+
+.sidebar-item-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
+  border-radius: 0 4px 4px 0;
 }
 
 /* Dark mode styling */
 .dark-mode .sidebar-item-active {
-  box-shadow: none;
-  background-color: rgba(66, 165, 245, 0.08) !important;
-  border-left: 4px solid #42a5f5 !important;
+  background: linear-gradient(135deg, rgba(66, 165, 245, 0.15) 0%, rgba(66, 165, 245, 0.08) 100%) !important;
+  border: 1px solid rgba(66, 165, 245, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(66, 165, 245, 0.2);
 }
 
-.dark-mode .sidebar-item-active::before {
-  background: linear-gradient(
-    to right,
-    rgba(66, 165, 245, 0.12),
-    rgba(66, 165, 245, 0.04),
-    rgba(66, 165, 245, 0.01)
-  );
+.dark-mode .sidebar-item-active::after {
+  background: linear-gradient(180deg, #42a5f5 0%, #90caf9 100%);
 }
 
-/* Remove hover animation */
+/* Hover effect */
 .sidebar-item-hovered {
-  /* Remove animation */
-  animation: none;
-  /* Instead add a subtle background change */
-  background-color: rgba(0, 0, 0, 0.02) !important;
+  background-color: rgba(25, 118, 210, 0.04) !important;
 }
 
 .dark-mode .sidebar-item-hovered {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(66, 165, 245, 0.06) !important;
 }
 
-/* Toggle Button Animation */
+/* Toggle Button Styling */
 .sidebar-toggle {
-  transition: all 0.3s ease !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   z-index: 9999;
   overflow: visible;
 }
 
-/* Make sure toggle is visible in dark mode */
 .dark-mode .sidebar-toggle {
-  border-color: #333 !important;
+  border-color: #1a1a2e !important;
 }
 
-/* Remove the rotation animations as they might interfere with icon changes */
 .sidebar-toggle svg {
   transition: all 0.2s ease;
 }
 
 .sidebar-toggle:hover svg {
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
-/* Menu Item expanded/collapsed state - no animations */
+/* Collapsed menu item styling */
 .sidebar-collapsed .sidebar-menu-item {
-  animation: none;
-  padding-left: 0;
+  padding: 12px !important;
+  border-radius: 12px !important;
+  margin: 4px 8px;
+}
+
+.sidebar-collapsed .sidebar-menu-item:hover {
+  transform: scale(1.08);
 }
 
 .sidebar-container:not(.sidebar-collapsed) .sidebar-menu-item {
-  animation: none;
   padding-left: 16px;
 }
 
-/* Logo Animation */
-.sidebar-collapsed .logo-container img {
-  animation: shrink-logo 0.3s forwards;
+/* Logo Styling */
+.sidebar-collapsed .logo-container img,
+.sidebar-container img {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
 }
 
-.sidebar-container:not(.sidebar-collapsed) .logo-container img {
-  animation: expand-logo 0.3s forwards;
+.dark-mode .sidebar-container img {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) brightness(1.1);
 }
 
-@keyframes shrink-logo {
-  from { height: 80px; }
-  to { height: 40px; }
-}
-
-@keyframes expand-logo {
-  from { height: 40px; }
-  to { height: 80px; }
-}
-
-/* Active Indicator Animation */
+/* Active Indicator */
 .sidebar-menu-item::after {
-  transition: all 0.3s ease !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-@keyframes indicator-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(65, 105, 225, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(65, 105, 225, 0);
-  }
-}
-
-/* Tooltip Animation */
+/* Tooltip Styling */
 .MuiTooltip-popper {
   position: absolute !important;
-  animation: fade-in 0.2s ease-out;
 }
 
-/* Fix for initial tooltip positioning */
 .MuiTooltip-tooltip {
   position: relative !important;
   transform: none !important;
   font-weight: 500 !important;
   font-size: 12px !important;
-  background-color: rgba(0, 0, 0, 0.8) !important;
-  letter-spacing: 0.5px !important;
+  background-color: #1976d2 !important;
+  letter-spacing: 0.3px !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3) !important;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateX(-5px); }
-  to { opacity: 1; transform: translateX(0); }
+.dark-mode .MuiTooltip-tooltip {
+  background-color: #2d3748 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Custom Scrollbar for Sidebar Menu */
@@ -184,148 +169,52 @@
 }
 
 .sidebar-menu::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(25, 118, 210, 0.2);
   border-radius: 4px;
 }
 
 .dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .sidebar-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(25, 118, 210, 0.3);
 }
 
 .dark-mode .sidebar-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
 }
 
-/* Add subtle menu category dividers */
-.sidebar-menu-item:nth-of-type(3)::after,
-.sidebar-menu-item:nth-of-type(6)::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 10%;
-  width: 80%;
-  height: 1px;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.dark-mode .sidebar-menu-item:nth-of-type(3)::after,
-.dark-mode .sidebar-menu-item:nth-of-type(6)::after {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* Scale up icons slightly when hovering over them in collapsed mode */
+/* Scale icons in collapsed mode */
 .sidebar-collapsed .sidebar-menu-item:hover svg {
-  transform: scale(1.2);
+  transform: scale(1.15);
   transition: transform 0.2s ease;
+  color: #1976d2;
 }
 
-/* Enhance logo section appearance */
-.sidebar-container img {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-  transition: filter 0.3s ease, height 0.3s ease;
-}
-
-.dark-mode .sidebar-container img {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+.dark-mode .sidebar-collapsed .sidebar-menu-item:hover svg {
+  color: #42a5f5;
 }
 
 /* Focus style for keyboard navigation */
 .sidebar-menu-item:focus-visible {
   outline: 2px solid #1976d2;
-  outline-offset: -2px;
+  outline-offset: 2px;
+  border-radius: 12px;
 }
 
-
-.group-main:nth-of-type(3)::before {
-  background: linear-gradient(
-    90deg,
-    rgba(25, 118, 210, 0) 0%,
-    rgba(25, 118, 210, 0.06) 50%,
-    rgba(25, 118, 210, 0) 100%
-  );
-}
-
-.group-resources:nth-of-type(5)::before {
-  background: linear-gradient(
-    90deg,
-    rgba(25, 118, 210, 0) 0%,
-    rgba(25, 118, 210, 0.06) 50%,
-    rgba(25, 118, 210, 0) 100%
-  );
-}
-
-
-.group-resources:nth-of-type(6)::before {
-  background: linear-gradient(
-    90deg,
-    rgba(25, 118, 210, 0) 0%,
-    rgba(25, 118, 210, 0.06) 50%,
-    rgba(25, 118, 210, 0) 100%
-  );
-}
-
-/* Badge styling without animations */
+/* Badge styling */
 .MuiBadge-badge {
-  transition: none !important;
+  transition: transform 0.2s ease !important;
+  font-weight: 600 !important;
 }
 
-/* Ensure badge visibility in collapsed mode */
 .sidebar-collapsed .MuiBadge-badge {
   z-index: 2;
-  transform: scale(1) translate(25%, -25%) !important;
 }
 
-/* Clean badge styling for notification items */
-.group-main:nth-of-type(3) .MuiBadge-badge,
-.group-resources:nth-of-type(5) .MuiBadge-badge,
-.group-resources:nth-of-type(6) .MuiBadge-badge {
-  animation: none;
-}
-
-/* Enhanced hover effect for notification items - no animations */
-.group-main:nth-of-type(3):hover,
-.group-resources:nth-of-type(5):hover,
-.group-resources:nth-of-type(6):hover {
-  background-color: rgba(25, 118, 210, 0.04) !important;
-  border-left: 4px solid rgba(25, 118, 210, 0.3) !important;
-  box-shadow: none !important;
-  transform: none !important;
-  transition: none !important;
-}
-
-.dark-mode .group-main:nth-of-type(3):hover,
-.dark-mode .group-resources:nth-of-type(5):hover,
-.dark-mode .group-resources:nth-of-type(6):hover {
-  background-color: rgba(66, 165, 245, 0.05) !important;
-  border-left: 4px solid rgba(66, 165, 245, 0.3) !important;
-  box-shadow: none !important;
-}
-
-/* Item active effect when active - consistent with new design */
-.group-main:nth-of-type(3).sidebar-item-active,
-.group-resources:nth-of-type(5).sidebar-item-active,
-.group-resources:nth-of-type(6).sidebar-item-active {
-  box-shadow: none !important;
-  background-color: rgba(25, 118, 210, 0.08) !important;
-  border-left: 4px solid #1976d2 !important;
-}
-
-/* Dark mode styling for special items */
-.dark-mode .group-main:nth-of-type(3).sidebar-item-active,
-.dark-mode .group-resources:nth-of-type(5).sidebar-item-active,
-.dark-mode .group-resources:nth-of-type(6).sidebar-item-active {
-  box-shadow: none !important;
-  background-color: rgba(66, 165, 245, 0.08) !important;
-  border-left: 4px solid #42a5f5 !important;
-}
-
-/* Remove entrance animation for notification items - no animations requested */
-.group-main:nth-of-type(3),
-.group-resources:nth-of-type(5),
-.group-resources:nth-of-type(6) {
-  animation: none;
+/* Smooth transitions for all interactive elements */
+.sidebar-container * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 } 

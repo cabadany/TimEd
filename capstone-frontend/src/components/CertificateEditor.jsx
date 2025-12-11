@@ -77,7 +77,7 @@ const defaultCertificate = {
   title: 'CERTIFICATE',
   subtitle: 'OF ACHIEVEMENT',
   recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
-  recipientName: '{FirstName, LastName}',
+  recipientName: '{LastName, FirstName}',
   description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
   signatories: [
     { name: 'John Doe', title: 'REPRESENTATIVE' },
