@@ -1357,7 +1357,7 @@ export default function Certificate() {
               lineHeight: 1
             }}
           >
-            {certificate.recipientName || '{Recipient Name}'}
+            {'{Recipient Name}'}
           </Typography>
           
           <Typography 

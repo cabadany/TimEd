@@ -230,7 +230,7 @@ const MainLayout = ({ children, title }) => {
           flexShrink: 0,
           transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           position: 'relative',
-          overflow: 'hidden',
+          overflow: 'visible',
           zIndex: 100
         }}
       >
@@ -260,41 +260,42 @@ const MainLayout = ({ children, title }) => {
             className="logo-image"
           />
           
-          {/* Sidebar toggle button */}
-          <Box 
-            className="sidebar-toggle"
-            onClick={() => setCollapsed(!collapsed)}
-            sx={{
-              position: 'fixed',
-              left: collapsed ? 78 : 260,
-              top: 55,
-              transform: 'translateX(-50%)',
-              zIndex: 1300,
-              width: 28, 
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-              color: '#fff',
-              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.4)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              border: '3px solid',
-              borderColor: darkMode ? '#1a1a2e' : '#ffffff',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-                transform: 'translateX(-50%) scale(1.1)',
-                boxShadow: '0 6px 16px rgba(25, 118, 210, 0.5)'
-              }
-            }}
-          >
-            {collapsed ? 
-              <ChevronRight sx={{ fontSize: 18 }} /> : 
-              <ChevronLeft sx={{ fontSize: 18 }} />
+        </Box>
+        
+        {/* Sidebar toggle button - positioned on the edge */}
+        <Box 
+          className="sidebar-toggle"
+          onClick={() => setCollapsed(!collapsed)}
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: 55,
+            transform: 'translateX(50%)',
+            zIndex: 1301,
+            width: 26, 
+            height: 26,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(25, 118, 210, 0.4)',
+            transition: 'all 0.2s ease',
+            border: '2px solid',
+            borderColor: darkMode ? '#121212' : '#f8fafc',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+              transform: 'translateX(50%) scale(1.1)',
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.5)'
             }
-          </Box>
+          }}
+        >
+          {collapsed ? 
+            <ChevronRight sx={{ fontSize: 16 }} /> : 
+            <ChevronLeft sx={{ fontSize: 16 }} />
+          }
         </Box>
 
         {/* Menu Items */}

@@ -879,7 +879,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               }
             }}
           >
-            {certificate.recipientName}
+            {'{Recipient Name}'}
           </Typography>
           
           <Typography 
@@ -1271,17 +1271,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     onChange={(e) => handleTextChange('recipientText', e.target.value)}
                     variant="outlined"
                     size="small"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Recipient Name Placeholder"
-                    value={certificate.recipientName}
-                    onChange={(e) => handleTextChange('recipientName', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    helperText="This will be replaced with actual recipient names"
                   />
                 </Grid>
                 <Grid item xs={12}>

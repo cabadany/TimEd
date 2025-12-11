@@ -766,9 +766,12 @@ export default function AccountPage() {
     if (!sortConfig.key) return 0;
 
     let aValue, bValue;
-    if (sortConfig.key === 'name') {
-      aValue = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
-      bValue = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
+    if (sortConfig.key === 'lastName') {
+      aValue = (a.lastName || '').toLowerCase();
+      bValue = (b.lastName || '').toLowerCase();
+    } else if (sortConfig.key === 'firstName') {
+      aValue = (a.firstName || '').toLowerCase();
+      bValue = (b.firstName || '').toLowerCase();
     } else if (sortConfig.key === 'email') {
       aValue = (a.email || '').toLowerCase();
       bValue = (b.email || '').toLowerCase();
@@ -1622,11 +1625,29 @@ export default function AccountPage() {
                       cursor: 'pointer',
                       '&:hover': { bgcolor: '#F1F5F9' }
                     }}
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort('lastName')}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      Name
-                      {sortConfig.key === 'name' && (
+                      Last Name
+                      {sortConfig.key === 'lastName' && (
+                        sortConfig.direction === 'asc' ? 
+                          <ArrowUpward sx={{ fontSize: 16 }} /> : 
+                          <ArrowDownward sx={{ fontSize: 16 }} />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: '#F8FAFC',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: '#F1F5F9' }
+                    }}
+                    onClick={() => handleSort('firstName')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      First Name
+                      {sortConfig.key === 'firstName' && (
                         sortConfig.direction === 'asc' ? 
                           <ArrowUpward sx={{ fontSize: 16 }} /> : 
                           <ArrowDownward sx={{ fontSize: 16 }} />
@@ -1660,13 +1681,13 @@ export default function AccountPage() {
                   <AccountTableSkeleton />
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'error.main' }}>
                       {error}
                     </TableCell>
                   </TableRow>
                 ) : sortedProfessors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                       No faculty members found
                     </TableCell>
                   </TableRow>
@@ -1692,7 +1713,8 @@ export default function AccountPage() {
                           {professor.schoolId}
                         </Box>
                       </TableCell>
-                      <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
+                      <TableCell>{professor.lastName}</TableCell>
+                      <TableCell>{professor.firstName}</TableCell>
                       <TableCell>{professor.email}</TableCell>
                       <TableCell>
                         {(() => {
