@@ -15,11 +15,13 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.example.timed_mobile.utils.TimeSettingsManager
 
 class TimeOutActivity : WifiSecurityActivity() {
 
@@ -38,11 +40,8 @@ class TimeOutActivity : WifiSecurityActivity() {
     // Use 12-hour format (1-12 for hour).
     companion object {
         // Toggle to enforce the app-level Time-Out window.
-        // Set to false to allow time-out anytime (for demo/admin overrides).
-        private const val ENFORCE_TIMEOUT_WINDOW = false
-        private const val TIMEOUT_HOUR = 17 // e.g., 5 for 5 o'clock
-        private const val TIMEOUT_MINUTE = 0 // e.g., 0 for on the hour
-        private const val TIMEOUT_AM_PM = Calendar.PM // Use Calendar.AM or Calendar.PM
+        // Now fetched dynamically from Firebase settings/enforceTimeout
+        // private const val ENFORCE_TIMEOUT_WINDOW = true (Deprecated, used dynamic fetch)
     }
     // --- END MODIFIABLE TIME SETTING ---
 
@@ -130,37 +129,42 @@ class TimeOutActivity : WifiSecurityActivity() {
         dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
                 override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                    val hasTimedInToday = snapshot.children.any {
-                        it.child("type").getValue(String::class.java) == "TimeIn"
+                    Log.d("TimeOutActivity", "Checking logs for user $userId. Found ${snapshot.childrenCount} entries since midnight.")
+                    
+                    var latestTimeIn: Long = 0
+                    var latestTimeOut: Long = 0
+
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                        
+                        if (type == "TimeIn") {
+                            if (timestamp > latestTimeIn) latestTimeIn = timestamp
+                        } else if (type == "TimeOut") {
+                            if (timestamp > latestTimeOut) latestTimeOut = timestamp
+                        }
                     }
 
-                    if (!hasTimedInToday) {
+                    if (latestTimeIn == 0L) {
+                        Log.w("TimeOutActivity", "No TimeIn record found for today.")
                         Toast.makeText(this@TimeOutActivity, "You haven't timed in today.", Toast.LENGTH_LONG).show()
                         return
                     }
 
-                    // --- TIME-OUT WINDOW CHECK (gated by ENFORCE_TIMEOUT_WINDOW) ---
-                    val targetTimeOut = Calendar.getInstance().apply {
-                        // Use HOUR for 12-hour format. Calendar treats 12 AM/PM as 0 in this context.
-                        set(Calendar.HOUR, if (TIMEOUT_HOUR == 12) 0 else TIMEOUT_HOUR)
-                        set(Calendar.MINUTE, TIMEOUT_MINUTE)
-                        set(Calendar.AM_PM, TIMEOUT_AM_PM)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
+                    if (latestTimeOut > latestTimeIn) {
+                        Log.w("TimeOutActivity", "User already timed out today (latest TimeOut > latest TimeIn).")
+                        UiDialogs.showErrorPopup(this@TimeOutActivity, "Already Timed Out", "You have already timed out today.")
+                        return
                     }
 
+                    // --- TIME-OUT WINDOW CHECK ---
+                    if (TimeSettingsManager.isTooEarlyToTimeOut()) {
+                         val (start, end) = TimeSettingsManager.getTimeWindowString()
+                         UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You cannot time out before $end.")
+                         return
+                    }
+                    
                     val now = Calendar.getInstance()
-
-                    if (ENFORCE_TIMEOUT_WINDOW) {
-                        if (now.before(targetTimeOut)) {
-                            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                            val formattedTimeOut = timeFormat.format(targetTimeOut.time)
-                            UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You can only time-out after $formattedTimeOut.")
-                            return
-                        }
-                    }
-                    // --- END TIME-OUT WINDOW CHECK ---
-
                     val log = mapOf(
                         "timestamp" to now.timeInMillis,
                         "type" to "TimeOut",

@@ -56,6 +56,7 @@ import android.os.Build
 import android.os.Handler
 import androidx.core.app.NotificationCompat
 import android.Manifest
+import com.example.timed_mobile.utils.TimeSettingsManager
 
 
 class HomeActivity : WifiSecurityActivity() {
@@ -285,6 +286,9 @@ class HomeActivity : WifiSecurityActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home_page)
+
+        // Initialize TimeSettingsManager
+        TimeSettingsManager.initialize()
 
         val topWave = findViewById<ImageView>(R.id.top_wave_animation)
         (topWave.drawable as? AnimatedVectorDrawable)?.start()
@@ -622,48 +626,27 @@ class HomeActivity : WifiSecurityActivity() {
     }
 
     private fun showStatusConfirmationDialog(selectedStatus: String) {
-        if (selectedStatus == "On Duty") {
-            hasTimedInToday { alreadyTimedIn ->
-                if (!alreadyTimedIn) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Time-In Required")
-                        .setMessage("You haven't timed in yet. Do you want to time in now?")
-                        .setPositiveButton("Yes") { _, _ ->
-                            val intent = Intent(this, TimeInActivity::class.java).apply {
-                                putExtra("userId", userId); putExtra(
-                                "email",
-                                userEmail ?: ""
-                            ); putExtra("firstName", userFirstName ?: "User")
-                            }
-                            timeInLauncher.launch(intent)
-                        }
-                        .setNegativeButton("Cancel") { _, _ -> loadUserStatus() }
-                        .show()
-                } else {
-                    confirmStatusChange(selectedStatus)
-                }
-            }
-        } else {
-            confirmStatusChange(selectedStatus)
-        }
+        confirmStatusChange(selectedStatus)
     }
 
     private fun confirmStatusChange(status: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Confirm Status Change")
-            .setMessage("Are you sure you want to set your status to '$status'?")
-            .setPositiveButton("Yes") { _, _ ->
+        UiDialogs.showConfirmationDialog(
+            this,
+            title = "Confirm Status Change",
+            message = "Are you sure you want to set your status to '$status'?",
+            positiveText = "Yes",
+            negativeText = "Cancel",
+            onPositive = {
                 updateUserStatus(status)
                 updateTimeLogsStatus(status)
                 if (status == "Off Duty") {
                     handleTimeOutOnOffDuty()
                 }
-            }
-            .setNegativeButton("Cancel") { dialog, _ ->
-                dialog.dismiss()
+            },
+            onNegative = {
                 loadUserStatus()
             }
-            .show()
+        )
     }
 
     private fun updateUserStatus(status: String) {
@@ -848,14 +831,9 @@ class HomeActivity : WifiSecurityActivity() {
     override fun onResume() {
         super.onResume()
         loadUserStatus()
-        if (hasTimedOutToday()) {
-            profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-            navigationView.getHeaderView(0).findViewById<ImageView>(R.id.sidebar_profile_image)
-                .setImageResource(R.drawable.ic_profile)
-        } else {
-            loadTodayTimeInPhoto()
-            updateSidebarProfileImage()
-        }
+        // Always try to load the photo. loadTodayTimeInPhoto checks status internally.
+        loadTodayTimeInPhoto()
+        updateSidebarProfileImage()
         evaluateAndDisplayAttendanceBadge()
         syncEventTutorialStateFromPrefs()
     }
@@ -1155,78 +1133,66 @@ class HomeActivity : WifiSecurityActivity() {
         btnUpcoming.setOnClickListener { updateFilterButtonStates(btnUpcoming); showEventsByStatus("upcoming") }
         btnOngoing.setOnClickListener { updateFilterButtonStates(btnOngoing); showEventsByStatus("ongoing") }
         btnEnded.setOnClickListener { updateFilterButtonStates(btnEnded); showEventsByStatus("ended") }
-        btnCancelled.setOnClickListener {
-            updateFilterButtonStates(btnCancelled); showEventsByStatus(
-            "cancelled"
-        )
-        }
-        updateFilterButtonStates(btnUpcoming)
+        btnCancelled.setOnClickListener { updateFilterButtonStates(btnCancelled); showEventsByStatus("cancelled") }
     }
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
+            // Guard Clause: Check if Time-In is allowed
+            if (!TimeSettingsManager.isTimeInAllowed()) {
+                val (start, end) = TimeSettingsManager.getTimeWindowString()
+                UiDialogs.showInfoDialog(
+                    this,
+                    title = "Outside Time-In Window",
+                    message = "You can only time in between $start and $end."
+                )
+                return@setOnClickListener
+            }
+
+            // Interactive Tutorial Logic
             if (isInteractiveTutorialActive &&
                 currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE &&
                 expectedInteractiveTutorialAction == ACTION_USER_CLICK_TIME_IN
             ) {
-
-                Log.d(TAG, "Attendance Tutorial: Time-In button clicked by user during tutorial.")
-                expectedInteractiveTutorialAction =
-                    ACTION_USER_PERFORMED_TIME_IN // Expect TimeInActivity result
-
-                val intent = Intent(this, TimeInActivity::class.java).apply {
-                    putExtra(
-                        EXTRA_IS_TUTORIAL_MODE,
-                        true
-                    ) // Signal TimeInActivity it's in tutorial mode
-                    putExtra("userId", userId)
-                    putExtra("email", userEmail ?: "")
-                    putExtra("firstName", userFirstName ?: "User")
-                }
-                timeInActivityTutorialLauncher.launch(intent)
-            } else if (isInteractiveTutorialActive && currentInteractiveTutorialName == TUTORIAL_NAME_ATTENDANCE) {
-                Log.w(
-                    TAG,
-                    "Attendance Tutorial: Time-In button clicked, but not the expected action ($expectedInteractiveTutorialAction). Guiding user or allowing normal flow."
-                )
-                // Optionally, show a message to guide the user back to the correct tutorial action
-                // For now, let normal flow happen or show the default dialog
-                showDefaultTimeInDialog()
-            } else {
-                // Normal Time-In button click
-                showDefaultTimeInDialog()
+                expectedInteractiveTutorialAction = ACTION_USER_PERFORMED_TIME_IN
+                hideOverlay()
             }
+
+            showDefaultTimeInDialog()
         }
+
         btnTimeOut.setOnClickListener {
-            // TODO: Implement interactive tutorial logic for Time-Out if this is a tutorial step
-            hasTimedInToday { alreadyTimedIn ->
-                if (!alreadyTimedIn) {
-                    AlertDialog.Builder(this).setTitle("Cannot Time-Out")
-                        .setMessage("You haven't timed in yet. Please time in first before timing out.")
-                        .setPositiveButton("OK", null).show()
-                } else {
-                    AlertDialog.Builder(this).setTitle("Time - Out Confirmation")
-                        .setMessage("Are you sure you want to time out for today?")
-                        .setPositiveButton("Yes") { _, _ ->
-                            profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
-                            navigationView.getHeaderView(0)
-                                .findViewById<ImageView>(R.id.sidebar_profile_image)
-                                .setImageResource(R.drawable.ic_profile)
-                            setTimedOutToday()
-                            val intent = Intent(this, TimeOutActivity::class.java).apply {
-                                putExtra(
-                                    "userId",
-                                    userId
-                                ); putExtra("email", userEmail ?: ""); putExtra(
-                                "firstName",
-                                userFirstName ?: "User"
-                            )
-                            }
-                            startActivity(intent)
-                        }
-                        .setNegativeButton("Cancel", null).show()
-                }
+            // Guard Clause: Check if it's too early to time out
+            if (TimeSettingsManager.isTooEarlyToTimeOut()) {
+                val (start, end) = TimeSettingsManager.getTimeWindowString()
+                UiDialogs.showInfoDialog(
+                    this,
+                    title = "Too Early to Time Out",
+                    message = "You cannot time out before $end."
+                )
+                return@setOnClickListener
             }
+
+            UiDialogs.showConfirmationDialog(
+                this,
+                title = "Time-Out Confirmation",
+                message = "Are you sure you want to time out for today?",
+                positiveText = "Yes",
+                negativeText = "Cancel",
+                onPositive = {
+                    profileImagePlaceholder.setImageResource(R.drawable.ic_profile)
+                    navigationView.getHeaderView(0)
+                        .findViewById<ImageView>(R.id.sidebar_profile_image)
+                        .setImageResource(R.drawable.ic_profile)
+                    // setTimedOutToday() // Removed to allow multiple shifts
+                    val intent = Intent(this, TimeOutActivity::class.java).apply {
+                        putExtra("userId", userId)
+                        putExtra("email", userEmail ?: "")
+                        putExtra("firstName", userFirstName ?: "User")
+                    }
+                    startActivity(intent)
+                }
+            )
         }
     }
 
@@ -1312,10 +1278,10 @@ class HomeActivity : WifiSecurityActivity() {
                         val now = Calendar.getInstance()
                         val nowMillis = now.timeInMillis
                         val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0); set(
-                            Calendar.MINUTE,
+                            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(
+                            Calendar.SECOND,
                             0
-                        ); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                        ); set(Calendar.MILLISECOND, 0)
                         }
                         val todayStartMillis = todayStart.timeInMillis
                         val yesterdayStart =
@@ -2719,9 +2685,8 @@ class HomeActivity : WifiSecurityActivity() {
                     }.timeInMillis
                     for (child in snapshot.children) {
                         val type = child.child("type").getValue(String::class.java)
-                        val timestamp =
-                            child.child("timestamp").getValue(Long::class.java) ?: continue
-                        if (type == "TimeIn" && timestamp >= todayStart) {
+                        val timestamp = child.child("timestamp").getValue(Long::class.java)
+                        if (type == "TimeIn" && timestamp != null) {
                             if (timestamp > latestTimeInTimestamp) {
                                 latestTimeInTimestamp = timestamp; latestTimeInLogKey = child.key
                             }
@@ -2831,7 +2796,6 @@ class HomeActivity : WifiSecurityActivity() {
                                 timestamp
                         }
                     }
-
                     if (timeOutTimestamp != null && (timeInTimestamp == null || timeOutTimestamp > timeInTimestamp)) {
                         updateUserStatus("Off Duty")
                         val badgeFromLog = timeInLogSnapshot?.child("attendanceBadge")
