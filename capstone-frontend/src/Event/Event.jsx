@@ -83,7 +83,7 @@ const defaultCertificate = {
   title: 'CERTIFICATE',
   subtitle: 'OF ACHIEVEMENT', 
   recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
-  recipientName: '{Recipient Name}',
+  recipientName: '{FirstName, LastName}',
   description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
   signatories: [
     { name: 'John Doe', title: 'REPRESENTATIVE' },
@@ -340,6 +340,11 @@ export default function EventPage() {
   const [editDurationMinutes, setEditDurationMinutes] = useState('00');
   const [editDurationSeconds, setEditDurationSeconds] = useState('00');
   const [editDuration, setEditDuration] = useState('0:00:00');
+  // Add state for additional editable fields in edit dialog
+  const [editEventName, setEditEventName] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editVenue, setEditVenue] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [currentQrEventId, setCurrentQrEventId] = useState(null);
   // Snackbar notification state
@@ -737,23 +742,41 @@ export default function EventPage() {
       // Format duration from the separate edit components
       const formattedDuration = `${editDurationHours}:${editDurationMinutes}:${editDurationSeconds}`;
       
+      // Convert the date string to ISO format for the backend
+      let formattedDate = eventToEdit.date;
+      if (editDate) {
+        const dateObj = new Date(editDate);
+        formattedDate = dateObj.toISOString();
+      }
+      
       // Send the full event object as required by backend
       const updatePayload = {
         ...eventToEdit,
+        eventName: editEventName,
         status: editedStatus,
+        date: formattedDate,
         duration: formattedDuration,
-        venue // Add location to update payload
+        venue: editVenue,
+        description: editDescription
       };
       
       await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT(eventToEdit.eventId)), updatePayload);
       
-      // Update local state
+      // Update local state with all changed fields
       setEvents(events.map(event => 
-        event.eventId === eventToEdit.eventId ? { ...event, status: editedStatus, duration: formattedDuration } : event
+        event.eventId === eventToEdit.eventId ? { 
+          ...event, 
+          eventName: editEventName,
+          status: editedStatus, 
+          date: formattedDate,
+          duration: formattedDuration,
+          venue: editVenue,
+          description: editDescription
+        } : event
       ));
       
       showSnackbar('Event updated successfully', 'success');
-      setEditDialogOpen(false);
+      closeEditDialog();
     } catch (error) {
       console.error('Error updating event:', error);
       showSnackbar('Failed to update event', 'error');
@@ -814,6 +837,28 @@ export default function EventPage() {
   const openEditDialog = (event) => {
     setEventToEdit(event);
     setEditedStatus(event.status);
+    setEditEventName(event.eventName || '');
+    setEditVenue(event.venue || '');
+    setEditDescription(event.description || '');
+    
+    // Parse the date for the edit dialog - convert to datetime-local format
+    if (event.date) {
+      // Handle both ISO string and formatted date string
+      const eventDate = new Date(event.date);
+      if (!isNaN(eventDate.getTime())) {
+        // Format as YYYY-MM-DDTHH:mm for datetime-local input
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        const hours = String(eventDate.getHours()).padStart(2, '0');
+        const minutes = String(eventDate.getMinutes()).padStart(2, '0');
+        setEditDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+      } else {
+        setEditDate('');
+      }
+    } else {
+      setEditDate('');
+    }
     
     // Parse the duration into hours, minutes, seconds for the edit dialog
     if (event.duration) {
@@ -830,11 +875,15 @@ export default function EventPage() {
   const closeEditDialog = () => {
     setEditDialogOpen(false);
     setEventToEdit(null);
-    // Reset edit dialog duration state
+    // Reset edit dialog state
     setEditDurationHours('0');
     setEditDurationMinutes('00');
     setEditDurationSeconds('00');
     setEditDuration('0:00:00');
+    setEditEventName('');
+    setEditDate('');
+    setEditVenue('');
+    setEditDescription('');
   };
 
   // File upload handlers
@@ -2350,20 +2399,49 @@ export default function EventPage() {
       <Dialog
         open={editDialogOpen}
         onClose={closeEditDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: { borderRadius: '8px' }
         }}
       >
         <DialogTitle sx={{ borderBottom: '1px solid #E2E8F0', py: 2 }}>
-          Edit Event Status
+          Edit Event
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" color="#64748B" sx={{ mb: 3 }}>
-            Update the status for event: <strong>{eventToEdit?.eventName}</strong>
+            Update the details for this event
           </Typography>
           
+          {/* Event Name */}
+          <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+            Event Name *
+          </Typography>
+          <TextField
+            fullWidth
+            variant="outlined"
+            value={editEventName}
+            onChange={(e) => setEditEventName(e.target.value)}
+            placeholder="Enter event name"
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                fontSize: '14px',
+                '& fieldset': {
+                  borderColor: '#E2E8F0',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#CBD5E1',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0288d1',
+                },
+              },
+            }}
+          />
+
+          {/* Status */}
           <FormControl fullWidth sx={{ mb: 3 }}>
             <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
               Status *
@@ -2390,11 +2468,40 @@ export default function EventPage() {
               <MenuItem value="Cancelled">Cancelled</MenuItem>
             </Select>
           </FormControl>
+
+          {/* Date and Time */}
+          <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+            Date and Time *
+          </Typography>
+          <TextField
+            fullWidth
+            type="datetime-local"
+            variant="outlined"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                fontSize: '14px',
+                '& fieldset': {
+                  borderColor: '#E2E8F0',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#CBD5E1',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0288d1',
+                },
+              },
+            }}
+          />
           
+          {/* Duration */}
           <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
             Duration *
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
             {/* Hours input */}
             <TextField
               variant="outlined"
@@ -2491,8 +2598,66 @@ export default function EventPage() {
               }}
             />
           </Box>
+
+          {/* Venue */}
+          <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+            Venue
+          </Typography>
+          <TextField
+            fullWidth
+            variant="outlined"
+            value={editVenue}
+            onChange={(e) => setEditVenue(e.target.value)}
+            placeholder="Enter venue"
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                fontSize: '14px',
+                '& fieldset': {
+                  borderColor: '#E2E8F0',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#CBD5E1',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0288d1',
+                },
+              },
+            }}
+          />
+
+          {/* Description */}
+          <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+            Description
+          </Typography>
+          <TextField
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={3}
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder="Enter event description"
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                fontSize: '14px',
+                '& fieldset': {
+                  borderColor: '#E2E8F0',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#CBD5E1',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0288d1',
+                },
+              },
+            }}
+          />
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0', mt: 2 }}>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0' }}>
           <Button 
             onClick={closeEditDialog} 
             sx={{ color: '#64748B' }}
@@ -2502,6 +2667,7 @@ export default function EventPage() {
           <Button 
             onClick={saveEditedEvent} 
             variant="contained"
+            disabled={!editEventName.trim()}
             sx={{
               bgcolor: '#0288d1',
               '&:hover': {
