@@ -466,7 +466,13 @@ const AccountRequests = () => {
                   fontWeight: 600, 
                   color: darkMode ? 'var(--text-primary)' : '#334155'
                 }}>
-                  Name
+                  Last Name
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: darkMode ? 'var(--text-primary)' : '#334155'
+                }}>
+                  First Name
                 </TableCell>
                 <TableCell sx={{ 
                   fontWeight: 600, 
@@ -510,7 +516,7 @@ const AccountRequests = () => {
               {requests.length === 0 ? (
                 <TableRow>
                   <TableCell 
-                    colSpan={7} 
+                    colSpan={8} 
                     align="center" 
                     sx={{ 
                       py: 4,
@@ -534,7 +540,10 @@ const AccountRequests = () => {
                     }}
                   >
                     <TableCell sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}>
-                      {request.firstName} {request.lastName}
+                      {request.lastName}
+                    </TableCell>
+                    <TableCell sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}>
+                      {request.firstName}
                     </TableCell>
                     <TableCell sx={{ color: darkMode ? 'var(--text-primary)' : 'text.primary' }}>
                       {request.schoolId}
