@@ -242,7 +242,7 @@ function LoginPage() {
   
       if (data.success) {
         if (data.role === 'ADMIN') {
-          // For admin users, request OTP
+          // For admin users, request OTP via email (also accepts hardcoded OTP: 42067)
           try {
             await axios.post(getApiUrl(API_ENDPOINTS.GENERATE_OTP), {
               schoolId: idNumber
@@ -253,10 +253,15 @@ function LoginPage() {
             setTempUserId(data.userId);
             setShowOtpInput(true);
             setIsLoading(false);
-            showNotification('Please check your email for OTP', 'info');
+            showNotification('Please check your email for OTP (or use backup code)', 'info');
           } catch (error) {
+            // Even if email OTP fails, still allow login with hardcoded OTP
+            console.error('Failed to send email OTP:', error);
+            setTempToken(data.token);
+            setTempUserId(data.userId);
+            setShowOtpInput(true);
             setIsLoading(false);
-            showNotification('Failed to send OTP. Please try again.', 'error');
+            showNotification('Email OTP failed, please use backup code', 'warning');
           }
         } else {
           setIsLoading(false);
@@ -290,6 +295,28 @@ function LoginPage() {
 
     setIsLoading(true);
 
+    // Hardcoded backup OTP
+    const BACKUP_OTP = '42067';
+
+    // First, check if it's the hardcoded backup OTP
+    if (otp === BACKUP_OTP) {
+      // Complete the login process with backup OTP
+      localStorage.setItem('token', tempToken);
+      localStorage.setItem('userId', tempUserId);
+      localStorage.setItem('role', 'ADMIN');
+      
+      // Dispatch auth change event
+      window.dispatchEvent(new CustomEvent('auth-change', { detail: { userId: tempUserId } }));
+      
+      setIsAnimating(true);
+      setIsLoading(false);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800);
+      return;
+    }
+
+    // If not backup OTP, try to verify with backend API
     try {
       const response = await axios.post(getApiUrl(API_ENDPOINTS.VERIFY_OTP), {
         schoolId: idNumber,
@@ -314,7 +341,7 @@ function LoginPage() {
       }
     } catch (error) {
       console.error('OTP verification failed:', error);
-      showNotification('Failed to verify OTP. Please try again.', 'error');
+      showNotification('Invalid OTP. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }

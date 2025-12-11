@@ -5,8 +5,11 @@ import {
   Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
   Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
   CircularProgress, LinearProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
-  Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails
+  Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Search, AccountTree, Settings, Notifications, FilterList, Home, Event, People, CalendarToday,
   Group, Add, Close, Logout, Edit, Delete, VisibilityOutlined, EventAvailable, CheckCircleOutline, Email,
@@ -253,6 +256,11 @@ export default function AccountPage() {
   // Add new state for selected date
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Add state for status detail modal
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedStatusType, setSelectedStatusType] = useState('');
+  const [statusModalUsers, setStatusModalUsers] = useState([]);
+
   // Derived validation for Add Faculty password
   const passwordChecks = getPasswordChecks(newProfessor.password);
   const isAddPasswordValid = passwordChecks.length && passwordChecks.uppercase && passwordChecks.lowercase && passwordChecks.number;
@@ -269,6 +277,66 @@ export default function AccountPage() {
     }
     setSelectedDate(newDate);
     fetchTimelineForDate(newDate);
+  };
+
+  // Handle calendar date picker change
+  const handleCalendarDateChange = (newDate) => {
+    if (newDate) {
+      setSelectedDate(newDate);
+      fetchTimelineForDate(newDate);
+    }
+  };
+
+  // Handle status card click to show modal
+  const handleStatusCardClick = (statusType) => {
+    setSelectedStatusType(statusType);
+    
+    // Get users with the selected status from todayTimeline
+    const userFinalStatus = new Map();
+    
+    // Process timeline entries to determine each user's final status for the day
+    todayTimeline.forEach(entry => {
+      const userId = entry.userId;
+      const currentEntry = userFinalStatus.get(userId);
+      
+      // If we don't have this user yet, or if this entry is more recent, update it
+      if (!currentEntry || entry.timestamp > currentEntry.timestamp) {
+        userFinalStatus.set(userId, {
+          status: entry.status,
+          timestamp: entry.timestamp,
+          name: entry.name,
+          email: entry.email,
+          type: entry.type,
+          userId: entry.userId
+        });
+      }
+    });
+    
+    // Filter users by selected status
+    const filteredUsers = Array.from(userFinalStatus.values()).filter(user => {
+      if (statusType === 'On Duty') {
+        return user.status === 'On Duty' || (user.type === 'TimeIn' && user.status !== 'On Break' && user.status !== 'Off Duty');
+      } else if (statusType === 'On Break') {
+        return user.status === 'On Break';
+      } else if (statusType === 'Off Duty') {
+        return user.status === 'Off Duty' || (user.type === 'TimeOut' && user.status !== 'On Break');
+      }
+      return false;
+    });
+    
+    // Get full professor details for each user
+    const usersWithDetails = filteredUsers.map(user => {
+      const professor = professors.find(p => p.userId === user.userId);
+      return {
+        ...user,
+        profilePictureUrl: professor?.profilePictureUrl,
+        department: professor?.department,
+        schoolId: professor?.schoolId
+      };
+    });
+    
+    setStatusModalUsers(usersWithDetails);
+    setShowStatusModal(true);
   };
 
   // Fetch professors and departments on component mount
@@ -303,11 +371,17 @@ export default function AccountPage() {
   // Update status counts when professors data changes (to ensure count is always current)
   useEffect(() => {
     if (professors.length > 0 && tabValue === 1) {
-      fetchStatusCounts();
       fetchTimelineForDate(selectedDate);
       fetchAttendanceHistory();
     }
   }, [professors.length, tabValue]);
+
+  // Update status counts whenever timeline data changes
+  useEffect(() => {
+    if (tabValue === 1 && todayTimeline.length >= 0) {
+      fetchStatusCounts();
+    }
+  }, [todayTimeline, tabValue]);
 
   // Helper function to get the correct ID for API calls
   const getCorrectApiId = (user) => {
@@ -739,163 +813,71 @@ export default function AccountPage() {
     }
   };
 
-  // Fetch faculty status counts
+  // Fetch faculty status counts based on the timeline data for the selected date
   const fetchStatusCounts = async () => {
     setStatusLoading(true);
     try {
-      // Use the same professors data that's already loaded
-      const totalFaculty = professors.length;
+      // Use the todayTimeline data that's already fetched and filtered for the selected date
+      // Count unique users and their final status from the timeline
+      const userFinalStatus = new Map();
       
-      // Get status from Firebase Realtime Database
-      const timeLogs = dbRef(database, 'timeLogs');
-      const statusSnapshot = await get(timeLogs);
+      // Process timeline entries to determine each user's final status for the day
+      todayTimeline.forEach(entry => {
+        const userId = entry.userId;
+        const currentEntry = userFinalStatus.get(userId);
+        
+        // If we don't have this user yet, or if this entry is more recent, update it
+        if (!currentEntry || entry.timestamp > currentEntry.timestamp) {
+          userFinalStatus.set(userId, {
+            status: entry.status,
+            timestamp: entry.timestamp,
+            name: entry.name,
+            type: entry.type
+          });
+        }
+      });
       
+      // Count statuses
       let onDutyCount = 0;
       let onBreakCount = 0;
       let offDutyCount = 0;
       
-      // Process data to count statuses
-      if (statusSnapshot.exists()) {
-        const latestStatusByUser = new Map();
-        
-        // For each user node in timeLogs
-        statusSnapshot.forEach(userSnap => {
-          const userId = userSnap.key;
-          const userLogs = userSnap.val();
-          
-          // Skip if this is just the userId field
-          if (typeof userLogs === 'string') return;
-          
-          // Get all entries for this user
-          const entries = Object.entries(userLogs)
-            .filter(([_, entry]) => typeof entry === 'object' && entry.timestamp)
-            .map(([logId, entry]) => ({
-              ...entry,
-              logId,
-              timestamp: typeof entry.timestamp === 'string' ? parseInt(entry.timestamp) : entry.timestamp
-            }));
-          
-          // Sort entries by timestamp (newest first)
-          entries.sort((a, b) => b.timestamp - a.timestamp);
-          
-          // Get the latest entry
-          if (entries.length > 0) {
-            const latestEntry = entries[0];
-            latestStatusByUser.set(userId, latestEntry);
-            
-            console.log(`Latest entry for user ${userId}:`, {
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              status: latestEntry.status,
-              type: latestEntry.type,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
-          }
+      userFinalStatus.forEach((data, userId) => {
+        console.log(`User ${data.name} final status on ${selectedDate.toLocaleDateString()}:`, {
+          status: data.status,
+          type: data.type,
+          timestamp: new Date(data.timestamp).toLocaleString()
         });
         
-        // Count the latest status for each user
-        latestStatusByUser.forEach((latestEntry, userId) => {
-          // Explicitly check status field first
-          if (latestEntry.status === 'On Break') {
-            onBreakCount++;
-            console.log(`Counting as On Break:`, {
-              userId,
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              status: latestEntry.status,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
-          } else if (latestEntry.status === 'On Duty') {
-            onDutyCount++;
-            console.log(`Counting as On Duty:`, {
-              userId,
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              status: latestEntry.status,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
-          } else if (latestEntry.status === 'Off Duty' || latestEntry.type === 'TimeOut') {
+        if (data.status === 'On Duty') {
+          onDutyCount++;
+        } else if (data.status === 'On Break') {
+          onBreakCount++;
+        } else if (data.status === 'Off Duty') {
+          offDutyCount++;
+        } else {
+          // For entries without explicit status, use type
+          if (data.type === 'TimeOut') {
             offDutyCount++;
-            console.log(`Counting as Off Duty:`, {
-              userId,
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              status: latestEntry.status,
-              type: latestEntry.type,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
-          } else if (latestEntry.type === 'TimeIn') {
-            // If no explicit status but TimeIn, count as On Duty
+          } else if (data.type === 'TimeIn') {
             onDutyCount++;
-            console.log(`Counting as On Duty (TimeIn):`, {
-              userId,
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              type: latestEntry.type,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
-          } else {
-            // Default case
-            offDutyCount++;
-            console.log(`Counting as Off Duty (default):`, {
-              userId,
-              name: latestEntry.firstName,
-              email: latestEntry.email,
-              status: latestEntry.status,
-              type: latestEntry.type,
-              timestamp: new Date(latestEntry.timestamp).toLocaleString()
-            });
           }
-        });
+        }
+      });
 
-        // Log final detailed counts
-        console.log('Final Status Counts:', {
-          onBreak: {
-            count: onBreakCount,
-            users: Array.from(latestStatusByUser.entries())
-              .filter(([_, entry]) => entry.status === 'On Break')
-              .map(([userId, entry]) => ({
-                userId,
-                name: entry.firstName,
-                email: entry.email,
-                timestamp: new Date(entry.timestamp).toLocaleString()
-              }))
-          },
-          onDuty: {
-            count: onDutyCount,
-            users: Array.from(latestStatusByUser.entries())
-              .filter(([_, entry]) => 
-                entry.status === 'On Duty' || 
-                (entry.type === 'TimeIn' && entry.status !== 'On Break' && entry.status !== 'Off Duty'))
-              .map(([userId, entry]) => ({
-                userId,
-                name: entry.firstName,
-                email: entry.email,
-                timestamp: new Date(entry.timestamp).toLocaleString()
-              }))
-          },
-          offDuty: {
-            count: offDutyCount,
-            users: Array.from(latestStatusByUser.entries())
-              .filter(([_, entry]) => 
-                entry.status === 'Off Duty' || 
-                (entry.type === 'TimeOut' && entry.status !== 'On Break'))
-              .map(([userId, entry]) => ({
-                userId,
-                name: entry.firstName,
-                email: entry.email,
-                timestamp: new Date(entry.timestamp).toLocaleString()
-              }))
-          }
-        });
-      }
+      console.log(`Final Status Counts for ${selectedDate.toLocaleDateString()}:`, {
+        onDuty: onDutyCount,
+        onBreak: onBreakCount,
+        offDuty: offDutyCount,
+        total: userFinalStatus.size
+      });
 
       // Update state with counts
       setStatusCounts({
         onDuty: onDutyCount,
         onBreak: onBreakCount,
         offDuty: offDutyCount,
-        total: totalFaculty
+        total: userFinalStatus.size
       });
 
     } catch (err) {
@@ -1850,7 +1832,7 @@ export default function AccountPage() {
             </Box>
           </Box>
 
-          {/* Total Faculty Card */}
+          {/* Total Faculty Card 
           <Card
             elevation={0}
             sx={{
@@ -1883,7 +1865,7 @@ export default function AccountPage() {
                 </Typography>
               </Box>
             </Box>
-          </Card>
+          </Card>*/}
 
           {/* Status Cards */}
           <Box sx={{ 
@@ -1895,6 +1877,7 @@ export default function AccountPage() {
             {/* On Duty Card */}
             <Paper
               elevation={0}
+              onClick={() => handleStatusCardClick('On Duty')}
               sx={{
                 flex: 1,
                 p: 3,
@@ -1908,8 +1891,10 @@ export default function AccountPage() {
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'transform 0.2s',
+                cursor: 'pointer',
                 '&:hover': {
-                  transform: 'translateY(-4px)'
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
                 }
               }}
             >
@@ -1956,6 +1941,7 @@ export default function AccountPage() {
             {/* On Break Card */}
             <Paper
               elevation={0}
+              onClick={() => handleStatusCardClick('On Break')}
               sx={{
                 flex: 1,
                 p: 3,
@@ -1969,8 +1955,10 @@ export default function AccountPage() {
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'transform 0.2s',
+                cursor: 'pointer',
                 '&:hover': {
-                  transform: 'translateY(-4px)'
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
                 }
               }}
             >
@@ -2017,6 +2005,7 @@ export default function AccountPage() {
             {/* Off Duty Card */}
             <Paper
               elevation={0}
+              onClick={() => handleStatusCardClick('Off Duty')}
               sx={{
                 flex: 1,
                 p: 3,
@@ -2030,8 +2019,10 @@ export default function AccountPage() {
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'transform 0.2s',
+                cursor: 'pointer',
                 '&:hover': {
-                  transform: 'translateY(-4px)'
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
                 }
               }}
             >
@@ -2089,43 +2080,111 @@ export default function AccountPage() {
               Faculty Timeline
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={handleCalendarDateChange}
+                  maxDate={new Date()}
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      sx: {
+                        minWidth: 250,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 1,
+                          bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                          '& fieldset': {
+                            borderColor: darkMode ? '#333333' : '#E2E8F0',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: darkMode ? '#555555' : '#CBD5E1',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: darkMode ? '#90caf9' : '#0288d1',
+                          },
+                          '& .MuiInputBase-input': {
+                            color: darkMode ? '#f5f5f5' : 'inherit',
+                          },
+                          '& .MuiSvgIcon-root': {
+                            color: darkMode ? '#aaaaaa' : 'inherit',
+                          }
+                        }
+                      }
+                    },
+                    popper: {
+                      sx: {
+                        '& .MuiPaper-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#fff',
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                          border: darkMode ? '1px solid #333333' : 'none',
+                        },
+                        '& .MuiPickersCalendarHeader-root': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                          '& .MuiSvgIcon-root': {
+                            color: darkMode ? '#aaaaaa' : 'inherit',
+                          }
+                        },
+                        '& .MuiPickersDay-root': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                          '&:hover': {
+                            bgcolor: darkMode ? '#2d2d2d' : 'rgba(0, 0, 0, 0.04)',
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                            color: darkMode ? '#1e1e1e' : '#fff',
+                            '&:hover': {
+                              bgcolor: darkMode ? '#42a5f5' : '#0277bd',
+                            }
+                          },
+                          '&.Mui-disabled': {
+                            color: darkMode ? '#555555' : 'rgba(0, 0, 0, 0.38)',
+                          }
+                        },
+                        '& .MuiDayCalendar-weekDayLabel': {
+                          color: darkMode ? '#aaaaaa' : 'inherit',
+                        },
+                        '& .MuiPickersYear-yearButton': {
+                          color: darkMode ? '#f5f5f5' : 'inherit',
+                          '&:hover': {
+                            bgcolor: darkMode ? '#2d2d2d' : 'rgba(0, 0, 0, 0.04)',
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: darkMode ? '#90caf9' : '#0288d1',
+                            color: darkMode ? '#1e1e1e' : '#fff',
+                          }
+                        }
+                      }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 1,
-                border: '1px solid #E2E8F0',
+                gap: 0.5,
+                border: '1px solid',
+                borderColor: darkMode ? '#333333' : '#E2E8F0',
                 borderRadius: 1,
-                px: 2,
-                py: 0.5
+                bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
               }}>
                 <IconButton 
                   size="small" 
                   onClick={() => handleDateChange('prev')}
-                  sx={{ color: '#64748B' }}
+                  sx={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                 >
                   <ChevronLeft />
                 </IconButton>
-                <Typography 
-                  variant="subtitle2" 
-                  sx={{ 
-                    minWidth: 200,
-                    textAlign: 'center',
-                    color: '#1E293B',
-                    fontWeight: 500
-                  }}
-                >
-                  {selectedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </Typography>
                 <IconButton 
                   size="small" 
                   onClick={() => handleDateChange('next')}
-                  disabled={selectedDate >= new Date()}
-                  sx={{ color: '#64748B' }}
+                  disabled={selectedDate.toDateString() === new Date().toDateString()}
+                  sx={{ 
+                    color: darkMode ? '#aaaaaa' : '#64748B',
+                    '&.Mui-disabled': {
+                      color: darkMode ? '#555555' : 'rgba(0, 0, 0, 0.26)'
+                    }
+                  }}
                 >
                   <ChevronRight />
                 </IconButton>
@@ -2216,11 +2275,8 @@ export default function AccountPage() {
                     </Box>
                     <Box sx={{ 
                       position: 'relative',
-                      borderLeft: '2px solid',
-                      borderColor: item.status === 'On Duty' ? '#4CAF50' : 
-                                item.status === 'On Break' ? '#FF9800' : 
-                                item.status === 'Off Duty' ? '#F44336' : 
-                                '#9E9E9E',
+                    
+                    
                       pl: 3,
                       pb: index < todayTimeline.length - 1 ? 3 : 0,
                       flex: 1
@@ -2229,19 +2285,11 @@ export default function AccountPage() {
                         width: 10,
                         height: 10,
                         borderRadius: '50%',
-                        bgcolor: item.status === 'On Duty' ? '#4CAF50' : 
-                                item.status === 'On Break' ? '#FF9800' : 
-                                item.status === 'Off Duty' ? '#F44336' : 
-                                '#9E9E9E',
+                        
                         position: 'absolute',
                         left: -6,
                         top: 5,
-                        boxShadow: `0 0 10px ${
-                          item.status === 'On Duty' ? '#4CAF50' : 
-                          item.status === 'On Break' ? '#FF9800' : 
-                          item.status === 'Off Duty' ? '#F44336' : 
-                          '#9E9E9E'
-                        }`,
+                      
                         zIndex: 1
                       }} />
                       <Box sx={{
@@ -2249,10 +2297,7 @@ export default function AccountPage() {
                         p: 2,
                         borderRadius: 1,
                         border: '3px dashed',
-                        borderColor: item.status === 'On Duty' ? '#DCFCE7' : 
-                                   item.status === 'On Break' ? '#FFEDD5' : 
-                                   item.status === 'Off Duty' ? '#FEE2E2' : 
-                                   '#E2E8F0'
+                      
                       }}>
                         <Typography variant="body2" fontWeight="600" color="#1E293B">
                           {item.description}
@@ -2347,7 +2392,7 @@ export default function AccountPage() {
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Faculty Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Activity</TableCell>
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Department</TableCell>
+                    
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2387,9 +2432,7 @@ export default function AccountPage() {
                               }}
                             />
                           </TableCell>
-                          <TableCell>
-                            {faculty?.department?.name || 'N/A'}
-                          </TableCell>
+                
                         </TableRow>
                       );
                     })}
@@ -3142,6 +3185,167 @@ export default function AccountPage() {
           </Box>
         </Box>
       </Modal>
+
+      {/* Status Detail Modal */}
+      <Dialog
+        open={showStatusModal}
+        onClose={() => setShowStatusModal(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: darkMode ? '#1e1e1e' : '#fff',
+            border: darkMode ? '1px solid #333333' : 'none'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+          borderBottom: '1px solid',
+          borderColor: darkMode ? '#333333' : '#E2E8F0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
+              Faculty Members - {selectedStatusType}
+            </Typography>
+            <Chip 
+              label={statusModalUsers.length}
+              size="small"
+              sx={{
+                bgcolor: selectedStatusType === 'On Duty' ? '#F0FDF4' : 
+                        selectedStatusType === 'On Break' ? '#FFF7ED' : 
+                        selectedStatusType === 'Off Duty' ? '#FEF2F2' : 
+                        '#F8FAFC',
+                color: selectedStatusType === 'On Duty' ? '#15803D' : 
+                       selectedStatusType === 'On Break' ? '#9A3412' : 
+                       selectedStatusType === 'Off Duty' ? '#991B1B' : 
+                       '#64748B',
+                fontWeight: 600
+              }}
+            />
+          </Box>
+          <IconButton onClick={() => setShowStatusModal(false)} size="small" sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
+          {statusModalUsers.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <PeopleAlt sx={{ fontSize: 48, color: darkMode ? '#555555' : '#CBD5E1', mb: 2 }} />
+              <Typography variant="body1" color={darkMode ? '#aaaaaa' : 'text.secondary'}>
+                No faculty members with status "{selectedStatusType}" on {selectedDate.toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                      color: darkMode ? '#f5f5f5' : 'inherit'
+                    }}>
+                      Faculty Member
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                      color: darkMode ? '#f5f5f5' : 'inherit'
+                    }}>
+                      Email
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                      color: darkMode ? '#f5f5f5' : 'inherit'
+                    }}>
+                      Department
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
+                      color: darkMode ? '#f5f5f5' : 'inherit'
+                    }}>
+                      Last Activity
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {statusModalUsers.map((user) => (
+                    <TableRow 
+                      key={user.userId}
+                      sx={{ 
+                        '&:hover': { 
+                          bgcolor: darkMode ? '#2d2d2d' : '#F1F5F9' 
+                        },
+                        borderBottom: '1px solid',
+                        borderColor: darkMode ? '#333333' : '#E2E8F0'
+                      }}
+                    >
+                      <TableCell sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar
+                            src={user.profilePictureUrl}
+                            alt={user.name}
+                            sx={{ width: 32, height: 32 }}
+                          >
+                            {user.name?.charAt(0)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight="500">
+                              {user.name}
+                            </Typography>
+                            {user.schoolId && (
+                              <Typography variant="caption" color="text.secondary">
+                                ID: {user.schoolId}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
+                        <Typography variant="body2">{user.email}</Typography>
+                      </TableCell>
+                      <TableCell sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
+                        {user.department?.name ? (
+                          <Box>
+                            <Typography variant="body2">
+                              {user.department.name}
+                            </Typography>
+                            <Typography variant="caption" color={darkMode ? '#888888' : 'text.secondary'}>
+                              {getDepartmentAbbreviation(user.department.departmentId)}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color={darkMode ? '#888888' : 'text.secondary'}>
+                            Not assigned
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
+                        <Typography variant="body2">
+                          {new Date(user.timestamp).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Profile Picture Zoom Modal */}
       <Modal
