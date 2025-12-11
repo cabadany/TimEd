@@ -800,6 +800,16 @@ export default function Certificate() {
         throw new Error('Certificate template not found');
       }
 
+      // Fetch all users to get complete user data by userId
+      const usersResponse = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
+      const allUsers = usersResponse.data;
+      
+      // Create a map of userId to user data for quick lookup
+      const userMap = new Map();
+      allUsers.forEach(user => {
+        userMap.set(user.userId, user);
+      });
+
       // Create a temporary div for certificate rendering
       const certificateDiv = document.createElement('div');
       certificateDiv.style.width = '800px';
@@ -810,6 +820,17 @@ export default function Certificate() {
 
       // Process each attendee
       for (const attendee of attendees) {
+        // Get full user data from userId
+        const userData = userMap.get(attendee.userId);
+        
+        // Use user data from users collection if available, otherwise fallback to attendee data
+        const lastName = userData?.lastName || attendee.lastName || '';
+        const firstName = userData?.firstName || attendee.firstName || '';
+        const email = userData?.email || attendee.email;
+        
+        // Format name as "LastName, FirstName"
+        const fullName = `${lastName}, ${firstName}`;
+        
         // Create certificate HTML for this attendee
         certificateDiv.innerHTML = `
           <div style="
@@ -832,7 +853,7 @@ export default function Certificate() {
               ${certificateTemplate.recipientText || 'PRESENTED TO'}
             </p>
             <h3 style="font-size: 40px; font-weight: bold; font-style: italic; margin-bottom: 20px;">
-              ${attendee.firstName} ${attendee.lastName}
+              ${fullName}
             </h3>
             <p style="font-size: 20px; margin-bottom: 40px;">
               ${certificateTemplate.description || 'For outstanding participation'}
@@ -855,10 +876,10 @@ export default function Certificate() {
 
         // Send email with certificate
         await axios.post('https://timed-utd9.onrender.com/api/email/send', {
-          to: attendee.email,
+          to: email,
           from: 'timedcit@outlook.com',
           subject: `Your Certificate for ${certificateTemplate.eventName}`,
-          text: `Dear ${attendee.firstName} ${attendee.lastName},\n\nPlease find attached your certificate for ${certificateTemplate.eventName}.\n\nBest regards,\nTimEd Team`,
+          text: `Dear ${firstName} ${lastName},\n\nPlease find attached your certificate for ${certificateTemplate.eventName}.\n\nBest regards,\nTimEd Team`,
           attachments: [{
             filename: 'certificate.pdf',
             content: pdfData.split(',')[1],
