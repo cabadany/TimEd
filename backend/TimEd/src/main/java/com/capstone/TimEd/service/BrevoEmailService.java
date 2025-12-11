@@ -29,9 +29,16 @@ public class BrevoEmailService {
      * Send OTP email for admin login verification
      */
     public void sendOtpEmail(String toEmail, String otp) throws Exception {
-        System.out.println("--- Brevo API: Starting OTP email send ---");
+        System.out.println("=== BREVO OTP EMAIL DEBUG ===");
         System.out.println("To: " + toEmail);
-        System.out.println("API Key configured: " + (brevoApiKey != null && !brevoApiKey.isEmpty()));
+        System.out.println("API Key exists: " + (brevoApiKey != null && !brevoApiKey.isEmpty()));
+        System.out.println("API Key length: " + (brevoApiKey != null ? brevoApiKey.length() : 0));
+        System.out.println("API Key starts with 'xkeysib-': " + (brevoApiKey != null && brevoApiKey.startsWith("xkeysib-")));
+        if (brevoApiKey != null && brevoApiKey.length() > 10) {
+            System.out.println("API Key preview: " + brevoApiKey.substring(0, 10) + "...[HIDDEN]");
+        } else {
+            System.out.println("WARNING: API Key appears to be missing or too short!");
+        }
 
         try {
             TransactionalEmailsApi apiInstance = getApiInstance();
@@ -79,8 +86,16 @@ public class BrevoEmailService {
             System.out.println("--- Brevo API: OTP email sent successfully ---");
             
         } catch (Exception e) {
-            System.err.println("--- Brevo API: OTP email sending failed ---");
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("=== BREVO OTP EMAIL FAILED ===");
+            System.err.println("Error Type: " + e.getClass().getSimpleName());
+            System.err.println("Error Message: " + e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("Unauthorized")) {
+                System.err.println(">>> DIAGNOSIS: API key is invalid, expired, or not set correctly!");
+                System.err.println(">>> Check: Environment variable BREVO_API_KEY in Render");
+                System.err.println(">>> Check: API key should start with 'xkeysib-'");
+                System.err.println(">>> Check: API key permissions in Brevo dashboard");
+            }
+            e.printStackTrace();
             throw new Exception("Failed to send OTP email via Brevo: " + e.getMessage());
         }
     }

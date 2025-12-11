@@ -484,7 +484,7 @@ public class CertificateService {
                     .setMarginBottom(20));
 
             // Recipient name
-            String recipientName = attendee.get("firstName") + " " + attendee.get("lastName");
+            String recipientName = attendee.get("firstName") + ", " + attendee.get("lastName");
             document.add(new Paragraph(recipientName)
                     .setFont(titleFont)
                     .setFontSize(28)

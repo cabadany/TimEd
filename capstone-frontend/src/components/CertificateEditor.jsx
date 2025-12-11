@@ -77,7 +77,7 @@ const defaultCertificate = {
   title: 'CERTIFICATE',
   subtitle: 'OF ACHIEVEMENT',
   recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
-  recipientName: '{Recipient Name}',
+  recipientName: '{FirstName, LastName}',
   description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
   signatories: [
     { name: 'John Doe', title: 'REPRESENTATIVE' },
@@ -1188,6 +1188,14 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 fontWeight: 500
               }} 
             />
+            <Tab 
+              label="Signatories" 
+              sx={{ 
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }} 
+            />
           </Tabs>
 
           {/* Tab content area with scrolling */}
@@ -1978,7 +1986,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             {activeTab === 3 && (
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="subtitle1">
+                  <Typography variant="subtitle1" sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
                     {certificate.signatories.length} of 3 signatories
                   </Typography>
                   <Button 
@@ -1987,6 +1995,18 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     onClick={handleAddSignatory}
                     disabled={certificate.signatories.length >= 3}
                     variant="outlined"
+                    sx={{
+                      borderColor: darkMode ? '#555555' : '#E2E8F0',
+                      color: darkMode ? '#90caf9' : '#0288d1',
+                      '&:hover': {
+                        borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        bgcolor: darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(2, 136, 209, 0.04)'
+                      },
+                      '&.Mui-disabled': {
+                        borderColor: darkMode ? '#333333' : '#E2E8F0',
+                        color: darkMode ? '#555555' : '#CBD5E1'
+                      }
+                    }}
                   >
                     Add Signatory
                   </Button>
@@ -1999,7 +2019,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     sx={{ 
                       p: 2, 
                       mb: 2,
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                      border: '1px solid',
+                      borderColor: darkMode ? '#333333' : '#E2E8F0'
                     }}
                   >
                     <Box sx={{ 
@@ -2008,12 +2031,22 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                       alignItems: 'center',
                       mb: 2
                     }}>
-                      <Typography variant="subtitle2">Signatory {index + 1}</Typography>
+                      <Typography variant="subtitle2" sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
+                        Signatory {index + 1}
+                      </Typography>
                       <IconButton 
                         size="small" 
                         onClick={() => handleRemoveSignatory(index)}
                         disabled={certificate.signatories.length <= 1}
-                        color="error"
+                        sx={{
+                          color: darkMode ? '#ef5350' : '#ef5350',
+                          '&:hover': {
+                            bgcolor: darkMode ? 'rgba(239, 83, 80, 0.08)' : 'rgba(239, 83, 80, 0.04)'
+                          },
+                          '&.Mui-disabled': {
+                            color: darkMode ? '#555555' : '#CBD5E1'
+                          }
+                        }}
                       >
                         <Delete fontSize="small" />
                       </IconButton>
@@ -2027,6 +2060,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           value={signatory.name}
                           onChange={(e) => handleSignatoryChange(index, 'name', e.target.value)}
                           size="small"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: darkMode ? '#2d2d2d' : '#ffffff',
+                              '& fieldset': {
+                                borderColor: darkMode ? '#333333' : '#E2E8F0',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: darkMode ? '#555555' : '#CBD5E1',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& .MuiInputLabel-root': {
+                              color: darkMode ? '#aaaaaa' : '#64748B',
+                              '&.Mui-focused': {
+                                color: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& input': {
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                            },
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} md={6}>
@@ -2036,6 +2092,29 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           value={signatory.title}
                           onChange={(e) => handleSignatoryChange(index, 'title', e.target.value)}
                           size="small"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: darkMode ? '#2d2d2d' : '#ffffff',
+                              '& fieldset': {
+                                borderColor: darkMode ? '#333333' : '#E2E8F0',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: darkMode ? '#555555' : '#CBD5E1',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& .MuiInputLabel-root': {
+                              color: darkMode ? '#aaaaaa' : '#64748B',
+                              '&.Mui-focused': {
+                                color: darkMode ? '#90caf9' : '#0288d1',
+                              },
+                            },
+                            '& input': {
+                              color: darkMode ? '#f5f5f5' : 'inherit',
+                            },
+                          }}
                         />
                       </Grid>
                     </Grid>
