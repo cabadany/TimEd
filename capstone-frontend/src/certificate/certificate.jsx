@@ -790,116 +790,22 @@ export default function Certificate() {
   const sendCertificates = async (certificateId, eventId) => {
     try {
       setActionLoading(true);
-      // This would connect to your backend endpoint that triggers email sending
-      const attendeesResponse = await axios.get(`https://timed-utd9.onrender.com/api/attendance/${eventId}/attendees`);
-      const attendees = attendeesResponse.data;
       
-      // Get certificate template
-      const certificateTemplate = certificates.find(cert => cert.id === certificateId);
-      if (!certificateTemplate) {
-        throw new Error('Certificate template not found');
-      }
-
-      // Fetch all users to get complete user data by email (more reliable than userId)
-      const usersResponse = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
-      const allUsers = usersResponse.data;
-      
-      // Create a map of email to user data for quick lookup (email is unique per user)
-      const userByEmailMap = new Map();
-      allUsers.forEach(user => {
-        if (user.email) {
-          userByEmailMap.set(user.email.toLowerCase(), user);
-        }
+      // Use the backend endpoint to generate and send certificates
+      // The backend will:
+      // 1. Fetch attendees from Firestore
+      // 2. Look up user data by email to get firstName/lastName
+      // 3. Generate PDF certificates
+      // 4. Send emails via Brevo
+      const response = await axios.post('https://timed-utd9.onrender.com/api/certificates/sendCertificates', {
+        certificateId: certificateId,
+        eventId: eventId
       });
-
-      // Create a temporary div for certificate rendering
-      const certificateDiv = document.createElement('div');
-      certificateDiv.style.width = '800px';
-      certificateDiv.style.height = '600px';
-      certificateDiv.style.position = 'absolute';
-      certificateDiv.style.left = '-9999px';
-      document.body.appendChild(certificateDiv);
-
-      // Process each attendee
-      for (const attendee of attendees) {
-        // Get full user data using email (more reliable lookup)
-        const userData = attendee.email ? userByEmailMap.get(attendee.email.toLowerCase()) : null;
-        
-        // Use user data from users collection if available, otherwise fallback to attendee data
-        const lastName = userData?.lastName || attendee.lastName || '';
-        const firstName = userData?.firstName || attendee.firstName || '';
-        const email = attendee.email || userData?.email;
-        
-        // Format name as "LastName, FirstName" - handle case where lastName might be empty
-        const fullName = lastName && firstName 
-          ? `${lastName}, ${firstName}` 
-          : lastName || firstName || 'Attendee';
-        
-        // Create certificate HTML for this attendee
-        certificateDiv.innerHTML = `
-          <div style="
-            width: 800px;
-            height: 600px;
-            padding: 40px;
-            text-align: center;
-            border: 10px solid ${certificateTemplate.borderColor || '#0047AB'};
-            background-color: ${certificateTemplate.backgroundColor || '#ffffff'};
-            font-family: ${certificateTemplate.fontFamily || 'Arial'};
-            color: ${certificateTemplate.textColor || '#000000'};
-          ">
-            <h1 style="font-size: 50px; font-weight: bold; margin-bottom: 20px;">
-              ${certificateTemplate.title || 'CERTIFICATE'}
-            </h1>
-            <h2 style="font-size: 35px; font-weight: bold; margin-bottom: 20px;">
-              ${certificateTemplate.subtitle || 'OF ACHIEVEMENT'}
-            </h2>
-            <p style="font-size: 25px; margin-bottom: 20px;">
-              ${certificateTemplate.recipientText || 'PRESENTED TO'}
-            </p>
-            <h3 style="font-size: 40px; font-weight: bold; font-style: italic; margin-bottom: 20px;">
-              ${fullName}
-            </h3>
-            <p style="font-size: 20px; margin-bottom: 40px;">
-              ${certificateTemplate.description || 'For outstanding participation'}
-            </p>
-            <div style="margin-top: 40px; font-size: 18px;">
-              <p>Date: ${new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-        `;
-
-        // Convert the certificate to PDF
-        const canvas = await html2canvas(certificateDiv);
-        const imgData = canvas.toDataURL('image/png');
-        
-        const pdf = new jsPDF('l', 'px', [800, 600]);
-        pdf.addImage(imgData, 'PNG', 0, 0, 800, 600);
-        
-        // Convert PDF to base64
-        const pdfData = pdf.output('datauristring');
-
-        // Send email with certificate
-        await axios.post('https://timed-utd9.onrender.com/api/email/send', {
-          to: email,
-          from: 'timedcit@outlook.com',
-          subject: `Your Certificate for ${certificateTemplate.eventName}`,
-          text: `Dear ${firstName} ${lastName},\n\nPlease find attached your certificate for ${certificateTemplate.eventName}.\n\nBest regards,\nTimEd Team`,
-          attachments: [{
-            filename: 'certificate.pdf',
-            content: pdfData.split(',')[1],
-            encoding: 'base64',
-            contentType: 'application/pdf'
-          }]
-        });
-      }
-
-      // Clean up
-      document.body.removeChild(certificateDiv);
       
-      showSnackbar('Certificates have been generated and sent successfully', 'success');
+      showSnackbar(response.data || 'Certificates have been generated and sent successfully', 'success');
     } catch (error) {
       console.error('Error sending certificates:', error);
-      showSnackbar('Failed to send certificates', 'error');
+      showSnackbar(error.response?.data || 'Failed to send certificates', 'error');
     } finally {
       setActionLoading(false);
     }
