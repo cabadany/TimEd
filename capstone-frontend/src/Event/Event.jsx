@@ -315,6 +315,14 @@ export default function EventPage() {
   const [durationSeconds, setDurationSeconds] = useState('00');
   const [description, setDescription] = useState(''); // Add description state
   const [venue, setVenue] = useState(''); // Add location state
+  
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState({
+    eventName: false,
+    departmentId: false,
+    date: false,
+    duration: false
+  });
 
   // State for events data
   const [events, setEvents] = useState([]);
@@ -392,7 +400,63 @@ export default function EventPage() {
   useEffect(() => {
     fetchEvents();
     fetchDepartments();
+    
+    // Set up real-time status checking every 10 seconds
+    const statusCheckInterval = setInterval(() => {
+      checkAndUpdateEventStatuses();
+    }, 10000); // Check every 10 seconds
+    
+    return () => clearInterval(statusCheckInterval);
   }, []);
+  
+  // Real-time event status checker
+  const checkAndUpdateEventStatuses = useCallback(() => {
+    if (!events.length) return;
+    
+    const currentDate = new Date();
+    let needsUpdate = false;
+    
+    const updatedEvents = events.map(event => {
+      const updatedEvent = { ...event };
+      
+      const eventDate = new Date(event.date);
+      const [hours, minutes, seconds] = event.duration.split(':').map(Number);
+      const eventEndTime = new Date(eventDate);
+      eventEndTime.setHours(eventEndTime.getHours() + hours);
+      eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+      eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+      
+      // Check if event should be Ongoing (time has arrived)
+      if (currentDate >= eventDate && currentDate <= eventEndTime && 
+          event.status === 'Upcoming' && event.status !== 'Cancelled') {
+        updatedEvent.status = 'Ongoing';
+        needsUpdate = true;
+        
+        // Update in backend
+        axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
+          status: 'Ongoing'
+        }).catch(error => console.error('Error updating event status:', error));
+      }
+      // Check if event should be Ended
+      else if (currentDate > eventEndTime && 
+               (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+        updatedEvent.status = 'Ended';
+        needsUpdate = true;
+        
+        // Update in backend
+        axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
+          status: 'Ended'
+        }).catch(error => console.error('Error updating event status:', error));
+      }
+      
+      return updatedEvent;
+    });
+    
+    if (needsUpdate) {
+      setEvents(updatedEvents);
+      setOngoingEvents(updatedEvents.filter(e => e.status === 'Ongoing'));
+    }
+  }, [events]);
 
   // Filter departments when filter text changes
   useEffect(() => {
@@ -560,9 +624,25 @@ export default function EventPage() {
 
 
   const createEvent = async () => {
-    // Validate form inputs
-    if (!eventName || !departmentId || !date || !duration) {
-      showSnackbar('Please fill in all required fields', 'error');
+    // Validate form inputs with specific error states
+    const errors = {
+      eventName: !eventName || eventName.trim() === '',
+      departmentId: !departmentId,
+      date: !date,
+      duration: !duration || duration === '0:00:00'
+    };
+    
+    setFormErrors(errors);
+    
+    // Check if any errors exist
+    if (Object.values(errors).some(error => error)) {
+      const missingFields = [];
+      if (errors.eventName) missingFields.push('Event Name');
+      if (errors.departmentId) missingFields.push('Department');
+      if (errors.date) missingFields.push('Date & Time');
+      if (errors.duration) missingFields.push('Duration');
+      
+      showSnackbar(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
       return;
     }
 
@@ -577,13 +657,29 @@ export default function EventPage() {
         showSnackbar('Invalid date format', 'error');
         return;
       }
+      
+      // Determine initial status based on current time
+      const currentDate = new Date();
+      const eventDate = new Date(date);
+      const [hours, minutes, seconds] = duration.split(':').map(Number);
+      const eventEndTime = new Date(eventDate);
+      eventEndTime.setHours(eventEndTime.getHours() + hours);
+      eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
+      eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
+      
+      let initialStatus = 'Upcoming';
+      if (currentDate >= eventDate && currentDate <= eventEndTime) {
+        initialStatus = 'Ongoing';
+      } else if (currentDate > eventEndTime) {
+        initialStatus = 'Ended';
+      }
 
       const eventData = {
         eventName,
         departmentId,
         date: formattedDate,
         duration,
-        status: 'Upcoming',
+        status: initialStatus,
         description, // Add description to event data
         venue // Add location to event data
       };
@@ -850,6 +946,13 @@ export default function EventPage() {
     setCurrentCertificateData(null);
     setEventForCertificate(null);
     setShowCertificateEditor(false);
+    // Clear form errors
+    setFormErrors({
+      eventName: false,
+      departmentId: false,
+      date: false,
+      duration: false
+    });
 
     // Clear draft
     localStorage.removeItem(DRAFT_EVENT_KEY);
@@ -1493,15 +1596,38 @@ export default function EventPage() {
       <Box className="event-main">
         {/* Ongoing Events Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Ongoing Events
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Box sx={{ 
+              width: 8, 
+              height: 8, 
+              borderRadius: '50%', 
+              bgcolor: '#22C55E',
+              animation: 'pulse 2s infinite'
+            }} />
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1E293B' }}>
+              Ongoing Events
+            </Typography>
+            <Chip 
+              label={ongoingEvents.length} 
+              size="small" 
+              sx={{ 
+                bgcolor: ongoingEvents.length > 0 ? '#DCFCE7' : '#F1F5F9', 
+                color: ongoingEvents.length > 0 ? '#166534' : '#64748B',
+                fontWeight: 600,
+                minWidth: 28
+              }} 
+            />
+          </Box>
           <Paper
             elevation={0}
             sx={{
               p: 3,
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0'
+              borderRadius: '12px',
+              border: '1px solid',
+              borderColor: ongoingEvents.length > 0 ? '#BBF7D0' : '#E2E8F0',
+              background: ongoingEvents.length > 0 
+                ? 'linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%)' 
+                : '#FFFFFF'
             }}
           >
             {loading ? (
@@ -1511,9 +1637,26 @@ export default function EventPage() {
                 ))}
               </Grid>
             ) : ongoingEvents.length === 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
-                <CalendarToday sx={{ fontSize: 40, color: '#94A3B8', mb: 1 }} />
-                <Typography variant="body1" color="#1E293B" fontWeight={500}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                py: 4,
+                px: 2
+              }}>
+                <Box sx={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  bgcolor: '#F1F5F9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 2
+                }}>
+                  <CalendarToday sx={{ fontSize: 36, color: '#94A3B8' }} />
+                </Box>
+                <Typography variant="body1" color="#1E293B" fontWeight={600} sx={{ mb: 0.5 }}>
                   No ongoing events at the moment
                 </Typography>
                 <Typography variant="body2" color="#64748B">
@@ -1522,86 +1665,128 @@ export default function EventPage() {
               </Box>
             ) : (
               <Grid container spacing={3}>
-                {ongoingEvents.map(event => (
-                  <Grid item xs={12} md={6} lg={4} key={event.eventId}>
-                    <Card
-                      elevation={0}
-                      sx={{
-                        border: '1px solid #E2E8F0',
-                        borderRadius: '8px',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column'
-                      }}
-                    >
-                      <CardContent sx={{ flex: 1 }}>
-                        <Box sx={{
-                          mb: 2,
+                {ongoingEvents.map(event => {
+                  // Calculate remaining time for each event
+                  const eventDate = new Date(event.date);
+                  const [h, m, s] = event.duration.split(':').map(Number);
+                  const endTime = new Date(eventDate);
+                  endTime.setHours(endTime.getHours() + h);
+                  endTime.setMinutes(endTime.getMinutes() + m);
+                  endTime.setSeconds(endTime.getSeconds() + s);
+                  const now = new Date();
+                  const remainingMs = endTime - now;
+                  const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+                  const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                  const remainingTimeText = remainingMs > 0 
+                    ? `${remainingHours}h ${remainingMinutes}m remaining` 
+                    : "Time expired";
+                  
+                  return (
+                    <Grid item xs={12} md={6} lg={4} key={event.eventId}>
+                      <Card
+                        elevation={0}
+                        sx={{
+                          border: '2px solid #22C55E',
+                          borderRadius: '12px',
+                          height: '100%',
                           display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start'
+                          flexDirection: 'column',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)',
+                          position: 'relative',
+                          overflow: 'visible',
+                          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 24px rgba(34, 197, 94, 0.15)'
+                          }
+                        }}
+                      >
+                        {/* Time remaining badge */}
+                        <Box sx={{
+                          position: 'absolute',
+                          top: -12,
+                          right: 16,
+                          bgcolor: remainingMs > 0 ? '#DCFCE7' : '#FEE2E2',
+                          color: remainingMs > 0 ? '#166534' : '#B91C1C',
+                          borderRadius: '20px',
+                          px: 2,
+                          py: 0.5,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          border: '2px solid #fff'
                         }}>
-                          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-                            {event.eventName}
-                          </Typography>
-                          <Chip
-                            label="Ongoing"
-                            size="small"
-                            sx={{
-                              bgcolor: '#E0F2FE',
-                              color: '#0369A1',
-                              fontWeight: 500,
-                              fontSize: '0.75rem'
-                            }}
-                          />
+                          ⏱ {remainingTimeText}
                         </Box>
+                        <CardContent sx={{ flex: 1, pt: 3 }}>
+                          <Box sx={{
+                            mb: 2,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start'
+                          }}>
+                            <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                              {event.eventName}
+                            </Typography>
+                            <Chip
+                              label="Ongoing"
+                              size="small"
+                              sx={{
+                                bgcolor: '#E0F2FE',
+                                color: '#0369A1',
+                                fontWeight: 500,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </Box>
 
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Department:</strong> {getDepartmentName(event.departmentId)}
-                        </Typography>
-
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Started:</strong> {formatDate(event.date)}
-                        </Typography>
-
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Duration:</strong> {event.duration}
-                        </Typography>
-                        <Typography variant="body2" color="#64748B" gutterBottom>
-                          <strong>Venue:</strong> {event.venue || 'N/A'}
-                        </Typography>
-
-                        {event.description && (
-                          <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
-                            <strong>Description:</strong> {event.description}
+                          <Typography variant="body2" color="#64748B" gutterBottom>
+                            <strong>Department:</strong> {getDepartmentName(event.departmentId)}
                           </Typography>
-                        )}
-                      </CardContent>
 
-                      <Divider />
+                          <Typography variant="body2" color="#64748B" gutterBottom>
+                            <strong>Started:</strong> {formatDate(event.date)}
+                          </Typography>
 
-                      <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
-                        <Button
-                          size="small"
-                          startIcon={<Edit />}
-                          onClick={() => openEditDialog(event)}
-                          sx={{ color: '#0288d1' }}
-                        >
-                          Update Status
-                        </Button>
+                          <Typography variant="body2" color="#64748B" gutterBottom>
+                            <strong>Duration:</strong> {event.duration}
+                          </Typography>
+                          <Typography variant="body2" color="#64748B" gutterBottom>
+                            <strong>Venue:</strong> {event.venue || 'N/A'}
+                          </Typography>
 
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<Cancel />}
-                          onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
-                        >
-                          Cancel Event
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
+                          {event.description && (
+                            <Typography variant="body2" color="#64748B" sx={{ mt: 1 }}>
+                              <strong>Description:</strong> {event.description}
+                            </Typography>
+                          )}
+                        </CardContent>
+
+                        <Divider />
+
+                        <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+                          <Button
+                            size="small"
+                            startIcon={<Edit />}
+                            onClick={() => openEditDialog(event)}
+                            sx={{ color: '#0288d1' }}
+                          >
+                            Update Status
+                          </Button>
+
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<Cancel />}
+                            onClick={() => updateEventStatus(event.eventId, 'Cancelled')}
+                          >
+                            Cancel Event
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
               </Grid>
             )}
           </Paper>
@@ -1628,26 +1813,33 @@ export default function EventPage() {
 
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
             <Box>
-              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+              <Typography variant="body2" fontWeight="500" color={formErrors.eventName ? '#DC2626' : '#1E293B'} sx={{ mb: 1 }}>
                 Event Name *
               </Typography>
               <TextField
                 fullWidth
                 variant="outlined"
                 value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
+                onChange={(e) => {
+                  setEventName(e.target.value);
+                  if (e.target.value.trim()) {
+                    setFormErrors(prev => ({ ...prev, eventName: false }));
+                  }
+                }}
+                error={formErrors.eventName}
+                helperText={formErrors.eventName ? 'Event name is required' : ''}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '4px',
                     fontSize: '14px',
                     '& fieldset': {
-                      borderColor: '#E2E8F0',
+                      borderColor: formErrors.eventName ? '#DC2626' : '#E2E8F0',
                     },
                     '&:hover fieldset': {
-                      borderColor: '#CBD5E1',
+                      borderColor: formErrors.eventName ? '#DC2626' : '#CBD5E1',
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#0288d1',
+                      borderColor: formErrors.eventName ? '#DC2626' : '#0288d1',
                     },
                   },
                 }}
@@ -1655,7 +1847,7 @@ export default function EventPage() {
             </Box>
 
             <Box>
-              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+              <Typography variant="body2" fontWeight="500" color={formErrors.departmentId ? '#DC2626' : '#1E293B'} sx={{ mb: 1 }}>
                 Department *
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1664,27 +1856,32 @@ export default function EventPage() {
                   variant="outlined"
                   value={getDepartmentName(departmentId)}
                   disabled
+                  error={formErrors.departmentId}
+                  helperText={formErrors.departmentId ? 'Department is required' : ''}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
                       fontSize: '14px',
                       '& fieldset': {
                         color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.38)',
-                        borderColor: '#E2E8F0',
+                        borderColor: formErrors.departmentId ? '#DC2626' : '#E2E8F0',
                       },
                     },
                   }}
                 />
                 <Button
                   variant="outlined"
-                  onClick={openDepartmentModal}
+                  onClick={() => {
+                    openDepartmentModal();
+                    setFormErrors(prev => ({ ...prev, departmentId: false }));
+                  }}
                   sx={{
 
-                    borderColor: '#0288d1',
-                    color: '#0288d1',
+                    borderColor: formErrors.departmentId ? '#DC2626' : '#0288d1',
+                    color: formErrors.departmentId ? '#DC2626' : '#0288d1',
                     '&:hover': {
-                      borderColor: '#0277bd',
-                      bgcolor: 'rgba(2, 136, 209, 0.04)',
+                      borderColor: formErrors.departmentId ? '#DC2626' : '#0277bd',
+                      bgcolor: formErrors.departmentId ? 'rgba(220, 38, 38, 0.04)' : 'rgba(2, 136, 209, 0.04)',
                     },
                     minWidth: '120px'
                   }}
@@ -1695,7 +1892,7 @@ export default function EventPage() {
             </Box>
 
             <Box>
-              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+              <Typography variant="body2" fontWeight="500" color={formErrors.date ? '#DC2626' : '#1E293B'} sx={{ mb: 1 }}>
                 Date & Time *
               </Typography>
               <TextField
@@ -1706,20 +1903,25 @@ export default function EventPage() {
                 onChange={(e) => {
                   console.log("Date input changed:", e.target.value);
                   setDate(e.target.value);
+                  if (e.target.value) {
+                    setFormErrors(prev => ({ ...prev, date: false }));
+                  }
                 }}
+                error={formErrors.date}
+                helperText={formErrors.date ? 'Date and time is required' : ''}
                 // No min attribute to prevent any browser-based default time setting
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '4px',
                     fontSize: '14px',
                     '& fieldset': {
-                      borderColor: '#E2E8F0',
+                      borderColor: formErrors.date ? '#DC2626' : '#E2E8F0',
                     },
                     '&:hover fieldset': {
-                      borderColor: '#CBD5E1',
+                      borderColor: formErrors.date ? '#DC2626' : '#CBD5E1',
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#0288d1',
+                      borderColor: formErrors.date ? '#DC2626' : '#0288d1',
                     },
                   },
                 }}
@@ -1727,7 +1929,7 @@ export default function EventPage() {
             </Box>
 
             <Box>
-              <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
+              <Typography variant="body2" fontWeight="500" color={formErrors.duration ? '#DC2626' : '#1E293B'} sx={{ mb: 1 }}>
                 Duration * (format: 0:00:00)
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1738,11 +1940,13 @@ export default function EventPage() {
                   value={durationHours}
                   type="number"
                   inputProps={{ min: 0 }}
+                  error={formErrors.duration}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === '' || /^\d+$/.test(val)) {
                       setDurationHours(val);
                       setDuration(`${val}:${durationMinutes}:${durationSeconds}`);
+                      if (val) setFormErrors(prev => ({ ...prev, duration: false }));
                     }
                   }}
                   sx={{
@@ -1751,13 +1955,13 @@ export default function EventPage() {
                       borderRadius: '4px',
                       fontSize: '14px',
                       '& fieldset': {
-                        borderColor: '#E2E8F0',
+                        borderColor: formErrors.duration ? '#DC2626' : '#E2E8F0',
                       },
                       '&:hover fieldset': {
-                        borderColor: '#CBD5E1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#CBD5E1',
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#0288d1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#0288d1',
                       },
                     },
                   }}
@@ -1769,6 +1973,7 @@ export default function EventPage() {
                   value={durationMinutes}
                   type="number"
                   inputProps={{ min: 0, max: 59 }}
+                  error={formErrors.duration}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === '' || /^\d+$/.test(val)) {
@@ -1783,13 +1988,13 @@ export default function EventPage() {
                       borderRadius: '4px',
                       fontSize: '14px',
                       '& fieldset': {
-                        borderColor: '#E2E8F0',
+                        borderColor: formErrors.duration ? '#DC2626' : '#E2E8F0',
                       },
                       '&:hover fieldset': {
-                        borderColor: '#CBD5E1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#CBD5E1',
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#0288d1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#0288d1',
                       },
                     },
                   }}
@@ -1801,6 +2006,7 @@ export default function EventPage() {
                   value={durationSeconds}
                   type="number"
                   inputProps={{ min: 0, max: 59 }}
+                  error={formErrors.duration}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === '' || /^\d+$/.test(val)) {
@@ -1815,18 +2021,23 @@ export default function EventPage() {
                       borderRadius: '4px',
                       fontSize: '14px',
                       '& fieldset': {
-                        borderColor: '#E2E8F0',
+                        borderColor: formErrors.duration ? '#DC2626' : '#E2E8F0',
                       },
                       '&:hover fieldset': {
-                        borderColor: '#CBD5E1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#CBD5E1',
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#0288d1',
+                        borderColor: formErrors.duration ? '#DC2626' : '#0288d1',
                       },
                     },
                   }}
                 />
               </Box>
+              {formErrors.duration && (
+                <Typography variant="caption" color="#DC2626" sx={{ mt: 0.5, display: 'block' }}>
+                  Duration is required
+                </Typography>
+              )}
               {/* Hidden field to hold the combined duration value */}
               <input type="hidden" value={duration} />
             </Box>

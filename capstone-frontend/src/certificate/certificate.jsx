@@ -800,14 +800,16 @@ export default function Certificate() {
         throw new Error('Certificate template not found');
       }
 
-      // Fetch all users to get complete user data by userId
+      // Fetch all users to get complete user data by email (more reliable than userId)
       const usersResponse = await axios.get('https://timed-utd9.onrender.com/api/user/getAll');
       const allUsers = usersResponse.data;
       
-      // Create a map of userId to user data for quick lookup
-      const userMap = new Map();
+      // Create a map of email to user data for quick lookup (email is unique per user)
+      const userByEmailMap = new Map();
       allUsers.forEach(user => {
-        userMap.set(user.userId, user);
+        if (user.email) {
+          userByEmailMap.set(user.email.toLowerCase(), user);
+        }
       });
 
       // Create a temporary div for certificate rendering
@@ -820,16 +822,18 @@ export default function Certificate() {
 
       // Process each attendee
       for (const attendee of attendees) {
-        // Get full user data from userId
-        const userData = userMap.get(attendee.userId);
+        // Get full user data using email (more reliable lookup)
+        const userData = attendee.email ? userByEmailMap.get(attendee.email.toLowerCase()) : null;
         
         // Use user data from users collection if available, otherwise fallback to attendee data
         const lastName = userData?.lastName || attendee.lastName || '';
         const firstName = userData?.firstName || attendee.firstName || '';
-        const email = userData?.email || attendee.email;
+        const email = attendee.email || userData?.email;
         
-        // Format name as "LastName, FirstName"
-        const fullName = `${lastName}, ${firstName}`;
+        // Format name as "LastName, FirstName" - handle case where lastName might be empty
+        const fullName = lastName && firstName 
+          ? `${lastName}, ${firstName}` 
+          : lastName || firstName || 'Attendee';
         
         // Create certificate HTML for this attendee
         certificateDiv.innerHTML = `
