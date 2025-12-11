@@ -75,6 +75,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var userLastName: String? = null
 
     private var currentScannedEventId: String? = null
     private var currentScannedEventName: String? = null
@@ -126,6 +127,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        userLastName = intent.getStringExtra("lastName")
 
         if (isTutorialSampleEvent) {
             // Simulate a successful time-in for the sample event and return immediately.
@@ -143,6 +145,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             userId = prefs.getString("userId", null)
             userEmail = prefs.getString("email", null)
             userFirstName = prefs.getString("firstName", null)
+            userLastName = prefs.getString("lastName", null)
         }
 
         if (userId.isNullOrEmpty()) {
@@ -234,10 +237,12 @@ class TimeInEventActivity : WifiSecurityActivity() {
     private fun sendCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String) {
         Log.d(TAG, "sendCertificateEmail called for event: $eventName, email: $userEmail")
 
+        val resolvedUserName = userDisplayName().ifEmpty { userName }
+
         val db = FirebaseFirestore.getInstance()
         val certificateData = hashMapOf(
             "recipientEmail" to userEmail,
-            "recipientName" to userName,
+            "recipientName" to resolvedUserName,
             "eventId" to eventId,
             "eventName" to eventName,
             "issueDate" to FieldValue.serverTimestamp(),
@@ -255,7 +260,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     "template" to mapOf(
                         "name" to "event_certificate_notification", // Example template name
                         "data" to mapOf(
-                            "userName" to userName,
+                            "userName" to resolvedUserName,
                             "eventName" to eventName,
                             "eventId" to eventId,
                             "issueDate" to SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
@@ -272,6 +277,11 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.e(TAG, "Failed to create certificate request", exception)
                 Toast.makeText(this, "Failed to process certificate request", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun userDisplayName(): String {
+        val names = listOfNotNull(userFirstName?.trim(), userLastName?.trim()).filter { it.isNotEmpty() }
+        return names.joinToString(" ")
     }
 
     private fun handleQrCodeScannedUpdated(qrContent: String) {
@@ -447,10 +457,93 @@ class TimeInEventActivity : WifiSecurityActivity() {
             return
         }
 
-        selfieReminder.text = "Processing attendance..." // Update UI
+        val attendanceTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
-        // First, validate that the user exists in the backend users collection
-        validateUserAndCallAPI(eventIdForLog, selfieUrl, timestampPhoto)
+        // Ensure we have full profile (including last name) before writing/issuing certificates
+        ensureUserProfileIfMissing {
+            ensureWebEventAttendanceRecord(eventIdForLog, eventNameForLog, selfieUrl, attendanceTimestamp)
+
+            selfieReminder.text = "Processing attendance..." // Update UI
+
+            // First, validate that the user exists in the backend users collection
+            validateUserAndCallAPI(eventIdForLog, selfieUrl, timestampPhoto)
+        }
+    }
+
+    private fun ensureUserProfileIfMissing(onComplete: () -> Unit) {
+        if (!userFirstName.isNullOrBlank() && !userLastName.isNullOrBlank()) {
+            onComplete()
+            return
+        }
+
+        val currentUserId = userId
+        if (currentUserId.isNullOrEmpty()) {
+            Log.w(TAG, "ensureUserProfileIfMissing: userId missing; proceeding without profile fetch")
+            onComplete()
+            return
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(currentUserId)
+            .get()
+            .addOnSuccessListener { userDoc ->
+                userDoc.getString("firstName")?.let { fetched -> if (userFirstName.isNullOrBlank()) userFirstName = fetched }
+                userDoc.getString("lastName")?.let { fetched -> if (userLastName.isNullOrBlank()) userLastName = fetched }
+                userDoc.getString("email")?.let { fetched -> if (userEmail.isNullOrBlank()) userEmail = fetched }
+                onComplete()
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "ensureUserProfileIfMissing: failed to fetch user profile", e)
+                onComplete()
+            }
+    }
+
+    private fun ensureWebEventAttendanceRecord(eventId: String, eventName: String?, selfieUrl: String?, timestamp: String) {
+        val currentUserId = userId
+        if (currentUserId.isNullOrEmpty()) {
+            Log.w(TAG, "Skipping web attendance write: userId is null")
+            return
+        }
+
+        val attendeeRef = FirebaseFirestore.getInstance()
+            .collection("events")
+            .document(eventId)
+            .collection("attendees")
+            .document(currentUserId)
+
+        attendeeRef.get()
+            .addOnSuccessListener { existing ->
+                if (existing.exists()) {
+                    Log.d(TAG, "Web attendance already exists for user $currentUserId in event $eventId")
+                    return@addOnSuccessListener
+                }
+
+                val payload = hashMapOf(
+                    "userId" to currentUserId,
+                    "firstName" to userFirstName,
+                    "lastName" to userLastName,
+                    "email" to userEmail,
+                    "eventName" to eventName,
+                    "timestamp" to timestamp,
+                    "selfieUrl" to selfieUrl,
+                    "hasTimedOut" to false,
+                    "type" to "event_time_in",
+                    // QR/selfie flow, so false
+                    "checkinMethod" to false
+                )
+
+                attendeeRef.set(payload)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Web attendance record created for user $currentUserId in event $eventId")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Failed to write web attendance record", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to check existing web attendance", e)
+            }
     }
     
     private fun validateUserAndCallAPI(eventId: String, selfieUrl: String, timestamp: String) {
@@ -470,15 +563,18 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (userDoc.exists()) {
                     val userEmail = userDoc.getString("email")
                     val userFirstName = userDoc.getString("firstName")
+                    val userLastName = userDoc.getString("lastName")
                     
                     Log.d(TAG, "User validation SUCCESS:")
                     Log.d(TAG, "- User exists in backend")
                     Log.d(TAG, "- Email: $userEmail")
                     Log.d(TAG, "- FirstName: $userFirstName")
+                    Log.d(TAG, "- LastName: $userLastName")
                     
                     // Update local variables with backend data (in case they differ)
                     this.userEmail = userEmail
                     this.userFirstName = userFirstName
+                    this.userLastName = userLastName
                     
                     // Now call the backend API
                     callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
@@ -512,6 +608,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         Log.d(TAG, "UserId: $userId")
         Log.d(TAG, "UserEmail: $userEmail")
         Log.d(TAG, "UserFirstName: $userFirstName")
+        Log.d(TAG, "UserLastName: $userLastName")
         Log.d(TAG, "SelfieUrl: $selfieUrl")
         Log.d(TAG, "========================")
         
@@ -766,6 +863,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         val record = hashMapOf(
             "userId" to userId,
             "firstName" to userFirstName,
+            "lastName" to userLastName,
             "email" to userEmail,
             "eventId" to eventId,
             "eventName" to currentScannedEventName,
@@ -842,6 +940,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             val currentUserId = prefs.getString("userId", null)
             val currentUserEmail = prefs.getString("email", null)
             val currentUserFirstName = prefs.getString("firstName", null)
+            val currentUserLastName = prefs.getString("lastName", null)
 
 
             if (currentUserId.isNullOrEmpty()) {
@@ -852,6 +951,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             if (userId.isNullOrEmpty()) userId = currentUserId
             if (userEmail.isNullOrEmpty()) userEmail = currentUserEmail
             if (userFirstName.isNullOrEmpty()) userFirstName = currentUserFirstName
+            if (userLastName.isNullOrEmpty()) userLastName = currentUserLastName
 
 
             // Directly call the QR scanned handler logic
@@ -918,6 +1018,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
                 putExtra("firstName", userFirstName)
+                putExtra("lastName", userLastName)
                 // Prefer the currently scanned event details; fall back to pre-set expectations if not scanned yet
                 putExtra("expectedEventId", currentScannedEventId ?: expectedEventId)
                 putExtra("expectedEventName", currentScannedEventName ?: expectedEventName)

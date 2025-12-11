@@ -67,6 +67,7 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var userLastName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,12 +77,14 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        userLastName = intent.getStringExtra("lastName")
 
         if (userId.isNullOrEmpty()) {
             val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
             userId = prefs.getString("userId", null)
             userEmail = prefs.getString("email", null)
             userFirstName = prefs.getString("firstName", null)
+            userLastName = prefs.getString("lastName", null)
         }
 
         if (userId.isNullOrEmpty()) {
@@ -339,7 +342,9 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
             "hasTimedOut" to false,
             // You can include other details; they just won't be used by the log screen
             "firstName" to userFirstName,
+            "lastName" to userLastName,
             "email" to userEmail,
+            "type" to "event_time_in",
             // Indicate this was a manual code entry
             "checkinMethod" to true
         )

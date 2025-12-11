@@ -228,17 +228,23 @@ public class CertificateService {
             
             System.out.println("Found " + attendeeDocs.size() + " attendees");
             
-            // Get all users to lookup firstName/lastName by email
+            // Get all users to lookup firstName/lastName by email or userId
             CollectionReference usersRef = firestore.collection("users");
             ApiFuture<QuerySnapshot> usersFuture = usersRef.get();
             List<QueryDocumentSnapshot> userDocs = usersFuture.get().getDocuments();
             
-            // Create email to user data map for quick lookup
+            // Create lookup maps keyed by email and by userId
             Map<String, Map<String, Object>> usersByEmail = new HashMap<>();
+            Map<String, Map<String, Object>> usersByUserId = new HashMap<>();
             for (QueryDocumentSnapshot userDoc : userDocs) {
                 String email = userDoc.getString("email");
+                String userId = userDoc.getString("userId");
+                Map<String, Object> data = userDoc.getData();
                 if (email != null) {
-                    usersByEmail.put(email.toLowerCase(), userDoc.getData());
+                    usersByEmail.put(email.toLowerCase(), data);
+                }
+                if (userId != null) {
+                    usersByUserId.put(userId, data);
                 }
             }
             
@@ -249,14 +255,28 @@ public class CertificateService {
             for (QueryDocumentSnapshot attendeeDoc : attendeeDocs) {
                 try {
                     String email = attendeeDoc.getString("email");
+                    String attendeeUserId = attendeeDoc.getString("userId");
+                    if (email == null || email.isEmpty()) {
+                        // Try to backfill email from user record via userId
+                        if (attendeeUserId != null && usersByUserId.containsKey(attendeeUserId)) {
+                            Map<String, Object> userData = usersByUserId.get(attendeeUserId);
+                            email = (String) userData.getOrDefault("email", "");
+                        }
+                    }
                     if (email == null || email.isEmpty()) {
                         System.out.println("Skipping attendee with no email");
                         failCount++;
                         continue;
                     }
                     
-                    // Look up user data by email to get firstName and lastName
-                    Map<String, Object> userData = usersByEmail.get(email.toLowerCase());
+                    // Look up user data by userId first, then email to get firstName and lastName
+                    Map<String, Object> userData = null;
+                    if (attendeeUserId != null && usersByUserId.containsKey(attendeeUserId)) {
+                        userData = usersByUserId.get(attendeeUserId);
+                    }
+                    if (userData == null) {
+                        userData = usersByEmail.get(email.toLowerCase());
+                    }
                     
                     String firstName = "";
                     String lastName = "";
