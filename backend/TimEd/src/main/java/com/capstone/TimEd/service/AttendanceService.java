@@ -60,12 +60,17 @@ public class AttendanceService {
                 return "User not found";
             }
 
-            String lastName = userDoc.getString("lastName");
-            String selfieUrl = userDoc.getString("profilePictureUrl");
-
+            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+            
             // Create attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
             String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String fileTimestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+            // Construct the selfie URL for the event attendance
+            // Format: event_selfies/{userId}/selfie_event_{eventId}_{timestamp}.jpg
+            String selfieUrl = "https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/event_selfies%2F" + 
+                               userId + "%2Fselfie_event_" + eventId + "_" + fileTimestamp + ".jpg?alt=media";
             
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("userId", userId);
@@ -77,7 +82,7 @@ public class AttendanceService {
             attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
-            attendanceData.put("selfieUrl", selfieUrl); // Use stored profile photo when available
+            attendanceData.put("selfieUrl", selfieUrl); // Use event-specific selfie URL
             attendanceData.put("checkinMethod", false); // QR code check-in
             
             // Debug: Log the checkinMethod value being set
@@ -162,12 +167,17 @@ public class AttendanceService {
             
             String email = userDoc.getString("email");
             String firstName = userDoc.getString("firstName");
-            String lastName = userDoc.getString("lastName");
-            String selfieUrl = userDoc.getString("profilePictureUrl");
+            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
             
             // Create new attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
             String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String fileTimestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+            // Construct the selfie URL for the event attendance
+            // Format: event_selfies/{userId}/selfie_event_{eventId}_{timestamp}.jpg
+            String selfieUrl = "https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/event_selfies%2F" + 
+                               userId + "%2Fselfie_event_" + eventId + "_" + fileTimestamp + ".jpg?alt=media";
             
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("eventId", eventId);
