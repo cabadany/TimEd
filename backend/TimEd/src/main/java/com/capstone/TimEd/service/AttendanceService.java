@@ -60,6 +60,9 @@ public class AttendanceService {
                 return "User not found";
             }
 
+            String lastName = userDoc.getString("lastName");
+            String selfieUrl = userDoc.getString("profilePictureUrl");
+
             // Create attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
             String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -69,11 +72,12 @@ public class AttendanceService {
             attendanceData.put("eventId", eventId);
             attendanceData.put("eventName", eventDoc.getString("eventName"));
             attendanceData.put("firstName", userDoc.getString("firstName"));
+            attendanceData.put("lastName", lastName);
             attendanceData.put("email", userDoc.getString("email"));
             attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
-            attendanceData.put("selfieUrl", null); // Can be updated later if needed
+            attendanceData.put("selfieUrl", selfieUrl); // Use stored profile photo when available
             attendanceData.put("checkinMethod", false); // QR code check-in
             
             // Debug: Log the checkinMethod value being set
@@ -158,6 +162,8 @@ public class AttendanceService {
             
             String email = userDoc.getString("email");
             String firstName = userDoc.getString("firstName");
+            String lastName = userDoc.getString("lastName");
+            String selfieUrl = userDoc.getString("profilePictureUrl");
             
             // Create new attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
@@ -169,10 +175,11 @@ public class AttendanceService {
             attendanceData.put("userId", userId);
             attendanceData.put("email", email);
             attendanceData.put("firstName", firstName);
+            attendanceData.put("lastName", lastName);
             attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
-            attendanceData.put("selfieUrl", null);
+            attendanceData.put("selfieUrl", selfieUrl);
             attendanceData.put("manualEntry", true);
             attendanceData.put("checkinMethod", true); // Manual check-in
             

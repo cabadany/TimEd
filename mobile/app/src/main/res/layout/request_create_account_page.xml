@@ -20,6 +20,7 @@
             android:src="@drawable/animated_wave_top" />
 
     <ScrollView
+            android:id="@+id/form_scroll_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true">
@@ -49,9 +50,9 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Full Name -->
+        <!-- First Name -->
         <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/outline_name"
+                android:id="@+id/outline_first_name"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -70,10 +71,41 @@
                 app:startIconTint="@color/brand_indigo">
 
             <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/input_name"
+                    android:id="@+id/input_first_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Full Name"
+                    android:hint="First Name"
+                    android:inputType="textPersonName"
+                    android:padding="@dimen/space_xl"
+                    android:textColor="#37474F" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Last Name -->
+        <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/outline_last_name"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_2xl"
+                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginEnd="@dimen/space_2xl"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxStrokeColor="@color/brand_indigo"
+                app:hintTextColor="@color/brand_indigo"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/outline_first_name"
+                app:startIconDrawable="@drawable/ic_person"
+                app:startIconTint="@color/brand_indigo">
+
+            <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_last_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Last Name"
                     android:inputType="textPersonName"
                     android:padding="@dimen/space_xl"
                     android:textColor="#37474F" />
@@ -96,7 +128,7 @@
                 app:hintTextColor="@color/brand_indigo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/outline_name"
+                app:layout_constraintTop_toBottomOf="@id/outline_last_name"
                 app:startIconDrawable="@drawable/ic_badge"
                 app:startIconTint="@color/brand_indigo">
 
