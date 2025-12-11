@@ -20,6 +20,10 @@ import com.example.timed_mobile.R
 import com.example.timed_mobile.adapter.CalendarEventAdapter
 import com.example.timed_mobile.model.CalendarEvent
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.gson.Gson
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.animation.Easing
@@ -49,6 +53,12 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private lateinit var headersGrid: GridLayout
     private lateinit var recycler: RecyclerView
     private lateinit var selectedDateText: TextView
+    private lateinit var eventEmptyMessage: TextView
+    private lateinit var attendanceDateTitle: TextView
+    private lateinit var attendanceDetailsLayout: LinearLayout
+    private lateinit var attendanceTimeInText: TextView
+    private lateinit var attendanceTimeOutText: TextView
+    private lateinit var attendanceEmptyMessage: TextView
     private lateinit var adapter: CalendarEventAdapter
     private lateinit var calendarTitle: TextView
     private lateinit var toggleGroup: MaterialButtonToggleGroup
@@ -73,7 +83,9 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private val switchDuration = 220L
 
     private var selectedDayKey: String? = null
+    private var selectedAttendanceDayKey: String? = null
     private val allEvents = mutableListOf<CalendarEvent>()
+    private val monthTimeLogs = mutableMapOf<String, String>()
     private var departmentId: String? = null
 
     companion object {
@@ -97,6 +109,12 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         headersGrid = view.findViewById(R.id.calendar_day_headers)
         recycler = view.findViewById(R.id.recycler_calendar_events)
         selectedDateText = view.findViewById(R.id.text_selected_date)
+        eventEmptyMessage = view.findViewById(R.id.text_event_empty_message)
+        attendanceDateTitle = view.findViewById(R.id.text_attendance_date_title)
+        attendanceDetailsLayout = view.findViewById(R.id.layout_attendance_details)
+        attendanceTimeInText = view.findViewById(R.id.text_attendance_time_in)
+        attendanceTimeOutText = view.findViewById(R.id.text_attendance_time_out)
+        attendanceEmptyMessage = view.findViewById(R.id.text_attendance_empty_message)
         toggleGroup = view.findViewById(R.id.calendar_toggle_group)
         eventLayout = view.findViewById(R.id.layout_event_calendar)
         attendanceLayout = view.findViewById(R.id.layout_attendance_calendar)
@@ -259,8 +277,13 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     private fun changeMonth(offset: Int) {
         calendar.add(Calendar.MONTH, offset)
         selectedDayKey = null
+        selectedAttendanceDayKey = null
         fetchEventsForCurrentMonth()
         renderCalendar()
+        
+        if (attendanceLayout.visibility == View.VISIBLE) {
+            renderAttendanceCalendarPlaceholder()
+        }
     }
 
     private fun renderCalendar() {
@@ -389,15 +412,19 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         if (selectedDayKey == null) {
             adapter.submit(emptyList())
             selectedDateText.text = getString(R.string.calendar_select_date_prompt)
+            eventEmptyMessage.visibility = View.GONE
             return
         }
         val filtered = allEvents.filter { keyFormat.format(it.date) == selectedDayKey }
         adapter.submit(filtered.sortedBy { it.date })
         val parsed = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedDayKey!!)
-        selectedDateText.text = if (filtered.isEmpty()) {
-            getString(R.string.calendar_no_events_for_selected)
+        val dateString = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed!!)
+        selectedDateText.text = dateString
+        
+        if (filtered.isEmpty()) {
+            eventEmptyMessage.visibility = View.VISIBLE
         } else {
-            SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed!!)
+            eventEmptyMessage.visibility = View.GONE
         }
     }
 
@@ -467,142 +494,95 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun fetchAttendanceDataForMonth(userId: String, daysInMonth: Int, firstDayOfWeekIndex: Int, size: Int, colGap: Int, rowGap: Int) {
-        val url = "$API_BASE_URL/attendance/user/$userId/attended-events"
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
-        
-        client.newCall(request).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
-                activity?.runOnUiThread {
-                    renderEmptyAttendanceCalendar(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap)
-                    renderEmptyAttendanceStatistics()
-                }
-            }
-            
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                response.use {
-                    if (!it.isSuccessful) {
-                        activity?.runOnUiThread {
-                            renderEmptyAttendanceCalendar(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap)
-                            renderEmptyAttendanceStatistics()
-                        }
-                        return
-                    }
-                    
-                    val body = it.body?.string() ?: "[]"
-                    try {
-                        val gson = Gson()
-                        val listType = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, java.util.Map::class.java).type
-                        val attendedEvents = gson.fromJson<List<Map<String, Any?>>>(body, listType)
-                        
-                        // Filter events for current month
-                        val monthStart = (calendar.clone() as Calendar).apply {
-                            set(Calendar.DAY_OF_MONTH, 1)
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
-                        
-                        val monthEnd = (calendar.clone() as Calendar).apply {
-                            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
-                            set(Calendar.HOUR_OF_DAY, 23)
-                            set(Calendar.MINUTE, 59)
-                            set(Calendar.SECOND, 59)
-                            set(Calendar.MILLISECOND, 999)
-                        }.timeInMillis
-                        
-                        // Process attended events and create day-to-status mapping
-                        val dayStatusMap = mutableMapOf<Int, String>() // day -> status (present/late/absent)
-                        var presentCount = 0
-                        var lateCount = 0
-                        var absentCount = 0
-                        
-                        // Get all events in the month from allEvents (already fetched)
-                        val monthEvents = allEvents.filter { event ->
-                            val eventTime = event.date.time
-                            eventTime >= monthStart && eventTime <= monthEnd
-                        }
-                        
-                        // Create a set of event dates that user attended
-                        val attendedEventDates = mutableSetOf<String>()
-                        for (attendedEvent in attendedEvents) {
-                            val eventDate = attendedEvent["eventDate"] as? String
-                            if (eventDate != null) {
-                                try {
-                                    val parsedDate = apiDateFormat.parse(eventDate)
-                                    if (parsedDate != null) {
-                                        val dayKey = keyFormat.format(parsedDate)
-                                        attendedEventDates.add(dayKey)
-                                    }
-                                } catch (e: Exception) { }
+        val monthStart = (calendar.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val monthEnd = (calendar.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        ref.orderByChild("timestamp").startAt(monthStart.toDouble()).endAt(monthEnd.toDouble())
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    monthTimeLogs.clear()
+                    val tempLogs = mutableMapOf<String, MutableList<Long>>()
+                    val tempTypes = mutableMapOf<Long, String>()
+                    val dayStatusMap = mutableMapOf<Int, String>()
+                    var presentCount = 0
+                    var lateCount = 0
+                    var absentCount = 0
+
+                    for (child in snapshot.children) {
+                        val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                        val type = child.child("type").getValue(String::class.java) ?: continue
+                        val badge = child.child("attendanceBadge").getValue(String::class.java)
+
+                        val date = Date(timestamp)
+                        val dateKey = keyFormat.format(date)
+                        val dayOfMonth = SimpleDateFormat("d", Locale.getDefault()).format(date).toInt()
+
+                        tempLogs.getOrPut(dateKey) { mutableListOf() }.add(timestamp)
+                        tempTypes[timestamp] = type
+
+                        if (type == "TimeIn") {
+                            if (!dayStatusMap.containsKey(dayOfMonth)) {
+                                val status = if (badge != null && badge.equals("Late", ignoreCase = true)) "late" else "present"
+                                dayStatusMap[dayOfMonth] = status
                             }
-                        }
-                        
-                        // Determine status for each day
-                        for (event in monthEvents) {
-                            val dayKey = keyFormat.format(event.date)
-                            val dayOfMonth = SimpleDateFormat("d", Locale.getDefault()).format(event.date).toIntOrNull() ?: continue
-                            
-                            if (attendedEventDates.contains(dayKey)) {
-                                // User attended - check if on time or late
-                                val eventStartTime = event.date.time
-                                val eventDateOnly = (calendar.clone() as Calendar).apply {
-                                    time = event.date
-                                    set(Calendar.HOUR_OF_DAY, 0)
-                                    set(Calendar.MINUTE, 0)
-                                    set(Calendar.SECOND, 0)
-                                    set(Calendar.MILLISECOND, 0)
-                                }.timeInMillis
-                                
-                                // Find the attended event to get time-in timestamp
-                                val attendedEvent = attendedEvents.find { evt ->
-                                    val evtDate = evt["eventDate"] as? String
-                                    evtDate != null && keyFormat.format(apiDateFormat.parse(evtDate) ?: Date()) == dayKey
-                                }
-                                
-                                if (attendedEvent != null) {
-                                    // Check if user was late (arrived after event start)
-                                    // For simplicity, mark as present if attended, late if event status suggests it
-                                    val status = if (event.status == "ongoing" || event.status == "ended") "present" else "late"
-                                    dayStatusMap[dayOfMonth] = status
-                                    if (status == "present") presentCount++ else lateCount++
-                                } else {
-                                    dayStatusMap[dayOfMonth] = "present"
-                                    presentCount++
-                                }
-                            } else {
-                                // Event exists but user didn't attend
-                                if (dayStatusMap[dayOfMonth] == null) {
-                                    dayStatusMap[dayOfMonth] = "absent"
-                                    absentCount++
-                                }
-                            }
-                        }
-                        
-                        // Count days with events but no attendance as absent
-                        for (event in monthEvents) {
-                            val dayOfMonth = SimpleDateFormat("d", Locale.getDefault()).format(event.date).toIntOrNull() ?: continue
-                            val dayKey = keyFormat.format(event.date)
-                            if (!attendedEventDates.contains(dayKey) && dayStatusMap[dayOfMonth] == null) {
-                                dayStatusMap[dayOfMonth] = "absent"
-                                absentCount++
-                            }
-                        }
-                        
-                        activity?.runOnUiThread {
-                            renderAttendanceCalendarWithData(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap, dayStatusMap)
-                            renderAttendanceStatistics(presentCount, lateCount, absentCount)
-                        }
-                    } catch (e: Exception) {
-                        activity?.runOnUiThread {
-                            renderEmptyAttendanceCalendar(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap)
-                            renderEmptyAttendanceStatistics()
                         }
                     }
+
+                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                    for ((dateKey, timestamps) in tempLogs) {
+                        timestamps.sort()
+                        val firstIn = timestamps.firstOrNull { tempTypes[it] == "TimeIn" }
+                        val lastOut = timestamps.lastOrNull { tempTypes[it] == "TimeOut" }
+                        val inStr = firstIn?.let { timeFormat.format(Date(it)) } ?: "--:--"
+                        val outStr = lastOut?.let { timeFormat.format(Date(it)) } ?: "--:--"
+                        monthTimeLogs[dateKey] = "Time In: $inStr | Time Out: $outStr"
+                    }
+
+                    val now = System.currentTimeMillis()
+                    for (event in allEvents) {
+                        val dayOfMonth = SimpleDateFormat("d", Locale.getDefault()).format(event.date).toInt()
+                        if (dayStatusMap.containsKey(dayOfMonth)) continue
+
+                        if (event.date.time < now && !event.status.equals("cancelled", ignoreCase = true)) {
+                             dayStatusMap[dayOfMonth] = "absent"
+                        }
+                    }
+
+                    for (status in dayStatusMap.values) {
+                        when (status) {
+                            "present" -> presentCount++
+                            "late" -> lateCount++
+                            "absent" -> absentCount++
+                        }
+                    }
+
+                    activity?.runOnUiThread {
+                        renderAttendanceCalendarWithData(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap, dayStatusMap)
+                        renderAttendanceStatistics(presentCount, lateCount, absentCount)
+                    }
                 }
-            }
-        })
+
+                override fun onCancelled(error: DatabaseError) {
+                    activity?.runOnUiThread {
+                        renderEmptyAttendanceCalendar(daysInMonth, firstDayOfWeekIndex, size, colGap, rowGap)
+                        renderEmptyAttendanceStatistics()
+                    }
+                }
+            })
     }
 
     private fun renderEmptyAttendanceCalendar(daysInMonth: Int, firstDayOfWeekIndex: Int, size: Int, colGap: Int, rowGap: Int) {
@@ -721,8 +701,78 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
             params.setMargins(left, rowGap/2, 0, rowGap/2)
             params.columnSpec = GridLayout.spec(column,1f)
             container.layoutParams = params
-            container.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_calendar_day_unselected)
+            
+            val cellCal = tempCal.clone() as Calendar
+            cellCal.set(Calendar.DAY_OF_MONTH, day)
+            val dayKey = keyFormat.format(cellCal.time)
+            
+            styleAttendanceDayContainer(container, numberView, dayKey == selectedAttendanceDayKey)
+            
+            container.setOnClickListener {
+                onAttendanceDaySelected(dayKey, container)
+            }
+
             attendanceGrid.addView(container)
+        }
+        
+        updateAttendanceDetails()
+    }
+
+    private fun styleAttendanceDayContainer(container: LinearLayout, numberView: TextView, selected: Boolean) {
+        if (selected) {
+            container.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_calendar_day_selected)
+            numberView.setTypeface(numberView.typeface, android.graphics.Typeface.BOLD)
+        } else {
+            container.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_calendar_day_unselected)
+            numberView.setTypeface(null, android.graphics.Typeface.NORMAL)
+        }
+    }
+
+    private fun onAttendanceDaySelected(dayKey: String, container: LinearLayout) {
+        selectedAttendanceDayKey = if (selectedAttendanceDayKey == dayKey) null else dayKey
+        
+        // Update visual selection state for all cells
+        for (i in 0 until attendanceGrid.childCount) {
+            val child = attendanceGrid.getChildAt(i)
+            if (child is LinearLayout && child.childCount > 0 && child.getChildAt(0) is TextView) {
+                val numberView = child.getChildAt(0) as TextView
+                val dayNum = numberView.text.toString().toIntOrNull() ?: continue
+                val cal = calendar.clone() as Calendar
+                cal.set(Calendar.DAY_OF_MONTH, dayNum)
+                val key = keyFormat.format(cal.time)
+                styleAttendanceDayContainer(child, numberView, key == selectedAttendanceDayKey)
+            }
+        }
+        
+        updateAttendanceDetails()
+    }
+
+    private fun updateAttendanceDetails() {
+        if (selectedAttendanceDayKey == null) {
+            attendanceDateTitle.text = getString(R.string.calendar_select_date_prompt)
+            attendanceDetailsLayout.visibility = View.GONE
+            attendanceEmptyMessage.visibility = View.GONE
+            return
+        }
+
+        val parsed = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedAttendanceDayKey!!)
+        val dateString = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(parsed!!)
+        attendanceDateTitle.text = dateString
+
+        val logs = monthTimeLogs[selectedAttendanceDayKey]
+        if (logs != null) {
+            val parts = logs.split(" | ")
+            val timeIn = parts.getOrNull(0)?.substringAfter("Time In: ") ?: "--:--"
+            val timeOut = parts.getOrNull(1)?.substringAfter("Time Out: ") ?: "--:--"
+            
+            attendanceTimeInText.text = timeIn
+            attendanceTimeOutText.text = timeOut
+            
+            attendanceDetailsLayout.visibility = View.VISIBLE
+            attendanceEmptyMessage.visibility = View.GONE
+        } else {
+            attendanceDetailsLayout.visibility = View.GONE
+            attendanceEmptyMessage.visibility = View.VISIBLE
         }
     }
 
@@ -737,23 +787,27 @@ class EventCalendarBottomSheet : BottomSheetDialogFragment() {
         monthlyLateCount.text = getString(R.string.attendance_late_count_format, lateCount)
         monthlyAbsentCount.text = getString(R.string.attendance_absent_count_format, absentCount)
 
-        val entries = listOf(
-            PieEntry(presentCount.toFloat(), getString(R.string.attendance_status_on_time)),
-            PieEntry(lateCount.toFloat(), getString(R.string.attendance_status_late)),
-            PieEntry(absentCount.toFloat(), getString(R.string.attendance_status_absent))
-        ).filter { it.value > 0f }
+        val entries = ArrayList<PieEntry>()
+        val colors = ArrayList<Int>()
+
+        if (presentCount > 0) {
+            entries.add(PieEntry(presentCount.toFloat(), getString(R.string.attendance_status_on_time)))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.attendance_green))
+        }
+        if (lateCount > 0) {
+            entries.add(PieEntry(lateCount.toFloat(), getString(R.string.attendance_status_late)))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.attendance_yellow))
+        }
+        if (absentCount > 0) {
+            entries.add(PieEntry(absentCount.toFloat(), getString(R.string.attendance_status_absent)))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.attendance_red))
+        }
 
         if (entries.isEmpty()) {
             monthlyPieChart.data = null
             monthlyPieChart.invalidate()
             return
         }
-
-        val colors = listOf(
-            ContextCompat.getColor(requireContext(), R.color.attendance_green),
-            ContextCompat.getColor(requireContext(), R.color.attendance_yellow),
-            ContextCompat.getColor(requireContext(), R.color.attendance_red)
-        )
 
         val dataSet = PieDataSet(entries, "").apply {
             setColors(colors)

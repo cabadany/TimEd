@@ -91,5 +91,73 @@ class UiDialogs {
             dialog.setOnCancelListener { onClose?.invoke() }
             dialog.show()
         }
+
+        fun showConfirmationDialog(
+            ctx: Context,
+            title: String,
+            message: String,
+            positiveText: String = "Confirm",
+            negativeText: String = "Cancel",
+            onPositive: () -> Unit,
+            onNegative: (() -> Unit)? = null
+        ) {
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setCancelable(true)
+            dialog.setContentView(R.layout.dialog_confirmation)
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+            val titleView = dialog.findViewById<TextView>(R.id.dialog_title)
+            val messageView = dialog.findViewById<TextView>(R.id.dialog_message)
+            val positiveBtn = dialog.findViewById<Button>(R.id.btn_positive)
+            val negativeBtn = dialog.findViewById<Button>(R.id.btn_negative)
+
+            titleView?.text = title
+            messageView?.text = message
+            positiveBtn?.text = positiveText
+            negativeBtn?.text = negativeText
+
+            positiveBtn?.setOnClickListener {
+                dialog.dismiss()
+                onPositive()
+            }
+
+            negativeBtn?.setOnClickListener {
+                dialog.dismiss()
+                onNegative?.invoke()
+            }
+
+            dialog.show()
+        }
+
+        fun showInfoDialog(
+            ctx: Context,
+            title: String,
+            message: String,
+            buttonText: String = "OK",
+            onClose: (() -> Unit)? = null
+        ) {
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setCancelable(true)
+            dialog.setContentView(R.layout.dialog_info)
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+            val titleView = dialog.findViewById<TextView>(R.id.info_dialog_title)
+            val messageView = dialog.findViewById<TextView>(R.id.info_dialog_message)
+            val okBtn = dialog.findViewById<Button>(R.id.btn_ok)
+
+            titleView?.text = title
+            messageView?.text = message
+            okBtn?.text = buttonText
+
+            okBtn?.setOnClickListener {
+                dialog.dismiss()
+                onClose?.invoke()
+            }
+            
+            dialog.setOnDismissListener { onClose?.invoke() }
+            dialog.show()
+        }
     }
 }

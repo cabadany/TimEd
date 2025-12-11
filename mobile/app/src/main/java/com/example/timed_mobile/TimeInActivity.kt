@@ -54,6 +54,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import java.io.File
 import java.io.FileOutputStream
+import com.example.timed_mobile.utils.TimeSettingsManager
 
 class TimeInActivity : WifiSecurityActivity() {
 
@@ -392,44 +393,9 @@ class TimeInActivity : WifiSecurityActivity() {
 
     // --- SECURITY UPGRADE: Enhanced time check logic ---
     private fun checkAndCapturePhoto(uid: String) {
-        // --- Time Check Logic for 1:30 PM to 5:00 PM ---
-
-        // 1. Get the current time
-        val now = Calendar.getInstance()
-
-        // 2. Define the start time (1:30 PM)
-        val startTime = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 7) // 7 AM in 24-hour format
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }
-
-        // 3. Define the end time (5:00 PM)
-        val endTime = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 17) // 5 PM in 24-hour format
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }
-
-            // 4. Create user-friendly time strings for messages
-            val formattedStartTime = "7:30 AM"
-            val formattedEndTime = "5:00 PM"
-
-        // 5. Respect the ENFORCE_TIME_WINDOW toggle. If enforcement is disabled,
-        //    allow Time-In at any time (useful for demo or administrative overrides).
-        if (ENFORCE_TIME_WINDOW) {
-            val isAllowed = now.after(startTime) && now.before(endTime)
-
-            if (!isAllowed) {
-                AlertDialog.Builder(this)
-                    .setTitle("Time-In Not Allowed")
-                    .setMessage("You can only Time-In between $formattedStartTime and $formattedEndTime.")
-                    .setPositiveButton("OK", null)
-                    .show()
-                resetTimeInButton()
-                return
-            }
-        }
+        // --- Time Check Logic Removed ---
+        // The Home Screen now handles the time window enforcement.
+        // This function now only checks if the user has already timed in.
 
         checkAlreadyTimedIn(uid) { already ->
             if (already) {
@@ -707,7 +673,17 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun logTimeIn(imageUrl: String, studentUid: String) {
-        val log = mapOf("timestamp" to System.currentTimeMillis(), "type" to "TimeIn", "imageUrl" to imageUrl, "email" to userEmail, "firstName" to userFirstName, "userId" to studentUid, "status" to "On Duty")
+        val attendanceBadge = if (TimeSettingsManager.isLate()) "Late" else "On Time"
+        val log = mapOf(
+            "timestamp" to System.currentTimeMillis(),
+            "type" to "TimeIn",
+            "imageUrl" to imageUrl,
+            "email" to userEmail,
+            "firstName" to userFirstName,
+            "userId" to studentUid,
+            "status" to "On Duty",
+            "attendanceBadge" to attendanceBadge
+        )
         val ref = FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(studentUid)
         ref.push().setValue(log)
             .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid") }
