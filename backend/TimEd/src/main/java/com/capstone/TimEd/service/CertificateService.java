@@ -45,6 +45,9 @@ public class CertificateService {
 
     @Autowired
     private Firestore firestore;
+    
+    @Autowired
+    private BrevoEmailService brevoEmailService;
 
     /**
      * Save a certificate (create new or update existing)
@@ -202,11 +205,123 @@ public class CertificateService {
     }
 
     /**
-     * Send certificates to event attendees (stub implementation)
+     * Send certificates to event attendees
      */
     public String sendCertificates(String certificateId, String eventId) throws ExecutionException, InterruptedException {
-        // This would be implemented to actually send certificates, but for now it's just a stub
-        return "Certificates sent successfully";
+        System.out.println("Starting to send certificates for eventId: " + eventId);
+        
+        try {
+            // Get the certificate template
+            Certificate template = getCertificate(certificateId);
+            if (template == null) {
+                throw new RuntimeException("Certificate template not found with ID: " + certificateId);
+            }
+            
+            // Get all attendees for this event from Firestore
+            CollectionReference attendeesRef = firestore.collection("events").document(eventId).collection("attendees");
+            ApiFuture<QuerySnapshot> attendeesFuture = attendeesRef.get();
+            List<QueryDocumentSnapshot> attendeeDocs = attendeesFuture.get().getDocuments();
+            
+            if (attendeeDocs.isEmpty()) {
+                return "No attendees found for this event";
+            }
+            
+            System.out.println("Found " + attendeeDocs.size() + " attendees");
+            
+            // Get all users to lookup firstName/lastName by email
+            CollectionReference usersRef = firestore.collection("users");
+            ApiFuture<QuerySnapshot> usersFuture = usersRef.get();
+            List<QueryDocumentSnapshot> userDocs = usersFuture.get().getDocuments();
+            
+            // Create email to user data map for quick lookup
+            Map<String, Map<String, Object>> usersByEmail = new HashMap<>();
+            for (QueryDocumentSnapshot userDoc : userDocs) {
+                String email = userDoc.getString("email");
+                if (email != null) {
+                    usersByEmail.put(email.toLowerCase(), userDoc.getData());
+                }
+            }
+            
+            int successCount = 0;
+            int failCount = 0;
+            
+            // Process each attendee
+            for (QueryDocumentSnapshot attendeeDoc : attendeeDocs) {
+                try {
+                    String email = attendeeDoc.getString("email");
+                    if (email == null || email.isEmpty()) {
+                        System.out.println("Skipping attendee with no email");
+                        failCount++;
+                        continue;
+                    }
+                    
+                    // Look up user data by email to get firstName and lastName
+                    Map<String, Object> userData = usersByEmail.get(email.toLowerCase());
+                    
+                    String firstName = "";
+                    String lastName = "";
+                    
+                    if (userData != null) {
+                        firstName = (String) userData.getOrDefault("firstName", "");
+                        lastName = (String) userData.getOrDefault("lastName", "");
+                    }
+                    
+                    // Fallback to attendee data if user not found
+                    if (firstName.isEmpty()) {
+                        firstName = attendeeDoc.getString("firstName");
+                        if (firstName == null) firstName = "";
+                    }
+                    if (lastName.isEmpty()) {
+                        lastName = attendeeDoc.getString("lastName");
+                        if (lastName == null) lastName = "";
+                    }
+                    
+                    // Format name as "LastName, FirstName"
+                    String fullName;
+                    if (!lastName.isEmpty() && !firstName.isEmpty()) {
+                        fullName = lastName + ", " + firstName;
+                    } else if (!lastName.isEmpty()) {
+                        fullName = lastName;
+                    } else if (!firstName.isEmpty()) {
+                        fullName = firstName;
+                    } else {
+                        fullName = "Attendee";
+                    }
+                    
+                    System.out.println("Processing certificate for: " + fullName + " (" + email + ")");
+                    
+                    // Create attendee map for certificate generation
+                    Map<String, String> attendeeMap = new HashMap<>();
+                    attendeeMap.put("name", fullName);
+                    attendeeMap.put("email", email);
+                    attendeeMap.put("firstName", firstName);
+                    attendeeMap.put("lastName", lastName);
+                    
+                    // Generate certificate PDF
+                    byte[] certificatePdf = generateCertificate(attendeeMap, eventId);
+                    
+                    // Send email with certificate
+                    brevoEmailService.sendCertificateEmail(email, eventId, certificatePdf);
+                    
+                    successCount++;
+                    System.out.println("Certificate sent successfully to: " + email);
+                    
+                } catch (Exception e) {
+                    System.err.println("Error sending certificate to attendee: " + e.getMessage());
+                    e.printStackTrace();
+                    failCount++;
+                }
+            }
+            
+            String result = String.format("Certificates sent: %d successful, %d failed", successCount, failCount);
+            System.out.println(result);
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("Error in sendCertificates: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to send certificates: " + e.getMessage());
+        }
     }
     
     private Color parseColor(String hexColor) {
@@ -483,8 +598,19 @@ public class CertificateService {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(20));
 
-            // Recipient name
-            String recipientName = attendee.get("firstName") + ", " + attendee.get("lastName");
+            // Recipient name - format as "LastName, FirstName"
+            String lastName = attendee.get("lastName") != null ? attendee.get("lastName") : "";
+            String firstName = attendee.get("firstName") != null ? attendee.get("firstName") : "";
+            String recipientName;
+            if (!lastName.isEmpty() && !firstName.isEmpty()) {
+                recipientName = lastName + ", " + firstName;
+            } else if (!lastName.isEmpty()) {
+                recipientName = lastName;
+            } else if (!firstName.isEmpty()) {
+                recipientName = firstName;
+            } else {
+                recipientName = attendee.get("name") != null ? attendee.get("name") : "Attendee";
+            }
             document.add(new Paragraph(recipientName)
                     .setFont(titleFont)
                     .setFontSize(28)
