@@ -52,6 +52,8 @@ import java.net.HttpURLConnection
 
 class TimeInEventActivity : WifiSecurityActivity() {
 
+    private var isTutorialSampleEvent: Boolean = false
+
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner
     private lateinit var cameraContainer: CardView
@@ -118,10 +120,23 @@ class TimeInEventActivity : WifiSecurityActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_page)
 
+        isTutorialSampleEvent = intent.getBooleanExtra("isTutorialSampleEvent", false)
+
         // Initialize user data first
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+
+        if (isTutorialSampleEvent) {
+            // Simulate a successful time-in for the sample event and return immediately.
+            Handler(Looper.getMainLooper()).postDelayed({
+                notifyEventTutorialTimeInCompleted()
+                Toast.makeText(this, "Sample event time-in simulated.", Toast.LENGTH_SHORT).show()
+                setResult(RESULT_OK)
+                finish()
+            }, 400)
+            return
+        }
 
         if (userId.isNullOrEmpty()) {
             val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)

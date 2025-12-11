@@ -789,32 +789,55 @@ class TimeInActivity : WifiSecurityActivity() {
         progressTextView.text = "Step $currentStep of $totalSteps (Time-In Screen)"
         messageTextView.text = message
 
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val density = resources.displayMetrics.density
+        val margin = (16 * density).toInt().coerceAtLeast(1)
+
         dialogView.measure(
-            View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST)
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
         )
-        val dialogWidth = dialogView.measuredWidth.takeIf { it > 0 } ?: (resources.displayMetrics.widthPixels * 0.8).toInt()
-        val dialogHeight = dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val measuredWidth = dialogView.measuredWidth.takeIf { it > 0 }
+            ?: (screenWidth * 0.8f).toInt()
+        val maxDialogWidth = (screenWidth * 0.92f).toInt().coerceAtLeast(margin * 2)
+        val dialogWidth = measuredWidth.coerceAtMost(maxDialogWidth)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(dialogWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight - margin * 2, View.MeasureSpec.AT_MOST)
+        )
+        val measuredHeight = dialogView.measuredHeight.takeIf { it > 0 }
+            ?: (screenHeight * 0.4f).toInt().coerceAtLeast(margin * 4)
+        val maxDialogHeight = (screenHeight * 0.7f).toInt().coerceAtLeast(margin * 6)
+        val dialogHeight = measuredHeight.coerceAtMost(maxDialogHeight)
 
         var finalDialogX: Int
         var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2)
-        targetView.getLocationOnScreen(currentTargetLocationOnScreen)
-
-        val margin = (16 * resources.displayMetrics.density).toInt()
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-
-        finalDialogY = currentTargetLocationOnScreen[1] + targetView.height + margin / 2
-        if (finalDialogY + dialogHeight > screenHeight - margin) {
-            finalDialogY = currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
-            if (finalDialogY < margin) {
-                finalDialogY = (screenHeight - dialogHeight) / 2
-            }
+        val targetIsReady = targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0 && targetView.isAttachedToWindow
+        if (targetIsReady) {
+            targetView.getLocationOnScreen(currentTargetLocationOnScreen)
+        } else {
+            currentTargetLocationOnScreen[0] = (screenWidth - targetView.width.coerceAtLeast(0)) / 2
+            currentTargetLocationOnScreen[1] = (screenHeight - targetView.height.coerceAtLeast(0)) / 2
         }
-        finalDialogX = currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2
-        if (finalDialogX < margin) finalDialogX = margin
-        if (finalDialogX + dialogWidth > screenWidth - margin) finalDialogX = screenWidth - dialogWidth - margin
+
+        val spaceBelow = screenHeight - (currentTargetLocationOnScreen[1] + targetView.height)
+        val spaceAbove = currentTargetLocationOnScreen[1]
+
+        finalDialogY = if (targetIsReady && spaceBelow >= dialogHeight + margin / 2) {
+            currentTargetLocationOnScreen[1] + targetView.height + margin / 2
+        } else if (targetIsReady && spaceAbove >= dialogHeight + margin / 2) {
+            currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
+        } else {
+            (screenHeight - dialogHeight) / 2
+        }
+
+        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2)
+            .coerceIn(margin, screenWidth - dialogWidth - margin)
+
+        finalDialogY = finalDialogY.coerceIn(margin, screenHeight - dialogHeight - margin)
 
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow

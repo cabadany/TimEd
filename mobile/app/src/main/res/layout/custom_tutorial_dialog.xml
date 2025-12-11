@@ -42,18 +42,27 @@
                 android:layout_marginBottom="6dp"
                 android:layout_marginTop="16dp" />
 
-        <TextView
-                android:id="@+id/tutorial_message"
-                android:layout_width="wrap_content"
+        <ScrollView
+                android:id="@+id/tutorial_message_scroller"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Message"
-                android:textSize="15sp"
-                android:textColor="@color/black"
-                android:gravity="center"
-                android:paddingHorizontal="4dp"
-                android:paddingVertical="2dp"
-                android:lineSpacingExtra="2dp"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="12dp"
+                android:maxHeight="260dp"
+                android:overScrollMode="ifContentScrolls"
+                android:scrollbars="vertical">
+
+            <TextView
+                    android:id="@+id/tutorial_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Message"
+                    android:textSize="15sp"
+                    android:textColor="@color/black"
+                    android:gravity="center"
+                    android:paddingHorizontal="4dp"
+                    android:paddingVertical="2dp"
+                    android:lineSpacingExtra="2dp" />
+        </ScrollView>
 
         <Button
                 android:id="@+id/tutorial_next_button"

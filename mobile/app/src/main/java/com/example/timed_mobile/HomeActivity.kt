@@ -1516,12 +1516,21 @@ class HomeActivity : WifiSecurityActivity() {
         val adapter = recyclerEvents.adapter as? EventAdapter
         val firstEvent = adapter?.getEventAt(0)
         if (firstEvent == null) {
+            val sampleEvent = EventModel(
+                title = "Sample Event",
+                duration = "08:00 - 09:00",
+                dateFormatted = "Today",
+                status = "Ongoing",
+                rawDate = Date(),
+                venue = "Main Hall"
+            )
+
             Toast.makeText(
                 this,
-                "No events available right now. Choose any event manually to keep going.",
+                "No events found. Using a sample event so the tutorial can continue.",
                 Toast.LENGTH_LONG
             ).show()
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+            handleEventSelectionForTutorial(sampleEvent, advanceStep = true)
             return
         }
 
@@ -1543,13 +1552,21 @@ class HomeActivity : WifiSecurityActivity() {
                 )
             }, 150)
         } else {
+            val sampleEvent = EventModel(
+                title = "Sample Event",
+                duration = "08:00 - 09:00",
+                dateFormatted = "Today",
+                status = "Ongoing",
+                rawDate = Date(),
+                venue = "Main Hall"
+            )
+
             Toast.makeText(
                 this,
-                "Let's pick an event again so I can reopen the details.",
+                "Reopening a sample event so we can finish the guide.",
                 Toast.LENGTH_SHORT
             ).show()
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
-            tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
+            handleEventSelectionForTutorial(sampleEvent, advanceStep = false, nextExpectedAction = expectedInteractiveTutorialAction)
         }
     }
 
@@ -1563,6 +1580,11 @@ class HomeActivity : WifiSecurityActivity() {
             }
             tutorialCalendarSheet = null
         }
+    }
+
+    private fun safeEventTitle(event: EventModel?): String {
+        val candidate = event?.title?.trim()
+        return if (candidate.isNullOrEmpty()) "Event" else candidate
     }
 
     private fun handleEventSelectionForTutorial(
@@ -1593,7 +1615,7 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun launchEventDetail(event: EventModel, tutorialMode: Boolean) {
         val intent = Intent(this, EventDetailActivity::class.java).apply {
-            putExtra("eventTitle", event.title)
+            putExtra("eventTitle", safeEventTitle(event))
             putExtra("eventDate", event.dateFormatted)
             putExtra("eventStatus", event.status)
             putExtra("eventVenue", event.venue ?: "N/A")
@@ -1784,28 +1806,32 @@ class HomeActivity : WifiSecurityActivity() {
 
         progressTextView.text =
             "Step $currentStepToShow of $totalStepsInTutorial"; messageTextView.text = message
-        dialogView.measure(
-            View.MeasureSpec.makeMeasureSpec(
-                resources.displayMetrics.widthPixels,
-                View.MeasureSpec.AT_MOST
-            ),
-            View.MeasureSpec.makeMeasureSpec(
-                resources.displayMetrics.heightPixels,
-                View.MeasureSpec.AT_MOST
-            )
-        )
 
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
-        val margin = (16 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        val measuredWidth = dialogView.measuredWidth
-        val initialDialogWidth =
-            if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
-        val upperWidthBound = (screenWidth - 2 * margin).coerceAtLeast(margin * 2)
-        val lowerWidthBound = (margin * 2).coerceAtLeast(1)
-        val dialogWidth = initialDialogWidth.coerceIn(lowerWidthBound, upperWidthBound)
-        val dialogHeight =
-            dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val density = resources.displayMetrics.density
+        val margin = (16 * density).toInt().coerceAtLeast(1)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
+        )
+
+        val measuredWidth = dialogView.measuredWidth.takeIf { it > 0 }
+            ?: (screenWidth * 0.8f).toInt()
+        val maxDialogWidth = (screenWidth * 0.92f).toInt().coerceAtLeast(margin * 2)
+        val dialogWidth = measuredWidth.coerceAtMost(maxDialogWidth)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(dialogWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight - margin * 2, View.MeasureSpec.AT_MOST)
+        )
+
+        val measuredHeight = dialogView.measuredHeight.takeIf { it > 0 }
+            ?: (screenHeight * 0.4f).toInt().coerceAtLeast(margin * 4)
+        val maxDialogHeight = (screenHeight * 0.7f).toInt().coerceAtLeast(margin * 6)
+        val dialogHeight = measuredHeight.coerceAtMost(maxDialogHeight)
+
         var finalDialogX: Int;
         var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(
@@ -1829,6 +1855,9 @@ class HomeActivity : WifiSecurityActivity() {
             finalDialogX = (screenWidth - dialogWidth) / 2
             finalDialogY = (screenHeight - dialogHeight) / 2
         }
+
+        finalDialogY = finalDialogY.coerceIn(margin, screenHeight - dialogHeight - margin)
+
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow
         popupWindow.isFocusable = true; popupWindow.isOutsideTouchable = true
@@ -2262,7 +2291,7 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(calendarButton)
 
         showCustomTutorialDialog(
-            "Let's kick things off together. Hit Continue and I'll pop open the Event Calendar so we can scan today's lineup side-by-side.",
+            "Step 1/4: Open Calendar. Tap Continue to open the Event Calendar. You'll pick the event from the list or use the QR code on-site.",
             calendarButton,
             1,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2290,7 +2319,7 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(eventList)
 
         showCustomTutorialDialog(
-            "I'll open the first event so you can see exactly how check-ins work. If you prefer a different one later, you can always switch.",
+            "Step 2/4: Pick the event. We'll open the first available event so you can see check-in. You can switch to the correct one in the list or by scanning its QR.",
             eventList,
             2,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2316,10 +2345,12 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(anchorView)
 
         val storedEvent = EventTutorialState.readSelectedEvent(this)
+        val isSampleEvent = storedEvent?.title?.equals("Sample Event", ignoreCase = true) == true
         val message = storedEvent?.let {
-            "I've opened \"${it.title}\" for you. Use the Time-In button there when you're ready and I'll queue up the next move."
+            val safeTitle = safeEventTitle(it)
+            "Step 3/4: Time-In. I've opened \"$safeTitle\". Scan its QR (or use Manual Code), then take the selfie when prompted. Stay on this screen until you see the success message."
         }
-            ?: "Follow the prompt in the event detail screen to complete Time-In. Hit Continue if you'd like me to reopen it."
+            ?: "Step 3/4: Time-In. Scan the event QR or use Manual Code, then take the selfie when prompted. Stay until you see the success message. Hit Continue to reopen the event if needed."
 
         showCustomTutorialDialog(
             message,
@@ -2330,7 +2361,19 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openStoredEventForEventGuide()
+            if (isSampleEvent) {
+                completeEventGuideStep(3)
+                setEventTutorialExpectedAction(ACTION_EVENT_TIME_OUT)
+                val intent = Intent(this, TimeInEventActivity::class.java).apply {
+                    putExtra("userId", userId)
+                    putExtra("email", userEmail)
+                    putExtra("firstName", userFirstName)
+                    putExtra("isTutorialSampleEvent", true)
+                }
+                startActivity(intent)
+            } else {
+                openStoredEventForEventGuide()
+            }
         }
     }
 
@@ -2349,9 +2392,10 @@ class HomeActivity : WifiSecurityActivity() {
 
         val storedEvent = EventTutorialState.readSelectedEvent(this)
         val message = storedEvent?.let {
-            "Once \"${it.title}\" wraps up, reopen its details and tap Time-Out. Need a refresher? Press Continue and I'll bring it back up."
+            val safeTitle = safeEventTitle(it)
+            "Step 4/4: Time-Out. When \"$safeTitle\" ends, reopen it and tap Time-Out. Need me to bring it back up? Press Continue."
         }
-            ?: "Head back to the event detail screen and tap Time-Out when you're finished. Want me to reopen it? Just press Continue."
+            ?: "Step 4/4: Time-Out. After the event, reopen its details and tap Time-Out. Want me to reopen it? Press Continue."
 
         showCustomTutorialDialog(
             message,
