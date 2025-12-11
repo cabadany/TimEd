@@ -598,8 +598,19 @@ public class CertificateService {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(20));
 
-            // Recipient name
-            String recipientName = attendee.get("firstName") + ", " + attendee.get("lastName");
+            // Recipient name - format as "LastName, FirstName"
+            String lastName = attendee.get("lastName") != null ? attendee.get("lastName") : "";
+            String firstName = attendee.get("firstName") != null ? attendee.get("firstName") : "";
+            String recipientName;
+            if (!lastName.isEmpty() && !firstName.isEmpty()) {
+                recipientName = lastName + ", " + firstName;
+            } else if (!lastName.isEmpty()) {
+                recipientName = lastName;
+            } else if (!firstName.isEmpty()) {
+                recipientName = firstName;
+            } else {
+                recipientName = attendee.get("name") != null ? attendee.get("name") : "Attendee";
+            }
             document.add(new Paragraph(recipientName)
                     .setFont(titleFont)
                     .setFontSize(28)
