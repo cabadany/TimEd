@@ -47,7 +47,8 @@ import {
   ManageAccounts,
   Close,
   FileDownload,
-  QrCode2
+  QrCode2,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import './attendance.css';
 import AttendanceAnalytics from '../components/AttendanceAnalytics';
@@ -56,11 +57,11 @@ import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
 // Separate Modal Component with its own state
-const AttendanceModal = memo(({ 
-  open, 
-  onClose, 
-  attendees, 
-  onTimeInOut, 
+const AttendanceModal = memo(({
+  open,
+  onClose,
+  attendees,
+  onTimeInOut,
   actionLoading,
   formatTimeInStatus,
   formatTimeoutStatus,
@@ -91,21 +92,21 @@ const AttendanceModal = memo(({
     try {
       setLoading(true);
       const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
-      
+
       // Create a map of existing attendees by userId for quick lookup
       const attendeeMap = new Map();
       attendees.forEach(attendee => {
         attendeeMap.set(attendee.userId, attendee);
       });
-      
+
       // Merge user data with attendance data if available
       const usersWithAttendance = response.data.map(user => {
         const attendeeData = attendeeMap.get(user.userId);
-        
+
         // Handle different data structures for time in/out
         let timeIn = 'N/A';
         let timeOut = 'N/A';
-        
+
         if (attendeeData) {
           // Handle new structure with hasTimedOut, timeOutTimestamp, and timestamp
           if (attendeeData.hasTimedOut !== undefined) {
@@ -123,7 +124,7 @@ const AttendanceModal = memo(({
             timeOut = attendeeData.timeOut || 'N/A';
           }
         }
-        
+
         return {
           ...user,
           // Include attendance data if user is already an attendee
@@ -134,7 +135,7 @@ const AttendanceModal = memo(({
           department: user.department?.name || 'N/A'
         };
       });
-      
+
       setAllUsers(usersWithAttendance);
       setLoading(false);
     } catch (error) {
@@ -147,12 +148,12 @@ const AttendanceModal = memo(({
   const handleModalSearchChange = (event) => {
     const query = event.target.value.toLowerCase();
     setModalSearchQuery(query);
-    
+
     if (query.trim() === '') {
       setModalFilteredUsers(allUsers);
     } else {
       const filtered = allUsers.filter(
-        user => 
+        user =>
           (user.firstName && user.firstName.toLowerCase().includes(query)) ||
           (user.lastName && user.lastName.toLowerCase().includes(query)) ||
           (user.email && user.email.toLowerCase().includes(query)) ||
@@ -168,7 +169,7 @@ const AttendanceModal = memo(({
     setConfirmAction(action);
     setConfirmDialogOpen(true);
   };
-  
+
   // Close confirmation dialog
   const handleCloseConfirmDialog = () => {
     setConfirmDialogOpen(false);
@@ -177,13 +178,13 @@ const AttendanceModal = memo(({
   // Handle confirmation dialog confirm button
   const handleConfirmAction = () => {
     if (!selectedUser) return;
-    
+
     if (confirmAction === 'timein') {
       onTimeInOut(selectedUser.userId, 'timein');
     } else if (confirmAction === 'timeout') {
       onTimeInOut(selectedUser.userId, 'timeout');
     }
-    
+
     setConfirmDialogOpen(false);
   };
 
@@ -209,23 +210,23 @@ const AttendanceModal = memo(({
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <Box sx={{ 
-            p: 2.5, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <Box sx={{
+            p: 2.5,
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#1e1e1e' : '#F8FAFC'
           }}>
             <Typography variant="h6" fontWeight="600" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: darkMode ? '#f5f5f5' : '#1E293B' }}>
-              <ManageAccounts sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} /> 
+              <ManageAccounts sx={{ color: darkMode ? '#90caf9' : '#0288d1' }} />
               Manage Event Attendance
             </Typography>
-            <IconButton 
-              onClick={onClose} 
-              sx={{ 
-                bgcolor: darkMode ? '#333333' : '#F1F5F9', 
+            <IconButton
+              onClick={onClose}
+              sx={{
+                bgcolor: darkMode ? '#333333' : '#F1F5F9',
                 color: darkMode ? '#f5f5f5' : 'inherit',
                 '&:hover': { bgcolor: darkMode ? '#404040' : '#E2E8F0' },
                 transition: 'all 0.2s ease',
@@ -234,7 +235,7 @@ const AttendanceModal = memo(({
               <Close />
             </IconButton>
           </Box>
-          
+
           <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: darkMode ? '#333333' : '#E2E8F0', bgcolor: darkMode ? '#1e1e1e' : '#FFFFFF' }}>
             <TextField
               placeholder="Search faculty members..."
@@ -272,8 +273,8 @@ const AttendanceModal = memo(({
             />
           </Box>
 
-          <Box sx={{ 
-            flex: 1, 
+          <Box sx={{
+            flex: 1,
             overflowY: 'auto',
             p: 0,
             bgcolor: darkMode ? '#1e1e1e' : '#FFFFFF'
@@ -309,9 +310,9 @@ const AttendanceModal = memo(({
                       </TableRow>
                     ) : (
                       modalFilteredUsers.map((user, index) => (
-                        <TableRow 
-                          key={index} 
-                          sx={{ 
+                        <TableRow
+                          key={index}
+                          sx={{
                             '&:hover': { bgcolor: '#F8FAFC' },
                             bgcolor: index % 2 === 0 ? 'white' : '#F9FAFB'
                           }}
@@ -323,7 +324,7 @@ const AttendanceModal = memo(({
                           <TableCell sx={{ color: '#64748B' }}>{user.email}</TableCell>
                           <TableCell sx={{ color: '#1E293B' }}>
                             {user.department !== 'N/A' ? (
-                              <Chip 
+                              <Chip
                                 label={user.department}
                                 size="small"
                                 sx={{
@@ -354,7 +355,7 @@ const AttendanceModal = memo(({
                                     onClick={() => handleOpenConfirmDialog(user, 'timein')}
                                     disabled={actionLoading}
                                     startIcon={<Login sx={{ fontSize: 16 }} />}
-                                    sx={{ 
+                                    sx={{
                                       fontSize: '0.75rem',
                                       py: 0.5,
                                       textTransform: 'none',
@@ -378,7 +379,7 @@ const AttendanceModal = memo(({
                                     onClick={() => handleOpenConfirmDialog(user, 'timeout')}
                                     disabled={actionLoading || user.timeIn === 'N/A'}
                                     startIcon={<Logout sx={{ fontSize: 16 }} />}
-                                    sx={{ 
+                                    sx={{
                                       fontSize: '0.75rem',
                                       py: 0.5,
                                       textTransform: 'none',
@@ -405,7 +406,7 @@ const AttendanceModal = memo(({
           </Box>
         </Box>
       </Modal>
-      
+
       {/* Confirmation Dialog */}
       <Dialog
         open={confirmDialogOpen}
@@ -420,8 +421,8 @@ const AttendanceModal = memo(({
           }
         }}
       >
-        <DialogTitle sx={{ 
-          borderBottom: '1px solid #E2E8F0', 
+        <DialogTitle sx={{
+          borderBottom: '1px solid #E2E8F0',
           bgcolor: darkMode ? '#333333' : '#F8FAFC',
           py: 2,
           px: 3
@@ -436,8 +437,8 @@ const AttendanceModal = memo(({
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #E2E8F0' }}>
-          <Button 
-            onClick={handleCloseConfirmDialog} 
+          <Button
+            onClick={handleCloseConfirmDialog}
             variant="outlined"
             sx={{
               borderColor: '#CBD5E1',
@@ -450,9 +451,9 @@ const AttendanceModal = memo(({
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleConfirmAction} 
-            variant="contained" 
+          <Button
+            onClick={handleConfirmAction}
+            variant="contained"
             color="primary"
             disabled={actionLoading}
             sx={{
@@ -533,13 +534,13 @@ const getAttendanceAnalyticsData = (attendees) => {
         hourMap[label].timeInCount++;
       }
     }
-    
+
     // Handle time out - check for different field names and structures
     let timeOut = att.timeOut;
     if (att.hasTimedOut !== undefined && att.hasTimedOut) {
       timeOut = att.timeOutTimestamp;
     }
-    
+
     if (timeOut && timeOut !== 'N/A') {
       const date = new Date(timeOut);
       if (!isNaN(date.getTime())) {
@@ -557,7 +558,7 @@ export default function Attendance() {
   const { darkMode } = useTheme();
   const { eventId } = useParams();
   const navigate = useNavigate();
-  
+
   const [event, setEvent] = useState(null);
   const [department, setDepartment] = useState(null);
   const [attendees, setAttendees] = useState([]);
@@ -609,7 +610,7 @@ export default function Attendance() {
         // Fetch attendees
         const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         let attendeesData = attendeesResponse.data;
-        
+
         // Debug: Log raw attendee data from backend
         console.log('[DEBUG] Raw attendees data from backend:', attendeesData.map(att => ({
           userId: att.userId,
@@ -630,7 +631,7 @@ export default function Attendance() {
             department: att.department || user?.department?.name || 'N/A',
             checkinMethod: att.checkinMethod === true || att.checkinMethod === 'true' || (att.checkinMethod === undefined && att.manualEntry === true),
           };
-          
+
           // Debug: Log checkinMethod for each attendee
           console.log(`[DEBUG] Attendee ${result.firstName} ${result.lastName}:`, {
             userId: result.userId,
@@ -641,7 +642,7 @@ export default function Attendance() {
             manualEntry: att.manualEntry,
             conversionLogic: `(${att.checkinMethod} === true || ${att.checkinMethod} === 'true' || (${att.checkinMethod} === undefined && ${att.manualEntry} === true)) = ${result.checkinMethod}`
           });
-          
+
           return result;
         }));
         setAttendees(attendeesWithProfile);
@@ -662,12 +663,12 @@ export default function Attendance() {
   const handleSearchChange = (event) => {
     const query = event.target.value.toLowerCase();
     setSearchQuery(query);
-    
+
     if (query.trim() === '') {
       setFilteredAttendees(attendees);
     } else {
       const filtered = attendees.filter(
-        attendee => 
+        attendee =>
           attendee.firstName.toLowerCase().includes(query) ||
           attendee.lastName.toLowerCase().includes(query) ||
           attendee.email.toLowerCase().includes(query) ||
@@ -676,12 +677,12 @@ export default function Attendance() {
       setFilteredAttendees(filtered);
     }
   };
-  
+
   // Open manage attendees modal
   const handleOpenManageModal = () => {
     setManageModalOpen(true);
   };
-  
+
   // Close manage attendees modal
   const handleCloseManageModal = () => {
     setManageModalOpen(false);
@@ -695,13 +696,13 @@ export default function Attendance() {
       await handleManualTimeOut(userId);
     }
   };
-  
+
   // Handle manual time in
   const handleManualTimeIn = async (userId) => {
     try {
       setActionLoading(true);
       const response = await axios.post(getApiUrl(API_ENDPOINTS.ATTENDANCE_MANUAL_TIME_IN(eventId, userId)));
-      
+
       if (response.status === 200) {
         if (response.data.includes("already timed in")) {
           setSnackbar({
@@ -716,13 +717,13 @@ export default function Attendance() {
         const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
-        
+
         // Update filtered attendees with search query applied
         if (searchQuery.trim() === '') {
           setFilteredAttendees(newAttendees);
         } else {
           const filtered = newAttendees.filter(
-            attendee => 
+            attendee =>
               attendee.firstName.toLowerCase().includes(searchQuery) ||
               attendee.lastName.toLowerCase().includes(searchQuery) ||
               attendee.email.toLowerCase().includes(searchQuery) ||
@@ -730,7 +731,7 @@ export default function Attendance() {
           );
           setFilteredAttendees(filtered);
         }
-        
+
         setSnackbar({
           open: true,
           message: 'Manual time-in recorded successfully',
@@ -748,25 +749,25 @@ export default function Attendance() {
       setActionLoading(false);
     }
   };
-  
+
   // Handle manual time out
   const handleManualTimeOut = async (userId) => {
     try {
       setActionLoading(true);
       const response = await axios.post(getApiUrl(API_ENDPOINTS.ATTENDANCE_MANUAL_TIME_OUT(eventId, userId)));
-      
+
       if (response.status === 200) {
         // Refresh attendee list
         const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         const newAttendees = attendeesResponse.data;
         setAttendees(newAttendees);
-        
+
         // Update filtered attendees with search query applied
         if (searchQuery.trim() === '') {
           setFilteredAttendees(newAttendees);
         } else {
           const filtered = newAttendees.filter(
-            attendee => 
+            attendee =>
               attendee.firstName.toLowerCase().includes(searchQuery) ||
               attendee.lastName.toLowerCase().includes(searchQuery) ||
               attendee.email.toLowerCase().includes(searchQuery) ||
@@ -774,7 +775,7 @@ export default function Attendance() {
           );
           setFilteredAttendees(filtered);
         }
-        
+
         setSnackbar({
           open: true,
           message: 'Manual time-out recorded successfully',
@@ -792,7 +793,7 @@ export default function Attendance() {
       setActionLoading(false);
     }
   };
-  
+
   // Close snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
@@ -801,7 +802,7 @@ export default function Attendance() {
   // Format timestamp to readable date and time
   const formatTimestamp = (timestamp) => {
     if (!timestamp || timestamp === 'N/A') return 'N/A';
-    
+
     try {
       // Handle ISO format (old structure)
       if (timestamp.includes('T')) {
@@ -818,13 +819,13 @@ export default function Attendance() {
           });
         }
       }
-      
+
       // Handle "yyyy-MM-dd HH:mm:ss" format (new structure) - treat as Philippines time
       if (timestamp.includes('-') && timestamp.includes(':')) {
         const [datePart, timePart] = timestamp.split(' ');
         const [year, month, day] = datePart.split('-');
         const [hour, minute, second] = timePart.split(':');
-        
+
         // Create date as if it's Philippines time (since backend now stores in Philippines timezone)
         const date = new Date(year, month - 1, day, hour, minute, second);
         if (!isNaN(date.getTime())) {
@@ -838,7 +839,7 @@ export default function Attendance() {
           });
         }
       }
-      
+
       // Try direct parsing as a fallback
       const date = new Date(timestamp);
       if (!isNaN(date.getTime())) {
@@ -852,7 +853,7 @@ export default function Attendance() {
           timeZone: 'Asia/Manila'
         });
       }
-      
+
       return timestamp; // Return original if all parsing attempts fail
     } catch (e) {
       console.error('Error formatting timestamp:', e);
@@ -863,11 +864,11 @@ export default function Attendance() {
   // Format event date
   const formatEventDate = (date) => {
     if (!date) return 'N/A';
-    
+
     try {
       // Handle different date formats
       let dateObj;
-      
+
       if (typeof date === 'string') {
         dateObj = new Date(date);
       } else if (typeof date === 'object') {
@@ -883,11 +884,11 @@ export default function Attendance() {
       } else {
         return 'Invalid Date';
       }
-      
+
       if (isNaN(dateObj.getTime())) {
         return 'Invalid Date';
       }
-      
+
       return dateObj.toLocaleString('en-PH', {
         year: 'numeric',
         month: 'long',
@@ -904,7 +905,7 @@ export default function Attendance() {
   const formatTimeoutStatus = (timeOut, checkinMethod = false) => {
     if (!timeOut || timeOut === 'N/A') {
       return (
-        <Chip 
+        <Chip
           label="Not yet Timed out"
           size="small"
           sx={{
@@ -918,20 +919,20 @@ export default function Attendance() {
         />
       );
     }
-    
+
     const formattedTime = formatTimestamp(timeOut);
-    
+
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {formattedTime}
         {checkinMethod === true && (
           <Tooltip title="Manual time-out by administrator" arrow>
-            <ManageAccounts 
-              sx={{ 
-                color: '#D97706', 
+            <ManageAccounts
+              sx={{
+                color: '#D97706',
                 fontSize: 16,
-                ml: 0.5 
-              }} 
+                ml: 0.5
+              }}
             />
           </Tooltip>
         )}
@@ -942,18 +943,18 @@ export default function Attendance() {
   // Format timein status with manual entry indicator
   const formatTimeInStatus = (timeIn, checkinMethod = false) => {
     const formattedTime = formatTimestamp(timeIn);
-    
+
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {formattedTime}
         {checkinMethod === true && (
           <Tooltip title="Manual time-in by administrator" arrow>
-            <ManageAccounts 
-              sx={{ 
-                color: '#D97706', 
+            <ManageAccounts
+              sx={{
+                color: '#D97706',
                 fontSize: 16,
-                ml: 0.5 
-              }} 
+                ml: 0.5
+              }}
             />
           </Tooltip>
         )}
@@ -963,7 +964,7 @@ export default function Attendance() {
 
   // Get status color
   const getStatusColor = (status = 'Unknown') => {
-    switch(status) {
+    switch (status) {
       case 'Starting':
         return '#10B981';
       case 'Ongoing':
@@ -991,7 +992,7 @@ export default function Attendance() {
       type: attendee.type || 'event_time_in',
       checkinMethod: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
     };
-    
+
     // Debug: Log checkinMethod processing
     console.log(`[DEBUG] formatAttendanceData for ${baseData.firstName} ${baseData.lastName}:`, {
       originalCheckinMethod: attendee.checkinMethod,
@@ -1004,7 +1005,7 @@ export default function Attendance() {
       conversionStep3: attendee.checkinMethod === undefined && attendee.manualEntry === true,
       finalResult: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
     });
-    
+
     // Handle old structure (has timeIn in ISO format)
     if (attendee.timeIn && attendee.timeIn.includes('T')) {
       return {
@@ -1013,7 +1014,7 @@ export default function Attendance() {
         timeOut: attendee.timeOut || 'N/A'
       };
     }
-    
+
     // Handle new structure with hasTimedOut, timeOutTimestamp, and timestamp
     if (attendee.hasTimedOut !== undefined) {
       return {
@@ -1022,7 +1023,7 @@ export default function Attendance() {
         timeOut: attendee.hasTimedOut ? (attendee.timeOutTimestamp || 'N/A') : 'N/A'
       };
     }
-    
+
     // Handle other structures
     return {
       ...baseData,
@@ -1042,14 +1043,14 @@ export default function Attendance() {
       const attendeesData = filteredAttendees.map(attendee => {
         const formattedAttendee = formatAttendanceData(attendee);
         const exportMethod = formattedAttendee.checkinMethod ? 'Manual Time in' : 'QR';
-        
+
         // Debug: Log export logic
         console.log(`[DEBUG] Export logic for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
           checkinMethod: formattedAttendee.checkinMethod,
           checkinMethodType: typeof formattedAttendee.checkinMethod,
           exportMethod: exportMethod
         });
-        
+
         return {
           'Name': `${formattedAttendee.firstName} ${formattedAttendee.lastName}`,
           'Email': formattedAttendee.email,
@@ -1077,19 +1078,19 @@ export default function Attendance() {
       if (analyticsElement) {
         const canvas = await html2canvas(analyticsElement);
         const imgData = canvas.toDataURL('image/png');
-        
+
         // Add the graph as a new sheet
         const imgWs = XLSX.utils.aoa_to_sheet([[{
           t: 's',
           v: 'Analytics Graph',
           s: { font: { bold: true, sz: 14 } }
         }]]);
-        
+
         const imgId = wb.addImage({
           base64: imgData,
           extension: 'png',
         });
-        
+
         const col = 'A';
         const row = 2;
         imgWs['!images'] = [{
@@ -1101,7 +1102,7 @@ export default function Attendance() {
             to: { col: 10, row: row + 20 }
           }
         }];
-        
+
         XLSX.utils.book_append_sheet(wb, imgWs, 'Analytics Graph');
       }
 
@@ -1124,12 +1125,12 @@ export default function Attendance() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
-     
+
       {/* Header */}
-      <Box sx={{ 
-        py: 1.5, 
+      <Box sx={{
+        py: 1.5,
         px: 3,
-        bgcolor: darkMode ? '#1e1e1e' : 'white', 
+        bgcolor: darkMode ? '#1e1e1e' : 'white',
         borderBottom: '1px solid',
         borderColor: darkMode ? '#333333' : '#EAECF0',
         display: 'flex',
@@ -1159,280 +1160,280 @@ export default function Attendance() {
       </Box>
 
       {/* Main Content */}
-      <Box sx={{ 
-        p: 3, 
-        flex: 1, 
-        overflow: 'auto', 
-        bgcolor: darkMode ? '#121212' : '#FFFFFF' 
+      <Box sx={{
+        p: 3,
+        flex: 1,
+        overflow: 'auto',
+        bgcolor: darkMode ? '#121212' : '#FFFFFF'
       }}>
-         <Typography variant="h4" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 4, textAlign: 'center' }}>
-  Event Attendance Details
-</Typography>
+        <Typography variant="h4" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ mb: 4, textAlign: 'center' }}>
+          Event Attendance Details
+        </Typography>
 
-{/* Event Information */}
-<Grid container spacing={4} sx={{ mb: 5 }}>
-  <Grid item xs={12} lg={7}>
-    <Card sx={{ 
-      boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
-      border: '1px solid',
-      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', 
-      height: '100%',
-      borderRadius: '16px',
-      bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
-      backdropFilter: 'blur(10px)',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      position: 'relative',
-      overflow: 'hidden',
-      '&:hover': {
-        transform: 'translateY(-4px)',
-        boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
-      },
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '4px',
-        background: 'linear-gradient(90deg, #0288d1, #90caf9)',
-      }
-    }}>
-      <CardContent sx={{ p: 4 }}>
-        <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ 
-          mb: 3, 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1.5,
-          letterSpacing: '-0.025em'
-        }}>
-          <Box sx={{ 
-            p: 1.5, 
-            borderRadius: '12px', 
-            bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Event sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
-          </Box>
-          Event Information
-        </Typography>
-        
-        <Grid container spacing={3}>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+        {/* Event Information */}
+        <Grid container spacing={4} sx={{ mb: 5 }}>
+          <Grid item xs={12} lg={7}>
+            <Card sx={{
+              boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
               border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              height: '100%'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Event Name
-              </Typography>
-              <Typography variant="h6" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
-                {event?.eventName || 'N/A'}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              height: '100%'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Event ID
-              </Typography>
-              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', mt: 0.5, fontFamily: 'monospace' }}>
-                {event?.eventId || 'N/A'}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              height: '100%'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Duration
-              </Typography>
-              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                <AccessTime sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
-                {event?.duration || 'N/A'}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              height: '100%'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Date
-              </Typography>
-              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                <CalendarToday sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
-                {formatEventDate(event?.date)}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              height: '100%'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Venue
-              </Typography>
-              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
-                {event?.venue || 'N/A'}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              textAlign: 'center'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'block' }}>
-                Status
-              </Typography>
-              <Chip 
-                label={event?.status || 'Unknown'}
-                size="medium"
-                sx={{
-                  backgroundColor: `${getStatusColor(event?.status)}15`,
-                  color: getStatusColor(event?.status),
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  height: 32,
-                  borderRadius: '8px',
-                  border: `1px solid ${getStatusColor(event?.status)}30`,
-                  px: 1
-                }}
-              />
-            </Box>
-          </Grid>
-        </Grid>
-      </CardContent>
-    </Card>
-  </Grid>
-  
-  <Grid item xs={12} lg={5}>
-    <Card sx={{ 
-      boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
-      border: '1px solid',
-      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', 
-      height: '100%',
-      borderRadius: '16px',
-      bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
-      backdropFilter: 'blur(10px)',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      position: 'relative',
-      overflow: 'hidden',
-      '&:hover': {
-        transform: 'translateY(-4px)',
-        boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
-      },
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '4px',
-        background: 'linear-gradient(90deg, #0288d1, #90caf9)',
-      }
-    }}>
-      <CardContent sx={{ p: 4 }}>
-        <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{ 
-          mb: 3, 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1.5,
-          letterSpacing: '-0.025em'
-        }}>
-          <Box sx={{ 
-            p: 1.5, 
-            borderRadius: '12px', 
-            bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <School sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
-          </Box>
-          Department Host
-        </Typography>
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-              transition: 'all 0.2s ease',
-              textAlign: 'center'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Department Name
-              </Typography>
-              <Typography variant="h6" fontWeight="700" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
-                {department?.name || 'N/A'}
-              </Typography>
-            </Box>
-          </Grid>
-          
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
+              borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
               height: '100%',
-              textAlign: 'center'
+              borderRadius: '16px',
+              bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
+              },
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #0288d1, #90caf9)',
+              }
             }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Abbreviation
-              </Typography>
-              <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontFamily: 'monospace', fontSize: '1.1rem', mt: 0.5 }}>
-                {department?.abbreviation || 'N/A'}
-              </Typography>
-            </Box>
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  letterSpacing: '-0.025em'
+                }}>
+                  <Box sx={{
+                    p: 1.5,
+                    borderRadius: '12px',
+                    bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Event sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
+                  </Box>
+                  Event Information
+                </Typography>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Event Name
+                      </Typography>
+                      <Typography variant="h6" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                        {event?.eventName || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Event ID
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', mt: 0.5, fontFamily: 'monospace' }}>
+                        {event?.eventId || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Duration
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <AccessTime sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
+                        {event?.duration || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Date
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <CalendarToday sx={{ fontSize: 18, color: darkMode ? '#90caf9' : '#64748B' }} />
+                        {formatEventDate(event?.date)}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Venue
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                        {event?.venue || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'block' }}>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={event?.status || 'Unknown'}
+                        size="medium"
+                        sx={{
+                          backgroundColor: `${getStatusColor(event?.status)}15`,
+                          color: getStatusColor(event?.status),
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          height: 32,
+                          borderRadius: '8px',
+                          border: `1px solid ${getStatusColor(event?.status)}30`,
+                          px: 1
+                        }}
+                      />
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
           </Grid>
-          
-   {/*        <Grid item xs={6}>
+
+          <Grid item xs={12} lg={5}>
+            <Card sx={{
+              boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.08)',
+              border: '1px solid',
+              borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+              height: '100%',
+              borderRadius: '16px',
+              bgcolor: darkMode ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: darkMode ? '0 12px 48px rgba(0,0,0,0.4)' : '0 12px 48px rgba(0,0,0,0.12)'
+              },
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #0288d1, #90caf9)',
+              }
+            }}>
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h5" fontWeight="700" color={darkMode ? '#f5f5f5' : '#1E293B'} sx={{
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  letterSpacing: '-0.025em'
+                }}>
+                  <Box sx={{
+                    p: 1.5,
+                    borderRadius: '12px',
+                    bgcolor: darkMode ? 'rgba(144,202,249,0.15)' : 'rgba(2,136,209,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <School sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontSize: 24 }} />
+                  </Box>
+                  Department Host
+                </Typography>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Department Name
+                      </Typography>
+                      <Typography variant="h6" fontWeight="700" sx={{ color: darkMode ? '#f5f5f5' : '#1E293B', mt: 0.5 }}>
+                        {department?.name || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s ease',
+                      height: '100%',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Abbreviation
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600" sx={{ color: darkMode ? '#90caf9' : '#0288d1', fontFamily: 'monospace', fontSize: '1.1rem', mt: 0.5 }}>
+                        {department?.abbreviation || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  {/*        <Grid item xs={6}>
             <Box sx={{ 
               p: 2.5, 
               borderRadius: '12px', 
@@ -1452,57 +1453,57 @@ export default function Attendance() {
               </Typography>
             </Box>
           </Grid>*/}
-          
-          <Grid item xs={12}>
-            <Box sx={{ 
-              p: 2.5, 
-              borderRadius: '12px', 
-              bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: '1px solid',
-              borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease',
-              textAlign: 'center'
-            }}>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'block' }}>
-                Programs Offered
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
-                {department?.offeredPrograms?.map((program, index) => (
-                  <Chip 
-                    key={index}
-                    label={program}
-                    size="medium"
-                    sx={{
-                      backgroundColor: darkMode ? 'rgba(59,130,246,0.15)' : '#EFF6FF',
-                      color: darkMode ? '#93C5FD' : '#3B82F6',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      height: 32,
-                      borderRadius: '8px',
-                      border: darkMode ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(59,130,246,0.2)',
-                      px: 1.5,
+
+                  <Grid item xs={12}>
+                    <Box sx={{
+                      p: 2.5,
+                      borderRadius: '12px',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      border: '1px solid',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                       transition: 'all 0.2s ease',
-                      '&:hover': {
-                        transform: 'translateY(-1px)',
-                        boxShadow: darkMode ? '0 4px 8px rgba(59,130,246,0.2)' : '0 4px 8px rgba(59,130,246,0.15)'
-                      }
-                    }}
-                  />
-                ))}
-                {(!department?.offeredPrograms || department.offeredPrograms.length === 0) && (
-                  <Typography variant="body2" sx={{ color: '#64748B', fontStyle: 'italic' }}>
-                    No programs specified
-                  </Typography>
-                )}
-              </Box>
-            </Box>
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'block' }}>
+                        Programs Offered
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
+                        {department?.offeredPrograms?.map((program, index) => (
+                          <Chip
+                            key={index}
+                            label={program}
+                            size="medium"
+                            sx={{
+                              backgroundColor: darkMode ? 'rgba(59,130,246,0.15)' : '#EFF6FF',
+                              color: darkMode ? '#93C5FD' : '#3B82F6',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              height: 32,
+                              borderRadius: '8px',
+                              border: darkMode ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(59,130,246,0.2)',
+                              px: 1.5,
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: darkMode ? '0 4px 8px rgba(59,130,246,0.2)' : '0 4px 8px rgba(59,130,246,0.15)'
+                              }
+                            }}
+                          />
+                        ))}
+                        {(!department?.offeredPrograms || department.offeredPrograms.length === 0) && (
+                          <Typography variant="body2" sx={{ color: '#64748B', fontStyle: 'italic' }}>
+                            No programs specified
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
-      </CardContent>
-    </Card>
-  </Grid>
-</Grid>
-          {/*  <Button
+        {/*  <Button
                     variant="contained"
                     onClick={handleOpenManageModal}
                     startIcon={<ManageAccounts />}
@@ -1534,9 +1535,9 @@ export default function Attendance() {
             <CircularProgress size={32} sx={{ color: '#0288d1' }} />
           </Box>
         ) : error ? (
-          <Box sx={{ 
-            p: 3, 
-            textAlign: 'center', 
+          <Box sx={{
+            p: 3,
+            textAlign: 'center',
             color: '#EF4444',
             display: 'flex',
             flexDirection: 'column',
@@ -1544,8 +1545,8 @@ export default function Attendance() {
             gap: 2
           }}>
             <Typography variant="h6">No Participant in the List</Typography>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleNavigateBack}
               startIcon={<ArrowBack />}
               sx={{
@@ -1560,16 +1561,16 @@ export default function Attendance() {
           </Box>
         ) : (
           <>
-           {/* Attendance Analytics */}
-    <AttendanceAnalytics
-      data={getAttendanceAnalyticsData(attendees)}
-      title="Time-In/Out Distribution for This Event"
-    />
+            {/* Attendance Analytics */}
+            <AttendanceAnalytics
+              data={getAttendanceAnalyticsData(attendees)}
+              title="Time-In/Out Distribution for This Event"
+            />
             {/* Attendees Table */}
             <Box sx={{ mb: 2 }}>
-              <Box sx={{ 
-                mb: 2, 
-                display: 'flex', 
+              <Box sx={{
+                mb: 2,
+                display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
@@ -1580,7 +1581,7 @@ export default function Attendance() {
                     <Group sx={{ color: darkMode ? '#90caf9' : '#0288d1', mr: 1, verticalAlign: 'middle' }} />
                     Faculty Attendees
                   </Typography>
-                  <Chip 
+                  <Chip
                     label={filteredAttendees.length}
                     size="small"
                     sx={{
@@ -1591,11 +1592,11 @@ export default function Attendance() {
                     }}
                   />
                 </Box>
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2, 
+
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
                   justifyContent: 'flex-end',
                   width: { xs: '100%', md: 'auto' }
                 }}>
@@ -1620,7 +1621,7 @@ export default function Attendance() {
                       }
                     }}
                   />
-                  
+
                   <Button
                     variant="contained"
                     onClick={handleExportData}
@@ -1650,11 +1651,11 @@ export default function Attendance() {
                   </Button>
                 </Box>
               </Box>
-              
-              <TableContainer 
-                component={Paper} 
-                sx={{ 
-                  boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.08)', 
+
+              <TableContainer
+                component={Paper}
+                sx={{
+                  boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.08)',
                   border: '1px solid',
                   borderColor: darkMode ? '#333333' : '#E2E8F0',
                   borderRadius: '12px',
@@ -1688,47 +1689,76 @@ export default function Attendance() {
                         <TableCell>Email</TableCell>
                         <TableCell>Department</TableCell>
                         <TableCell>Time In</TableCell>
-                       <TableCell>Time Out</TableCell>
-                         <TableCell>Check-in Method</TableCell>
+                        <TableCell>Time Out</TableCell>
+                        <TableCell>Check-in Method</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {filteredAttendees.map((attendee) => {
                         const formattedAttendee = formatAttendanceData(attendee);
-                        
+
+                        // Debug: Log image selection logic
+                        console.log(`[DEBUG] Image for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
+                          selfieUrl: formattedAttendee.selfieUrl,
+                          profilePictureUrl: formattedAttendee.profilePictureUrl,
+                          displaying: formattedAttendee.selfieUrl ? 'Event Selfie' : (formattedAttendee.profilePictureUrl ? 'Profile Picture' : 'Initial')
+                        });
+
                         return (
                           <TableRow key={formattedAttendee.userId}>
                             <TableCell>
-                              {formattedAttendee.profilePictureUrl ? (
-                                <Avatar
-                                  src={formattedAttendee.profilePictureUrl}
-                                  alt={formattedAttendee.firstName}
-                                  sx={{ width: 40, height: 40, cursor: 'pointer' }}
-                                />
-                              ) : formattedAttendee.selfieUrl ? (
-                                <Box
-                                  component="img"
-                                  src={formattedAttendee.selfieUrl}
-                                  alt="Verification selfie"
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    cursor: 'pointer',
-                                    '&:hover': {
-                                      opacity: 0.8,
-                                      transform: 'scale(1.1)',
-                                      transition: 'all 0.2s ease-in-out'
-                                    }
-                                  }}
-                                  onClick={() => setZoomImage(formattedAttendee.selfieUrl)}
-                                />
-                              ) : (
-                                <Avatar sx={{ width: 40, height: 40 }}>
-                                  {formattedAttendee.firstName?.charAt(0)}
-                                </Avatar>
-                              )}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {formattedAttendee.selfieUrl ? (
+                                  <Box
+                                    component="img"
+                                    src={formattedAttendee.selfieUrl}
+                                    alt="Verification selfie"
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: '50%',
+                                      objectFit: 'cover',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        opacity: 0.8,
+                                        transform: 'scale(1.1)',
+                                        transition: 'all 0.2s ease-in-out'
+                                      }
+                                    }}
+                                    onClick={() => setZoomImage(formattedAttendee.selfieUrl)}
+                                  />
+                                ) : formattedAttendee.profilePictureUrl ? (
+                                  <Avatar
+                                    src={formattedAttendee.profilePictureUrl}
+                                    alt={formattedAttendee.firstName}
+                                    sx={{ width: 40, height: 40, cursor: 'pointer' }}
+                                  />
+                                ) : (
+                                  <Avatar sx={{ width: 40, height: 40 }}>
+                                    {formattedAttendee.firstName?.charAt(0)}
+                                  </Avatar>
+                                )}
+
+                                <Tooltip title="Refresh verify image">
+                                  <IconButton
+                                    size="small"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        // Call refresh endpoint
+                                        const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${formattedAttendee.userId}/refresh-selfie`);
+                                        console.log('Refresh result:', response.data);
+                                        // Simple reload to reflect changes
+                                        fetchEventData();
+                                      } catch (error) {
+                                        console.error('Error refreshing selfie:', error);
+                                      }
+                                    }}
+                                  >
+                                    <RefreshIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
                             </TableCell>
                             <TableCell>
                               {formattedAttendee.firstName} {formattedAttendee.lastName}
@@ -1737,7 +1767,7 @@ export default function Attendance() {
                             <TableCell>{formattedAttendee.department}</TableCell>
                             <TableCell>
                               <Tooltip title="Time In" arrow>
-                                <Chip 
+                                <Chip
                                   label={formatTimestamp(formattedAttendee.timeIn)}
                                   color="success"
                                   size="small"
@@ -1746,10 +1776,10 @@ export default function Attendance() {
                                 />
                               </Tooltip>
                             </TableCell>
-                           <TableCell>
+                            <TableCell>
                               {formattedAttendee.timeOut !== 'N/A' ? (
                                 <Tooltip title="Time Out" arrow>
-                                  <Chip 
+                                  <Chip
                                     label={formatTimestamp(formattedAttendee.timeOut)}
                                     color="error"
                                     size="small"
@@ -1758,7 +1788,7 @@ export default function Attendance() {
                                   />
                                 </Tooltip>
                               ) : (
-                                <Chip 
+                                <Chip
                                   label="Not yet timed out"
                                   color="warning"
                                   size="small"
@@ -1766,18 +1796,18 @@ export default function Attendance() {
                                 />
                               )}
                             </TableCell>
-                           
+
                             <TableCell>
-                              <Tooltip 
-                                title={formattedAttendee.checkinMethod 
+                              <Tooltip
+                                title={formattedAttendee.checkinMethod
                                   ? "Faculty was manually checked in by an administrator"
-                                  : "Faculty used QR code to check in automatically" 
-                                } 
+                                  : "Faculty used QR code to check in automatically"
+                                }
                                 arrow
                               >
-                                <Chip 
-                                  icon={formattedAttendee.checkinMethod 
-                                    ? <ManageAccounts sx={{ fontSize: 16, color: '#D97706' }} /> 
+                                <Chip
+                                  icon={formattedAttendee.checkinMethod
+                                    ? <ManageAccounts sx={{ fontSize: 16, color: '#D97706' }} />
                                     : <QrCode2 sx={{ fontSize: 16, color: '#0369A1' }} />
                                   }
                                   label={(() => {
@@ -1800,8 +1830,8 @@ export default function Attendance() {
                                     fontSize: '0.75rem',
                                     height: 28,
                                     borderRadius: '6px',
-                                    border: formattedAttendee.checkinMethod 
-                                      ? '1px solid rgba(217, 119, 6, 0.3)' 
+                                    border: formattedAttendee.checkinMethod
+                                      ? '1px solid rgba(217, 119, 6, 0.3)'
                                       : '1px solid rgba(29, 78, 216, 0.3)',
                                     '& .MuiChip-label': {
                                       paddingLeft: '6px',
@@ -1827,7 +1857,7 @@ export default function Attendance() {
           </>
         )}
       </Box>
-      
+
       {/* Notification Snackbar */}
       <Snackbar
         open={snackbar.open}
@@ -1835,9 +1865,9 @@ export default function Attendance() {
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
           variant="filled"
           sx={{ width: '100%' }}
         >
@@ -1846,27 +1876,27 @@ export default function Attendance() {
       </Snackbar>
 
       {/* Attendance Modal - Separate component with isolated state */}
-       <AttendanceModal
-      open={manageModalOpen}
-      onClose={handleCloseManageModal}
-      attendees={attendees}
-      onTimeInOut={handleModalTimeInOut}
-      actionLoading={actionLoading}
-      formatTimeInStatus={formatTimeInStatus}
-      formatTimeoutStatus={formatTimeoutStatus}
-      eventId={eventId} // Pass the eventId to the modal
-    />
-
-    {/* Image Zoom Modal */}
-    {zoomImage && (
-      <ImageZoomModal
-        imageUrl={zoomImage}
-        onClose={() => setZoomImage(null)}
+      <AttendanceModal
+        open={manageModalOpen}
+        onClose={handleCloseManageModal}
+        attendees={attendees}
+        onTimeInOut={handleModalTimeInOut}
+        actionLoading={actionLoading}
+        formatTimeInStatus={formatTimeInStatus}
+        formatTimeoutStatus={formatTimeoutStatus}
+        eventId={eventId} // Pass the eventId to the modal
       />
-    )}
 
-    
+      {/* Image Zoom Modal */}
+      {zoomImage && (
+        <ImageZoomModal
+          imageUrl={zoomImage}
+          onClose={() => setZoomImage(null)}
+        />
+      )}
+
+
     </Box>
-    
+
   );
 }

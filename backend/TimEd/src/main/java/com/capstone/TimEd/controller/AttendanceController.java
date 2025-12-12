@@ -52,6 +52,14 @@ public class AttendanceController {
         this.firebaseEmailService = firebaseEmailService;
     }
 
+    @PostMapping("/{eventId}/{userId}/refresh-selfie")
+    public ResponseEntity<String> refreshSelfie(
+            @PathVariable String eventId,
+            @PathVariable String userId) {
+        String result = attendanceService.refreshSelfie(eventId, userId);
+        return ResponseEntity.ok(result);
+    }
+
 
 @PostMapping("/{eventId}/{userId}")
 public ResponseEntity<String> markAttendance(
