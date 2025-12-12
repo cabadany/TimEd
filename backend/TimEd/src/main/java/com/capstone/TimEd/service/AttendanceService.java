@@ -2,8 +2,14 @@ package com.capstone.TimEd.service;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.Storage;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.cloud.StorageClient;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -60,12 +66,14 @@ public class AttendanceService {
                 return "User not found";
             }
 
-            String lastName = userDoc.getString("lastName");
-            String selfieUrl = userDoc.getString("profilePictureUrl");
-
+            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+            
             // Create attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
             String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            
+            // Find the correct selfie in Firebase Storage with retry logic
+            String selfieUrl = findSelfieUrl(userId, eventId, userDoc);
             
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("userId", userId);
@@ -77,7 +85,7 @@ public class AttendanceService {
             attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
             attendanceData.put("hasTimedOut", false);
-            attendanceData.put("selfieUrl", selfieUrl); // Use stored profile photo when available
+            attendanceData.put("selfieUrl", selfieUrl); // Use event-specific selfie URL
             attendanceData.put("checkinMethod", false); // QR code check-in
             
             // Debug: Log the checkinMethod value being set
@@ -162,12 +170,14 @@ public class AttendanceService {
             
             String email = userDoc.getString("email");
             String firstName = userDoc.getString("firstName");
-            String lastName = userDoc.getString("lastName");
-            String selfieUrl = userDoc.getString("profilePictureUrl");
+            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
             
             // Create new attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
             String timestamp = philippinesTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+            // Find the correct selfie in Firebase Storage with retry logic
+            String selfieUrl = findSelfieUrl(userId, eventId, userDoc);
             
             Map<String, Object> attendanceData = new HashMap<>();
             attendanceData.put("eventId", eventId);
@@ -389,6 +399,47 @@ public class AttendanceService {
         }
     }
     
+    
+    
+    public String refreshSelfie(String eventId, String userId) {
+        try {
+            // Get user details first to have profile pic fallback
+            DocumentReference userRef = firestore.collection("users").document(userId);
+            DocumentSnapshot userDoc = userRef.get().get();
+            
+            if (!userDoc.exists()) {
+                return "User not found";
+            }
+            
+            // Re-run the selfie finding logic
+            String newSelfieUrl = findSelfieUrl(userId, eventId, userDoc);
+            
+            // Update the attendee record in Firestore
+            DocumentReference attendeeRef = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .document(userId);
+                
+            if (attendeeRef.get().get().exists()) {
+                attendeeRef.update("selfieUrl", newSelfieUrl);
+                
+                // Also update the global attendanceRecords collection if used
+                 String globalRecordId = userId + "_" + eventId + "_event_time_in";
+                 DocumentReference globalRef = firestore.collection("attendanceRecords").document(globalRecordId);
+                 if (globalRef.get().get().exists()) {
+                     globalRef.update("selfieUrl", newSelfieUrl);
+                 }
+                 
+                return newSelfieUrl;
+            } else {
+                return "Attendance record not found";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error refreshing selfie: " + e.getMessage();
+        }
+    }
+
     public List<Map<String, Object>> getUserAttendedEvents(String userId) throws Exception {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -419,5 +470,80 @@ public class AttendanceService {
         }
 
         return attendedEvents;
+    }
+
+    private String findSelfieUrl(String userId, String eventId, DocumentSnapshot userDoc) {
+        String selfieUrl = null;
+        int maxRetries = 3;
+        int retryDelayMs = 1500; // 1.5 seconds
+
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                System.out.println("[AttendanceService] Attempt " + (i + 1) + " to find selfie for user: " + userId + ", event: " + eventId);
+                
+                Bucket bucket = StorageClient.getInstance().bucket("timed-system.firebasestorage.app");
+                String prefix = "event_selfies/" + userId + "/";
+                
+                // List blobs in the directory
+                Iterable<Blob> blobs = bucket.list(Storage.BlobListOption.prefix(prefix)).iterateAll();
+                Blob mostRecentBlob = null;
+                long maxTime = 0;
+                
+                String searchPattern = "selfie_event_" + eventId;
+                boolean foundMatch = false;
+
+                for (Blob blob : blobs) {
+                    if (blob.getName().contains(searchPattern)) {
+                        foundMatch = true;
+                        if (blob.getUpdateTime() > maxTime) {
+                            maxTime = blob.getUpdateTime();
+                            mostRecentBlob = blob;
+                        }
+                    }
+                }
+                
+                if (mostRecentBlob != null) {
+                    String encodedName = URLEncoder.encode(mostRecentBlob.getName(), StandardCharsets.UTF_8.toString());
+                    selfieUrl = "https://firebasestorage.googleapis.com/v0/b/timed-system.firebasestorage.app/o/" + encodedName + "?alt=media";
+                    
+                    // Add token if available
+                    Map<String, String> metadata = mostRecentBlob.getMetadata();
+                    if (metadata != null && metadata.containsKey("firebaseStorageDownloadTokens")) {
+                        String token = metadata.get("firebaseStorageDownloadTokens");
+                        // If multiple tokens, take the first one
+                        if (token.contains(",")) {
+                            token = token.split(",")[0];
+                        }
+                        selfieUrl += "&token=" + token;
+                    }
+                    
+                    System.out.println("[AttendanceService] Found selfie URL: " + selfieUrl);
+                    return selfieUrl; // Return immediately if found
+                }
+                
+                if (!foundMatch) {
+                     System.out.println("[AttendanceService] No matching selfie found in attempt " + (i+1));
+                }
+
+                // If not found, wait before retrying (unless it's the last attempt)
+                if (i < maxRetries - 1) {
+                    Thread.sleep(retryDelayMs);
+                }
+
+            } catch (Exception e) {
+                System.err.println("[AttendanceService] Error fetching selfie from storage (Attempt " + (i + 1) + "): " + e.getMessage());
+                if (i < maxRetries - 1) {
+                    try {
+                        Thread.sleep(retryDelayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }
+
+        // Fallback to profile picture if no event selfie found after all retries
+        System.out.println("[AttendanceService] Failed to find selfie after " + maxRetries + " attempts. Falling back to profile picture.");
+        return userDoc.getString("profilePictureUrl");
     }
 }
