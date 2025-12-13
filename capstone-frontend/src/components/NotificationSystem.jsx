@@ -19,7 +19,7 @@ import { formatDateCompactPH } from '../utils/dateUtils';
 
 const NotificationSystem = () => {
   const navigate = useNavigate();
-  
+
   // Notification state
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
   const notificationMenuOpen = Boolean(notificationAnchorEl);
@@ -48,39 +48,33 @@ const NotificationSystem = () => {
     try {
       const response = await axios.get('https://timed-utd9.onrender.com/api/events/getAll');
       const allEvents = response.data;
-      
-      // Sort events by date created/added (most recent first)
-      // If there's a createdAt field, use that, otherwise fall back to date
+
+      // Sort events by date - most recent first
       const sortedEvents = [...allEvents].sort((a, b) => {
-        // Use eventId as a proxy for creation order if both were created on the same day
-        // Higher eventId values are likely more recently created
-        if (a.eventId && b.eventId) {
-          const idA = parseInt(a.eventId.toString().replace(/\D/g, ''), 10) || 0;
-          const idB = parseInt(b.eventId.toString().replace(/\D/g, ''), 10) || 0;
-          return idB - idA; // Descending order (higher IDs first)
-        }
-        return 0;
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB - dateA; // Descending order (most recent first)
       });
-      
+
       // Take only the 5 most recent events
       const recent = sortedEvents.slice(0, 5);
       setRecentEvents(recent);
-      
+
       // Get previously viewed event IDs from localStorage
       const storedIds = localStorage.getItem('lastViewedEventIds');
       const previouslyViewedIds = storedIds ? JSON.parse(storedIds) : [];
-      
+
       if (!lastViewedEventIds.length && previouslyViewedIds.length) {
         setLastViewedEventIds(previouslyViewedIds);
       }
-      
+
       // Count new notifications
       if (recent.length > 0) {
         // Count events that haven't been viewed before
-        const newEvents = recent.filter(event => 
+        const newEvents = recent.filter(event =>
           !previouslyViewedIds.includes(event.eventId)
         );
-        
+
         setNewNotificationsCount(newEvents.length);
       }
     } catch (error) {
@@ -91,12 +85,12 @@ const NotificationSystem = () => {
   // Check for new events periodically
   useEffect(() => {
     fetchRecentEvents();
-    
+
     // Set up interval to check for new events every 5 minutes
     const interval = setInterval(() => {
       fetchRecentEvents();
     }, 5 * 60 * 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -108,7 +102,7 @@ const NotificationSystem = () => {
 
   // Function to get status color
   const getStatusColor = (status = 'Unknown') => {
-    switch(status) {
+    switch (status) {
       case 'Upcoming':
         return '#10B981';
       case 'Ongoing':
@@ -122,51 +116,83 @@ const NotificationSystem = () => {
     }
   };
 
-  // Define animation keyframes
-  const pulseAnimation = {
-    '@keyframes pulse': {
-      '0%': {
-        transform: 'scale(0.8)',
-        opacity: 1
-      },
-      '50%': {
-        transform: 'scale(1)',
-        opacity: 0.8
-      },
-      '100%': {
-        transform: 'scale(0.8)',
-        opacity: 1
-      }
-    }
-  };
-
   return (
     <>
-      <IconButton 
+      <IconButton
         onClick={handleNotificationClick}
         size="small"
-        sx={{ 
-          backgroundColor: 'transparent',
+        sx={{
+          backgroundColor: newNotificationsCount > 0 ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
           boxShadow: 'none',
-          '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' },
+          '&:hover': {
+            backgroundColor: newNotificationsCount > 0 ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.04)',
+            transform: 'scale(1.05)',
+          },
           padding: '8px',
-          borderRadius: '50%'
+          borderRadius: '12px',
+          transition: 'all 0.2s ease-in-out',
+          ...(newNotificationsCount > 0 && {
+            animation: 'gentlePulse 2s ease-in-out infinite',
+            '@keyframes gentlePulse': {
+              '0%, 100%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.05)' }
+            }
+          })
         }}
       >
-        <Badge 
+        <Badge
           badgeContent={newNotificationsCount > 0 ? newNotificationsCount : null}
           color="error"
           sx={{
             '& .MuiBadge-badge': {
               fontWeight: 'bold',
-              fontSize: '0.7rem'
+              fontSize: '0.65rem',
+              minWidth: '18px',
+              height: '18px',
+              borderRadius: '9px',
+              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+              border: '2px solid white'
             }
           }}
         >
-          <Notifications sx={{ color: '#64748B', fontSize: 20 }} />
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: '10px',
+              background: newNotificationsCount > 0
+                ? 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)'
+                : 'linear-gradient(135deg, #64748B 0%, #475569 100%)',
+              boxShadow: newNotificationsCount > 0
+                ? '0 2px 8px rgba(59, 130, 246, 0.3)'
+                : '0 1px 3px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            <Notifications
+              sx={{
+                color: '#ffffff',
+                fontSize: 20,
+                ...(newNotificationsCount > 0 && {
+                  animation: 'ring 0.5s ease-in-out',
+                  '@keyframes ring': {
+                    '0%': { transform: 'rotate(0)' },
+                    '25%': { transform: 'rotate(15deg)' },
+                    '50%': { transform: 'rotate(-15deg)' },
+                    '75%': { transform: 'rotate(10deg)' },
+                    '100%': { transform: 'rotate(0)' }
+                  }
+                })
+              }}
+            />
+          </Box>
         </Badge>
       </IconButton>
-      
+
       {/* Notification Menu */}
       <Menu
         anchorEl={notificationAnchorEl}
@@ -174,7 +200,7 @@ const NotificationSystem = () => {
         onClose={handleNotificationClose}
         PaperProps={{
           elevation: 3,
-          sx: { 
+          sx: {
             width: 320,
             mt: 1,
             maxHeight: 400,
@@ -192,7 +218,7 @@ const NotificationSystem = () => {
             Recently added events
           </Typography>
         </Box>
-        
+
         {recentEvents.length === 0 ? (
           <Box sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="body2" color="#64748B">
@@ -202,11 +228,11 @@ const NotificationSystem = () => {
         ) : (
           <List sx={{ p: 0 }}>
             {recentEvents.map((event, index) => (
-              <ListItem 
+              <ListItem
                 key={event.eventId}
                 onClick={() => handleNotificationItemClick(event.eventId)}
-                sx={{ 
-                  p: 2, 
+                sx={{
+                  p: 2,
                   borderBottom: index < recentEvents.length - 1 ? '1px solid #F1F5F9' : 'none',
                   cursor: 'pointer',
                   '&:hover': {
@@ -220,8 +246,8 @@ const NotificationSystem = () => {
                     <Typography variant="body2" fontWeight="600" color="#334155">
                       {event.eventName}
                     </Typography>
-                    <Chip 
-                      label={event.status} 
+                    <Chip
+                      label={event.status}
                       size="small"
                       sx={{
                         backgroundColor: `${getStatusColor(event.status)}20`,
