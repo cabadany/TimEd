@@ -611,18 +611,15 @@ export default function Attendance() {
         const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
         let attendeesData = attendeesResponse.data;
 
-        // Debug: Log raw attendee data from backend
-        console.log('[DEBUG] Raw attendees data from backend:', attendeesData.map(att => ({
-          userId: att.userId,
-          firstName: att.firstName,
-          checkinMethod: att.checkinMethod,
-          checkinMethodType: typeof att.checkinMethod
-        })));
-        // Fetch user details for each attendee to get profilePictureUrl
-        const attendeesWithProfile = await Promise.all(attendeesData.map(async (att) => {
+        // Optimized: Fetch all users once and create lookup map (instead of N API calls)
+        const usersResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
+        const usersMap = new Map(usersResponse.data.map(u => [u.userId, u]));
+
+        // Map attendees to include profile data from users lookup
+        const attendeesWithProfile = attendeesData.map((att) => {
           if (att.profilePictureUrl) return att; // Already present
-          const user = await fetchUserById(att.userId);
-          const result = {
+          const user = usersMap.get(att.userId);
+          return {
             ...att,
             profilePictureUrl: user?.profilePictureUrl || null,
             firstName: att.firstName || user?.firstName || '',
@@ -631,20 +628,7 @@ export default function Attendance() {
             department: att.department || user?.department?.name || 'N/A',
             checkinMethod: att.checkinMethod === true || att.checkinMethod === 'true' || (att.checkinMethod === undefined && att.manualEntry === true),
           };
-
-          // Debug: Log checkinMethod for each attendee
-          console.log(`[DEBUG] Attendee ${result.firstName} ${result.lastName}:`, {
-            userId: result.userId,
-            originalCheckinMethod: att.checkinMethod,
-            originalCheckinMethodType: typeof att.checkinMethod,
-            processedCheckinMethod: result.checkinMethod,
-            processedCheckinMethodType: typeof result.checkinMethod,
-            manualEntry: att.manualEntry,
-            conversionLogic: `(${att.checkinMethod} === true || ${att.checkinMethod} === 'true' || (${att.checkinMethod} === undefined && ${att.manualEntry} === true)) = ${result.checkinMethod}`
-          });
-
-          return result;
-        }));
+        });
         setAttendees(attendeesWithProfile);
         setFilteredAttendees(attendeesWithProfile);
         setLoading(false);
@@ -993,19 +977,6 @@ export default function Attendance() {
       checkinMethod: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
     };
 
-    // Debug: Log checkinMethod processing
-    console.log(`[DEBUG] formatAttendanceData for ${baseData.firstName} ${baseData.lastName}:`, {
-      originalCheckinMethod: attendee.checkinMethod,
-      originalType: typeof attendee.checkinMethod,
-      processedCheckinMethod: baseData.checkinMethod,
-      processedType: typeof baseData.checkinMethod,
-      manualEntry: attendee.manualEntry,
-      conversionStep1: attendee.checkinMethod === true,
-      conversionStep2: attendee.checkinMethod === 'true',
-      conversionStep3: attendee.checkinMethod === undefined && attendee.manualEntry === true,
-      finalResult: attendee.checkinMethod === true || attendee.checkinMethod === 'true' || (attendee.checkinMethod === undefined && attendee.manualEntry === true)
-    });
-
     // Handle old structure (has timeIn in ISO format)
     if (attendee.timeIn && attendee.timeIn.includes('T')) {
       return {
@@ -1043,13 +1014,6 @@ export default function Attendance() {
       const attendeesData = filteredAttendees.map(attendee => {
         const formattedAttendee = formatAttendanceData(attendee);
         const exportMethod = formattedAttendee.checkinMethod ? 'Manual Time in' : 'QR';
-
-        // Debug: Log export logic
-        console.log(`[DEBUG] Export logic for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
-          checkinMethod: formattedAttendee.checkinMethod,
-          checkinMethodType: typeof formattedAttendee.checkinMethod,
-          exportMethod: exportMethod
-        });
 
         return {
           'Name': `${formattedAttendee.firstName} ${formattedAttendee.lastName}`,
@@ -1697,36 +1661,40 @@ export default function Attendance() {
                       {filteredAttendees.map((attendee) => {
                         const formattedAttendee = formatAttendanceData(attendee);
 
-                        // Debug: Log image selection logic
-                        console.log(`[DEBUG] Image for ${formattedAttendee.firstName} ${formattedAttendee.lastName}:`, {
-                          selfieUrl: formattedAttendee.selfieUrl,
-                          profilePictureUrl: formattedAttendee.profilePictureUrl,
-                          displaying: formattedAttendee.selfieUrl ? 'Event Selfie' : (formattedAttendee.profilePictureUrl ? 'Profile Picture' : 'Initial')
-                        });
-
                         return (
                           <TableRow key={formattedAttendee.userId}>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {formattedAttendee.selfieUrl ? (
-                                  <Box
-                                    component="img"
-                                    src={formattedAttendee.selfieUrl}
-                                    alt="Verification selfie"
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: '50%',
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      '&:hover': {
-                                        opacity: 0.8,
-                                        transform: 'scale(1.1)',
-                                        transition: 'all 0.2s ease-in-out'
-                                      }
-                                    }}
-                                    onClick={() => setZoomImage(formattedAttendee.selfieUrl)}
-                                  />
+                                  <>
+                                    <Box
+                                      component="img"
+                                      src={formattedAttendee.selfieUrl}
+                                      alt="Verification selfie"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        // Fallback to Avatar on error
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling && (e.target.nextSibling.style.display = 'flex');
+                                      }}
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        cursor: 'pointer',
+                                        '&:hover': {
+                                          opacity: 0.8,
+                                          transform: 'scale(1.1)',
+                                          transition: 'all 0.2s ease-in-out'
+                                        }
+                                      }}
+                                      onClick={() => setZoomImage(formattedAttendee.selfieUrl)}
+                                    />
+                                    <Avatar sx={{ width: 40, height: 40, display: 'none' }}>
+                                      {formattedAttendee.firstName?.charAt(0)}
+                                    </Avatar>
+                                  </>
                                 ) : formattedAttendee.profilePictureUrl ? (
                                   <Avatar
                                     src={formattedAttendee.profilePictureUrl}
@@ -1746,8 +1714,7 @@ export default function Attendance() {
                                       e.stopPropagation();
                                       try {
                                         // Call refresh endpoint
-                                        const response = await axios.post(`http://localhost:8080/api/attendance/${eventId}/${formattedAttendee.userId}/refresh-selfie`);
-                                        console.log('Refresh result:', response.data);
+                                        const response = await axios.post(getApiUrl(`/attendance/${eventId}/${formattedAttendee.userId}/refresh-selfie`));
                                         // Simple reload to reflect changes
                                         fetchEventData();
                                       } catch (error) {

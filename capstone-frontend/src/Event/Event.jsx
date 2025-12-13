@@ -315,7 +315,7 @@ export default function EventPage() {
   const [durationSeconds, setDurationSeconds] = useState('00');
   const [description, setDescription] = useState(''); // Add description state
   const [venue, setVenue] = useState(''); // Add location state
-  
+
   // Form validation errors
   const [formErrors, setFormErrors] = useState({
     eventName: false,
@@ -400,58 +400,58 @@ export default function EventPage() {
   useEffect(() => {
     fetchEvents();
     fetchDepartments();
-    
+
     // Set up real-time status checking every 10 seconds
     const statusCheckInterval = setInterval(() => {
       checkAndUpdateEventStatuses();
     }, 10000); // Check every 10 seconds
-    
+
     return () => clearInterval(statusCheckInterval);
   }, []);
-  
+
   // Real-time event status checker
   const checkAndUpdateEventStatuses = useCallback(() => {
     if (!events.length) return;
-    
+
     const currentDate = new Date();
     let needsUpdate = false;
-    
+
     const updatedEvents = events.map(event => {
       const updatedEvent = { ...event };
-      
+
       const eventDate = new Date(event.date);
       const [hours, minutes, seconds] = event.duration.split(':').map(Number);
       const eventEndTime = new Date(eventDate);
       eventEndTime.setHours(eventEndTime.getHours() + hours);
       eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
       eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-      
+
       // Check if event should be Ongoing (time has arrived)
-      if (currentDate >= eventDate && currentDate <= eventEndTime && 
-          event.status === 'Upcoming' && event.status !== 'Cancelled') {
+      if (currentDate >= eventDate && currentDate <= eventEndTime &&
+        event.status === 'Upcoming' && event.status !== 'Cancelled') {
         updatedEvent.status = 'Ongoing';
         needsUpdate = true;
-        
+
         // Update in backend
         axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
           status: 'Ongoing'
         }).catch(error => console.error('Error updating event status:', error));
       }
       // Check if event should be Ended
-      else if (currentDate > eventEndTime && 
-               (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+      else if (currentDate > eventEndTime &&
+        (event.status === 'Ongoing' || event.status === 'Upcoming')) {
         updatedEvent.status = 'Ended';
         needsUpdate = true;
-        
+
         // Update in backend
         axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
           status: 'Ended'
         }).catch(error => console.error('Error updating event status:', error));
       }
-      
+
       return updatedEvent;
     });
-    
+
     if (needsUpdate) {
       setEvents(updatedEvents);
       setOngoingEvents(updatedEvents.filter(e => e.status === 'Ongoing'));
@@ -550,12 +550,11 @@ export default function EventPage() {
     }
 
     try {
-      // Add cache buster to avoid caching issues
+      // Fetch events with pagination
       const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_EVENTS_PAGINATED), {
         params: {
           page: pageNum,
-          size: pageSize,
-          _cache: new Date().getTime() // Cache buster
+          size: pageSize
         }
       });
 
@@ -631,9 +630,9 @@ export default function EventPage() {
       date: !date,
       duration: !duration || duration === '0:00:00'
     };
-    
+
     setFormErrors(errors);
-    
+
     // Check if any errors exist
     if (Object.values(errors).some(error => error)) {
       const missingFields = [];
@@ -641,7 +640,7 @@ export default function EventPage() {
       if (errors.departmentId) missingFields.push('Department');
       if (errors.date) missingFields.push('Date & Time');
       if (errors.duration) missingFields.push('Duration');
-      
+
       showSnackbar(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
       return;
     }
@@ -657,7 +656,7 @@ export default function EventPage() {
         showSnackbar('Invalid date format', 'error');
         return;
       }
-      
+
       // Determine initial status based on current time
       const currentDate = new Date();
       const eventDate = new Date(date);
@@ -666,7 +665,7 @@ export default function EventPage() {
       eventEndTime.setHours(eventEndTime.getHours() + hours);
       eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
       eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-      
+
       let initialStatus = 'Upcoming';
       if (currentDate >= eventDate && currentDate <= eventEndTime) {
         initialStatus = 'Ongoing';
@@ -1597,25 +1596,25 @@ export default function EventPage() {
         {/* Ongoing Events Section */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Box sx={{ 
-              width: 8, 
-              height: 8, 
-              borderRadius: '50%', 
+            <Box sx={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
               bgcolor: '#22C55E',
               animation: 'pulse 2s infinite'
             }} />
             <Typography variant="h6" sx={{ fontWeight: 600, color: '#1E293B' }}>
               Ongoing Events
             </Typography>
-            <Chip 
-              label={ongoingEvents.length} 
-              size="small" 
-              sx={{ 
-                bgcolor: ongoingEvents.length > 0 ? '#DCFCE7' : '#F1F5F9', 
+            <Chip
+              label={ongoingEvents.length}
+              size="small"
+              sx={{
+                bgcolor: ongoingEvents.length > 0 ? '#DCFCE7' : '#F1F5F9',
                 color: ongoingEvents.length > 0 ? '#166534' : '#64748B',
                 fontWeight: 600,
                 minWidth: 28
-              }} 
+              }}
             />
           </Box>
           <Paper
@@ -1625,8 +1624,8 @@ export default function EventPage() {
               borderRadius: '12px',
               border: '1px solid',
               borderColor: ongoingEvents.length > 0 ? '#BBF7D0' : '#E2E8F0',
-              background: ongoingEvents.length > 0 
-                ? 'linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%)' 
+              background: ongoingEvents.length > 0
+                ? 'linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%)'
                 : '#FFFFFF'
             }}
           >
@@ -1637,10 +1636,10 @@ export default function EventPage() {
                 ))}
               </Grid>
             ) : ongoingEvents.length === 0 ? (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
                 py: 4,
                 px: 2
               }}>
@@ -1677,10 +1676,10 @@ export default function EventPage() {
                   const remainingMs = endTime - now;
                   const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
                   const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-                  const remainingTimeText = remainingMs > 0 
-                    ? `${remainingHours}h ${remainingMinutes}m remaining` 
+                  const remainingTimeText = remainingMs > 0
+                    ? `${remainingHours}h ${remainingMinutes}m remaining`
                     : "Time expired";
-                  
+
                   return (
                     <Grid item xs={12} md={6} lg={4} key={event.eventId}>
                       <Card
