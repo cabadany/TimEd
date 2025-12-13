@@ -1760,21 +1760,26 @@ export default function AccountPage() {
                         })()}
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                           <Tooltip title="View Details" arrow placement="top">
                             <IconButton
                               size="small"
                               onClick={() => handleViewClick(professor)}
                               sx={{
-                                width: 34,
-                                height: 34,
-                                backgroundColor: 'rgba(100, 116, 139, 0.1)',
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                border: '1px solid #e2e8f0',
                                 color: '#64748B',
-                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
-                                  backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                                  transform: 'scale(1.1)',
-                                  color: '#475569'
+                                  background: 'linear-gradient(135deg, #64748B 0%, #475569 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(100, 116, 139, 0.4)',
+                                  border: '1px solid transparent',
                                 }
                               }}
                             >
@@ -1786,15 +1791,20 @@ export default function AccountPage() {
                               size="small"
                               onClick={() => handleEditClick(professor)}
                               sx={{
-                                width: 34,
-                                height: 34,
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                                border: '1px solid #bfdbfe',
                                 color: '#3B82F6',
-                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
-                                  backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                                  transform: 'scale(1.1)',
-                                  color: '#2563EB'
+                                  background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                                  border: '1px solid transparent',
                                 }
                               }}
                             >
@@ -1806,15 +1816,20 @@ export default function AccountPage() {
                               size="small"
                               onClick={() => handleDeleteProfessor(professor.userId)}
                               sx={{
-                                width: 34,
-                                height: 34,
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)',
+                                border: '1px solid #fca5a5',
                                 color: '#EF4444',
-                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
-                                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                                  transform: 'scale(1.1)',
-                                  color: '#DC2626'
+                                  background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                                  border: '1px solid transparent',
                                 }
                               }}
                             >
