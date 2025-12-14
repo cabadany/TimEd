@@ -16,6 +16,7 @@ import {
   CalendarToday
 } from '@mui/icons-material';
 import { formatDateCompactPH } from '../utils/dateUtils';
+import eventEmitter, { EVENTS } from '../utils/eventEmitter';
 
 const NotificationSystem = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const NotificationSystem = () => {
     }
   };
 
-  // Check for new events periodically
+  // Check for new events periodically and listen for EVENT_CREATED
   useEffect(() => {
     fetchRecentEvents();
 
@@ -91,7 +92,16 @@ const NotificationSystem = () => {
       fetchRecentEvents();
     }, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    // Listen for EVENT_CREATED to update notifications in real-time
+    const handleEventCreated = () => {
+      fetchRecentEvents();
+    };
+    eventEmitter.on(EVENTS.EVENT_CREATED, handleEventCreated);
+
+    return () => {
+      clearInterval(interval);
+      eventEmitter.off(EVENTS.EVENT_CREATED, handleEventCreated);
+    };
   }, []);
 
   // Navigate to event detail page when clicking on a notification

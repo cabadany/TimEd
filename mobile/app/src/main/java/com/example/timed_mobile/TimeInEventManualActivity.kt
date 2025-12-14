@@ -306,8 +306,9 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                             )
                             resetButton()
                         } else {
-                            // Not timed in yet, proceed to log attendance
-                            logAttendanceToFirestore(eventId, eventName)
+                            // Not timed in yet, call backend API which handles both
+                            // Firestore write AND certificate generation
+                            callBackendAttendanceAPI(eventId, eventName ?: "Unknown Event")
                         }
                     }
                     .addOnFailureListener { e ->
@@ -329,46 +330,10 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
             }
     }
 
-    private fun logAttendanceToFirestore(eventId: String, eventName: String?) {
-        val db = FirebaseFirestore.getInstance()
-
-        // FIX: Create a timestamp string, as expected by EventLogActivity.
-        val formattedTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-
-        // FIX: Create a data map that matches the fields used by EventLogActivity.
-        val attendanceData = hashMapOf(
-            "userId" to userId,
-            "timestamp" to formattedTimestamp,
-            "hasTimedOut" to false,
-            // You can include other details; they just won't be used by the log screen
-            "firstName" to userFirstName,
-            "lastName" to userLastName,
-            "email" to userEmail,
-            "type" to "event_time_in",
-            // Indicate this was a manual code entry
-            "checkinMethod" to true
-        )
-
-        // FIX: Log to the 'attendees' sub-collection, which is where EventLogActivity reads from.
-        db.collection("events").document(eventId).collection("attendees")
-            .add(attendanceData)
-            .addOnSuccessListener {
-                // Call backend API to trigger certificate generation and email sending
-                callBackendAttendanceAPI(eventId, eventName ?: "Unknown Event")
-            }
-            .addOnFailureListener { e ->
-                UiDialogs.showErrorPopup(
-                    this@TimeInEventManualActivity,
-                    title = "Save Failed",
-                    message = "Failed to save attendance: ${e.message}"
-                )
-                resetButton()
-            }
-    }
-
     /**
-     * Call the backend API to trigger certificate generation and email sending.
-     * This mirrors the QR scan flow in TimeInEventActivity.
+     * Call the backend API to mark attendance and trigger certificate generation.
+     * The backend handles both the Firestore write AND certificate generation,
+     * avoiding the race condition where local write happens before backend can generate certificate.
      */
     private fun callBackendAttendanceAPI(eventId: String, eventName: String) {
         val apiBaseUrl = "https://timed-utd9.onrender.com/api"
@@ -405,17 +370,29 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                 }
 
                 runOnUiThread {
-                    // Show success dialog regardless of response
-                    // The attendance was already recorded in Firestore
-                    // The API call is just for certificate generation
-                    showSuccessDialog(eventName)
+                    if (responseCode == 200) {
+                        // Backend successfully marked attendance and generated certificate
+                        showSuccessDialog(eventName)
+                    } else {
+                        // Backend failed, show error
+                        UiDialogs.showErrorPopup(
+                            this@TimeInEventManualActivity,
+                            title = "Time-In Failed",
+                            message = "Failed to record attendance: $responseMessage"
+                        )
+                        resetButton()
+                    }
                 }
 
             } catch (e: Exception) {
-                // Even if API call fails, attendance was already recorded to Firestore
-                // Show success but the certificate may not be sent
+                // Network error - show error to user
                 runOnUiThread {
-                    showSuccessDialog(eventName)
+                    UiDialogs.showErrorPopup(
+                        this@TimeInEventManualActivity,
+                        title = "Network Error",
+                        message = "Failed to connect to server: ${e.message}"
+                    )
+                    resetButton()
                 }
             }
         }.start()
