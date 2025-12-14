@@ -61,15 +61,24 @@ public class AttendanceController {
     }
 
 
-@PostMapping("/{eventId}/{userId}")
-public ResponseEntity<String> markAttendance(
-        @PathVariable String eventId,
-        @PathVariable String userId) {
-    try {
-        System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
+    @PostMapping("/{eventId}/{userId}")
+    public ResponseEntity<String> markAttendance(
+            @PathVariable String eventId,
+            @PathVariable String userId,
+            @org.springframework.web.bind.annotation.RequestBody(required = false) Map<String, String> payload) {
+        try {
+            System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
 
-        String result = attendanceService.markAttendance(eventId, userId);
-        System.out.println("Attendance marked result: " + result);
+            String requestFirstName = null;
+            String requestLastName = null;
+            if (payload != null) {
+                requestFirstName = payload.get("firstName");
+                requestLastName = payload.get("lastName");
+                System.out.println("Received user details from client - firstName: " + requestFirstName + ", lastName: " + requestLastName);
+            }
+
+            String result = attendanceService.markAttendance(eventId, userId, requestFirstName, requestLastName);
+            System.out.println("Attendance marked result: " + result);
 
         // Only proceed if the user hasn't already timed in
         if (!result.contains("Already timed in")) {
@@ -90,8 +99,9 @@ public ResponseEntity<String> markAttendance(
                     DocumentSnapshot userDoc = attendeeDocs.get(0);
 
                     String email = userDoc.getString("email");
-                    String firstName = userDoc.getString("firstName");
-                    String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+                    // Use request names if available, otherwise fallback to document
+                    String firstName = (requestFirstName != null && !requestFirstName.isEmpty()) ? requestFirstName : userDoc.getString("firstName");
+                    String lastName = (requestLastName != null && !requestLastName.isEmpty()) ? requestLastName : (userDoc.contains("lastName") ? userDoc.getString("lastName") : "");
 
                     if (email == null || email.isEmpty()) {
                         System.err.println("Email is missing for userId: " + userId);
@@ -108,7 +118,7 @@ public ResponseEntity<String> markAttendance(
                     userAttendance.put("timeIn", userDoc.getString("timestamp"));
                     userAttendance.put("timeOut", "");
 
-                    System.out.println("Generating certificate for " + firstName + " " + lastName);
+                    System.out.println("Generating certificate using - FirstName: '" + firstName + "', LastName: '" + lastName + "'");
                     byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
 
                     System.out.println("Sending certificate via Firebase to " + email);

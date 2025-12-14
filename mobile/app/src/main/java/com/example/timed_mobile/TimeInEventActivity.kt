@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.net.URL
 import java.net.HttpURLConnection
+import org.json.JSONObject
 
 // import android.widget.Toast // Already imported
 // import androidx.camera.core.ImageProxy // Already imported
@@ -637,12 +638,27 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 val url = java.net.URL(attendanceUrl)
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true // Enable writing to the connection
                 connection.connectTimeout = 15000 // Increased timeout
                 connection.readTimeout = 15000 // Increased timeout
+
+                // Create JSON body with user details
+                val jsonBody = JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                }
+                
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
                 
                 Log.d(TAG, "Making HTTP POST request to: $attendanceUrl")
+                Log.d(TAG, "Request Body: $jsonBody")
+
                 
                 val responseCode = connection.responseCode
                 val responseMessage = if (responseCode == 200) {
@@ -713,19 +729,19 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     }, 2000) // Wait 2 seconds for Firestore consistency
                 } else {
                     // Success - attendance recorded and certificate email sent
-                    AlertDialog.Builder(this)
-                        .setTitle("Time-In Recorded")
-                        .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            notifyEventTutorialTimeInCompleted()
-                            val resultIntent = Intent()
-                            setResult(RESULT_OK, resultIntent)
-                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
+                    UiDialogs.showSuccessPopup(
+                        this,
+                        "Time-In Recorded",
+                        "Event Time In Successfully"
+                    ) {
+                        notifyEventTutorialTimeInCompleted()
+                        val resultIntent = Intent()
+                        setResult(RESULT_OK, resultIntent)
+                        startActivity(Intent(this, HomeActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        })
+                        finish()
+                    }
                 }
             }
             else -> {
@@ -754,12 +770,26 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 val url = java.net.URL(attendanceUrl)
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true
                 connection.connectTimeout = 15000 // Increased timeout
                 connection.readTimeout = 15000 // Increased timeout
+
+                // Create JSON body with user details
+                val jsonBody = JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                }
+
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
                 
                 Log.d(TAG, "Making RETRY HTTP POST request to: $attendanceUrl")
+                Log.d(TAG, "Request Body: $jsonBody")
                 
                 val responseCode = connection.responseCode
                 val responseMessage = if (responseCode == 200) {
@@ -1316,21 +1346,42 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.d(TAG, "Selfie upload successful. Getting download URL.")
                 selfieRef.downloadUrl.addOnSuccessListener { downloadUrl ->
                     Log.d(TAG, "Download URL: $downloadUrl")
-                    logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp) // Pass timestamp if needed by log function
+                    if (!isFinishing && !isDestroyed) {
+                         logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp)
+                    }
                 }.addOnFailureListener { e ->
                     Log.e(TAG, "Failed to get download URL", e)
-                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to get download URL: ${e.message}")
-                    scanButton.isEnabled = true; shutterButton.isEnabled = true
+                    if (!isFinishing && !isDestroyed) {
+                        UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to get download URL: ${e.message}")
+                        scanButton.isEnabled = true; shutterButton.isEnabled = true
+                    }
                 }
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Selfie upload failed", e)
-                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Selfie upload failed: ${e.message}")
-                scanButton.isEnabled = true; shutterButton.isEnabled = true
+                if (!isFinishing && !isDestroyed) {
+                    var errorMessage = "Selfie upload failed: ${e.message}"
+                    
+                    // Check for key terms in the message or string representation (covers 412 and service account issues)
+                    val fullError = e.toString() + (e.message ?: "")
+                    
+                    if (fullError.contains("412") || fullError.contains("service account", ignoreCase = true)) {
+                        errorMessage = "Server configuration error (412): Service account missing permissions. Please contact the developer."
+                    } else if (e is com.google.firebase.storage.StorageException) {
+                        if (e.errorCode == com.google.firebase.storage.StorageException.ERROR_NOT_AUTHORIZED) {
+                             errorMessage = "Permission denied. You may not be authorized to upload selfies."
+                        }
+                    }
+                    
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), errorMessage)
+                    scanButton.isEnabled = true; shutterButton.isEnabled = true
+                }
             }
             .addOnProgressListener { snapshot ->
-                val progress = (100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount
-                selfieReminder.text = "Uploading selfie: ${progress.toInt()}%"
+                if (!isFinishing && !isDestroyed) {
+                    val progress = (100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount
+                    selfieReminder.text = "Uploading selfie: ${progress.toInt()}%"
+                }
             }
     }
 

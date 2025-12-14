@@ -31,7 +31,7 @@ public class AttendanceService {
         // Da, we initialize FirebaseApp before using Firestore.
     }
 
-    public String markAttendance(String eventId, String userId) {
+    public String markAttendance(String eventId, String userId, String firstName, String lastName) {
         try {
             // Check if user has already timed in for this event
             CollectionReference attendeesRef = firestore.collection("events")
@@ -66,7 +66,9 @@ public class AttendanceService {
                 return "User not found";
             }
 
-            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+            // Use provided names if available, otherwise fallback to Firestore
+            String finalFirstName = (firstName != null && !firstName.isEmpty()) ? firstName : userDoc.getString("firstName");
+            String finalLastName = (lastName != null && !lastName.isEmpty()) ? lastName : (userDoc.contains("lastName") ? userDoc.getString("lastName") : "");
             
             // Create attendance record with Philippines timezone
             ZonedDateTime philippinesTime = Instant.now().atZone(ZoneId.of("Asia/Manila"));
@@ -79,8 +81,8 @@ public class AttendanceService {
             attendanceData.put("userId", userId);
             attendanceData.put("eventId", eventId);
             attendanceData.put("eventName", eventDoc.getString("eventName"));
-            attendanceData.put("firstName", userDoc.getString("firstName"));
-            attendanceData.put("lastName", lastName);
+            attendanceData.put("firstName", finalFirstName);
+            attendanceData.put("lastName", finalLastName);
             attendanceData.put("email", userDoc.getString("email"));
             attendanceData.put("timestamp", timestamp);
             attendanceData.put("type", "event_time_in");
@@ -92,7 +94,7 @@ public class AttendanceService {
             System.out.println("[DEBUG] QR Code Time-in - Setting checkinMethod to: false for user: " + userId);
 
             // Add the attendance record to the event's attendees subcollection
-            attendeesRef.document(userId).set(attendanceData);
+            attendeesRef.document(userId).set(attendanceData).get();
 
             return "Attendance marked successfully";
         } catch (Exception e) {
