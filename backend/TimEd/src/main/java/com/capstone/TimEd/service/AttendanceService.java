@@ -492,10 +492,12 @@ public class AttendanceService {
                 long maxTime = 0;
                 
                 String searchPattern = "selfie_event_" + eventId;
+                String manualSearchPattern = "manual_selfie_" + eventId;
                 boolean foundMatch = false;
 
                 for (Blob blob : blobs) {
-                    if (blob.getName().contains(searchPattern)) {
+                    String blobName = blob.getName();
+                    if (blobName.contains(searchPattern) || blobName.contains(manualSearchPattern)) {
                         foundMatch = true;
                         if (blob.getUpdateTime() > maxTime) {
                             maxTime = blob.getUpdateTime();
