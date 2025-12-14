@@ -79,11 +79,18 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         userFirstName = intent.getStringExtra("firstName")
         userLastName = intent.getStringExtra("lastName")
 
+        // Fallback to SharedPreferences for any missing user data
+        val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
         if (userId.isNullOrEmpty()) {
-            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
             userId = prefs.getString("userId", null)
+        }
+        if (userEmail.isNullOrEmpty()) {
             userEmail = prefs.getString("email", null)
+        }
+        if (userFirstName.isNullOrEmpty()) {
             userFirstName = prefs.getString("firstName", null)
+        }
+        if (userLastName.isNullOrEmpty()) {
             userLastName = prefs.getString("lastName", null)
         }
 
@@ -351,9 +358,11 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                 connection.readTimeout = 15000
 
                 // Create JSON body with user details for certificate generation
+                // Include checkinMethod to indicate this is a manual entry
                 val jsonBody = org.json.JSONObject().apply {
                     put("firstName", userFirstName ?: "")
                     put("lastName", userLastName ?: "")
+                    put("checkinMethod", "true") // Indicates manual entry (true = manual, false = QR)
                 }
 
                 // Write JSON to output stream
