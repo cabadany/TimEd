@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../contexts/ThemeContext';
@@ -589,59 +589,59 @@ export default function Attendance() {
   };
 
   // Fetch event, department, and attendees (with profilePictureUrl)
-  useEffect(() => {
-    setIsAdmin(true);
-    const fetchEventData = async () => {
-      try {
-        setLoading(true);
-        // Fetch all events to find the specific one
-        const eventsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_EVENTS));
-        const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
-        if (!foundEvent) {
-          throw new Error('Event not found');
-        }
-        setEvent(foundEvent);
-        // Fetch department details
-        if (foundEvent.departmentId) {
-          const departmentsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
-          const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
-          setDepartment(foundDepartment);
-        }
-        // Fetch attendees
-        const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
-        let attendeesData = attendeesResponse.data;
-
-        // Optimized: Fetch all users once and create lookup map (instead of N API calls)
-        const usersResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
-        const usersMap = new Map(usersResponse.data.map(u => [u.userId, u]));
-
-        // Map attendees to include profile data from users lookup
-        const attendeesWithProfile = attendeesData.map((att) => {
-          if (att.profilePictureUrl) return att; // Already present
-          const user = usersMap.get(att.userId);
-          return {
-            ...att,
-            profilePictureUrl: user?.profilePictureUrl || null,
-            firstName: att.firstName || user?.firstName || '',
-            lastName: att.lastName || user?.lastName || '',
-            email: att.email || user?.email || '',
-            department: att.department || user?.department?.name || 'N/A',
-            checkinMethod: att.checkinMethod === true || att.checkinMethod === 'true' || (att.checkinMethod === undefined && att.manualEntry === true),
-          };
-        });
-        setAttendees(attendeesWithProfile);
-        setFilteredAttendees(attendeesWithProfile);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(error.message);
-        setLoading(false);
+  const fetchEventData = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      setLoading(true);
+      // Fetch all events to find the specific one
+      const eventsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_EVENTS));
+      const foundEvent = eventsResponse.data.find(e => e.eventId === eventId);
+      if (!foundEvent) {
+        throw new Error('Event not found');
       }
-    };
-    if (eventId) {
-      fetchEventData();
+      setEvent(foundEvent);
+      // Fetch department details
+      if (foundEvent.departmentId) {
+        const departmentsResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
+        const foundDepartment = departmentsResponse.data.find(d => d.departmentId === foundEvent.departmentId);
+        setDepartment(foundDepartment);
+      }
+      // Fetch attendees
+      const attendeesResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ATTENDEES(eventId)));
+      let attendeesData = attendeesResponse.data;
+
+      // Optimized: Fetch all users once and create lookup map (instead of N API calls)
+      const usersResponse = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
+      const usersMap = new Map(usersResponse.data.map(u => [u.userId, u]));
+
+      // Map attendees to include profile data from users lookup
+      const attendeesWithProfile = attendeesData.map((att) => {
+        if (att.profilePictureUrl) return att; // Already present
+        const user = usersMap.get(att.userId);
+        return {
+          ...att,
+          profilePictureUrl: user?.profilePictureUrl || null,
+          firstName: att.firstName || user?.firstName || '',
+          lastName: att.lastName || user?.lastName || '',
+          email: att.email || user?.email || '',
+          department: att.department || user?.department?.name || 'N/A',
+          checkinMethod: att.checkinMethod === true || att.checkinMethod === 'true' || (att.checkinMethod === undefined && att.manualEntry === true),
+        };
+      });
+      setAttendees(attendeesWithProfile);
+      setFilteredAttendees(attendeesWithProfile);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError(error.message);
+      setLoading(false);
     }
   }, [eventId]);
+
+  useEffect(() => {
+    setIsAdmin(true);
+    fetchEventData();
+  }, [fetchEventData]);
 
   // Handle search input change for main table
   const handleSearchChange = (event) => {

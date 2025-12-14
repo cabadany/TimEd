@@ -353,7 +353,8 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         db.collection("events").document(eventId).collection("attendees")
             .add(attendanceData)
             .addOnSuccessListener {
-                showSuccessDialog(eventName ?: "Unknown Event")
+                // Call backend API to trigger certificate generation and email sending
+                callBackendAttendanceAPI(eventId, eventName ?: "Unknown Event")
             }
             .addOnFailureListener { e ->
                 UiDialogs.showErrorPopup(
@@ -363,6 +364,61 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                 )
                 resetButton()
             }
+    }
+
+    /**
+     * Call the backend API to trigger certificate generation and email sending.
+     * This mirrors the QR scan flow in TimeInEventActivity.
+     */
+    private fun callBackendAttendanceAPI(eventId: String, eventName: String) {
+        val apiBaseUrl = "https://timed-utd9.onrender.com/api"
+        val attendanceUrl = "$apiBaseUrl/attendance/$eventId/$userId"
+
+        Thread {
+            try {
+                val url = java.net.URL(attendanceUrl)
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+
+                // Create JSON body with user details for certificate generation
+                val jsonBody = org.json.JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                }
+
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
+
+                val responseCode = connection.responseCode
+                val responseMessage = if (responseCode == 200) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP Error: $responseCode"
+                }
+
+                runOnUiThread {
+                    // Show success dialog regardless of response
+                    // The attendance was already recorded in Firestore
+                    // The API call is just for certificate generation
+                    showSuccessDialog(eventName)
+                }
+
+            } catch (e: Exception) {
+                // Even if API call fails, attendance was already recorded to Firestore
+                // Show success but the certificate may not be sent
+                runOnUiThread {
+                    showSuccessDialog(eventName)
+                }
+            }
+        }.start()
     }
 
     private fun resetButton() {
