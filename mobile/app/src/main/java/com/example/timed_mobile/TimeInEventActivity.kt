@@ -72,6 +72,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
     private var isScanningEnabled = false
     private var isQrScanned = false
     private var isFrontCamera = false
+    private var isManualEntry = false // Flag for manual code entry
 
     private var userId: String? = null
     private var userEmail: String? = null
@@ -123,6 +124,8 @@ class TimeInEventActivity : WifiSecurityActivity() {
         setContentView(R.layout.time_in_event_page)
 
         isTutorialSampleEvent = intent.getBooleanExtra("isTutorialSampleEvent", false)
+        isManualEntry = intent.getBooleanExtra("isManualEntry", false) // Check for manual entry flag
+        val manualEventId = intent.getStringExtra("manualEventId") // Check for manual event ID
 
         // Initialize user data first
         userId = intent.getStringExtra("userId")
@@ -131,7 +134,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         userLastName = intent.getStringExtra("lastName")
 
         if (isTutorialSampleEvent) {
-            // Simulate a successful time-in for the sample event and return immediately.
+             // Simulate a successful time-in for the sample event and return immediately.
             Handler(Looper.getMainLooper()).postDelayed({
                 notifyEventTutorialTimeInCompleted()
                 Toast.makeText(this, "Sample event time-in simulated.", Toast.LENGTH_SHORT).show()
@@ -158,6 +161,17 @@ class TimeInEventActivity : WifiSecurityActivity() {
         ensureFirebaseAuthUser {
             // Initialize the rest of the activity after authentication
             initializeActivity()
+            
+            // If manual event ID is passed, process it immediately
+            if (!manualEventId.isNullOrEmpty()) {
+                Log.d(TAG, "Manual Event ID detected: $manualEventId")
+                // Delay slightly to allow UI initialization
+                Handler(Looper.getMainLooper()).postDelayed({
+                    isQrScanned = false
+                    isScanningEnabled = false // Disable scanner as we have the code
+                    handleQrCodeScannedUpdated(manualEventId)
+                }, 500)
+            }
         }
     }
 
@@ -207,10 +221,21 @@ class TimeInEventActivity : WifiSecurityActivity() {
         if (allPermissionsGranted()) {
             setupCameraPreview()
             startCameraPreviewOnly()
-            scanButton.text = getString(R.string.button_start_scanning)
-            selfieReminder.text = getString(R.string.timein_event_qr_scan_instruction)
-            scannerOverlay.visibility = View.GONE
-            shutterButton.visibility = View.GONE
+            
+            if (isManualEntry) {
+                 // For manual entry, we essentially skip the "Scanning" state ui
+                 scanButton.text = getString(R.string.button_take_selfie) // Prepare for selfie
+                 selfieReminder.text = "Event verified! Please take a selfie."
+                 scannerOverlay.visibility = View.GONE
+                 shutterButton.visibility = View.VISIBLE
+                 // startCamera() removed - duplicate/unresolved. startCameraPreviewOnly() called above.
+                 // Let's rely on handleQrCodeScannedUpdated to switch the state properly
+            } else {
+                scanButton.text = getString(R.string.button_start_scanning)
+                selfieReminder.text = getString(R.string.timein_event_qr_scan_instruction)
+                scannerOverlay.visibility = View.GONE
+                shutterButton.visibility = View.GONE
+            }
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
@@ -572,10 +597,10 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     Log.d(TAG, "- FirstName: $userFirstName")
                     Log.d(TAG, "- LastName: $userLastName")
                     
-                    // Update local variables with backend data (in case they differ)
-                    this.userEmail = userEmail
-                    this.userFirstName = userFirstName
-                    this.userLastName = userLastName
+                    // Update local variables with backend data only if valid (not null AND not empty), otherwise keep existing
+                    this.userEmail = if (!userEmail.isNullOrEmpty()) userEmail else this.userEmail
+                    this.userFirstName = if (!userFirstName.isNullOrEmpty()) userFirstName else this.userFirstName
+                    this.userLastName = if (!userLastName.isNullOrEmpty()) userLastName else this.userLastName
                     
                     // Now call the backend API
                     callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
@@ -900,9 +925,8 @@ class TimeInEventActivity : WifiSecurityActivity() {
             "timestamp" to FieldValue.serverTimestamp(),
             "selfieUrl" to selfieUrl,
             "type" to "event_time_in",
-            "hasTimedOut" to false,
-            // Indicate this was via QR/selfie (false = QR/selfie)
-            "checkinMethod" to false
+            "checkinMethod" to isManualEntry, // Use the flag (true = manual, false = QR)
+            "hasTimedOut" to false
         )
 
         val db = FirebaseFirestore.getInstance()
@@ -1335,11 +1359,33 @@ class TimeInEventActivity : WifiSecurityActivity() {
             return
         }
         
-        // Use Firebase Auth UID for storage path (for security rules) but keep metadata about app userId
-        val firebaseUid = currentUser.uid
-        val selfiePath = "event_selfies/$firebaseUid/selfie_event_${currentScannedEventId}_$timestamp.jpg"
+        // Ensure we have the user profile (FirstName/LastName) for the path
+        if (userLastName.isNullOrEmpty()) {
+            FirebaseFirestore.getInstance().collection("users").document(currentUserId)
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        userFirstName = doc.getString("firstName")
+                        userLastName = doc.getString("lastName")
+                    }
+                    // Proceed with upload even if fetch fails or is partial (will use defaults)
+                    performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+                }
+                .addOnFailureListener {
+                    // Start upload anyway with defaults
+                    performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+                }
+        } else {
+            performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+        }
+    }
+
+    private fun performSelfieUpload(photoUri: Uri, currentUserId: String, storageRef: com.google.firebase.storage.StorageReference, timestamp: String) {
+        // Use App User ID for storage path
+        // Path: /event_selfies/{userId}/selfie_event_{eventId}.jpg
+        val selfiePath = "event_selfies/$currentUserId/selfie_event_$currentScannedEventId.jpg"
         val selfieRef = storageRef.child(selfiePath)
-        Log.d(TAG, "Uploading selfie to: $selfiePath (Firebase UID: $firebaseUid, App User ID: $currentUserId)")
+        Log.d(TAG, "Uploading selfie to: $selfiePath")
 
         selfieRef.putFile(photoUri)
             .addOnSuccessListener {
