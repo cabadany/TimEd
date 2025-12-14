@@ -77,6 +77,7 @@ import NotificationSystem from '../components/NotificationSystem';
 import CertificateEditor from '../components/CertificateEditor';
 import { API_BASE_URL, getApiUrl, API_ENDPOINTS } from '../utils/api';
 import { formatDatePH, createLocalDateISO } from '../utils/dateUtils';
+import eventEmitter, { EVENTS } from '../utils/eventEmitter';
 
 // Default certificate template
 const defaultCertificate = {
@@ -321,7 +322,8 @@ export default function EventPage() {
     eventName: false,
     departmentId: false,
     date: false,
-    duration: false
+    duration: false,
+    venue: false
   });
 
   // State for events data
@@ -628,7 +630,8 @@ export default function EventPage() {
       eventName: !eventName || eventName.trim() === '',
       departmentId: !departmentId,
       date: !date,
-      duration: !duration || duration === '0:00:00'
+      duration: !duration || duration === '0:00:00',
+      venue: !venue || venue.trim() === ''
     };
 
     setFormErrors(errors);
@@ -640,6 +643,7 @@ export default function EventPage() {
       if (errors.departmentId) missingFields.push('Department');
       if (errors.date) missingFields.push('Date & Time');
       if (errors.duration) missingFields.push('Duration');
+      if (errors.venue) missingFields.push('Venue');
 
       showSnackbar(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
       return;
@@ -729,6 +733,10 @@ export default function EventPage() {
 
       // Refresh events list
       fetchEvents();
+
+      // Emit event for real-time notification updates
+      eventEmitter.emit(EVENTS.EVENT_CREATED, { eventId: newEventId, eventName });
+
       showSnackbar('Event created successfully', 'success');
     } catch (error) {
       console.error('Error creating event:', error);
@@ -950,7 +958,8 @@ export default function EventPage() {
       eventName: false,
       departmentId: false,
       date: false,
-      duration: false
+      duration: false,
+      venue: false
     });
 
     // Clear draft
@@ -2073,7 +2082,7 @@ export default function EventPage() {
 
             <Box sx={{ gridColumn: "span 2" }}>
               <Typography variant="body2" fontWeight="500" color="#1E293B" sx={{ mb: 1 }}>
-                Venue
+                Venue <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <TextField
                 fullWidth
@@ -2081,18 +2090,20 @@ export default function EventPage() {
                 value={venue}
                 onChange={(e) => setVenue(e.target.value)}
                 placeholder="Enter event Venue..."
+                error={formErrors.venue}
+                helperText={formErrors.venue ? "Venue is required" : ""}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '4px',
                     fontSize: '14px',
                     '& fieldset': {
-                      borderColor: '#E2E8F0',
+                      borderColor: formErrors.venue ? '#EF4444' : '#E2E8F0',
                     },
                     '&:hover fieldset': {
-                      borderColor: '#CBD5E1',
+                      borderColor: formErrors.venue ? '#EF4444' : '#CBD5E1',
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#0288d1',
+                      borderColor: formErrors.venue ? '#EF4444' : '#0288d1',
                     },
                   },
                 }}
