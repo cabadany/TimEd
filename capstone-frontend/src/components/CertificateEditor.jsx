@@ -1277,104 +1277,216 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             }
           }}>
             {activeTab === 0 && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Title"
-                    value={certificate.title}
-                    onChange={(e) => handleTextChange('title', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
-                        '& fieldset': {
-                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+              <Box>
+                {/* Title & Header Section */}
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Title & Header
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Title"
+                      value={certificate.title}
+                      onChange={(e) => handleTextChange('title', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                        '&:hover fieldset': {
-                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                        '&.Mui-focused fieldset': {
-                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Subtitle"
+                      value={certificate.subtitle}
+                      onChange={(e) => handleTextChange('subtitle', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: darkMode ? '#aaaaaa' : '#64748B',
-                        '&.Mui-focused': {
-                          color: darkMode ? '#90caf9' : '#0288d1',
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                      },
-                      '& input': {
-                        color: darkMode ? '#f5f5f5' : 'inherit',
-                      },
-                    }}
-                  />
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Subtitle"
-                    value={certificate.subtitle}
-                    onChange={(e) => handleTextChange('subtitle', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
+
+                {/* Recipient Information Section */}
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Recipient Information
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Recipient Text"
+                      value={certificate.recipientText}
+                      onChange={(e) => handleTextChange('recipientText', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      helperText="Text displayed above recipient name"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                        '& .MuiFormHelperText-root': { color: darkMode ? '#777777' : '#94a3b8' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      value={certificate.description}
+                      onChange={(e) => handleTextChange('description', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      multiline
+                      rows={3}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& textarea': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Recipient Text"
-                    value={certificate.recipientText}
-                    onChange={(e) => handleTextChange('recipientText', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
+
+                {/* Event Details Section */}
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Event Details
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Event Name"
+                      value={certificate.eventName}
+                      onChange={(e) => handleTextChange('eventName', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Event Date"
+                      value={certificate.eventDate}
+                      onChange={(e) => handleTextChange('eventDate', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Certificate Number"
+                      value={certificate.certificateNumber}
+                      onChange={(e) => handleTextChange('certificateNumber', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      helperText="This will be replaced with an actual certificate number"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                        '& .MuiFormHelperText-root': { color: darkMode ? '#777777' : '#94a3b8' },
+                      }}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    value={certificate.description}
-                    onChange={(e) => handleTextChange('description', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    multiline
-                    rows={3}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Event Name"
-                    value={certificate.eventName}
-                    onChange={(e) => handleTextChange('eventName', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Event Date"
-                    value={certificate.eventDate}
-                    onChange={(e) => handleTextChange('eventDate', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Certificate Number"
-                    value={certificate.certificateNumber}
-                    onChange={(e) => handleTextChange('certificateNumber', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    helperText="This will be replaced with an actual certificate number"
-                  />
-                </Grid>
-              </Grid>
+              </Box>
             )}
 
             {activeTab === 1 && (
@@ -1658,8 +1770,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             {activeTab === 2 && (
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Background Image
                   </Typography>
@@ -1729,8 +1846,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Logo
                   </Typography>
@@ -1890,7 +2012,16 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>Watermark</Typography>
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Watermark
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                       variant="outlined"
@@ -1927,8 +2058,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     QR Code Settings
                   </Typography>
