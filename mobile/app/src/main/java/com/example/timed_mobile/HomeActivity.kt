@@ -23,6 +23,7 @@ import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 
@@ -116,10 +117,15 @@ class HomeActivity : WifiSecurityActivity() {
     private var activeTutorialTotalSteps: Int = TOTAL_QUICK_TOUR_STEPS
 
 
+    private var startAttendanceTutorialLauncher: ActivityResultLauncher<Intent>? = null
+
     // New state variables for managing interactive tutorials
     private var isInteractiveTutorialActive: Boolean = false
     private var currentInteractiveTutorialName: String? = null
     private var expectedInteractiveTutorialAction: String? = null
+    
+    // Runnable for auto-hiding the schedule tooltip
+    private var hideScheduleRunnable: Runnable? = null
 
     private val timeInActivityTutorialLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -299,6 +305,85 @@ class HomeActivity : WifiSecurityActivity() {
         drawerLayout.setScrimColor(0x44000000) // Semi-transparent black overlay
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
+
+        // Initialize Schedule Views
+        val scheduleContainer = findViewById<LinearLayout>(R.id.schedule_container)
+        val btnViewSchedule = findViewById<ImageView>(R.id.btn_view_schedule)
+        val tvTimeIn = findViewById<TextView>(R.id.tv_schedule_time_in)
+        val tvBreak = findViewById<TextView>(R.id.tv_schedule_break)
+        val tvTimeOut = findViewById<TextView>(R.id.tv_schedule_time_out)
+
+        // Toggle Logic with Animation
+        btnViewSchedule.setOnClickListener {
+            // Haptic feedback for tactile response
+            btnViewSchedule.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+
+            // Always cancel any pending auto-hide to prevent phantom closures
+            hideScheduleRunnable?.let { scheduleContainer.removeCallbacks(it) }
+
+            if (scheduleContainer.visibility == View.VISIBLE && scheduleContainer.alpha == 1f) {
+                // Hide with animation
+                scheduleContainer.animate()
+                    .alpha(0f)
+                    .translationY(-20f)
+                    .setDuration(200)
+                    .withEndAction { scheduleContainer.visibility = View.GONE }
+                    .start()
+                
+                // Rotate icon back
+                btnViewSchedule.animate().rotation(0f).setDuration(200).start()
+            } else {
+                // Reset state for showing
+                scheduleContainer.visibility = View.VISIBLE
+                scheduleContainer.alpha = 0f
+                scheduleContainer.translationY = -20f
+                
+                // Show with bouncier animation
+                scheduleContainer.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+                    .start()
+
+                // Rotate icon
+                btnViewSchedule.animate().rotation(360f).setDuration(500).start()
+                
+                // Define the auto-hide task
+                hideScheduleRunnable = Runnable {
+                    if (scheduleContainer.visibility == View.VISIBLE) {
+                         scheduleContainer.animate()
+                            .alpha(0f)
+                            .translationY(-20f)
+                            .setDuration(300)
+                            .withEndAction { scheduleContainer.visibility = View.GONE }
+                            .start()
+                         // Reset icon rotation
+                         btnViewSchedule.animate().rotation(0f).setDuration(300).start()
+                    }
+                }
+                
+                // Auto-hide after 4 seconds
+                scheduleContainer.postDelayed(hideScheduleRunnable, 4000)
+            }
+        }
+
+        TimeSettingsManager.setOnTimeWindowChangeListener {
+            val startTime = TimeSettingsManager.getStartTime()
+            val endTime = TimeSettingsManager.getEndTime()
+            val breakWindow = TimeSettingsManager.getBreakWindow()
+            
+            // Use HTML for bold labels vs normal values, uppercase for premium feel
+            val timeInText = "<b>TIME IN:</b> $startTime"
+            val breakText = "<b>BREAK:</b> $breakWindow"
+            val timeOutText = "<b>TIME OUT:</b> $endTime"
+            
+            runOnUiThread {
+                tvTimeIn.text = android.text.Html.fromHtml(timeInText, android.text.Html.FROM_HTML_MODE_LEGACY)
+                tvBreak.text = android.text.Html.fromHtml(breakText, android.text.Html.FROM_HTML_MODE_LEGACY)
+                tvTimeOut.text = android.text.Html.fromHtml(timeOutText, android.text.Html.FROM_HTML_MODE_LEGACY)
+            }
+        }
 
         val headerView: View? = navigationView.getHeaderView(0)
         if (headerView != null) {
@@ -2115,6 +2200,19 @@ class HomeActivity : WifiSecurityActivity() {
 
         closeButton.setOnClickListener {
             isProceedingToNextStepOrCompleting = false
+            // Skip Logic: Mark as complete
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            if (activeTutorialCompletionKey.isNotEmpty()) {
+                tutorialPrefs.edit()
+                    .putBoolean(activeTutorialCompletionKey, true)
+                    .putInt(activeTutorialStepKey, activeTutorialTotalSteps) // Also set step to max
+                    .apply()
+                
+                Toast.makeText(this, "Tutorial skipped and marked as complete.", Toast.LENGTH_SHORT).show()
+                updateNavHeaderTutorialProgress() // Should show 100% or hide
+                hideNavHeaderTutorialProgressAfterCompletion() // Hide the bar
+            }
+
             val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
@@ -2319,18 +2417,20 @@ class HomeActivity : WifiSecurityActivity() {
     private fun syncEventTutorialStateFromPrefs() {
         val eventGuideActive = EventTutorialState.isActive(this)
         if (eventGuideActive) {
-            isInteractiveTutorialActive = true
+            // Refactored for Passive Flow:
+            // Ensure we are in passive mode even if 'active' in prefs (which now just means 'in progress')
+            isInteractiveTutorialActive = false 
             currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
+            
+            // Set tracking keys so progress bar works
             activeTutorialCompletionKey = KEY_EVENT_TUTORIAL_COMPLETED
             activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
             activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
-            setEventTutorialExpectedAction(EventTutorialState.getExpectedAction(this))
-            updateNavHeaderTutorialProgress()
-
-            when (expectedInteractiveTutorialAction) {
-                ACTION_EVENT_SELECT_EVENT -> tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
-                ACTION_EVENT_TIME_IN -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckInStep() }
-                ACTION_EVENT_TIME_OUT -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckOutStep() }
+            
+            // Allow startEventWorkflowTutorial to handle the step logic based on saved step index
+            // We use 'post' to ensure layout is ready if called from onCreate->onResume flow
+            tutorialProgressOnRightNavHeader?.post { 
+                startEventWorkflowTutorial(resetProgress = false)
             }
         } else if (currentInteractiveTutorialName == TUTORIAL_NAME_EVENT) {
             isInteractiveTutorialActive = false
@@ -2368,9 +2468,9 @@ class HomeActivity : WifiSecurityActivity() {
         activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
 
-        isInteractiveTutorialActive = true
+        isInteractiveTutorialActive = false
         currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
-        markEventTutorialActive(true)
+        markEventTutorialActive(true) // Set to true so we know the tutorial is 'In Progress' for resumption
         setEventTutorialExpectedAction(null)
         closeTutorialCalendarSheetIfOpen()
 
@@ -2448,17 +2548,22 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(calendarButton)
 
         showCustomTutorialDialog(
-            "Step 1/4: Open Calendar. Tap Continue to open the Event Calendar. You'll pick the event from the list or use the QR code on-site.",
+            "Step 1/4: Open Calendar. This button opens the Event Calendar. You'll pick the event from the list or use the QR code on-site.",
             calendarButton,
             1,
             TOTAL_EVENT_TUTORIAL_STEPS
         ) {
+             // Removing auto-navigation to keep it purely passive/informational as "Next" usually implies staying in flow unless strictly needed.
+             // However, to show the next step (Event Selection), we sort of need the calendar/list presumably?
+             // Actually, the next step 'showEventGuideSelectEventStep' highlights the 'recycler_events' which is on the HOME screen.
+             // So we DON'T need to open the calendar sheet necessarily. The list is on home.
+             // So we just proceed.
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
             completeEventGuideStep(1)
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
-            openCalendarForEventGuide()
+            // setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT) // Removed
+            showEventGuideSelectEventStep()
         }
     }
 
@@ -2476,7 +2581,7 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(eventList)
 
         showCustomTutorialDialog(
-            "Step 2/4: Pick the event. We'll open the first available event so you can see check-in. You can switch to the correct one in the list or by scanning its QR.",
+            "Step 2/4: Pick the event. Your events appear in this list. You can tap on any event to view details, or use the QR scanner.",
             eventList,
             2,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2484,7 +2589,8 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openFirstEventForEventGuide()
+            // openFirstEventForEventGuide() // Removed auto-open. Just go to next step instructions.
+            showEventGuideCheckInStep()
         }
     }
 
@@ -2510,7 +2616,7 @@ class HomeActivity : WifiSecurityActivity() {
             ?: "Step 3/4: Time-In. Scan the event QR or use Manual Code, then take the selfie when prompted. Stay until you see the success message. Hit Continue to reopen the event if needed."
 
         showCustomTutorialDialog(
-            message,
+            "Step 3/4: Time-In. When viewing an event, you will use the 'Time-In' option to log your attendance. You'll need to satisfy any requirements like location or selfie.",
             anchorView,
             3,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2518,19 +2624,8 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            if (isSampleEvent) {
-                completeEventGuideStep(3)
-                setEventTutorialExpectedAction(ACTION_EVENT_TIME_OUT)
-                val intent = Intent(this, TimeInEventActivity::class.java).apply {
-                    putExtra("userId", userId)
-                    putExtra("email", userEmail)
-                    putExtra("firstName", userFirstName)
-                    putExtra("isTutorialSampleEvent", true)
-                }
-                startActivity(intent)
-            } else {
-                openStoredEventForEventGuide()
-            }
+            // Proceed to next step without actions
+            showEventGuideCheckOutStep()
         }
     }
 
@@ -2544,15 +2639,7 @@ class HomeActivity : WifiSecurityActivity() {
             ); handleTutorialCancellation(); return
         }
 
-        setEventTutorialExpectedAction(ACTION_EVENT_TIME_OUT)
-        pulseView(anchorView)
-
-        val storedEvent = EventTutorialState.readSelectedEvent(this)
-        val message = storedEvent?.let {
-            val safeTitle = safeEventTitle(it)
-            "Step 4/4: Time-Out. When \"$safeTitle\" ends, reopen it and tap Time-Out. Need me to bring it back up? Press Continue."
-        }
-            ?: "Step 4/4: Time-Out. After the event, reopen its details and tap Time-Out. Want me to reopen it? Press Continue."
+        val message = "Step 4/4: Time-Out. After the event ends, remember to go back to the event details and tap 'Time-Out' to complete your attendance log."
 
         showCustomTutorialDialog(
             message,
@@ -2563,7 +2650,22 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openStoredEventForEventGuide()
+            // Tutorial finish
+             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit()
+                .putInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, TOTAL_EVENT_TUTORIAL_STEPS)
+                .putBoolean(KEY_EVENT_TUTORIAL_COMPLETED, true)
+                .apply()
+            updateNavHeaderTutorialProgress() // Show 100%
+
+            Toast.makeText(
+                this@HomeActivity,
+                "Event Check-In Guide Completed! 🎉",
+                Toast.LENGTH_SHORT
+            ).show()
+            
+            // isInteractiveTutorialActive = false // Already false
+            hideNavHeaderTutorialProgressAfterCompletion()
         }
     }
 
@@ -2574,7 +2676,7 @@ class HomeActivity : WifiSecurityActivity() {
         activeTutorialStepKey = KEY_ATTENDANCE_GUIDE_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_ATTENDANCE_TUTORIAL_STEPS
 
-        isInteractiveTutorialActive = true
+        isInteractiveTutorialActive = false
         currentInteractiveTutorialName = TUTORIAL_NAME_ATTENDANCE
 
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
@@ -2637,7 +2739,7 @@ class HomeActivity : WifiSecurityActivity() {
         }
     }
 
-    private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Interactive)
+    private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Passive)
         val timeInButton = findViewById<View>(R.id.btntime_in)
         if (timeInButton == null) {
             Log.e(
@@ -2646,29 +2748,20 @@ class HomeActivity : WifiSecurityActivity() {
             ); handleTutorialCancellation(); return
         }
 
-        expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN
+        // expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN // Removed for passive
         Log.d(
             TAG,
-            "Attendance Tutorial: Expecting user to click Time-In button (Instruction for step 1)."
+            "Attendance Tutorial: Showing Time-In button instruction (Step 1)."
         )
         // Nav header progress already updated by startAttendanceWorkflowTutorial to reflect 0/4 (or current saved step)
 
         showCustomTutorialDialog(
-            "This guide focuses on attendance. First, let's Time-In. Please tap the 'Time-In' button now.",
+            "This guide focuses on attendance. First, you utilize this 'Time-In' button for your daily attendance. Tap Next to continue.",
             timeInButton,
             1,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS // currentStepToShow is 1 (instruction for step 1)
         ) {
-            // This onNext is for the tutorial dialog's "Next" button.
-            // For interactive step, we just hide overlay to allow user to click the actual UI element.
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Log.d(
-                TAG,
-                "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button."
-            )
-            // Actual progress update for step 1 happens in timeInActivityTutorialLauncher
+            showEventCalendarTutorialStep()
         }
     }
 
@@ -2732,16 +2825,6 @@ class HomeActivity : WifiSecurityActivity() {
             4,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
         ) {
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Toast.makeText(this, "Click Time-Out button now.", Toast.LENGTH_SHORT).show()
-
-            // TODO: Click Time-Out button now.
-            // For now, to simulate progress for testing and move to next instruction:
-            // This would be removed once Time-Out is fully interactive.
-            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
-            // updateNavHeaderTutorialProgress()
             showStatusSpinnerTutorialStep_New() // Continue tutorial flow
         }
     }
@@ -2762,22 +2845,12 @@ class HomeActivity : WifiSecurityActivity() {
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_SELECT_STATUS
 
         showCustomTutorialDialog(
-            "You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)",
+            "You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown to reflect your availability.",
             statusSpinnerView,
             5,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
         ) {
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Toast.makeText(this, "Select a status now.", Toast.LENGTH_SHORT).show()
-
-            // TODO: Select a status now.
-            // For now, to simulate progress for testing:
-            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
-            // updateNavHeaderTutorialProgress()
-            // showExcuseLetterButtonTutorialStep_New() // Manually call next instruction
-            showExcuseLetterButtonTutorialStep_New()
+             showExcuseLetterButtonTutorialStep_New()
         }
     }
 
@@ -2797,7 +2870,7 @@ class HomeActivity : WifiSecurityActivity() {
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_EXCUSE_LETTER
 
         showCustomTutorialDialog(
-            "If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)",
+            "If you're unable to attend or need to submit an excuse, you can do so by tapping here.",
             excuseLetterButton,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
@@ -2805,9 +2878,7 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            // This is the last step's instruction.
-            // Actual completion and 100% update would happen after user performs the excuse letter action.
-            // For now, to simulate completion for testing:
+            // Finish Tutorial
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             tutorialPrefs.edit()
                 .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
@@ -2817,12 +2888,10 @@ class HomeActivity : WifiSecurityActivity() {
 
             Toast.makeText(
                 this@HomeActivity,
-                "Attendance Workflow Guide Completed! 🎉 (Partially interactive)",
+                "Attendance Workflow Guide Completed! 🎉",
                 Toast.LENGTH_SHORT
             ).show()
-            isInteractiveTutorialActive = false
-            currentInteractiveTutorialName = null
-            expectedInteractiveTutorialAction = null
+            
             hideNavHeaderTutorialProgressAfterCompletion()
         }
     }

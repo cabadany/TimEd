@@ -27,8 +27,30 @@ class ExcuseLetterAdapter(private val list: List<ExcuseLetterModel>) :
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = list[position]
-        holder.dateText.text = item.date
+        
+        // Date formatting could be improved here if 'item.date' is raw timestamp. 
+        // Assuming item.date is already formatted string based on existing code, or we just display it.
+        // If it needs formatting, we would need to know the input format. 
+        // For now, prepending label if needed or just showing it. 
+        // Layout has "Date:" prefix hardcoded? No, layout has tools:text.
+        holder.dateText.text = "Submitted: ${item.date}"
+
         holder.reasonText.text = item.reason
+
         holder.statusText.text = item.status
+        
+        // Status Color Logic
+        val context = holder.itemView.context
+        val background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.bg_rounded_status)?.mutate()
+        
+        val color = when (item.status?.lowercase()) {
+            "approved" -> androidx.core.content.ContextCompat.getColor(context, R.color.status_green)
+            "rejected", "declined" -> androidx.core.content.ContextCompat.getColor(context, R.color.status_red)
+            "pending" -> androidx.core.content.ContextCompat.getColor(context, R.color.status_yellow)
+            else -> androidx.core.content.ContextCompat.getColor(context, R.color.neutral_text_gray)
+        }
+        
+        background?.setTint(color)
+        holder.statusText.background = background
     }
 }
