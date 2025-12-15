@@ -58,6 +58,20 @@ public class AttendanceService {
                 return "Event not found";
             }
 
+            // Validate server time against event date - prevent early time-in
+            Date eventDate = eventDoc.getDate("date");
+            if (eventDate != null) {
+                ZonedDateTime eventStartTime = eventDate.toInstant().atZone(ZoneId.of("Asia/Manila"));
+                ZonedDateTime serverNow = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+
+                if (serverNow.isBefore(eventStartTime)) {
+                    String formattedEventTime = eventStartTime
+                            .format(DateTimeFormatter.ofPattern("MMMM d, yyyy 'at' h:mm a"));
+                    return "Cannot time-in yet. Event '" + eventDoc.getString("eventName") + "' starts on "
+                            + formattedEventTime + ". Please wait until the event starts.";
+                }
+            }
+
             // Get user details
             DocumentReference userRef = firestore.collection("users").document(userId);
             ApiFuture<DocumentSnapshot> userQuery = userRef.get();
@@ -172,6 +186,20 @@ public class AttendanceService {
             DocumentSnapshot eventDoc = firestore.collection("events").document(eventId).get().get();
             if (!eventDoc.exists()) {
                 return "Event does not exist: " + eventId;
+            }
+
+            // Validate server time against event date - prevent early time-in
+            Date eventDate = eventDoc.getDate("date");
+            if (eventDate != null) {
+                ZonedDateTime eventStartTime = eventDate.toInstant().atZone(ZoneId.of("Asia/Manila"));
+                ZonedDateTime serverNow = Instant.now().atZone(ZoneId.of("Asia/Manila"));
+
+                if (serverNow.isBefore(eventStartTime)) {
+                    String formattedEventTime = eventStartTime
+                            .format(DateTimeFormatter.ofPattern("MMMM d, yyyy 'at' h:mm a"));
+                    return "Cannot time-in yet. Event '" + eventDoc.getString("eventName") + "' starts on "
+                            + formattedEventTime + ". Please wait until the event starts.";
+                }
             }
 
             String eventName = eventDoc.getString("eventName");
