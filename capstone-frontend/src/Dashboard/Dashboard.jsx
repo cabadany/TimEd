@@ -704,56 +704,56 @@ export default function Dashboard() {
       const db = getDatabase();
       const logsRef = ref(db, 'timeLogs');
 
-      // Initialize counters
-      let onTimeCount = 0;
-      let lateCount = 0;
-      let absentCount = 0;
-      const processedUsers = new Set(); // To track unique users
-
       // Get all faculty (excluding admins)
       const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
       const facultyList = response.data.filter(user => user.role !== 'ADMIN');
       const totalFaculty = facultyList.length;
 
       onValue(logsRef, (snapshot) => {
+        // Initialize counters inside the listener to reset on each update
+        let onTimeCount = 0;
+        let lateCount = 0;
+        const processedUsers = new Set(); // To track unique users who have time-in
+
+        // Parse the late threshold time
+        const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
+
         snapshot.forEach((userSnapshot) => {
           const userId = userSnapshot.key;
-          let latestTimestamp = 0;
-          let latestBadge = null;
+          let earliestTimeIn = null;
+          let earliestTimestamp = Infinity;
 
-          // Find the latest entry for this user on the selected date
+          // Find the earliest TimeIn entry for this user on the selected date
           userSnapshot.forEach((logSnapshot) => {
             const log = logSnapshot.val();
             const logDate = new Date(log.timestamp);
 
-            if (isSameDay(logDate, selectedDate) && log.timestamp > latestTimestamp) {
-              latestTimestamp = log.timestamp;
-              latestBadge = log.attendanceBadge;
+            if (isSameDay(logDate, selectedDate) && log.type === 'TimeIn') {
+              if (log.timestamp < earliestTimestamp) {
+                earliestTimestamp = log.timestamp;
+                earliestTimeIn = log;
+              }
             }
           });
 
-          // Only count each user once based on their latest badge for the day
-          if (latestBadge && !processedUsers.has(userId)) {
+          // If user has a time-in for this day, determine if they were late
+          if (earliestTimeIn && !processedUsers.has(userId)) {
             processedUsers.add(userId);
 
-            switch (latestBadge) {
-              case 'On Time':
-                onTimeCount++;
-                break;
-              case 'Late':
-                lateCount++;
-                break;
-              case 'Absent':
-                absentCount++;
-                break;
+            const timeInDate = new Date(earliestTimeIn.timestamp);
+            const thresholdDate = new Date(selectedDate);
+            thresholdDate.setHours(thresholdHour, thresholdMinute, 0, 0);
+
+            if (timeInDate > thresholdDate) {
+              lateCount++;
+            } else {
+              onTimeCount++;
             }
           }
         });
 
         // Calculate absent count for users not found in logs
-        const totalProcessed = processedUsers.size;
-        const remainingAbsent = totalFaculty - totalProcessed;
-        absentCount += remainingAbsent;
+        const absentCount = totalFaculty - processedUsers.size;
 
         setAttendanceStats({
           present: onTimeCount,
