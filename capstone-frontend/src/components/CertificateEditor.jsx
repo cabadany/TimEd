@@ -1500,9 +1500,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Typography>
 
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Colors
                   </Typography>
@@ -1656,9 +1660,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
                 {/* Font Settings */}
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Typography
                   </Typography>
@@ -1725,9 +1733,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
                 {/* Border Settings */}
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Border & Frame
                   </Typography>
