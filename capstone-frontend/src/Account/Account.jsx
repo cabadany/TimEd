@@ -1094,6 +1094,17 @@ export default function AccountPage() {
                 } else {
                   description = 'Timed out';
                 }
+              } else if (entry.type === 'StatusChange') {
+                // Handle status change log entries
+                if (status === 'On Duty') {
+                  description = 'Changed to On Duty';
+                } else if (status === 'On Break') {
+                  description = 'Changed to On Break';
+                } else if (status === 'Off Duty') {
+                  description = 'Changed to Off Duty';
+                } else {
+                  description = `Changed status to ${status}`;
+                }
               }
 
               const timelineEntry = {

@@ -674,6 +674,8 @@ class TimeInActivity : WifiSecurityActivity() {
 
     private fun logTimeIn(imageUrl: String, studentUid: String) {
         val attendanceBadge = if (TimeSettingsManager.isLate()) "Late" else "On Time"
+        // Set status to "On Break" if timing in during break window, otherwise "On Duty"
+        val initialStatus = if (TimeSettingsManager.isInBreak()) "On Break" else "On Duty"
         val log = mapOf(
             "timestamp" to System.currentTimeMillis(),
             "type" to "TimeIn",
@@ -681,12 +683,12 @@ class TimeInActivity : WifiSecurityActivity() {
             "email" to userEmail,
             "firstName" to userFirstName,
             "userId" to studentUid,
-            "status" to "On Duty",
+            "status" to initialStatus,
             "attendanceBadge" to attendanceBadge
         )
         val ref = FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(studentUid)
         ref.push().setValue(log)
-            .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid") }
+            .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid with status: $initialStatus") }
             .addOnFailureListener { e -> Log.e(TAG, "Failed to write Time-In log for UID: $studentUid", e); UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to record time-in: ${e.message}") }
     }
 
