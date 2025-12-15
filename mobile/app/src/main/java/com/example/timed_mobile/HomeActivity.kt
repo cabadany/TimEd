@@ -634,12 +634,8 @@ class HomeActivity : WifiSecurityActivity() {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
         
-        val todayStart = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        // SECURITY: Use Philippine timezone to prevent device time manipulation
+        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
         
         val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
         dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
@@ -660,7 +656,7 @@ class HomeActivity : WifiSecurityActivity() {
                             UiDialogs.showInfoDialog(
                                 this@HomeActivity,
                                 title = "Time-In Required",
-                                message = "Please Time-In first before changing your status."
+                                message = "Please Time-In first before changing your status.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
                             )
                             loadUserStatus() // Reset spinner to current status
                         }
@@ -744,15 +740,8 @@ class HomeActivity : WifiSecurityActivity() {
                     
                     for (child in snapshot.children) {
                         val logTimestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0); set(
-                            Calendar.MINUTE,
-                            0
-                        ); set(
-                            Calendar.SECOND,
-                            0
-                        ); set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+                        // SECURITY: Use Philippine timezone
+                        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
                         
                         if (logTimestamp >= todayStart) {
                             // Get previous status for audit trail
@@ -780,7 +769,8 @@ class HomeActivity : WifiSecurityActivity() {
                     
                     // Only create StatusChange log when explicitly requested (manual spinner changes)
                     if (createStatusChangeLog) {
-                        val now = Calendar.getInstance()
+                        // SECURITY: Use Philippine timezone for logging
+                        val now = TimeSettingsManager.getNowInPhilippineTime()
                         val statusChangeLog = mapOf(
                             "timestamp" to now.timeInMillis,
                             "type" to "StatusChange",
@@ -927,12 +917,59 @@ class HomeActivity : WifiSecurityActivity() {
 
     override fun onResume() {
         super.onResume()
+        // SECURITY: Re-sync server time to detect device time manipulation
+        TimeSettingsManager.refreshServerTimeSync()
+        
+        // SECURITY: Start polling for real-time time manipulation detection
+        TimeSettingsManager.startPolling {
+            // This callback is triggered when time manipulation is detected during polling
+            runOnUiThread { checkAndWarnTimeManipulation() }
+        }
+        
+        // Check for time manipulation after sync completes and show warning
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            checkAndWarnTimeManipulation()
+        }, 600)
+        
         loadUserStatus()
         // Always try to load the photo. loadTodayTimeInPhoto checks status internally.
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
         evaluateAndDisplayAttendanceBadge()
         syncEventTutorialStateFromPrefs()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // SECURITY: Stop polling when app goes to background
+        TimeSettingsManager.stopPolling()
+    }
+    
+    /**
+     * SECURITY: Checks for device time manipulation and shows warning dialog
+     */
+    private var isTimeWarningShowing = false
+    private fun checkAndWarnTimeManipulation() {
+        if (isTimeWarningShowing) return // Prevent multiple dialogs
+        
+        // Combined check: AUTO_TIME disabled OR server offset too large
+        if (TimeSettingsManager.isTimeTampered(this)) {
+            isTimeWarningShowing = true
+            val reason = TimeSettingsManager.getTimeTamperingReason(this)
+            UiDialogs.showErrorPopup(
+                this,
+                "⚠️ Time Security Violation",
+                "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings. App will restart for security verification."
+            ) {
+                isTimeWarningShowing = false
+                // SECURITY: Reset state and redirect to Splash Screen for fresh verification
+                TimeSettingsManager.resetSecurityState()
+                val intent = Intent(this, SplashActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+        }
     }
 
     private fun loadTodayTimeInPhoto() {
@@ -1235,6 +1272,17 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
+            // SECURITY: Check for device date/time manipulation (AUTO_TIME + server offset)
+            if (TimeSettingsManager.isTimeTampered(this)) {
+                val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                UiDialogs.showErrorPopup(
+                    this,
+                    "⚠️ Time Security Violation",
+                    "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings."
+                )
+                return@setOnClickListener
+            }
+            
             // Guard Clause: Check if Time-In is allowed (outside time window - before 7 AM)
             // Note: TimeIn during break is allowed, status will be set to "On Break"
             if (!TimeSettingsManager.isTimeInAllowed() && !TimeSettingsManager.isInBreak()) {
@@ -1242,7 +1290,7 @@ class HomeActivity : WifiSecurityActivity() {
                 UiDialogs.showInfoDialog(
                     this,
                     title = "Outside Time-In Window",
-                    message = "You can only time in between $start and $end."
+                    message = "You can only time in between $start and $end.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
                 )
                 return@setOnClickListener
             }
@@ -1260,13 +1308,24 @@ class HomeActivity : WifiSecurityActivity() {
         }
 
         btnTimeOut.setOnClickListener {
+            // SECURITY: Check for device date/time manipulation (AUTO_TIME + server offset)
+            if (TimeSettingsManager.isTimeTampered(this)) {
+                val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                UiDialogs.showErrorPopup(
+                    this,
+                    "⚠️ Time Security Violation",
+                    "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings."
+                )
+                return@setOnClickListener
+            }
+            
             // Guard Clause: Check if it's too early to time out
             if (TimeSettingsManager.isTooEarlyToTimeOut()) {
                 val (start, end) = TimeSettingsManager.getTimeWindowString()
                 UiDialogs.showInfoDialog(
                     this,
                     title = "Too Early to Time Out",
-                    message = "You cannot time out before $end."
+                    message = "You cannot time out before $end.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
                 )
                 return@setOnClickListener
             }

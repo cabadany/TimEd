@@ -195,19 +195,44 @@ class TimeInActivity : WifiSecurityActivity() {
                 Toast.makeText(this, "Please position your face correctly.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            timeInButton.isEnabled = false
-            timeInButton.text = "Processing..."
+            
+            // SECURITY: Force sync server time and check for manipulation RIGHT NOW
+            TimeSettingsManager.refreshServerTimeSync()
+            // Give a small delay to let the sync complete, then check
             Handler(Looper.getMainLooper()).postDelayed({
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                if (currentUser == null) {
-                    signInAnonymouslyForStorage { success ->
-                        if (success) checkAndCapturePhoto(userId ?: "")
-                        else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                // Combined check: AUTO_TIME disabled OR server offset too large
+                if (TimeSettingsManager.isTimeTampered(this)) {
+                    val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                    UiDialogs.showErrorPopup(
+                        this,
+                        "⚠️ Time Security Violation",
+                        "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings. App will restart for security verification."
+                    ) {
+                        // SECURITY: Reset state and redirect to Splash Screen
+                        TimeSettingsManager.resetSecurityState()
+                        val intent = Intent(this, SplashActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
                     }
-                } else {
-                    checkAndCapturePhoto(userId ?: currentUser.uid)
+                    resetTimeInButton()
+                    return@postDelayed
                 }
-            }, 2000)
+                
+                timeInButton.isEnabled = false
+                timeInButton.text = "Processing..."
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser == null) {
+                        signInAnonymouslyForStorage { success ->
+                            if (success) checkAndCapturePhoto(userId ?: "")
+                            else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                        }
+                    } else {
+                        checkAndCapturePhoto(userId ?: currentUser.uid)
+                    }
+                }, 2000)
+            }, 500) // 500ms delay to let Firebase sync complete
         }
     }
 
@@ -436,6 +461,8 @@ class TimeInActivity : WifiSecurityActivity() {
 
     override fun onResume() {
         super.onResume()
+        // SECURITY: Re-sync server time to detect device time manipulation
+        TimeSettingsManager.refreshServerTimeSync()
         if (allPermissionsGranted() && !isInTutorialMode) {
             startCamera()
         }
@@ -548,7 +575,8 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun checkAlreadyTimedIn(uid: String, callback: (Boolean) -> Unit) {
-        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        // SECURITY: Use Philippine timezone to prevent device time manipulation
+        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
         FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(uid)
             .orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : ValueEventListener {
