@@ -493,8 +493,8 @@ class HomeActivity : WifiSecurityActivity() {
                 }
                 val selectedStatus = statusOptions[position]
                 if (isUserChangingStatus) {
-                    // TODO: Integrate interactive tutorial logic if this action is part of a tutorial step
-                    showStatusConfirmationDialog(selectedStatus)
+                    // Check security rules before allowing status change
+                    checkStatusChangeAllowed(selectedStatus)
                 }
                 isUserChangingStatus = false
             }
@@ -625,29 +625,92 @@ class HomeActivity : WifiSecurityActivity() {
             })
     }
 
+    /**
+     * Checks if status change is allowed based on security rules:
+     * 1. Must have a TimeIn record for today
+     * 2. If already Off Duty (has TimeOut today), status is locked until next day
+     */
+    private fun checkStatusChangeAllowed(newStatus: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+        
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        
+        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var hasTimeInToday = false
+                    var hasTimeOutToday = false
+                    
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        if (type == "TimeIn") hasTimeInToday = true
+                        if (type == "TimeOut") hasTimeOutToday = true
+                    }
+                    
+                    when {
+                        // Rule 1: Must have TimeIn today
+                        !hasTimeInToday -> {
+                            UiDialogs.showInfoDialog(
+                                this@HomeActivity,
+                                title = "Time-In Required",
+                                message = "Please Time-In first before changing your status."
+                            )
+                            loadUserStatus() // Reset spinner to current status
+                        }
+                        // Rule 2: Off Duty locks status until next day
+                        hasTimeOutToday -> {
+                            UiDialogs.showInfoDialog(
+                                this@HomeActivity,
+                                title = "Status Locked",
+                                message = "You have set Off Duty today. Status changes are locked until tomorrow."
+                            )
+                            loadUserStatus() // Reset spinner to current status
+                        }
+                        // All checks passed - allow status change
+                        else -> {
+                            showStatusConfirmationDialog(newStatus)
+                        }
+                    }
+                }
+                
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to check status change allowed: ${error.message}")
+                    // On error, still allow status change (fail-open)
+                    showStatusConfirmationDialog(newStatus)
+                }
+            })
+    }
+
     private fun showStatusConfirmationDialog(selectedStatus: String) {
         confirmStatusChange(selectedStatus)
     }
 
-    private fun confirmStatusChange(status: String) {
-        UiDialogs.showConfirmationDialog(
-            this,
-            title = "Confirm Status Change",
-            message = "Are you sure you want to set your status to '$status'?",
-            positiveText = "Yes",
-            negativeText = "Cancel",
-            onPositive = {
-                updateUserStatus(status)
-                updateTimeLogsStatus(status)
-                if (status == "Off Duty") {
-                    handleTimeOutOnOffDuty()
+        private fun confirmStatusChange(status: String) {
+            UiDialogs.showConfirmationDialog(
+                this,
+                title = "Confirm Status Change",
+                message = "Are you sure you want to set your status to '$status'?",
+                positiveText = "Yes",
+                negativeText = "Cancel",
+                onPositive = {
+                    updateUserStatus(status)
+                    updateTimeLogsStatus(status, createStatusChangeLog = true)
+                    if (status == "Off Duty") {
+                        handleTimeOutOnOffDuty()
+                    }
+                },
+                onNegative = {
+                    loadUserStatus()
                 }
-            },
-            onNegative = {
-                loadUserStatus()
-            }
-        )
-    }
+            )
+        }
 
     private fun updateUserStatus(status: String) {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
@@ -668,13 +731,17 @@ class HomeActivity : WifiSecurityActivity() {
             }
     }
 
-    private fun updateTimeLogsStatus(status: String) {
+    private fun updateTimeLogsStatus(status: String, createStatusChangeLog: Boolean = false) {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        
+        // First, get the previous status from the latest log
         ref.orderByChild("timestamp").limitToLast(1)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    var previousStatus = "Unknown"
+                    
                     for (child in snapshot.children) {
                         val logTimestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
                         val todayStart = Calendar.getInstance().apply {
@@ -686,21 +753,51 @@ class HomeActivity : WifiSecurityActivity() {
                             0
                         ); set(Calendar.MILLISECOND, 0)
                         }.timeInMillis
+                        
                         if (logTimestamp >= todayStart) {
-                            child.ref.child("status").setValue(status)
-                                .addOnSuccessListener {
-                                    Log.d(
-                                        "HomeActivity",
-                                        "Status updated to $status in RealtimeDB for log ${child.key}"
-                                    )
-                                }
-                                .addOnFailureListener {
-                                    Log.e(
-                                        "HomeActivity",
-                                        "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}"
-                                    )
-                                }
+                            // Get previous status for audit trail
+                            previousStatus = child.child("status").getValue(String::class.java) ?: "Unknown"
+                            
+                            // Only update existing log's status if NOT creating a separate StatusChange log
+                            // This prevents duplicate entries in the timeline
+                            if (!createStatusChangeLog) {
+                                child.ref.child("status").setValue(status)
+                                    .addOnSuccessListener {
+                                        Log.d(
+                                            "HomeActivity",
+                                            "Status updated to $status in RealtimeDB for log ${child.key}"
+                                        )
+                                    }
+                                    .addOnFailureListener {
+                                        Log.e(
+                                            "HomeActivity",
+                                            "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}"
+                                        )
+                                    }
+                            }
                         }
+                    }
+                    
+                    // Only create StatusChange log when explicitly requested (manual spinner changes)
+                    if (createStatusChangeLog) {
+                        val now = Calendar.getInstance()
+                        val statusChangeLog = mapOf(
+                            "timestamp" to now.timeInMillis,
+                            "type" to "StatusChange",
+                            "status" to status,
+                            "previousStatus" to previousStatus,
+                            "firstName" to userFirstName,
+                            "email" to userEmail,
+                            "userId" to userId
+                        )
+                        
+                        ref.push().setValue(statusChangeLog)
+                            .addOnSuccessListener {
+                                Log.d("HomeActivity", "Status change logged: $previousStatus → $status")
+                            }
+                            .addOnFailureListener {
+                                Log.e("HomeActivity", "Failed to log status change: ${it.message}")
+                            }
                     }
                 }
 
@@ -724,10 +821,10 @@ class HomeActivity : WifiSecurityActivity() {
             MODE_PRIVATE
         ).getString(LoginActivity.KEY_FIRST_NAME, "User")
         val intent = Intent(this, TimeOutActivity::class.java).apply {
-            putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra(
-            "firstName",
-            userFirstName ?: "User"
-        )
+            putExtra("userId", userId)
+            putExtra("email", userEmail ?: "")
+            putExtra("firstName", userFirstName ?: "User")
+            putExtra("isFlexibleTimeOut", true) // Bypass time restriction for Off Duty status
         }
         startActivity(intent)
     }
@@ -1138,8 +1235,9 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
-            // Guard Clause: Check if Time-In is allowed
-            if (!TimeSettingsManager.isTimeInAllowed()) {
+            // Guard Clause: Check if Time-In is allowed (outside time window - before 7 AM)
+            // Note: TimeIn during break is allowed, status will be set to "On Break"
+            if (!TimeSettingsManager.isTimeInAllowed() && !TimeSettingsManager.isInBreak()) {
                 val (start, end) = TimeSettingsManager.getTimeWindowString()
                 UiDialogs.showInfoDialog(
                     this,

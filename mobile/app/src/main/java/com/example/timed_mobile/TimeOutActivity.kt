@@ -28,6 +28,7 @@ class TimeOutActivity : WifiSecurityActivity() {
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var isFlexibleTimeOut: Boolean = false
 
     private lateinit var iconBackButton: ImageView
     private lateinit var titleName: TextView
@@ -55,6 +56,7 @@ class TimeOutActivity : WifiSecurityActivity() {
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        isFlexibleTimeOut = intent.getBooleanExtra("isFlexibleTimeOut", false)
 
         iconBackButton = findViewById(R.id.icon_back_button)
         titleName = findViewById(R.id.titleName)
@@ -158,7 +160,8 @@ class TimeOutActivity : WifiSecurityActivity() {
                     }
 
                     // --- TIME-OUT WINDOW CHECK ---
-                    if (TimeSettingsManager.isTooEarlyToTimeOut()) {
+                    // Skip time restriction if this is a flexible time-out (from Off Duty status)
+                    if (!isFlexibleTimeOut && TimeSettingsManager.isTooEarlyToTimeOut()) {
                          val (start, end) = TimeSettingsManager.getTimeWindowString()
                          UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You cannot time out before $end.")
                          return
@@ -172,7 +175,8 @@ class TimeOutActivity : WifiSecurityActivity() {
                         "firstName" to userFirstName,
                         "userId" to userId,
                         "status" to "Off Duty",
-                        "attendanceBadge" to "Timed-Out"
+                        "attendanceBadge" to "Timed-Out",
+                        "timeOutType" to if (isFlexibleTimeOut) "Flexible" else "Regular"
                     )
 
                     dbRef.push().setValue(log)
