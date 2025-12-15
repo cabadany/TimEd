@@ -1490,15 +1490,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             )}
 
             {activeTab === 1 && (
-              <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
-                <Typography variant="h6" sx={{
-                  mb: 2,
-                  fontWeight: 500,
-                  color: darkMode ? '#f5f5f5' : 'inherit'
-                }}>
-                  Style Settings
-                </Typography>
-
+              <Box>
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="subtitle2" sx={{
                     mb: 1.5,
