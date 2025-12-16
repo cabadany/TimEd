@@ -1311,8 +1311,9 @@ class TimeInEventActivity : WifiSecurityActivity() {
         selfieReminder.text = "Capturing selfie..."
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val photoFile = File(externalMediaDirs.firstOrNull() ?: filesDir, "event_selfie_${timestamp}.jpg")
-        Log.d(TAG, "Selfie will be saved to: ${photoFile.absolutePath}")
+        // Use cacheDir instead of externalMediaDirs to avoid saving to gallery
+        val photoFile = File(cacheDir, "event_selfie_${timestamp}.jpg")
+        Log.d(TAG, "Selfie will be saved temporarily to cache: ${photoFile.absolutePath}")
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
@@ -1392,6 +1393,16 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.d(TAG, "Selfie upload successful. Getting download URL.")
                 selfieRef.downloadUrl.addOnSuccessListener { downloadUrl ->
                     Log.d(TAG, "Download URL: $downloadUrl")
+                    // Clean up local cache file after successful upload
+                    try {
+                        val localFile = File(photoUri.path ?: "")
+                        if (localFile.exists()) {
+                            localFile.delete()
+                            Log.d(TAG, "Local selfie cache file deleted successfully")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to delete local cache file: ${e.message}")
+                    }
                     if (!isFinishing && !isDestroyed) {
                          logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp)
                     }
