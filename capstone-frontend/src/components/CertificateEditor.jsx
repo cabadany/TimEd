@@ -115,7 +115,7 @@ const defaultCertificate = {
   watermarkImage: null,
   watermarkImageOpacity: 0.1,
   signatureImages: {},
-  showQRCode: true,
+  showQRCode: false,
   qrCodePosition: 'bottom-right'
 };
 
@@ -513,33 +513,44 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           );
 
         case 'blueWave':
-          // Timeed blue wave design with organic corner shapes and gold dotted border
+          // Timeed blue wave design with organic curved corner shapes and gold dotted border
           return (
             <>
-              {/* Top-right corner wave */}
+              {/* Top-right corner wave - organic curved shape */}
               <Box sx={{
                 position: 'absolute',
                 top: 0,
                 right: 0,
-                width: '150px',
-                height: '120px',
+                width: '180px',
+                height: '140px',
                 background: '#3B5998',
-                clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
                 borderRadius: '0 0 0 100%',
                 zIndex: 1,
                 pointerEvents: 'none',
               }} />
 
-              {/* Bottom-left corner wave */}
+              {/* Bottom-left corner wave - larger organic curved shape */}
               <Box sx={{
                 position: 'absolute',
                 bottom: 0,
                 left: 0,
-                width: '180px',
-                height: '150px',
+                width: '200px',
+                height: '180px',
                 background: '#3B5998',
-                clipPath: 'polygon(0 100%, 0 0, 100% 100%)',
                 borderRadius: '0 100% 0 0',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }} />
+
+              {/* Additional bottom-left accent wave for organic look */}
+              <Box sx={{
+                position: 'absolute',
+                bottom: '80px',
+                left: 0,
+                width: '70px',
+                height: '140px',
+                background: '#3B5998',
+                borderRadius: '0 80% 50% 0',
                 zIndex: 1,
                 pointerEvents: 'none',
               }} />
@@ -547,10 +558,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               {/* Gold dotted inner border */}
               <Box sx={{
                 position: 'absolute',
-                top: 40,
-                left: 40,
-                right: 40,
-                bottom: 40,
+                top: 35,
+                left: 35,
+                right: 35,
+                bottom: 35,
                 border: '2px dashed #C8B432',
                 zIndex: 1,
                 pointerEvents: 'none',

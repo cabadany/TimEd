@@ -1355,32 +1355,58 @@ public class CertificateService {
 
             switch (frameStyle) {
                 case "blueWave":
-                    // Draw blue wave decorations in corners (like the user's design)
+                    // Draw blue wave decorations in corners (matching preview.png design)
                     Color blueColor = new DeviceRgb(59, 89, 152); // #3B5998
                     canvas.setFillColor(blueColor);
 
-                    // Top-right corner wave
-                    canvas.moveTo(pageWidth - 120, pageHeight);
-                    canvas.curveTo(pageWidth - 80, pageHeight - 40,
-                            pageWidth - 40, pageHeight - 60,
-                            pageWidth, pageHeight - 100);
+                    // Top-right corner wave - organic curved shape
+                    float trWidth = 180;
+                    float trHeight = 140;
+                    canvas.moveTo(pageWidth, pageHeight);
+                    canvas.curveTo(pageWidth - trWidth * 0.3f, pageHeight,
+                            pageWidth - trWidth * 0.6f, pageHeight - trHeight * 0.5f,
+                            pageWidth - trWidth, pageHeight - trHeight);
+                    canvas.curveTo(pageWidth - trWidth * 0.5f, pageHeight - trHeight * 0.8f,
+                            pageWidth, pageHeight - trHeight * 0.5f,
+                            pageWidth, pageHeight - trHeight);
                     canvas.lineTo(pageWidth, pageHeight);
                     canvas.closePath();
                     canvas.fill();
 
-                    // Bottom-left corner wave - larger organic shape
-                    canvas.moveTo(0, 120);
-                    canvas.curveTo(40, 100, 60, 80, 80, 60);
-                    canvas.curveTo(100, 40, 120, 20, 140, 0);
+                    // Bottom-left corner wave - larger organic curved shape
+                    float blWidth = 200;
+                    float blHeight = 180;
+                    canvas.moveTo(0, 0);
+                    canvas.curveTo(blWidth * 0.3f, 0,
+                            blWidth * 0.6f, blHeight * 0.5f,
+                            blWidth, blHeight);
+                    canvas.curveTo(blWidth * 0.5f, blHeight * 0.8f,
+                            0, blHeight * 0.5f,
+                            0, blHeight);
                     canvas.lineTo(0, 0);
                     canvas.closePath();
                     canvas.fill();
 
-                    // Optional: Add inner dotted border
-                    float margin = 40;
-                    canvas.setStrokeColor(new DeviceRgb(200, 180, 50)); // Gold-ish
-                    canvas.setLineDash(3, 3);
-                    canvas.setLineWidth(1);
+                    // Additional bottom-left accent wave
+                    float accentWidth = 70;
+                    float accentHeight = 140;
+                    float accentY = 80;
+                    canvas.moveTo(0, accentY);
+                    canvas.curveTo(accentWidth * 0.5f, accentY + accentHeight * 0.3f,
+                            accentWidth * 0.8f, accentY + accentHeight * 0.7f,
+                            accentWidth, accentY + accentHeight);
+                    canvas.curveTo(accentWidth * 0.3f, accentY + accentHeight * 0.9f,
+                            0, accentY + accentHeight * 0.6f,
+                            0, accentY + accentHeight);
+                    canvas.lineTo(0, accentY);
+                    canvas.closePath();
+                    canvas.fill();
+
+                    // Gold dotted inner border
+                    float margin = 35;
+                    canvas.setStrokeColor(new DeviceRgb(200, 180, 50)); // Gold #C8B432
+                    canvas.setLineDash(4, 4);
+                    canvas.setLineWidth(2);
                     canvas.rectangle(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin);
                     canvas.stroke();
                     break;
