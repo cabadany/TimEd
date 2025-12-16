@@ -29,8 +29,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                tools:text="Jan 01, 2025"
-                android:textSize="18sp"
+                tools:text="Absence: Dec 19, 2025"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/black" />
 
@@ -63,6 +63,47 @@
             android:textSize="15sp"
             android:textColor="#333333"
             android:lineSpacingExtra="4dp" />
+        
+        <!-- Attachment Preview Section -->
+        <View
+            android:id="@+id/attachment_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"
+            android:background="#E0E0E0"
+            android:visibility="gone" />
+        
+        <LinearLayout
+            android:id="@+id/attachment_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+            
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_document"
+                android:contentDescription="Attachment"
+                card_view:tint="#3538CD" />
+            
+            <TextView
+                android:id="@+id/btn_view_attachment"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="View Attachment"
+                android:textSize="14sp"
+                android:textColor="#3538CD"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="4dp" />
+        </LinearLayout>
             
     </LinearLayout>
 </androidx.cardview.widget.CardView>
