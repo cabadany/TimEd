@@ -34,9 +34,9 @@ object TimeSettingsManager {
     private var endTimeStr: String = "17:00"
     private var lateThresholdStr: String = "09:00"
     
-    // Hardcoded break window for now (as per plan)
-    private const val BREAK_START_STR = "12:00"
-    private const val BREAK_END_STR = "13:00"
+    // Break Window (Fetched from Firebase)
+    private var breakStartStr: String = "12:00"
+    private var breakEndStr: String = "13:00"
 
     private var isInitialized = false
 
@@ -291,6 +291,16 @@ object TimeSettingsManager {
         return Pair(deviceTimeStr, serverTimeStr)
     }
 
+    // Listener for Time Window changes
+    private var timeWindowChangeListener: (() -> Unit)? = null
+
+    fun setOnTimeWindowChangeListener(listener: () -> Unit) {
+        timeWindowChangeListener = listener
+        // Trigger immediately with current values (defaults or fetched)
+        // This ensures UI doesn't show placeholders like "--:--"
+        listener()
+    }
+
     private fun fetchTimeSettings() {
         val db = FirebaseDatabase.getInstance()
         val settingsRef = db.getReference("settings")
@@ -305,6 +315,7 @@ object TimeSettingsManager {
                 if (end != null) endTimeStr = end
                 
                 Log.d(TAG, "Time Window updated: $startTimeStr - $endTimeStr")
+                timeWindowChangeListener?.invoke()
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -324,6 +335,24 @@ object TimeSettingsManager {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Failed to load late threshold", error.toException())
+            }
+        })
+
+        // Listen for Break Window
+        settingsRef.child("breakWindow").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val start = snapshot.child("start").getValue(String::class.java)
+                val end = snapshot.child("end").getValue(String::class.java)
+
+                if (start != null) breakStartStr = start
+                if (end != null) breakEndStr = end
+
+                Log.d(TAG, "Break Window updated: $breakStartStr - $breakEndStr")
+                timeWindowChangeListener?.invoke()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to load break window", error.toException())
             }
         })
     }
@@ -405,8 +434,8 @@ object TimeSettingsManager {
 
     fun isInBreak(): Boolean {
         val now = getNowInPhilippineTime()
-        val breakStart = parseTime(BREAK_START_STR)
-        val breakEnd = parseTime(BREAK_END_STR)
+        val breakStart = parseTime(breakStartStr)
+        val breakEnd = parseTime(breakEndStr)
 
         val inBreak = now.after(breakStart) && now.before(breakEnd)
         Log.d(TAG, "Break Check: PH Time=${formatTime(now)}, InBreak=$inBreak")
@@ -418,7 +447,7 @@ object TimeSettingsManager {
     fun getTimeWindowString(): Pair<String, String> {
         return Pair(getStartTime(), getEndTime())
     }
-    fun getBreakWindow(): String = "${convertTo12HourFormat(BREAK_START_STR)} - ${convertTo12HourFormat(BREAK_END_STR)}"
+    fun getBreakWindow(): String = "${convertTo12HourFormat(breakStartStr)} - ${convertTo12HourFormat(breakEndStr)}"
 
     private fun parseTime(timeStr: String): Calendar {
         // Use Philippine timezone for parsing times

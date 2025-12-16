@@ -21,6 +21,8 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.bumptech.glide.Glide
+import androidx.cardview.widget.CardView
 
 class ExcuseLetterActivity : WifiSecurityActivity() {
 
@@ -33,6 +35,15 @@ class ExcuseLetterActivity : WifiSecurityActivity() {
     private lateinit var backButton: ImageView
     private lateinit var daysAbsentInput: EditText
     private lateinit var excuseLetterTitle: TextView
+    
+    // Document preview views
+    private lateinit var documentPreviewCard: CardView
+    private lateinit var imagePreview: ImageView
+    private lateinit var fileTypePreview: LinearLayout
+    private lateinit var fileTypeIcon: ImageView
+    private lateinit var fileTypeLabel: TextView
+    private lateinit var btnPreviewDocument: Button
+    private lateinit var btnRemoveDocument: Button
 
     private var selectedFileUri: Uri? = null
     private var userId: String? = null
@@ -87,6 +98,15 @@ class ExcuseLetterActivity : WifiSecurityActivity() {
         submitButton = findViewById(R.id.btn_submit_excuse)
         daysAbsentInput = findViewById(R.id.edit_text_days_absent)
         excuseLetterTitle = findViewById(R.id.excuse_letter_title)
+        
+        // Initialize document preview views
+        documentPreviewCard = findViewById(R.id.document_preview_card)
+        imagePreview = findViewById(R.id.image_preview)
+        fileTypePreview = findViewById(R.id.file_type_preview)
+        fileTypeIcon = findViewById(R.id.file_type_icon)
+        fileTypeLabel = findViewById(R.id.file_type_label)
+        btnPreviewDocument = findViewById(R.id.btn_preview_document)
+        btnRemoveDocument = findViewById(R.id.btn_remove_document)
 
         datePicker.setOnClickListener { showDatePickerDialog() }
 
@@ -97,6 +117,17 @@ class ExcuseLetterActivity : WifiSecurityActivity() {
 
         uploadButton.setOnClickListener { selectFile() }
         submitButton.setOnClickListener { checkAndSubmit() }
+        
+        // Document preview button - opens document in external viewer
+        btnPreviewDocument.setOnClickListener { openDocumentPreview() }
+        
+        // Click on image preview to open full preview
+        imagePreview.setOnClickListener { openDocumentPreview() }
+        
+        // Remove document button - clears selection and hides preview
+        btnRemoveDocument.setOnClickListener {
+            clearDocumentSelection()
+        }
 
         val animFadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
         val animSlideDownFadeIn = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in)
@@ -144,6 +175,23 @@ class ExcuseLetterActivity : WifiSecurityActivity() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
         startActivityForResult(intent, 1)
     }
+    
+    /**
+     * Opens the selected document in an external viewer app
+     */
+    private fun openDocumentPreview() {
+        selectedFileUri?.let { uri ->
+            try {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, contentResolver.getType(uri))
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(intent, "Preview Document"))
+            } catch (e: Exception) {
+                Toast.makeText(this, "No app available to preview this file", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -154,11 +202,87 @@ class ExcuseLetterActivity : WifiSecurityActivity() {
                 cursor?.use {
                     val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     it.moveToFirst()
-                    uploadedFilename.text = it.getString(nameIndex)
+                    val fileName = it.getString(nameIndex)
+                    uploadedFilename.text = fileName
                     uploadedFilename.visibility = View.VISIBLE
+                    
+                    // Show document preview
+                    showDocumentPreview(uri, fileName)
                 }
             }
         }
+    }
+    
+    /**
+     * Shows document preview based on file type.
+     * For images: displays thumbnail preview
+     * For other files (PDF, DOC, etc.): shows file type icon with label
+     */
+    private fun showDocumentPreview(uri: Uri, fileName: String) {
+        val mimeType = contentResolver.getType(uri)
+        documentPreviewCard.visibility = View.VISIBLE
+        
+        // Animate the preview card appearing
+        documentPreviewCard.alpha = 0f
+        documentPreviewCard.animate()
+            .alpha(1f)
+            .setDuration(300)
+            .start()
+        
+        when {
+            // Image files - show thumbnail
+            mimeType?.startsWith("image/") == true -> {
+                imagePreview.visibility = View.VISIBLE
+                fileTypePreview.visibility = View.GONE
+                
+                Glide.with(this)
+                    .load(uri)
+                    .centerCrop()
+                    .into(imagePreview)
+            }
+            // PDF files
+            mimeType == "application/pdf" || fileName.endsWith(".pdf", ignoreCase = true) -> {
+                imagePreview.visibility = View.GONE
+                fileTypePreview.visibility = View.VISIBLE
+                fileTypeLabel.text = "PDF Document"
+            }
+            // Word documents
+            mimeType?.contains("word") == true || 
+            fileName.endsWith(".doc", ignoreCase = true) || 
+            fileName.endsWith(".docx", ignoreCase = true) -> {
+                imagePreview.visibility = View.GONE
+                fileTypePreview.visibility = View.VISIBLE
+                fileTypeLabel.text = "Word Document"
+            }
+            // Other files
+            else -> {
+                imagePreview.visibility = View.GONE
+                fileTypePreview.visibility = View.VISIBLE
+                val extension = fileName.substringAfterLast(".", "File").uppercase()
+                fileTypeLabel.text = "$extension Document"
+            }
+        }
+    }
+    
+    /**
+     * Clears the document selection and hides preview
+     */
+    private fun clearDocumentSelection() {
+        selectedFileUri = null
+        uploadedFilename.visibility = View.GONE
+        
+        // Animate the preview card disappearing
+        documentPreviewCard.animate()
+            .alpha(0f)
+            .setDuration(200)
+            .withEndAction {
+                documentPreviewCard.visibility = View.GONE
+                imagePreview.visibility = View.GONE
+                fileTypePreview.visibility = View.GONE
+            }
+            .start()
+        
+        Toast.makeText(this, "Document removed", Toast.LENGTH_SHORT).show()
     }
 
     private fun checkAndSubmit() {

@@ -215,6 +215,120 @@
                     android:textSize="@dimen/text_sm"
                     android:visibility="gone" />
 
+            <!-- Document Preview Card -->
+            <androidx.cardview.widget.CardView
+                    android:id="@+id/document_preview_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/space_md">
+
+                    <!-- Image Preview (for image files) -->
+                    <ImageView
+                            android:id="@+id/image_preview"
+                            android:layout_width="match_parent"
+                            android:layout_height="200dp"
+                            android:layout_gravity="center"
+                            android:adjustViewBounds="true"
+                            android:background="@drawable/edittext_background"
+                            android:contentDescription="Document Preview"
+                            android:scaleType="centerInside"
+                            android:visibility="gone" />
+
+                    <!-- File Type Preview (for non-image files like PDFs) -->
+                    <LinearLayout
+                            android:id="@+id/file_type_preview"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_sm"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="@dimen/space_lg"
+                            android:visibility="gone">
+
+                        <ImageView
+                                android:id="@+id/file_type_icon"
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
+                                android:src="@drawable/ic_document"
+                                app:tint="#3538CD" />
+
+                        <TextView
+                                android:id="@+id/file_type_label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_sm"
+                                android:fontFamily="@font/league_spartan_bold"
+                                android:text="PDF Document"
+                                android:textColor="#37474F"
+                                android:textSize="@dimen/text_md" />
+
+                        <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_xs"
+                                android:fontFamily="@font/league_spartan_medium"
+                                android:text="Tap Preview to view"
+                                android:textColor="@color/medium_gray"
+                                android:textSize="@dimen/text_sm" />
+                    </LinearLayout>
+
+                    <!-- Action Buttons -->
+                    <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_md"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                        <!-- Preview Button -->
+                        <Button
+                                android:id="@+id/btn_preview_document"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="@dimen/space_sm"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_button_preview"
+                                android:drawableStart="@drawable/ic_preview"
+                                android:drawablePadding="@dimen/space_xs"
+                                android:fontFamily="@font/league_spartan_medium"
+                                android:padding="@dimen/space_md"
+                                android:text="Preview"
+                                android:textAllCaps="false"
+                                android:textColor="@color/white"
+                                android:textSize="@dimen/text_sm"
+                                app:drawableTint="@color/white" />
+
+                        <!-- Remove Button -->
+                        <Button
+                                android:id="@+id/btn_remove_document"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_sm"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_button_remove"
+                                android:drawableStart="@drawable/ic_delete"
+                                android:drawablePadding="@dimen/space_xs"
+                                android:fontFamily="@font/league_spartan_medium"
+                                android:padding="@dimen/space_md"
+                                android:text="Remove"
+                                android:textAllCaps="false"
+                                android:textColor="@color/white"
+                                android:textSize="@dimen/text_sm"
+                                app:drawableTint="@color/white" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- Submit Button -->
             <Button
                     android:id="@+id/btn_submit_excuse"
