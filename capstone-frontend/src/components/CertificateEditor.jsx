@@ -1246,7 +1246,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 fontSize: '0.875rem',
                 fontWeight: 500
               }}
-            />
+            />{/*
             <Tab
               label="Images"
               sx={{
@@ -1254,7 +1254,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 fontSize: '0.875rem',
                 fontWeight: 500
               }}
-            />
+            />*/}
           </Tabs>
 
 
@@ -1780,7 +1780,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
 
 
-            {activeTab === 2 && (
+            {activeTab === 3 && (
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" sx={{
@@ -2176,7 +2176,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                             '&.Mui-selected': {
                               bgcolor: darkMode ? '#333333' : '#F8FAFC',
                             },
-                          }}>Top Left</MenuItem>
+                          }}>Top Lef  t</MenuItem>
                         </Select>
                       </FormControl>
                     )}
