@@ -1230,8 +1230,17 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 fontWeight: 500
               }}
             />
+            {/*
             <Tab
               label="Style"
+              sx={{
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}
+            />*/}
+            <Tab
+              label="Signatories"
               sx={{
                 textTransform: 'none',
                 fontSize: '0.875rem',
@@ -1246,15 +1255,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 fontWeight: 500
               }}
             />
-            <Tab
-              label="Signatories"
-              sx={{
-                textTransform: 'none',
-                fontSize: '0.875rem',
-                fontWeight: 500
-              }}
-            />
           </Tabs>
+
 
           {/* Tab content area with scrolling */}
           <Box sx={{
@@ -1403,6 +1405,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 {/* Event Details Section */}
+                {/*
                 <Typography variant="subtitle2" sx={{
                   mb: 1.5,
                   fontWeight: 600,
@@ -1412,7 +1415,9 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   letterSpacing: '0.5px'
                 }}>
                   Event Details
-                </Typography>
+                </Typography>*/}
+
+                {/*
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -1460,7 +1465,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  {/*  <Grid item xs={12}>
                     <TextField
                       fullWidth
                       label="Certificate Number"
@@ -1484,11 +1489,12 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         '& .MuiFormHelperText-root': { color: darkMode ? '#777777' : '#94a3b8' },
                       }}
                     />
-                  </Grid>
-                </Grid>
+                  </Grid> 
+                </Grid>*/}
               </Box>
             )}
 
+            {/*
             {activeTab === 1 && (
               <Box>
                 <Box sx={{ mb: 4 }}>
@@ -1650,7 +1656,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   </Grid>
                 </Box>
 
-                {/* Font Settings */}
+                 Font Settings 
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="subtitle2" sx={{
                     mb: 1.5,
@@ -1723,7 +1729,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   </Grid>
                 </Box>
 
-                {/* Border Settings */}
+       
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="subtitle2" sx={{
                     mb: 1.5,
@@ -1769,7 +1775,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   </Grid>
                 </Box>
               </Box>
-            )}
+            )}*/}
+
+
+
 
             {activeTab === 2 && (
               <Grid container spacing={2}>
@@ -1819,11 +1828,14 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         >
                           <Delete />
                         </IconButton>
+                        {/*
                         <Typography variant="body2" sx={{
                           color: darkMode ? '#aaaaaa' : '#64748B'
                         }}>
                           Opacity:
-                        </Typography>
+                        </Typography>*/}
+
+                        {/*
                         <Slider
                           value={certificate.backgroundImageOpacity}
                           onChange={(e, value) => handleTextChange('backgroundImageOpacity', value)}
@@ -1843,12 +1855,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                               bgcolor: darkMode ? '#90caf9' : '#0288d1',
                             },
                           }}
-                        />
+                        />*/}
                       </>
+
                     )}
                   </Box>
                 </Grid>
-
+                {/*
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" sx={{
                     mb: 1.5,
@@ -2100,6 +2113,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         </Typography>
                       }
                     />
+
+
                     {certificate.showQRCode && (
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
@@ -2166,11 +2181,11 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                       </FormControl>
                     )}
                   </Box>
-                </Grid>
+                </Grid>*/}
               </Grid>
             )}
 
-            {activeTab === 3 && (
+            {activeTab === 1 && (
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                   <Typography variant="subtitle1" sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
@@ -2312,6 +2327,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           </Box>
         </Box>
       </Box>
-    </Box>
+    </Box >
   );
 } 
