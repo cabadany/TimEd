@@ -120,7 +120,12 @@ const defaultCertificate = {
 };
 
 export default function CertificateEditor({ initialData, onSave, onClose, onApply }) {
-  const [certificate, setCertificate] = useState(initialData || defaultCertificate);
+  // Merge initialData with defaults so existing certificates get new field defaults
+  const mergedData = initialData
+    ? { ...defaultCertificate, ...initialData }
+    : defaultCertificate;
+
+  const [certificate, setCertificate] = useState(mergedData);
   const [activeTab, setActiveTab] = useState(0);
   const certificateRef = useRef(null);
   const { darkMode } = useTheme();
@@ -128,7 +133,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   useEffect(() => {
     if (initialData) {
       console.log('CertificateEditor initialData:', initialData);
-      setCertificate(initialData);
+      // Merge with defaults to ensure new fields have values
+      setCertificate(prev => ({ ...defaultCertificate, ...initialData }));
     }
   }, [initialData]);
 
