@@ -87,18 +87,18 @@ const defaultCertificate = {
   eventDate: '{Event Date}',
   certificateNumber: '{Certificate Number}',
   backgroundColor: '#ffffff',
-  headerColor: '#1E3A8A',
+  headerColor: '#3B5998',  // Timeed blue
   textColor: '#333333',
   fontFamily: 'Georgia',
   fontSize: 12,
   dateFormat: 'MMMM dd, yyyy',
   showBorder: true,
   borderWidth: 1,
-  borderColor: '#D1D5DB',
-  borderStyle: 'solid',
-  frameStyle: 'classic',
+  borderColor: '#C8B432',  // Gold accent for dotted border
+  borderStyle: 'dashed',
+  frameStyle: 'blueWave',  // New Timeed blue wave design
   showDecorations: true,
-  decorativeCorners: true,
+  decorativeCorners: false,  // Disabled for blueWave style
   showRibbon: false,
   ribbonPosition: 'bottom-center',
   ribbonColor: '#D4AF37',
@@ -108,10 +108,10 @@ const defaultCertificate = {
   margins: { top: 50, right: 50, bottom: 50, left: 50 },
   backgroundImage: null,
   backgroundImageOpacity: 0.3,
-  logoImage: null,
+  logoImage: null,  // Will be set from timeed.png when available
   logoWidth: 100,
   logoHeight: 100,
-  logoPosition: 'top-center',
+  logoPosition: 'top-left',  // Timeed logo in top-left corner
   watermarkImage: null,
   watermarkImageOpacity: 0.1,
   signatureImages: {},
@@ -504,6 +504,52 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               zIndex: 1,
               pointerEvents: 'none',
             }} />
+          );
+
+        case 'blueWave':
+          // Timeed blue wave design with organic corner shapes and gold dotted border
+          return (
+            <>
+              {/* Top-right corner wave */}
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '150px',
+                height: '120px',
+                background: '#3B5998',
+                clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
+                borderRadius: '0 0 0 100%',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }} />
+
+              {/* Bottom-left corner wave */}
+              <Box sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: '180px',
+                height: '150px',
+                background: '#3B5998',
+                clipPath: 'polygon(0 100%, 0 0, 100% 100%)',
+                borderRadius: '0 100% 0 0',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }} />
+
+              {/* Gold dotted inner border */}
+              <Box sx={{
+                position: 'absolute',
+                top: 40,
+                left: 40,
+                right: 40,
+                bottom: 40,
+                border: '2px dashed #C8B432',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }} />
+            </>
           );
 
         default:
