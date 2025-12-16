@@ -49,49 +49,56 @@
                         android:orientation="vertical"
                         android:layout_alignParentStart="true"
                         android:layout_alignParentTop="true"
-                        android:layout_marginTop="@dimen/space_xl"
+                        android:layout_marginTop="75dp"
                         android:visibility="gone"
                         android:background="@drawable/bg_schedule_tooltip"
-                        android:elevation="4dp"
-                        android:layout_marginStart="56dp"> <!-- Offset to right of button -->
+                        android:elevation="8dp"
+                        android:padding="10dp"
+                        android:layout_marginStart="8dp">
 
                         <TextView
                             android:id="@+id/tv_schedule_time_in"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Time In: --:--"
+                            android:text="TIME IN: --:--"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:shadowColor="#80000000"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:fontFamily="sans-serif-medium"
+                            android:shadowColor="#AA000000"
                             android:shadowDx="1"
                             android:shadowDy="1"
-                            android:shadowRadius="2" />
+                            android:shadowRadius="3" />
 
                         <TextView
                             android:id="@+id/tv_schedule_break"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Break: --:-- - --:--"
+                            android:text="BREAK: --:-- - --:--"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:layout_marginTop="3dp"
-                            android:shadowColor="#80000000"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginTop="4dp"
+                            android:shadowColor="#AA000000"
                             android:shadowDx="1"
                             android:shadowDy="1"
-                            android:shadowRadius="2" />
+                            android:shadowRadius="3" />
 
                         <TextView
                             android:id="@+id/tv_schedule_time_out"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Time Out: --:--"
+                            android:text="TIME OUT: --:--"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:layout_marginTop="3dp"
-                            android:shadowColor="#80000000"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginTop="4dp"
+                            android:shadowColor="#AA000000"
                             android:shadowDx="1"
                             android:shadowDy="1"
-                            android:shadowRadius="2" />
+                            android:shadowRadius="3" />
                     </LinearLayout>
 
                     <!-- Schedule Toggle Button (Clock Icon) -->
@@ -103,8 +110,8 @@
                         android:padding="12dp"
                         android:layout_alignParentStart="true"
                         android:layout_alignParentTop="true"
-                        android:layout_marginStart="@dimen/space_xs"
-                        android:layout_marginTop="@dimen/space_lg"
+                        android:layout_marginStart="@dimen/space_lg"
+                        android:layout_marginTop="@dimen/space_2xl"
                         android:src="@drawable/ic_clock"
                         android:contentDescription="View Schedule"
                         app:tint="@color/white"

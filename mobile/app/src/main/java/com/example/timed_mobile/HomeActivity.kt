@@ -313,7 +313,7 @@ class HomeActivity : WifiSecurityActivity() {
         val tvBreak = findViewById<TextView>(R.id.tv_schedule_break)
         val tvTimeOut = findViewById<TextView>(R.id.tv_schedule_time_out)
 
-        // Toggle Logic with Animation
+        // Toggle Logic with Enhanced Animation
         btnViewSchedule.setOnClickListener {
             // Haptic feedback for tactile response
             btnViewSchedule.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
@@ -321,33 +321,67 @@ class HomeActivity : WifiSecurityActivity() {
             // Always cancel any pending auto-hide to prevent phantom closures
             hideScheduleRunnable?.let { scheduleContainer.removeCallbacks(it) }
 
+            // Add pulse animation to the icon for immediate feedback
+            btnViewSchedule.animate()
+                .scaleX(0.85f)
+                .scaleY(0.85f)
+                .setDuration(100)
+                .withEndAction {
+                    btnViewSchedule.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(150)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(2f))
+                        .start()
+                }
+                .start()
+
             if (scheduleContainer.visibility == View.VISIBLE && scheduleContainer.alpha == 1f) {
                 // Hide with animation
                 scheduleContainer.animate()
                     .alpha(0f)
                     .translationY(-20f)
+                    .scaleX(0.95f)
+                    .scaleY(0.95f)
                     .setDuration(200)
-                    .withEndAction { scheduleContainer.visibility = View.GONE }
+                    .setInterpolator(android.view.animation.AccelerateInterpolator())
+                    .withEndAction { 
+                        scheduleContainer.visibility = View.GONE
+                        scheduleContainer.scaleX = 1f
+                        scheduleContainer.scaleY = 1f
+                    }
                     .start()
                 
-                // Rotate icon back
-                btnViewSchedule.animate().rotation(0f).setDuration(200).start()
+                // Rotate icon back with spring effect
+                btnViewSchedule.animate()
+                    .rotation(0f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+                    .start()
             } else {
                 // Reset state for showing
                 scheduleContainer.visibility = View.VISIBLE
                 scheduleContainer.alpha = 0f
                 scheduleContainer.translationY = -20f
+                scheduleContainer.scaleX = 0.9f
+                scheduleContainer.scaleY = 0.9f
                 
                 // Show with bouncier animation
                 scheduleContainer.animate()
                     .alpha(1f)
                     .translationY(0f)
-                    .setDuration(300)
-                    .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(350)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.3f))
                     .start()
 
-                // Rotate icon
-                btnViewSchedule.animate().rotation(360f).setDuration(500).start()
+                // Rotate icon with spring overshoot effect
+                btnViewSchedule.animate()
+                    .rotation(360f)
+                    .setDuration(500)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+                    .start()
                 
                 // Define the auto-hide task
                 hideScheduleRunnable = Runnable {
@@ -355,11 +389,21 @@ class HomeActivity : WifiSecurityActivity() {
                          scheduleContainer.animate()
                             .alpha(0f)
                             .translationY(-20f)
+                            .scaleX(0.95f)
+                            .scaleY(0.95f)
                             .setDuration(300)
-                            .withEndAction { scheduleContainer.visibility = View.GONE }
+                            .withEndAction { 
+                                scheduleContainer.visibility = View.GONE
+                                scheduleContainer.scaleX = 1f
+                                scheduleContainer.scaleY = 1f
+                            }
                             .start()
-                         // Reset icon rotation
-                         btnViewSchedule.animate().rotation(0f).setDuration(300).start()
+                         // Reset icon rotation with spring
+                         btnViewSchedule.animate()
+                            .rotation(0f)
+                            .setDuration(300)
+                            .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+                            .start()
                     }
                 }
                 

@@ -3,15 +3,15 @@
     android:shape="rectangle">
     <gradient
         android:angle="135"
-        android:startColor="#40FFFFFF"
-        android:endColor="#10FFFFFF" /> <!-- Diagonal faint gradient for sheen -->
-    <corners android:radius="16dp" />
+        android:startColor="#DD1E3A5F"
+        android:endColor="#CC0D2137" />
+    <corners android:radius="12dp" />
     <stroke
         android:width="1dp"
         android:color="#4DFFFFFF" />
     <padding
-        android:bottom="10dp"
-        android:left="14dp"
-        android:right="14dp"
-        android:top="10dp" />
+        android:bottom="8dp"
+        android:left="12dp"
+        android:right="12dp"
+        android:top="8dp" />
 </shape>
