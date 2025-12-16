@@ -108,7 +108,7 @@ const TableRowsSkeleton = () => (
 
 export default function Dashboard() {
   const { darkMode } = useTheme();
-  
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeTab, setActiveTab] = useState(0);
@@ -129,7 +129,7 @@ export default function Dashboard() {
   const [certificateTemplate, setCertificateTemplate] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
-  
+
   // Faculty attendance states
   const [facultyLogs, setFacultyLogs] = useState([]);
   const [loadingFacultyLogs, setLoadingFacultyLogs] = useState(false);
@@ -192,7 +192,7 @@ export default function Dashboard() {
     fetchDepartments();
     fetchEvents();
   }, []);
-  
+
   const fetchDepartments = async () => {
     try {
       const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_DEPARTMENTS));
@@ -201,62 +201,60 @@ export default function Dashboard() {
       console.error('Error fetching departments:', error);
     }
   };
-  
+
   // Fetch events from the backend API with date range filtering
   const fetchEvents = async (startDate = '', endDate = '') => {
     try {
       setLoading(true);
       setEventError(null); // Clear any previous event-specific errors
-      
-      // Use the paginated endpoint but with a large size to get all events
-      // Use cache buster to prevent caching issues
+
+      // Use the paginated endpoint with reasonable size
       let url = getApiUrl(API_ENDPOINTS.GET_EVENTS_PAGINATED);
-      const params = { 
+      const params = {
         page: 0,
-        size: 100, // Get up to 100 events at once
-        _cache: new Date().getTime() // Cache buster
+        size: 25 // Reduced from 100 for faster initial load
       };
-      
+
       if (startDate || endDate) {
         url = getApiUrl(API_ENDPOINTS.GET_EVENTS_BY_DATE_RANGE);
         if (startDate) params.startDate = startDate;
         if (endDate) params.endDate = endDate;
       }
-      
+
       const response = await axios.get(url, { params });
 
       // If using paginated endpoint, response structure is different
       const responseData = response.data.content || response.data;
       const totalCount = response.data.totalElements || responseData.length;
       setTotalEvents(totalCount);
-      
+
       // Calculate correct event statuses based on current time
       const currentDate = new Date();
       const processedEvents = responseData.map(event => {
         // Create a copy to avoid mutating the original
         const processedEvent = { ...event };
-        
+
         // Parse event date
         const eventDate = new Date(event.date);
-        
+
         // Calculate event end time
         const [hours, minutes, seconds] = (event.duration || '0:00:00').split(':').map(Number);
         const eventEndTime = new Date(eventDate);
         eventEndTime.setHours(eventEndTime.getHours() + hours);
         eventEndTime.setMinutes(eventEndTime.getMinutes() + minutes);
         eventEndTime.setSeconds(eventEndTime.getSeconds() + seconds);
-        
+
         // Check if the event is actually ongoing right now
-        const isNowBetweenStartAndEnd = currentDate >= eventDate && 
-                                       currentDate <= eventEndTime && 
-                                       event.status !== 'Cancelled' && 
-                                       event.status !== 'Ended';
-        
+        const isNowBetweenStartAndEnd = currentDate >= eventDate &&
+          currentDate <= eventEndTime &&
+          event.status !== 'Cancelled' &&
+          event.status !== 'Ended';
+
         // If the event should be ongoing (current time is between start and end time),
         // but it's not marked as such, correct the status
         if (isNowBetweenStartAndEnd && event.status !== 'Ongoing') {
           processedEvent.status = 'Ongoing';
-          
+
           // Update the backend about this status correction using the dedicated endpoint
           axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
             status: 'Ongoing'
@@ -264,13 +262,13 @@ export default function Dashboard() {
             console.error('Failed to update event status:', error);
           });
         }
-        
+
         // If the event should be ended (current time is after end time),
         // but it's not marked as such, correct the status
-        if (currentDate > eventEndTime && 
-           (event.status === 'Ongoing' || event.status === 'Upcoming')) {
+        if (currentDate > eventEndTime &&
+          (event.status === 'Ongoing' || event.status === 'Upcoming')) {
           processedEvent.status = 'Ended';
-          
+
           // Update the backend about this status correction using the dedicated endpoint
           axios.put(getApiUrl(API_ENDPOINTS.UPDATE_EVENT_STATUS(event.eventId)), {
             status: 'Ended'
@@ -278,7 +276,7 @@ export default function Dashboard() {
             console.error('Failed to update event status:', error);
           });
         }
-        
+
         // Format the date for display
         let formattedDate = 'Unknown Date';
         try {
@@ -295,7 +293,7 @@ export default function Dashboard() {
         } catch (error) {
           console.error('Error formatting date:', error);
         }
-        
+
         return {
           id: event.eventId || `#${Math.floor(Math.random() * 90000000) + 10000000}`,
           name: event.eventName || 'Unnamed Event',
@@ -327,7 +325,7 @@ export default function Dashboard() {
         setEventError('Start date cannot be after end date');
         return;
       }
-      
+
       await fetchEvents(startDate, endDate);
       setCurrentPage(1); // Reset to first page after filtering
     } catch (error) {
@@ -358,13 +356,13 @@ export default function Dashboard() {
   // Get appropriate status class for badges
   const getStatusClass = (status = 'Unknown') => {
     const normalizedStatus = status.toLowerCase();
-    
+
     if (normalizedStatus.includes('upcoming')) return 'status-pending';
     if (normalizedStatus.includes('ongoing')) return 'status-active';
     if (normalizedStatus.includes('completed')) return 'status-completed';
     if (normalizedStatus.includes('cancelled')) return 'status-canceled';
     if (normalizedStatus.includes('postponed')) return 'status-inactive';
-    
+
     return 'status-inactive';
   };
 
@@ -372,28 +370,28 @@ export default function Dashboard() {
   const getFilteredEvents = () => {
     // Apply any additional filtering based on active tab
     let filteredEvents = [...events];
-    
+
     // Filter based on tab selection
     if (activeTab === 1) {
       // Upcoming events
-      filteredEvents = filteredEvents.filter(event => 
-        event.status.toLowerCase().includes('upcoming') || 
+      filteredEvents = filteredEvents.filter(event =>
+        event.status.toLowerCase().includes('upcoming') ||
         event.status.toLowerCase().includes('scheduled')
       );
     } else if (activeTab === 2) {
       // Ongoing events
-      filteredEvents = filteredEvents.filter(event => 
+      filteredEvents = filteredEvents.filter(event =>
         event.status.toLowerCase().includes('ongoing')
       );
     } else if (activeTab === 3) {
       // Past events
-      filteredEvents = filteredEvents.filter(event => 
-        event.status.toLowerCase().includes('completed') || 
+      filteredEvents = filteredEvents.filter(event =>
+        event.status.toLowerCase().includes('completed') ||
         event.status.toLowerCase().includes('ended') ||
         event.status.toLowerCase().includes('cancelled')
       );
     }
-    
+
     // Apply department filter if active
     if (activeFilter) {
       filteredEvents = filteredEvents.filter(event => {
@@ -401,7 +399,7 @@ export default function Dashboard() {
         return departmentName.toLowerCase().includes(activeFilter.toLowerCase());
       });
     }
-    
+
     return filteredEvents;
   };
 
@@ -416,7 +414,7 @@ export default function Dashboard() {
   const eventsPerPage = 10;
   const filteredEvents = getFilteredEvents();
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
-  
+
   // Get current page of events
   const indexOfLastEvent = currentPage * eventsPerPage;
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
@@ -436,12 +434,12 @@ export default function Dashboard() {
     setSelectedEvent(event);
     setShowModal(true);
   };
-  
+
   // Handle adding a new event from the calendar
   const handleAddEvent = async (newEvent) => {
     try {
       setLoading(true);
-      
+
       const eventData = {
         eventName: newEvent.eventName,
         departmentId: newEvent.departmentId,
@@ -452,21 +450,21 @@ export default function Dashboard() {
         status: 'Scheduled',
         createdBy: 'Dashboard'
       };
-      
+
       const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_EVENT), eventData);
-      
+
       if (response.data && response.data.eventId) {
         // Add the new event to the events state
         fetchEvents();
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error creating event:', error);
       setLoading(false);
     }
   };
-  
+
   // Open certificate editor
   const handleOpenCertificateEditor = (event) => {
     // Create a template using the event details
@@ -475,18 +473,18 @@ export default function Dashboard() {
       eventName: event.eventName || '{Event Name}',
       eventDate: event.date ? new Date(event.date).toLocaleDateString() : '{Event Date}'
     };
-    
+
     setCertificateEvent(event);
     setCertificateTemplate(template);
     setShowCertificateEditor(true);
   };
-  
+
   // Close certificate editor
   const handleCloseCertificateEditor = () => {
     setShowCertificateEditor(false);
     setCertificateEvent(null);
   };
-  
+
   // Save certificate template
   const handleSaveCertificate = async (certificateData) => {
     try {
@@ -494,7 +492,7 @@ export default function Dashboard() {
         console.error('No event ID available for saving certificate template');
         return;
       }
-      
+
       // Save certificate template to the event
       await axios.post(getApiUrl(API_ENDPOINTS.CREATE_EVENT_CERTIFICATE(certificateEvent.eventId)), certificateData);
       setShowCertificateEditor(false);
@@ -532,20 +530,20 @@ export default function Dashboard() {
     setError(null); // Clear any previous errors
     const db = getDatabase();
     const logsRef = ref(db, 'timeLogs');
-    
+
     onValue(logsRef, (snapshot) => {
       const dailyLogs = [];
-      
+
       // First level: user IDs
       snapshot.forEach((userSnapshot) => {
         const userId = userSnapshot.key;
         const userEntries = [];
-        
+
         // Second level: individual log entries
         userSnapshot.forEach((logSnapshot) => {
           const log = logSnapshot.val();
           const logDate = new Date(log.timestamp);
-          
+
           // Only process logs from the selected date
           if (isSameDay(logDate, selectedDate)) {
             userEntries.push({
@@ -557,16 +555,16 @@ export default function Dashboard() {
             });
           }
         });
-        
+
         // If we have entries for this user on this day
         if (userEntries.length > 0) {
           // Sort entries by timestamp
           userEntries.sort((a, b) => a.timestamp - b.timestamp);
-          
+
           // Group TimeIn and TimeOut entries
           const timeInOuts = [];
           let currentTimeIn = null;
-          
+
           userEntries.forEach(entry => {
             if (entry.type === 'TimeIn') {
               currentTimeIn = entry;
@@ -578,7 +576,7 @@ export default function Dashboard() {
               currentTimeIn = null;
             }
           });
-          
+
           // If there's a TimeIn without TimeOut, add it too
           if (currentTimeIn) {
             timeInOuts.push({
@@ -586,7 +584,7 @@ export default function Dashboard() {
               timeOut: null
             });
           }
-          
+
           // Add each TimeIn-TimeOut pair as a separate row
           timeInOuts.forEach((pair, index) => {
             dailyLogs.push({
@@ -603,7 +601,7 @@ export default function Dashboard() {
           });
         }
       });
-      
+
       setFacultyLogs(dailyLogs);
       setLoadingFacultyLogs(false);
     }, (error) => {
@@ -642,10 +640,10 @@ export default function Dashboard() {
 
   const handleMainTabChange = (event, newValue) => {
     setMainTab(newValue);
-    
+
     // Reset the inner tab when changing main tab
     setActiveTab(0);
-    
+
     // Load attendance data if switching to attendance tab (now index 0)
     if (newValue === 0) {
       fetchFacultyLogs();
@@ -705,12 +703,6 @@ export default function Dashboard() {
     try {
       const db = getDatabase();
       const logsRef = ref(db, 'timeLogs');
-      
-      // Initialize counters
-      let onTimeCount = 0;
-      let lateCount = 0;
-      let absentCount = 0;
-      const processedUsers = new Set(); // To track unique users
 
       // Get all faculty (excluding admins)
       const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_ALL_USERS));
@@ -718,44 +710,50 @@ export default function Dashboard() {
       const totalFaculty = facultyList.length;
 
       onValue(logsRef, (snapshot) => {
+        // Initialize counters inside the listener to reset on each update
+        let onTimeCount = 0;
+        let lateCount = 0;
+        const processedUsers = new Set(); // To track unique users who have time-in
+
+        // Parse the late threshold time
+        const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
+
         snapshot.forEach((userSnapshot) => {
           const userId = userSnapshot.key;
-          let latestTimestamp = 0;
-          let latestBadge = null;
+          let earliestTimeIn = null;
+          let earliestTimestamp = Infinity;
 
-          // Find the latest entry for this user on the selected date
+          // Find the earliest TimeIn entry for this user on the selected date
           userSnapshot.forEach((logSnapshot) => {
             const log = logSnapshot.val();
             const logDate = new Date(log.timestamp);
-            
-            if (isSameDay(logDate, selectedDate) && log.timestamp > latestTimestamp) {
-              latestTimestamp = log.timestamp;
-              latestBadge = log.attendanceBadge;
+
+            if (isSameDay(logDate, selectedDate) && log.type === 'TimeIn') {
+              if (log.timestamp < earliestTimestamp) {
+                earliestTimestamp = log.timestamp;
+                earliestTimeIn = log;
+              }
             }
           });
 
-          // Only count each user once based on their latest badge for the day
-          if (latestBadge && !processedUsers.has(userId)) {
+          // If user has a time-in for this day, determine if they were late
+          if (earliestTimeIn && !processedUsers.has(userId)) {
             processedUsers.add(userId);
-            
-            switch (latestBadge) {
-              case 'On Time':
-                onTimeCount++;
-                break;
-              case 'Late':
-                lateCount++;
-                break;
-              case 'Absent':
-                absentCount++;
-                break;
+
+            const timeInDate = new Date(earliestTimeIn.timestamp);
+            const thresholdDate = new Date(selectedDate);
+            thresholdDate.setHours(thresholdHour, thresholdMinute, 0, 0);
+
+            if (timeInDate > thresholdDate) {
+              lateCount++;
+            } else {
+              onTimeCount++;
             }
           }
         });
 
         // Calculate absent count for users not found in logs
-        const totalProcessed = processedUsers.size;
-        const remainingAbsent = totalFaculty - totalProcessed;
-        absentCount += remainingAbsent;
+        const absentCount = totalFaculty - processedUsers.size;
 
         setAttendanceStats({
           present: onTimeCount,
@@ -775,7 +773,7 @@ export default function Dashboard() {
   // Add new helper function to update late faculty list
   const updateLateFacultyList = (snapshot) => {
     const lateFaculty = [];
-    
+
     snapshot.forEach((userSnapshot) => {
       let latestEntry = null;
       let latestTimestamp = 0;
@@ -783,10 +781,10 @@ export default function Dashboard() {
       userSnapshot.forEach((logSnapshot) => {
         const log = logSnapshot.val();
         const logDate = new Date(log.timestamp);
-        
-        if (isSameDay(logDate, selectedDate) && 
-            log.timestamp > latestTimestamp && 
-            log.attendanceBadge === 'Late') {
+
+        if (isSameDay(logDate, selectedDate) &&
+          log.timestamp > latestTimestamp &&
+          log.attendanceBadge === 'Late') {
           latestTimestamp = log.timestamp;
           latestEntry = log;
         }
@@ -824,7 +822,7 @@ export default function Dashboard() {
     try {
       const db = getDatabase();
       const thresholdRef = ref(db, 'settings/lateThreshold');
-      
+
       // First try to get the existing value
       const snapshot = await get(thresholdRef);
       if (snapshot.exists()) {
@@ -885,7 +883,7 @@ export default function Dashboard() {
     try {
       const auth = getAuth();
       const user = auth.currentUser;
-      
+
       if (!user) {
         setThresholdError('You must be logged in to change the late threshold.');
         return false;
@@ -991,16 +989,16 @@ export default function Dashboard() {
             sx={{ mb: thresholdError ? 1 : 3 }}
           />
           {thresholdError && (
-            <Typography 
-              color="error" 
-              variant="body2" 
+            <Typography
+              color="error"
+              variant="body2"
               sx={{ mb: 2 }}
             >
               {thresholdError}
             </Typography>
           )}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button 
+            <Button
               onClick={() => {
                 setShowLateThresholdModal(false);
                 setThresholdError(null);
@@ -1009,8 +1007,8 @@ export default function Dashboard() {
             >
               Cancel
             </Button>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleSave}
               disabled={saving}
               sx={{
@@ -1153,7 +1151,7 @@ export default function Dashboard() {
             const [thresholdHour, thresholdMinute] = lateThreshold.split(':').map(Number);
             const thresholdDate = new Date(selectedDate);
             thresholdDate.setHours(thresholdHour, thresholdMinute, 0);
-            
+
             return isSameDay(timeInDate, selectedDate) && timeInDate > thresholdDate;
           }
           return false;
@@ -1198,11 +1196,11 @@ export default function Dashboard() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        <Box sx={{ 
-          p: 2, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <Box sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           borderBottom: '1px solid #E2E8F0',
           bgcolor: '#F8FAFC'
         }}>
@@ -1221,10 +1219,10 @@ export default function Dashboard() {
 
         <Box sx={{ overflow: 'auto', flex: 1, p: 2 }}>
           {lateFacultyList.length === 0 ? (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
               justifyContent: 'center',
               p: 4
             }}>
@@ -1304,11 +1302,11 @@ export default function Dashboard() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        <Box sx={{ 
-          p: 2, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <Box sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           borderBottom: '1px solid #E2E8F0',
           bgcolor: '#F8FAFC'
         }}>
@@ -1327,10 +1325,10 @@ export default function Dashboard() {
 
         <Box sx={{ overflow: 'auto', flex: 1, p: 2 }}>
           {noTimeInList.length === 0 ? (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
               justifyContent: 'center',
               p: 4
             }}>
@@ -1426,31 +1424,31 @@ export default function Dashboard() {
   const handleAttendanceDateFilterChange = () => {
     try {
       // Validate date range
-      if (attendanceStartDate && attendanceEndDate && 
-          new Date(attendanceStartDate) > new Date(attendanceEndDate)) {
+      if (attendanceStartDate && attendanceEndDate &&
+        new Date(attendanceStartDate) > new Date(attendanceEndDate)) {
         setError('Start date cannot be after end date');
         return;
       }
-      
+
       setLoadingFacultyLogs(true);
       const db = getDatabase();
       const logsRef = ref(db, 'timeLogs');
-      
+
       onValue(logsRef, (snapshot) => {
         const dailyLogs = [];
-        
+
         snapshot.forEach((userSnapshot) => {
           const userId = userSnapshot.key;
           const userEntries = [];
-          
+
           userSnapshot.forEach((logSnapshot) => {
             const log = logSnapshot.val();
             const logDate = new Date(log.timestamp);
-            
+
             // Check if the log date falls within the selected range
             const isWithinRange = (!attendanceStartDate || logDate >= new Date(attendanceStartDate)) &&
-                                (!attendanceEndDate || logDate <= new Date(new Date(attendanceEndDate).setHours(23, 59, 59)));
-            
+              (!attendanceEndDate || logDate <= new Date(new Date(attendanceEndDate).setHours(23, 59, 59)));
+
             if (isWithinRange) {
               userEntries.push({
                 id: logSnapshot.key,
@@ -1461,13 +1459,13 @@ export default function Dashboard() {
               });
             }
           });
-          
+
           if (userEntries.length > 0) {
             userEntries.sort((a, b) => a.timestamp - b.timestamp);
-            
+
             const timeInOuts = [];
             let currentTimeIn = null;
-            
+
             userEntries.forEach(entry => {
               if (entry.type === 'TimeIn') {
                 currentTimeIn = entry;
@@ -1479,14 +1477,14 @@ export default function Dashboard() {
                 currentTimeIn = null;
               }
             });
-            
+
             if (currentTimeIn) {
               timeInOuts.push({
                 timeIn: currentTimeIn,
                 timeOut: null
               });
             }
-            
+
             timeInOuts.forEach((pair, index) => {
               dailyLogs.push({
                 id: `${pair.timeIn.id}-${index}`,
@@ -1502,7 +1500,7 @@ export default function Dashboard() {
             });
           }
         });
-        
+
         setFacultyLogs(dailyLogs);
         setLoadingFacultyLogs(false);
       }, (error) => {
@@ -1539,7 +1537,7 @@ export default function Dashboard() {
   const handleExportAttendance = async () => {
     try {
       setExportLoading(true);
-      
+
       // Get the filename based on the filter type
       let filename;
       if (filterType === 'single') {
@@ -1644,26 +1642,26 @@ export default function Dashboard() {
   };
 
   return (
-    <Box 
+    <Box
       className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}
       sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}
     >
       {/* Dashboard Content */}
-      <Box 
+      <Box
         className="dashboard-main"
         sx={{ width: '100%', maxWidth: '100%', margin: '0 auto', flex: 1 }}
       >
-        
+
         {/* Main Tabs */}
         <Box sx={{ mb: 4 }}>
-          <Tabs 
-            value={mainTab} 
+          <Tabs
+            value={mainTab}
             onChange={handleMainTabChange}
-            sx={{ 
-              borderBottom: 1, 
+            sx={{
+              borderBottom: 1,
               borderColor: 'divider',
-              '& .MuiTab-root': { 
-                minWidth: { xs: 100, md: 120 }, 
+              '& .MuiTab-root': {
+                minWidth: { xs: 100, md: 120 },
                 textTransform: 'none',
                 fontSize: '16px',
                 fontWeight: 500
@@ -1677,24 +1675,24 @@ export default function Dashboard() {
               }
             }}
           >
-            <Tab 
-              label="Daily Attendance Record" 
-              icon={<Group />} 
+            <Tab
+              label="Daily Attendance Record"
+              icon={<Group />}
               iconPosition="start"
             />
-            <Tab 
-              label="Event Summary" 
-              icon={<EventNote />} 
+            <Tab
+              label="Event Summary"
+              icon={<EventNote />}
               iconPosition="start"
             />
-            <Tab 
-              label="Calendar" 
-              icon={<CalendarToday />} 
+            <Tab
+              label="Calendar"
+              icon={<CalendarToday />}
               iconPosition="start"
             />
-            <Tab 
-              label="Email Status" 
-              icon={<Email />} 
+            <Tab
+              label="Email Status"
+              icon={<Email />}
               iconPosition="start"
             />
           </Tabs>
@@ -1708,10 +1706,10 @@ export default function Dashboard() {
               title="Faculty Time-In/Out Distribution"
             />
             {/* Existing Attendance UI */}
-            <Box sx={{ 
-              bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-              borderRadius: '8px', 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            <Box sx={{
+              bgcolor: darkMode ? 'var(--card-bg)' : 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
               overflow: 'hidden',
               border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
               p: 3
@@ -1728,9 +1726,9 @@ export default function Dashboard() {
                     </Typography>
                   )}
                 </Box>
-                
-                <Box sx={{ 
-                  display: 'flex', 
+
+                <Box sx={{
+                  display: 'flex',
                   gap: 2,
                   flexWrap: { xs: 'wrap', md: 'nowrap' },
                   alignItems: 'center'
@@ -1741,7 +1739,7 @@ export default function Dashboard() {
                     disabled={exportLoading || facultyLogs.length === 0}
                     onClick={handleExportAttendance}
                     startIcon={exportLoading ? <CircularProgress size={20} /> : <GetApp />}
-                    sx={{ 
+                    sx={{
                       textTransform: 'none',
                       borderRadius: '8px',
                       borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
@@ -1755,10 +1753,10 @@ export default function Dashboard() {
                     {exportLoading ? 'Exporting...' : 'Export to Excel'}
                   </Button>
 
-                  <Box sx={{ 
-                    display: 'flex', 
-                    gap: 1, 
-                    bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', 
+                  <Box sx={{
+                    display: 'flex',
+                    gap: 1,
+                    bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                     borderRadius: '8px',
                     p: 0.5
                   }}>
@@ -1766,14 +1764,14 @@ export default function Dashboard() {
                       size="small"
                       variant={filterType === 'single' ? 'contained' : 'text'}
                       onClick={() => toggleFilterType('single')}
-                      sx={{ 
+                      sx={{
                         textTransform: 'none',
                         minWidth: 'auto',
                         px: 2,
                         backgroundColor: filterType === 'single' ? (darkMode ? 'var(--accent-color)' : 'royalblue') : 'transparent',
                         color: filterType === 'single' ? 'white' : 'text.secondary',
                         '&:hover': {
-                          backgroundColor: filterType === 'single' 
+                          backgroundColor: filterType === 'single'
                             ? (darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)')
                             : (darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
                         }
@@ -1785,14 +1783,14 @@ export default function Dashboard() {
                       size="small"
                       variant={filterType === 'range' ? 'contained' : 'text'}
                       onClick={() => toggleFilterType('range')}
-                      sx={{ 
+                      sx={{
                         textTransform: 'none',
                         minWidth: 'auto',
                         px: 2,
                         backgroundColor: filterType === 'range' ? (darkMode ? 'var(--accent-color)' : 'royalblue') : 'transparent',
                         color: filterType === 'range' ? 'white' : 'text.secondary',
                         '&:hover': {
-                          backgroundColor: filterType === 'range' 
+                          backgroundColor: filterType === 'range'
                             ? (darkMode ? 'var(--accent-hover)' : 'rgb(52, 84, 180)')
                             : (darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
                         }
@@ -1817,8 +1815,8 @@ export default function Dashboard() {
                       />
                     </LocalizationProvider>
                   ) : (
-                    <Box sx={{ 
-                      display: 'flex', 
+                    <Box sx={{
+                      display: 'flex',
                       gap: 2,
                       flexWrap: { xs: 'wrap', md: 'nowrap' },
                       alignItems: 'center'
@@ -1831,7 +1829,7 @@ export default function Dashboard() {
                         onChange={(e) => setAttendanceStartDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
                         disabled={filterType !== 'range'}
-                        sx={{ 
+                        sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: '8px',
                             '&:hover fieldset': {
@@ -1848,7 +1846,7 @@ export default function Dashboard() {
                         onChange={(e) => setAttendanceEndDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
                         disabled={filterType !== 'range'}
-                        sx={{ 
+                        sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: '8px',
                             '&:hover fieldset': {
@@ -1857,14 +1855,14 @@ export default function Dashboard() {
                           }
                         }}
                       />
-                      <Button 
-                        variant="contained" 
+                      <Button
+                        variant="contained"
                         color="primary"
                         size="small"
                         onClick={handleAttendanceDateFilterChange}
                         disabled={filterType !== 'range' || !attendanceStartDate || !attendanceEndDate}
-                        sx={{ 
-                          textTransform: 'none', 
+                        sx={{
+                          textTransform: 'none',
                           borderRadius: '8px',
                           backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
                           boxShadow: 'none',
@@ -1876,12 +1874,12 @@ export default function Dashboard() {
                       >
                         Apply Filter
                       </Button>
-                      <Button 
-                        variant="outlined" 
+                      <Button
+                        variant="outlined"
                         size="small"
                         onClick={handleClearAttendanceDateFilter}
                         disabled={filterType !== 'range' || (!attendanceStartDate && !attendanceEndDate)}
-                        sx={{ 
+                        sx={{
                           textTransform: 'none',
                           borderRadius: '8px',
                           borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
@@ -2029,7 +2027,7 @@ export default function Dashboard() {
                         Edit Window
                       </Button>
                     </Paper>
-                        
+
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Paper
@@ -2052,24 +2050,24 @@ export default function Dashboard() {
                             bgcolor: darkMode ? 'rgba(250, 204, 21, 0.4)' : '#F59E0B'
                           }}
                         >
-                        
+
                         </Avatar>
                         <Box>
                           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
                             Faculty Break Window
                           </Typography>
                           <Typography variant="h6" fontWeight="700" color={darkMode ? 'var(--text-primary)' : '#92400E'}>
-                          12:00 PM - 1:00 PM
+                            12:00 PM - 1:00 PM
                           </Typography>
-                         
+
                         </Box>
-                      </Box>                           
+                      </Box>
                     </Paper>
                   </Grid>
 
                 </Grid>
-                <Box sx={{ 
-                  display: 'flex', 
+                <Box sx={{
+                  display: 'flex',
                   gap: 2,
                   flexDirection: { xs: 'column', md: 'row' },
                   mb: 4
@@ -2169,7 +2167,7 @@ export default function Dashboard() {
                         <TableCell>Time In</TableCell>
                         <TableCell>Time Out</TableCell>
                         <TableCell>Duration</TableCell>
-                      {/*  <TableCell>Venue</TableCell>
+                        {/*  <TableCell>Venue</TableCell>
                         <TableCell>Status</TableCell>*/}
                       </TableRow>
                     </TableHead>
@@ -2212,146 +2210,146 @@ export default function Dashboard() {
                           const duration = calculateDuration(entry.timeIn, entry.timeOut);
                           const timeInDate = entry.timeIn ? new Date(entry.timeIn.timestamp) : null;
                           const formattedDate = timeInDate ? format(timeInDate, 'MMMM d, yyyy') : 'N/A';
-                        
-                        return (
-                          <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                {/* Time In Photo */}
-                                {entry.timeIn?.imageUrl ? (
-                                  <Box
-                                    component="img"
-                                    src={entry.timeIn.imageUrl}
-                                    alt={`${entry.firstName}'s time-in photo`}
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: '50%',
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      border: '2px solid #4caf50',
-                                      '&:hover': {
-                                        opacity: 0.8,
-                                        transform: 'scale(1.1)',
-                                        transition: 'all 0.2s ease-in-out'
-                                      }
-                                    }}
-                                    onClick={() => setZoomImage(entry.timeIn.imageUrl)}
-                                  />
-                                ) : (
-                                  <Box
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: '50%',
-                                      bgcolor: 'grey.300',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      border: '2px solid #4caf50'
-                                    }}
-                                  >
-                                    <Typography variant="body2" color="text.secondary">
-                                      IN
-                                    </Typography>
-                                  </Box>
-                                )}
-                                
-                                {/* Time Out Photo */}
-                                {entry.timeOut?.imageUrl ? (
-                                  <Box
-                                    component="img"
-                                    src={entry.timeOut.imageUrl}
-                                    alt={`${entry.firstName}'s time-out photo`}
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: '50%',
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      border: '2px solid #f44336',
-                                      '&:hover': {
-                                        opacity: 0.8,
-                                        transform: 'scale(1.1)',
-                                        transition: 'all 0.2s ease-in-out'
-                                      }
-                                    }}
-                                    onClick={() => setZoomImage(entry.timeOut.imageUrl)}
-                                  />
-                                ) : (
-                                  entry.timeOut && (
+
+                          return (
+                            <TableRow key={entry.id} sx={{ '&:hover': { bgcolor: darkMode ? 'var(--accent-light)' : 'action.hover' } }}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                  {/* Time In Photo */}
+                                  {entry.timeIn?.imageUrl ? (
+                                    <Box
+                                      component="img"
+                                      src={entry.timeIn.imageUrl}
+                                      alt={`${entry.firstName}'s time-in photo`}
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        cursor: 'pointer',
+                                        border: '2px solid #4caf50',
+                                        '&:hover': {
+                                          opacity: 0.8,
+                                          transform: 'scale(1.1)',
+                                          transition: 'all 0.2s ease-in-out'
+                                        }
+                                      }}
+                                      onClick={() => setZoomImage(entry.timeIn.imageUrl)}
+                                    />
+                                  ) : (
                                     <Box
                                       sx={{
                                         width: 40,
                                         height: 40,
                                         borderRadius: '50%',
+                                        bgcolor: 'grey.300',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        border: '2px solid #f44336'
+                                        border: '2px solid #4caf50'
                                       }}
                                     >
                                       <Typography variant="body2" color="text.secondary">
-                                        OUT
+                                        IN
                                       </Typography>
                                     </Box>
-                                  )
-                                )}
-                              </Box>
-                            </TableCell>
-                            <TableCell>{entry.firstName}</TableCell>
-                            <TableCell>{entry.email}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={formattedDate}
-                                size="small"
-                                color="default"
-                                variant="outlined"
-                                icon={<CalendarToday sx={{ fontSize: 16 }} />}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Tooltip title="Time In" arrow>
-                                  <Chip 
-                                    label={entry.timeIn.time}
-                                    color="success"
-                                    size="small"
-                                    variant="outlined"
-                                    icon={<AccessTime sx={{ fontSize: 16 }} />}
-                                  />
-                                </Tooltip>
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
-                                <Chip 
-                                  label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
-                                  color={entry.timeOut ? "error" : "warning"}
+                                  )}
+
+                                  {/* Time Out Photo */}
+                                  {entry.timeOut?.imageUrl ? (
+                                    <Box
+                                      component="img"
+                                      src={entry.timeOut.imageUrl}
+                                      alt={`${entry.firstName}'s time-out photo`}
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        cursor: 'pointer',
+                                        border: '2px solid #f44336',
+                                        '&:hover': {
+                                          opacity: 0.8,
+                                          transform: 'scale(1.1)',
+                                          transition: 'all 0.2s ease-in-out'
+                                        }
+                                      }}
+                                      onClick={() => setZoomImage(entry.timeOut.imageUrl)}
+                                    />
+                                  ) : (
+                                    entry.timeOut && (
+                                      <Box
+                                        sx={{
+                                          width: 40,
+                                          height: 40,
+                                          borderRadius: '50%',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          border: '2px solid #f44336'
+                                        }}
+                                      >
+                                        <Typography variant="body2" color="text.secondary">
+                                          OUT
+                                        </Typography>
+                                      </Box>
+                                    )
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell>{entry.firstName}</TableCell>
+                              <TableCell>{entry.email}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={formattedDate}
                                   size="small"
+                                  color="default"
                                   variant="outlined"
-                                  icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                  icon={<CalendarToday sx={{ fontSize: 16 }} />}
                                 />
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell>
-                              {duration ? (
-                                <Tooltip title="Total Duration" arrow>
-                                  <Chip 
-                                    label={duration}
-                                    color="primary"
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Tooltip title="Time In" arrow>
+                                    <Chip
+                                      label={entry.timeIn.time}
+                                      color="success"
+                                      size="small"
+                                      variant="outlined"
+                                      icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                    />
+                                  </Tooltip>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip title={entry.timeOut ? "Time Out" : "Not yet timed out"} arrow>
+                                  <Chip
+                                    label={entry.timeOut ? entry.timeOut.time : 'Active Session'}
+                                    color={entry.timeOut ? "error" : "warning"}
                                     size="small"
                                     variant="outlined"
                                     icon={<AccessTime sx={{ fontSize: 16 }} />}
                                   />
                                 </Tooltip>
-                              ) : (
-                                <Typography variant="body2" color="text.secondary">
-                                  In Progress
-                                </Typography>
-                              )}
-                            </TableCell>
-                           {/*<TableCell>{entry.venue || 'N/A'}</TableCell>
+                              </TableCell>
+                              <TableCell>
+                                {duration ? (
+                                  <Tooltip title="Total Duration" arrow>
+                                    <Chip
+                                      label={duration}
+                                      color="primary"
+                                      size="small"
+                                      variant="outlined"
+                                      icon={<AccessTime sx={{ fontSize: 16 }} />}
+                                    />
+                                  </Tooltip>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    In Progress
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              {/*<TableCell>{entry.venue || 'N/A'}</TableCell>
                             <TableCell>
                               <Chip 
                                 label={entry.attendanceBadge} 
@@ -2360,23 +2358,23 @@ export default function Dashboard() {
                                 variant="outlined"
                               />
                             </TableCell>*/}
-                          </TableRow>
-                        );
-                      })}
+                            </TableRow>
+                          );
+                        })}
                     </TableBody>
                   </Table>
                 </TableContainer>
               )}
-              
+
               {/* Image Zoom Modal */}
-              <ImageZoomModal 
+              <ImageZoomModal
                 imageUrl={zoomImage}
                 onClose={() => setZoomImage(null)}
               />
             </Box>
           </>
         )}
-        
+
         {/* Event Summary */}
         {mainTab === 1 && (
           <>
@@ -2385,11 +2383,11 @@ export default function Dashboard() {
               title="Event Status Distribution"
             />
             {/* Existing Event Summary UI */}
-            <Box sx={{ 
-              padding:'10px',
-              bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-              borderRadius: '8px', 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+            <Box sx={{
+              padding: '10px',
+              bgcolor: darkMode ? 'var(--card-bg)' : 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
               overflow: 'hidden',
               border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)'
             }}>
@@ -2401,8 +2399,8 @@ export default function Dashboard() {
                   <Grid container spacing={2}>
                     {[1, 2, 3, 4].map((_, index) => (
                       <Grid item xs={6} sm={3} md={3} key={index}>
-                        <Card sx={{ 
-                          borderRadius: '10px', 
+                        <Card sx={{
+                          borderRadius: '10px',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                           bgcolor: darkMode ? 'var(--card-bg)' : 'white'
                         }}>
@@ -2420,9 +2418,9 @@ export default function Dashboard() {
                 ) : (
                   <Grid container spacing={2}>
                     <Grid item xs={6} sm={3} md={3}>
-                      <Card className="stat-card" sx={{ 
-                        borderRadius: '10px', 
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                      <Card className="stat-card" sx={{
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                         background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
                         transition: 'all 0.2s ease',
                         height: '100%',
@@ -2432,8 +2430,8 @@ export default function Dashboard() {
                         }
                       }}>
                         <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Box className="stat-icon" sx={{ 
-                            background: darkMode ? 'var(--accent-light)' : 'rgba(65, 105, 225, 0.1)', 
+                          <Box className="stat-icon" sx={{
+                            background: darkMode ? 'var(--accent-light)' : 'rgba(65, 105, 225, 0.1)',
                             color: darkMode ? 'var(--accent-color)' : 'royalblue',
                             borderRadius: '8px',
                             width: '36px',
@@ -2451,9 +2449,9 @@ export default function Dashboard() {
                       </Card>
                     </Grid>
                     <Grid item xs={6} sm={3} md={3}>
-                      <Card className="stat-card" sx={{ 
-                        borderRadius: '10px', 
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                      <Card className="stat-card" sx={{
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                         background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f9f8ff 0%, #ffffff 100%)',
                         transition: 'all 0.2s ease',
                         height: '100%',
@@ -2463,8 +2461,8 @@ export default function Dashboard() {
                         }
                       }}>
                         <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Box className="stat-icon" sx={{ 
-                            background: darkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)', 
+                          <Box className="stat-icon" sx={{
+                            background: darkMode ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)',
                             color: 'orange',
                             borderRadius: '8px',
                             width: '36px',
@@ -2484,9 +2482,9 @@ export default function Dashboard() {
                       </Card>
                     </Grid>
                     <Grid item xs={6} sm={3} md={3}>
-                      <Card className="stat-card" sx={{ 
-                        borderRadius: '10px', 
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                      <Card className="stat-card" sx={{
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                         background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8feff 0%, #ffffff 100%)',
                         transition: 'all 0.2s ease',
                         height: '100%',
@@ -2496,8 +2494,8 @@ export default function Dashboard() {
                         }
                       }}>
                         <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Box className="stat-icon" sx={{ 
-                            background: darkMode ? 'rgba(0, 150, 136, 0.15)' : 'rgba(0, 150, 136, 0.1)', 
+                          <Box className="stat-icon" sx={{
+                            background: darkMode ? 'rgba(0, 150, 136, 0.15)' : 'rgba(0, 150, 136, 0.1)',
                             color: 'teal',
                             borderRadius: '8px',
                             width: '36px',
@@ -2517,9 +2515,9 @@ export default function Dashboard() {
                       </Card>
                     </Grid>
                     <Grid item xs={6} sm={3} md={3}>
-                      <Card className="stat-card" sx={{ 
-                        borderRadius: '10px', 
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                      <Card className="stat-card" sx={{
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                         background: darkMode ? 'var(--card-bg)' : 'linear-gradient(135deg, #f8f8fc 0%, #ffffff 100%)',
                         transition: 'all 0.2s ease',
                         height: '100%',
@@ -2529,8 +2527,8 @@ export default function Dashboard() {
                         }
                       }}>
                         <CardContent sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Box className="stat-icon" sx={{ 
-                            background: darkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)', 
+                          <Box className="stat-icon" sx={{
+                            background: darkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.1)',
                             color: 'green',
                             borderRadius: '8px',
                             width: '36px',
@@ -2544,8 +2542,8 @@ export default function Dashboard() {
                           </Box>
                           <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 0.5 }}>Completed Events</Typography>
                           <Typography variant="h4" sx={{ fontWeight: 700, color: 'green', mb: 0, mt: 'auto' }}>
-                            {events.filter(event => 
-                              event.status.toLowerCase().includes('completed') || 
+                            {events.filter(event =>
+                              event.status.toLowerCase().includes('completed') ||
                               event.status.toLowerCase().includes('ended')
                             ).length}
                           </Typography>
@@ -2557,30 +2555,30 @@ export default function Dashboard() {
               </Box>
 
               {/* Filter and Table Section */}
-              <Box sx={{ 
-                bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-                borderRadius: '8px', 
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+              <Box sx={{
+                bgcolor: darkMode ? 'var(--card-bg)' : 'white',
+                borderRadius: '8px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                 overflow: 'hidden',
                 border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)'
               }}>
                 {/* Tab and Filter Section */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  p: { xs: 2, md: 3 }, 
-                  borderBottom: '1px solid', 
+                <Box sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: { xs: 2, md: 3 },
+                  borderBottom: '1px solid',
                   borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
                   flexDirection: { xs: 'column', md: 'row' },
                   gap: { xs: 2, md: 0 }
                 }}>
-                  <Tabs 
-                    value={activeTab} 
+                  <Tabs
+                    value={activeTab}
                     onChange={handleTabChange}
-                    sx={{ 
-                      '& .MuiTab-root': { 
-                        minWidth: { xs: 80, md: 100 }, 
+                    sx={{
+                      '& .MuiTab-root': {
+                        minWidth: { xs: 80, md: 100 },
                         textTransform: 'none',
                         fontSize: '14px',
                         fontWeight: 500
@@ -2599,9 +2597,9 @@ export default function Dashboard() {
                     <Tab label="Ongoing" />
                     <Tab label="Past Events" />
                   </Tabs>
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
+
+                  <Box sx={{
+                    display: 'flex',
                     gap: 2,
                     flexWrap: { xs: 'wrap', md: 'nowrap' },
                     width: { xs: '100%', md: 'auto' },
@@ -2614,7 +2612,7 @@ export default function Dashboard() {
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       InputLabelProps={{ shrink: true }}
-                      sx={{ 
+                      sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '8px',
                           '&:hover fieldset': {
@@ -2630,7 +2628,7 @@ export default function Dashboard() {
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       InputLabelProps={{ shrink: true }}
-                      sx={{ 
+                      sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '8px',
                           '&:hover fieldset': {
@@ -2639,13 +2637,13 @@ export default function Dashboard() {
                         }
                       }}
                     />
-                    <Button 
-                      variant="contained" 
+                    <Button
+                      variant="contained"
                       color="primary"
                       size="small"
                       onClick={handleDateFilterChange}
-                      sx={{ 
-                        textTransform: 'none', 
+                      sx={{
+                        textTransform: 'none',
                         borderRadius: '8px',
                         backgroundColor: darkMode ? 'var(--accent-color)' : 'royalblue',
                         boxShadow: 'none',
@@ -2657,11 +2655,11 @@ export default function Dashboard() {
                     >
                       Apply Filter
                     </Button>
-                    <Button 
-                      variant="outlined" 
+                    <Button
+                      variant="outlined"
                       size="small"
                       onClick={handleClearDateFilter}
-                      sx={{ 
+                      sx={{
                         textTransform: 'none',
                         borderRadius: '8px',
                         borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
@@ -2676,7 +2674,7 @@ export default function Dashboard() {
                     </Button>
                   </Box>
                 </Box>
-                
+
                 {/* Events Table */}
                 {loading ? (
                   <TableContainer>
@@ -2733,17 +2731,17 @@ export default function Dashboard() {
                             <TableCell>{event.duration}</TableCell>
                             <TableCell>{event.venue || 'N/A'}</TableCell>
                             <TableCell>
-                              <Chip 
-                                label={event.status} 
-                                size="small" 
+                              <Chip
+                                label={event.status}
+                                size="small"
                                 className={`status-chip ${getStatusClass(event.status)}`}
                                 variant="outlined"
                               />
                             </TableCell>
                             <TableCell>
                               <Tooltip title="View Details">
-                                <IconButton 
-                                  size="small" 
+                                <IconButton
+                                  size="small"
                                   color="primary"
                                   onClick={() => handleViewEvent(event)}
                                 >
@@ -2757,22 +2755,22 @@ export default function Dashboard() {
                     </Table>
                   </TableContainer>
                 )}
-                
+
                 {/* Pagination Controls */}
                 {activeTab !== 4 && (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    p: { xs: 2, md: 3 }, 
-                    borderTop: '1px solid', 
+                  <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    p: { xs: 2, md: 3 },
+                    borderTop: '1px solid',
                     borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.06)',
                     bgcolor: darkMode ? 'var(--background-tertiary)' : 'rgba(0,0,0,0.01)'
                   }}>
                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Showing {currentEvents.length > 0 ? indexOfFirstEvent + 1 : 0} to {Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length} events
                     </Typography>
-                    
+
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Typography variant="body2" color="text.secondary" sx={{ mr: 2, fontWeight: 500 }}>
                         Page {currentPage} of {totalPages || 1}
@@ -2783,9 +2781,9 @@ export default function Dashboard() {
                         startIcon={<ChevronLeft />}
                         onClick={handlePreviousPage}
                         disabled={currentPage === 1 || totalPages === 0}
-                        sx={{ 
-                          minWidth: { xs: 40, md: 100 }, 
-                          textTransform: 'none', 
+                        sx={{
+                          minWidth: { xs: 40, md: 100 },
+                          textTransform: 'none',
                           mr: 1,
                           borderRadius: '8px',
                           borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
@@ -2810,8 +2808,8 @@ export default function Dashboard() {
                         endIcon={<ChevronRight />}
                         onClick={handleNextPage}
                         disabled={currentPage === totalPages || totalPages === 0}
-                        sx={{ 
-                          minWidth: { xs: 40, md: 100 }, 
+                        sx={{
+                          minWidth: { xs: 40, md: 100 },
                           textTransform: 'none',
                           borderRadius: '8px',
                           borderColor: darkMode ? 'var(--border-color)' : 'rgba(0,0,0,0.15)',
@@ -2840,17 +2838,17 @@ export default function Dashboard() {
 
         {/* Calendar Tab */}
         {mainTab === 2 && (
-          <Box sx={{ 
-            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-            borderRadius: '8px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+          <Box sx={{
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
             overflow: 'hidden',
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
             color: darkMode ? 'white' : 'white',
             p: 3
           }}>
             <Typography variant="h6" fontWeight="600" color="#1E293B" sx={{ mb: 3 }}>Event Calendar</Typography>
-            
+
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
@@ -2869,10 +2867,10 @@ export default function Dashboard() {
 
         {/* Email Status Tab */}
         {mainTab === 3 && (
-          <Box sx={{ 
-            bgcolor: darkMode ? 'var(--card-bg)' : 'white', 
-            borderRadius: '8px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+          <Box sx={{
+            bgcolor: darkMode ? 'var(--card-bg)' : 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
             overflow: 'hidden',
             border: darkMode ? '1px solid var(--border-color)' : '1px solid rgba(0,0,0,0.05)',
             p: 3
@@ -2885,7 +2883,7 @@ export default function Dashboard() {
           </Box>
         )}
       </Box>
-      
+
       {/* Event Detail Modal */}
       <Modal
         open={showModal}
@@ -2912,9 +2910,9 @@ export default function Dashboard() {
               <Close />
             </IconButton>
           </Box>
-          
+
           <Divider sx={{ mb: 2, borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-          
+
           {selectedEvent && (
             <List sx={{ p: 0 }}>
               <ListItem sx={{ py: 1, px: 0 }}>
@@ -2924,7 +2922,7 @@ export default function Dashboard() {
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Event Name</Typography>
@@ -2932,7 +2930,7 @@ export default function Dashboard() {
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Department</Typography>
@@ -2940,7 +2938,7 @@ export default function Dashboard() {
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Date and Time</Typography>
@@ -2948,7 +2946,7 @@ export default function Dashboard() {
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Duration</Typography>
@@ -2956,21 +2954,21 @@ export default function Dashboard() {
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
-               <Box sx={{ width: '100%' }}>
-                 <Typography variant="body2" color="text.secondary">Venue</Typography>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" color="text.secondary">Venue</Typography>
                   <Typography variant="body1" fontWeight={500}>{selectedEvent.venue || 'N/A'}</Typography>
                 </Box>
               </ListItem>
               <Divider sx={{ borderColor: darkMode ? 'var(--border-color)' : 'inherit' }} />
-              
+
               <ListItem sx={{ py: 1, px: 0 }}>
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="body2" color="text.secondary">Status</Typography>
-                  <Chip 
-                    label={selectedEvent.status} 
-                    size="small" 
+                  <Chip
+                    label={selectedEvent.status}
+                    size="small"
                     className={`status-chip ${getStatusClass(selectedEvent.status)}`}
                     sx={{ mt: 0.5 }}
                   />
@@ -2978,28 +2976,28 @@ export default function Dashboard() {
               </ListItem>
             </List>
           )}
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               onClick={() => setShowModal(false)}
-              sx={{ 
-                textTransform: 'none', 
+              sx={{
+                textTransform: 'none',
                 mr: 1,
                 borderColor: darkMode ? 'var(--border-color)' : 'inherit'
               }}
             >
               Close
             </Button>
-            <Button 
-              variant="contained" 
-              color="primary" 
+            <Button
+              variant="contained"
+              color="primary"
               onClick={() => {
                 setShowModal(false);
                 // Navigate to attendance page with event ID
                 window.location.href = `/attendance/${selectedEvent.id}`;
               }}
-              sx={{ 
+              sx={{
                 textTransform: 'none',
                 backgroundColor: darkMode ? 'var(--accent-color)' : undefined,
                 '&:hover': {
@@ -3012,7 +3010,7 @@ export default function Dashboard() {
           </Box>
         </Box>
       </Modal>
-      
+
       {/* Certificate Editor */}
       {showCertificateEditor && (
         <CertificateEditor

@@ -23,6 +23,7 @@ import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 
@@ -116,10 +117,15 @@ class HomeActivity : WifiSecurityActivity() {
     private var activeTutorialTotalSteps: Int = TOTAL_QUICK_TOUR_STEPS
 
 
+    private var startAttendanceTutorialLauncher: ActivityResultLauncher<Intent>? = null
+
     // New state variables for managing interactive tutorials
     private var isInteractiveTutorialActive: Boolean = false
     private var currentInteractiveTutorialName: String? = null
     private var expectedInteractiveTutorialAction: String? = null
+    
+    // Runnable for auto-hiding the schedule tooltip
+    private var hideScheduleRunnable: Runnable? = null
 
     private val timeInActivityTutorialLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -299,6 +305,85 @@ class HomeActivity : WifiSecurityActivity() {
         drawerLayout.setScrimColor(0x44000000) // Semi-transparent black overlay
         navigationView = findViewById(R.id.navigation_view)
         greetingCardNavIcon = findViewById(R.id.greeting_card_nav_icon)
+
+        // Initialize Schedule Views
+        val scheduleContainer = findViewById<LinearLayout>(R.id.schedule_container)
+        val btnViewSchedule = findViewById<ImageView>(R.id.btn_view_schedule)
+        val tvTimeIn = findViewById<TextView>(R.id.tv_schedule_time_in)
+        val tvBreak = findViewById<TextView>(R.id.tv_schedule_break)
+        val tvTimeOut = findViewById<TextView>(R.id.tv_schedule_time_out)
+
+        // Toggle Logic with Animation
+        btnViewSchedule.setOnClickListener {
+            // Haptic feedback for tactile response
+            btnViewSchedule.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+
+            // Always cancel any pending auto-hide to prevent phantom closures
+            hideScheduleRunnable?.let { scheduleContainer.removeCallbacks(it) }
+
+            if (scheduleContainer.visibility == View.VISIBLE && scheduleContainer.alpha == 1f) {
+                // Hide with animation
+                scheduleContainer.animate()
+                    .alpha(0f)
+                    .translationY(-20f)
+                    .setDuration(200)
+                    .withEndAction { scheduleContainer.visibility = View.GONE }
+                    .start()
+                
+                // Rotate icon back
+                btnViewSchedule.animate().rotation(0f).setDuration(200).start()
+            } else {
+                // Reset state for showing
+                scheduleContainer.visibility = View.VISIBLE
+                scheduleContainer.alpha = 0f
+                scheduleContainer.translationY = -20f
+                
+                // Show with bouncier animation
+                scheduleContainer.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+                    .start()
+
+                // Rotate icon
+                btnViewSchedule.animate().rotation(360f).setDuration(500).start()
+                
+                // Define the auto-hide task
+                hideScheduleRunnable = Runnable {
+                    if (scheduleContainer.visibility == View.VISIBLE) {
+                         scheduleContainer.animate()
+                            .alpha(0f)
+                            .translationY(-20f)
+                            .setDuration(300)
+                            .withEndAction { scheduleContainer.visibility = View.GONE }
+                            .start()
+                         // Reset icon rotation
+                         btnViewSchedule.animate().rotation(0f).setDuration(300).start()
+                    }
+                }
+                
+                // Auto-hide after 4 seconds
+                scheduleContainer.postDelayed(hideScheduleRunnable, 4000)
+            }
+        }
+
+        TimeSettingsManager.setOnTimeWindowChangeListener {
+            val startTime = TimeSettingsManager.getStartTime()
+            val endTime = TimeSettingsManager.getEndTime()
+            val breakWindow = TimeSettingsManager.getBreakWindow()
+            
+            // Use HTML for bold labels vs normal values, uppercase for premium feel
+            val timeInText = "<b>TIME IN:</b> $startTime"
+            val breakText = "<b>BREAK:</b> $breakWindow"
+            val timeOutText = "<b>TIME OUT:</b> $endTime"
+            
+            runOnUiThread {
+                tvTimeIn.text = android.text.Html.fromHtml(timeInText, android.text.Html.FROM_HTML_MODE_LEGACY)
+                tvBreak.text = android.text.Html.fromHtml(breakText, android.text.Html.FROM_HTML_MODE_LEGACY)
+                tvTimeOut.text = android.text.Html.fromHtml(timeOutText, android.text.Html.FROM_HTML_MODE_LEGACY)
+            }
+        }
 
         val headerView: View? = navigationView.getHeaderView(0)
         if (headerView != null) {
@@ -493,8 +578,8 @@ class HomeActivity : WifiSecurityActivity() {
                 }
                 val selectedStatus = statusOptions[position]
                 if (isUserChangingStatus) {
-                    // TODO: Integrate interactive tutorial logic if this action is part of a tutorial step
-                    showStatusConfirmationDialog(selectedStatus)
+                    // Check security rules before allowing status change
+                    checkStatusChangeAllowed(selectedStatus)
                 }
                 isUserChangingStatus = false
             }
@@ -625,29 +710,88 @@ class HomeActivity : WifiSecurityActivity() {
             })
     }
 
+    /**
+     * Checks if status change is allowed based on security rules:
+     * 1. Must have a TimeIn record for today
+     * 2. If already Off Duty (has TimeOut today), status is locked until next day
+     */
+    private fun checkStatusChangeAllowed(newStatus: String) {
+        val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+            .getString(LoginActivity.KEY_USER_ID, null) ?: return
+        
+        // SECURITY: Use Philippine timezone to prevent device time manipulation
+        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
+        
+        val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var hasTimeInToday = false
+                    var hasTimeOutToday = false
+                    
+                    for (child in snapshot.children) {
+                        val type = child.child("type").getValue(String::class.java)
+                        if (type == "TimeIn") hasTimeInToday = true
+                        if (type == "TimeOut") hasTimeOutToday = true
+                    }
+                    
+                    when {
+                        // Rule 1: Must have TimeIn today
+                        !hasTimeInToday -> {
+                            UiDialogs.showInfoDialog(
+                                this@HomeActivity,
+                                title = "Time-In Required",
+                                message = "Please Time-In first before changing your status.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
+                            )
+                            loadUserStatus() // Reset spinner to current status
+                        }
+                        // Rule 2: Off Duty locks status until next day
+                        hasTimeOutToday -> {
+                            UiDialogs.showInfoDialog(
+                                this@HomeActivity,
+                                title = "Status Locked",
+                                message = "You have set Off Duty today. Status changes are locked until tomorrow."
+                            )
+                            loadUserStatus() // Reset spinner to current status
+                        }
+                        // All checks passed - allow status change
+                        else -> {
+                            showStatusConfirmationDialog(newStatus)
+                        }
+                    }
+                }
+                
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeActivity", "Failed to check status change allowed: ${error.message}")
+                    // On error, still allow status change (fail-open)
+                    showStatusConfirmationDialog(newStatus)
+                }
+            })
+    }
+
     private fun showStatusConfirmationDialog(selectedStatus: String) {
         confirmStatusChange(selectedStatus)
     }
 
-    private fun confirmStatusChange(status: String) {
-        UiDialogs.showConfirmationDialog(
-            this,
-            title = "Confirm Status Change",
-            message = "Are you sure you want to set your status to '$status'?",
-            positiveText = "Yes",
-            negativeText = "Cancel",
-            onPositive = {
-                updateUserStatus(status)
-                updateTimeLogsStatus(status)
-                if (status == "Off Duty") {
-                    handleTimeOutOnOffDuty()
+        private fun confirmStatusChange(status: String) {
+            UiDialogs.showConfirmationDialog(
+                this,
+                title = "Confirm Status Change",
+                message = "Are you sure you want to set your status to '$status'?",
+                positiveText = "Yes",
+                negativeText = "Cancel",
+                onPositive = {
+                    updateUserStatus(status)
+                    updateTimeLogsStatus(status, createStatusChangeLog = true)
+                    if (status == "Off Duty") {
+                        handleTimeOutOnOffDuty()
+                    }
+                },
+                onNegative = {
+                    loadUserStatus()
                 }
-            },
-            onNegative = {
-                loadUserStatus()
-            }
-        )
-    }
+            )
+        }
 
     private fun updateUserStatus(status: String) {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
@@ -668,39 +812,67 @@ class HomeActivity : WifiSecurityActivity() {
             }
     }
 
-    private fun updateTimeLogsStatus(status: String) {
+    private fun updateTimeLogsStatus(status: String, createStatusChangeLog: Boolean = false) {
         val userId = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
             .getString(LoginActivity.KEY_USER_ID, null) ?: return
         val ref = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId)
+        
+        // First, get the previous status from the latest log
         ref.orderByChild("timestamp").limitToLast(1)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    var previousStatus = "Unknown"
+                    
                     for (child in snapshot.children) {
                         val logTimestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
-                        val todayStart = Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0); set(
-                            Calendar.MINUTE,
-                            0
-                        ); set(
-                            Calendar.SECOND,
-                            0
-                        ); set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+                        // SECURITY: Use Philippine timezone
+                        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
+                        
                         if (logTimestamp >= todayStart) {
-                            child.ref.child("status").setValue(status)
-                                .addOnSuccessListener {
-                                    Log.d(
-                                        "HomeActivity",
-                                        "Status updated to $status in RealtimeDB for log ${child.key}"
-                                    )
-                                }
-                                .addOnFailureListener {
-                                    Log.e(
-                                        "HomeActivity",
-                                        "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}"
-                                    )
-                                }
+                            // Get previous status for audit trail
+                            previousStatus = child.child("status").getValue(String::class.java) ?: "Unknown"
+                            
+                            // Only update existing log's status if NOT creating a separate StatusChange log
+                            // This prevents duplicate entries in the timeline
+                            if (!createStatusChangeLog) {
+                                child.ref.child("status").setValue(status)
+                                    .addOnSuccessListener {
+                                        Log.d(
+                                            "HomeActivity",
+                                            "Status updated to $status in RealtimeDB for log ${child.key}"
+                                        )
+                                    }
+                                    .addOnFailureListener {
+                                        Log.e(
+                                            "HomeActivity",
+                                            "Failed to update status in RealtimeDB for log ${child.key}: ${it.message}"
+                                        )
+                                    }
+                            }
                         }
+                    }
+                    
+                    // Only create StatusChange log when explicitly requested (manual spinner changes)
+                    if (createStatusChangeLog) {
+                        // SECURITY: Use Philippine timezone for logging
+                        val now = TimeSettingsManager.getNowInPhilippineTime()
+                        val statusChangeLog = mapOf(
+                            "timestamp" to now.timeInMillis,
+                            "type" to "StatusChange",
+                            "status" to status,
+                            "previousStatus" to previousStatus,
+                            "firstName" to userFirstName,
+                            "email" to userEmail,
+                            "userId" to userId
+                        )
+                        
+                        ref.push().setValue(statusChangeLog)
+                            .addOnSuccessListener {
+                                Log.d("HomeActivity", "Status change logged: $previousStatus → $status")
+                            }
+                            .addOnFailureListener {
+                                Log.e("HomeActivity", "Failed to log status change: ${it.message}")
+                            }
                     }
                 }
 
@@ -724,10 +896,10 @@ class HomeActivity : WifiSecurityActivity() {
             MODE_PRIVATE
         ).getString(LoginActivity.KEY_FIRST_NAME, "User")
         val intent = Intent(this, TimeOutActivity::class.java).apply {
-            putExtra("userId", userId); putExtra("email", userEmail ?: ""); putExtra(
-            "firstName",
-            userFirstName ?: "User"
-        )
+            putExtra("userId", userId)
+            putExtra("email", userEmail ?: "")
+            putExtra("firstName", userFirstName ?: "User")
+            putExtra("isFlexibleTimeOut", true) // Bypass time restriction for Off Duty status
         }
         startActivity(intent)
     }
@@ -830,12 +1002,59 @@ class HomeActivity : WifiSecurityActivity() {
 
     override fun onResume() {
         super.onResume()
+        // SECURITY: Re-sync server time to detect device time manipulation
+        TimeSettingsManager.refreshServerTimeSync()
+        
+        // SECURITY: Start polling for real-time time manipulation detection
+        TimeSettingsManager.startPolling {
+            // This callback is triggered when time manipulation is detected during polling
+            runOnUiThread { checkAndWarnTimeManipulation() }
+        }
+        
+        // Check for time manipulation after sync completes and show warning
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            checkAndWarnTimeManipulation()
+        }, 600)
+        
         loadUserStatus()
         // Always try to load the photo. loadTodayTimeInPhoto checks status internally.
         loadTodayTimeInPhoto()
         updateSidebarProfileImage()
         evaluateAndDisplayAttendanceBadge()
         syncEventTutorialStateFromPrefs()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // SECURITY: Stop polling when app goes to background
+        TimeSettingsManager.stopPolling()
+    }
+    
+    /**
+     * SECURITY: Checks for device time manipulation and shows warning dialog
+     */
+    private var isTimeWarningShowing = false
+    private fun checkAndWarnTimeManipulation() {
+        if (isTimeWarningShowing) return // Prevent multiple dialogs
+        
+        // Combined check: AUTO_TIME disabled OR server offset too large
+        if (TimeSettingsManager.isTimeTampered(this)) {
+            isTimeWarningShowing = true
+            val reason = TimeSettingsManager.getTimeTamperingReason(this)
+            UiDialogs.showErrorPopup(
+                this,
+                "⚠️ Time Security Violation",
+                "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings. App will restart for security verification."
+            ) {
+                isTimeWarningShowing = false
+                // SECURITY: Reset state and redirect to Splash Screen for fresh verification
+                TimeSettingsManager.resetSecurityState()
+                val intent = Intent(this, SplashActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+        }
     }
 
     private fun loadTodayTimeInPhoto() {
@@ -1138,13 +1357,25 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun setupActionButtons() {
         btnTimeIn.setOnClickListener {
-            // Guard Clause: Check if Time-In is allowed
-            if (!TimeSettingsManager.isTimeInAllowed()) {
+            // SECURITY: Check for device date/time manipulation (AUTO_TIME + server offset)
+            if (TimeSettingsManager.isTimeTampered(this)) {
+                val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                UiDialogs.showErrorPopup(
+                    this,
+                    "⚠️ Time Security Violation",
+                    "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings."
+                )
+                return@setOnClickListener
+            }
+            
+            // Guard Clause: Check if Time-In is allowed (outside time window - before 7 AM)
+            // Note: TimeIn during break is allowed, status will be set to "On Break"
+            if (!TimeSettingsManager.isTimeInAllowed() && !TimeSettingsManager.isInBreak()) {
                 val (start, end) = TimeSettingsManager.getTimeWindowString()
                 UiDialogs.showInfoDialog(
                     this,
                     title = "Outside Time-In Window",
-                    message = "You can only time in between $start and $end."
+                    message = "You can only time in between $start and $end.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
                 )
                 return@setOnClickListener
             }
@@ -1162,13 +1393,24 @@ class HomeActivity : WifiSecurityActivity() {
         }
 
         btnTimeOut.setOnClickListener {
+            // SECURITY: Check for device date/time manipulation (AUTO_TIME + server offset)
+            if (TimeSettingsManager.isTimeTampered(this)) {
+                val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                UiDialogs.showErrorPopup(
+                    this,
+                    "⚠️ Time Security Violation",
+                    "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings."
+                )
+                return@setOnClickListener
+            }
+            
             // Guard Clause: Check if it's too early to time out
             if (TimeSettingsManager.isTooEarlyToTimeOut()) {
                 val (start, end) = TimeSettingsManager.getTimeWindowString()
                 UiDialogs.showInfoDialog(
                     this,
                     title = "Too Early to Time Out",
-                    message = "You cannot time out before $end."
+                    message = "You cannot time out before $end.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}"
                 )
                 return@setOnClickListener
             }
@@ -1516,12 +1758,21 @@ class HomeActivity : WifiSecurityActivity() {
         val adapter = recyclerEvents.adapter as? EventAdapter
         val firstEvent = adapter?.getEventAt(0)
         if (firstEvent == null) {
+            val sampleEvent = EventModel(
+                title = "Sample Event",
+                duration = "08:00 - 09:00",
+                dateFormatted = "Today",
+                status = "Ongoing",
+                rawDate = Date(),
+                venue = "Main Hall"
+            )
+
             Toast.makeText(
                 this,
-                "No events available right now. Choose any event manually to keep going.",
+                "No events found. Using a sample event so the tutorial can continue.",
                 Toast.LENGTH_LONG
             ).show()
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
+            handleEventSelectionForTutorial(sampleEvent, advanceStep = true)
             return
         }
 
@@ -1543,13 +1794,21 @@ class HomeActivity : WifiSecurityActivity() {
                 )
             }, 150)
         } else {
+            val sampleEvent = EventModel(
+                title = "Sample Event",
+                duration = "08:00 - 09:00",
+                dateFormatted = "Today",
+                status = "Ongoing",
+                rawDate = Date(),
+                venue = "Main Hall"
+            )
+
             Toast.makeText(
                 this,
-                "Let's pick an event again so I can reopen the details.",
+                "Reopening a sample event so we can finish the guide.",
                 Toast.LENGTH_SHORT
             ).show()
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
-            tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
+            handleEventSelectionForTutorial(sampleEvent, advanceStep = false, nextExpectedAction = expectedInteractiveTutorialAction)
         }
     }
 
@@ -1563,6 +1822,11 @@ class HomeActivity : WifiSecurityActivity() {
             }
             tutorialCalendarSheet = null
         }
+    }
+
+    private fun safeEventTitle(event: EventModel?): String {
+        val candidate = event?.title?.trim()
+        return if (candidate.isNullOrEmpty()) "Event" else candidate
     }
 
     private fun handleEventSelectionForTutorial(
@@ -1593,7 +1857,7 @@ class HomeActivity : WifiSecurityActivity() {
 
     private fun launchEventDetail(event: EventModel, tutorialMode: Boolean) {
         val intent = Intent(this, EventDetailActivity::class.java).apply {
-            putExtra("eventTitle", event.title)
+            putExtra("eventTitle", safeEventTitle(event))
             putExtra("eventDate", event.dateFormatted)
             putExtra("eventStatus", event.status)
             putExtra("eventVenue", event.venue ?: "N/A")
@@ -1784,28 +2048,32 @@ class HomeActivity : WifiSecurityActivity() {
 
         progressTextView.text =
             "Step $currentStepToShow of $totalStepsInTutorial"; messageTextView.text = message
-        dialogView.measure(
-            View.MeasureSpec.makeMeasureSpec(
-                resources.displayMetrics.widthPixels,
-                View.MeasureSpec.AT_MOST
-            ),
-            View.MeasureSpec.makeMeasureSpec(
-                resources.displayMetrics.heightPixels,
-                View.MeasureSpec.AT_MOST
-            )
-        )
 
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
-        val margin = (16 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        val measuredWidth = dialogView.measuredWidth
-        val initialDialogWidth =
-            if (measuredWidth > 0) measuredWidth else (screenWidth * 0.8).toInt()
-        val upperWidthBound = (screenWidth - 2 * margin).coerceAtLeast(margin * 2)
-        val lowerWidthBound = (margin * 2).coerceAtLeast(1)
-        val dialogWidth = initialDialogWidth.coerceIn(lowerWidthBound, upperWidthBound)
-        val dialogHeight =
-            dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val density = resources.displayMetrics.density
+        val margin = (16 * density).toInt().coerceAtLeast(1)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
+        )
+
+        val measuredWidth = dialogView.measuredWidth.takeIf { it > 0 }
+            ?: (screenWidth * 0.8f).toInt()
+        val maxDialogWidth = (screenWidth * 0.92f).toInt().coerceAtLeast(margin * 2)
+        val dialogWidth = measuredWidth.coerceAtMost(maxDialogWidth)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(dialogWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight - margin * 2, View.MeasureSpec.AT_MOST)
+        )
+
+        val measuredHeight = dialogView.measuredHeight.takeIf { it > 0 }
+            ?: (screenHeight * 0.4f).toInt().coerceAtLeast(margin * 4)
+        val maxDialogHeight = (screenHeight * 0.7f).toInt().coerceAtLeast(margin * 6)
+        val dialogHeight = measuredHeight.coerceAtMost(maxDialogHeight)
+
         var finalDialogX: Int;
         var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2); targetView.getLocationOnScreen(
@@ -1829,6 +2097,9 @@ class HomeActivity : WifiSecurityActivity() {
             finalDialogX = (screenWidth - dialogWidth) / 2
             finalDialogY = (screenHeight - dialogHeight) / 2
         }
+
+        finalDialogY = finalDialogY.coerceIn(margin, screenHeight - dialogHeight - margin)
+
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow
         popupWindow.isFocusable = true; popupWindow.isOutsideTouchable = true
@@ -1929,6 +2200,19 @@ class HomeActivity : WifiSecurityActivity() {
 
         closeButton.setOnClickListener {
             isProceedingToNextStepOrCompleting = false
+            // Skip Logic: Mark as complete
+            val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            if (activeTutorialCompletionKey.isNotEmpty()) {
+                tutorialPrefs.edit()
+                    .putBoolean(activeTutorialCompletionKey, true)
+                    .putInt(activeTutorialStepKey, activeTutorialTotalSteps) // Also set step to max
+                    .apply()
+                
+                Toast.makeText(this, "Tutorial skipped and marked as complete.", Toast.LENGTH_SHORT).show()
+                updateNavHeaderTutorialProgress() // Should show 100% or hide
+                hideNavHeaderTutorialProgressAfterCompletion() // Hide the bar
+            }
+
             val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
             fadeOut.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation?) {}
@@ -2133,18 +2417,20 @@ class HomeActivity : WifiSecurityActivity() {
     private fun syncEventTutorialStateFromPrefs() {
         val eventGuideActive = EventTutorialState.isActive(this)
         if (eventGuideActive) {
-            isInteractiveTutorialActive = true
+            // Refactored for Passive Flow:
+            // Ensure we are in passive mode even if 'active' in prefs (which now just means 'in progress')
+            isInteractiveTutorialActive = false 
             currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
+            
+            // Set tracking keys so progress bar works
             activeTutorialCompletionKey = KEY_EVENT_TUTORIAL_COMPLETED
             activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
             activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
-            setEventTutorialExpectedAction(EventTutorialState.getExpectedAction(this))
-            updateNavHeaderTutorialProgress()
-
-            when (expectedInteractiveTutorialAction) {
-                ACTION_EVENT_SELECT_EVENT -> tutorialProgressOnRightNavHeader?.post { showEventGuideSelectEventStep() }
-                ACTION_EVENT_TIME_IN -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckInStep() }
-                ACTION_EVENT_TIME_OUT -> tutorialProgressOnRightNavHeader?.post { showEventGuideCheckOutStep() }
+            
+            // Allow startEventWorkflowTutorial to handle the step logic based on saved step index
+            // We use 'post' to ensure layout is ready if called from onCreate->onResume flow
+            tutorialProgressOnRightNavHeader?.post { 
+                startEventWorkflowTutorial(resetProgress = false)
             }
         } else if (currentInteractiveTutorialName == TUTORIAL_NAME_EVENT) {
             isInteractiveTutorialActive = false
@@ -2182,9 +2468,9 @@ class HomeActivity : WifiSecurityActivity() {
         activeTutorialStepKey = KEY_EVENT_TUTORIAL_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_EVENT_TUTORIAL_STEPS
 
-        isInteractiveTutorialActive = true
+        isInteractiveTutorialActive = false
         currentInteractiveTutorialName = TUTORIAL_NAME_EVENT
-        markEventTutorialActive(true)
+        markEventTutorialActive(true) // Set to true so we know the tutorial is 'In Progress' for resumption
         setEventTutorialExpectedAction(null)
         closeTutorialCalendarSheetIfOpen()
 
@@ -2262,17 +2548,22 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(calendarButton)
 
         showCustomTutorialDialog(
-            "Let's kick things off together. Hit Continue and I'll pop open the Event Calendar so we can scan today's lineup side-by-side.",
+            "Step 1/4: Open Calendar. This button opens the Event Calendar. You'll pick the event from the list or use the QR code on-site.",
             calendarButton,
             1,
             TOTAL_EVENT_TUTORIAL_STEPS
         ) {
+             // Removing auto-navigation to keep it purely passive/informational as "Next" usually implies staying in flow unless strictly needed.
+             // However, to show the next step (Event Selection), we sort of need the calendar/list presumably?
+             // Actually, the next step 'showEventGuideSelectEventStep' highlights the 'recycler_events' which is on the HOME screen.
+             // So we DON'T need to open the calendar sheet necessarily. The list is on home.
+             // So we just proceed.
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
             completeEventGuideStep(1)
-            setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT)
-            openCalendarForEventGuide()
+            // setEventTutorialExpectedAction(ACTION_EVENT_SELECT_EVENT) // Removed
+            showEventGuideSelectEventStep()
         }
     }
 
@@ -2290,7 +2581,7 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(eventList)
 
         showCustomTutorialDialog(
-            "I'll open the first event so you can see exactly how check-ins work. If you prefer a different one later, you can always switch.",
+            "Step 2/4: Pick the event. Your events appear in this list. You can tap on any event to view details, or use the QR scanner.",
             eventList,
             2,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2298,7 +2589,8 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openFirstEventForEventGuide()
+            // openFirstEventForEventGuide() // Removed auto-open. Just go to next step instructions.
+            showEventGuideCheckInStep()
         }
     }
 
@@ -2316,13 +2608,15 @@ class HomeActivity : WifiSecurityActivity() {
         pulseView(anchorView)
 
         val storedEvent = EventTutorialState.readSelectedEvent(this)
+        val isSampleEvent = storedEvent?.title?.equals("Sample Event", ignoreCase = true) == true
         val message = storedEvent?.let {
-            "I've opened \"${it.title}\" for you. Use the Time-In button there when you're ready and I'll queue up the next move."
+            val safeTitle = safeEventTitle(it)
+            "Step 3/4: Time-In. I've opened \"$safeTitle\". Scan its QR (or use Manual Code), then take the selfie when prompted. Stay on this screen until you see the success message."
         }
-            ?: "Follow the prompt in the event detail screen to complete Time-In. Hit Continue if you'd like me to reopen it."
+            ?: "Step 3/4: Time-In. Scan the event QR or use Manual Code, then take the selfie when prompted. Stay until you see the success message. Hit Continue to reopen the event if needed."
 
         showCustomTutorialDialog(
-            message,
+            "Step 3/4: Time-In. When viewing an event, you will use the 'Time-In' option to log your attendance. You'll need to satisfy any requirements like location or selfie.",
             anchorView,
             3,
             TOTAL_EVENT_TUTORIAL_STEPS
@@ -2330,7 +2624,8 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openStoredEventForEventGuide()
+            // Proceed to next step without actions
+            showEventGuideCheckOutStep()
         }
     }
 
@@ -2344,14 +2639,7 @@ class HomeActivity : WifiSecurityActivity() {
             ); handleTutorialCancellation(); return
         }
 
-        setEventTutorialExpectedAction(ACTION_EVENT_TIME_OUT)
-        pulseView(anchorView)
-
-        val storedEvent = EventTutorialState.readSelectedEvent(this)
-        val message = storedEvent?.let {
-            "Once \"${it.title}\" wraps up, reopen its details and tap Time-Out. Need a refresher? Press Continue and I'll bring it back up."
-        }
-            ?: "Head back to the event detail screen and tap Time-Out when you're finished. Want me to reopen it? Just press Continue."
+        val message = "Step 4/4: Time-Out. After the event ends, remember to go back to the event details and tap 'Time-Out' to complete your attendance log."
 
         showCustomTutorialDialog(
             message,
@@ -2362,7 +2650,22 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            openStoredEventForEventGuide()
+            // Tutorial finish
+             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
+            tutorialPrefs.edit()
+                .putInt(KEY_EVENT_TUTORIAL_CURRENT_STEP, TOTAL_EVENT_TUTORIAL_STEPS)
+                .putBoolean(KEY_EVENT_TUTORIAL_COMPLETED, true)
+                .apply()
+            updateNavHeaderTutorialProgress() // Show 100%
+
+            Toast.makeText(
+                this@HomeActivity,
+                "Event Check-In Guide Completed! 🎉",
+                Toast.LENGTH_SHORT
+            ).show()
+            
+            // isInteractiveTutorialActive = false // Already false
+            hideNavHeaderTutorialProgressAfterCompletion()
         }
     }
 
@@ -2373,7 +2676,7 @@ class HomeActivity : WifiSecurityActivity() {
         activeTutorialStepKey = KEY_ATTENDANCE_GUIDE_CURRENT_STEP
         activeTutorialTotalSteps = TOTAL_ATTENDANCE_TUTORIAL_STEPS
 
-        isInteractiveTutorialActive = true
+        isInteractiveTutorialActive = false
         currentInteractiveTutorialName = TUTORIAL_NAME_ATTENDANCE
 
         val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
@@ -2436,7 +2739,7 @@ class HomeActivity : WifiSecurityActivity() {
         }
     }
 
-    private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Interactive)
+    private fun showTimeInButtonTutorialStep_New() { // Instruction for Step 1 of Attendance Guide (Passive)
         val timeInButton = findViewById<View>(R.id.btntime_in)
         if (timeInButton == null) {
             Log.e(
@@ -2445,29 +2748,20 @@ class HomeActivity : WifiSecurityActivity() {
             ); handleTutorialCancellation(); return
         }
 
-        expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN
+        // expectedInteractiveTutorialAction = ACTION_USER_CLICK_TIME_IN // Removed for passive
         Log.d(
             TAG,
-            "Attendance Tutorial: Expecting user to click Time-In button (Instruction for step 1)."
+            "Attendance Tutorial: Showing Time-In button instruction (Step 1)."
         )
         // Nav header progress already updated by startAttendanceWorkflowTutorial to reflect 0/4 (or current saved step)
 
         showCustomTutorialDialog(
-            "This guide focuses on attendance. First, let's Time-In. Please tap the 'Time-In' button now.",
+            "This guide focuses on attendance. First, you utilize this 'Time-In' button for your daily attendance. Tap Next to continue.",
             timeInButton,
             1,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS // currentStepToShow is 1 (instruction for step 1)
         ) {
-            // This onNext is for the tutorial dialog's "Next" button.
-            // For interactive step, we just hide overlay to allow user to click the actual UI element.
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Log.d(
-                TAG,
-                "Attendance Tutorial: Time-In prompt shown. User should click the actual Time-In button."
-            )
-            // Actual progress update for step 1 happens in timeInActivityTutorialLauncher
+            showEventCalendarTutorialStep()
         }
     }
 
@@ -2531,16 +2825,6 @@ class HomeActivity : WifiSecurityActivity() {
             4,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
         ) {
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Toast.makeText(this, "Click Time-Out button now.", Toast.LENGTH_SHORT).show()
-
-            // TODO: Click Time-Out button now.
-            // For now, to simulate progress for testing and move to next instruction:
-            // This would be removed once Time-Out is fully interactive.
-            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 2).apply()
-            // updateNavHeaderTutorialProgress()
             showStatusSpinnerTutorialStep_New() // Continue tutorial flow
         }
     }
@@ -2561,22 +2845,12 @@ class HomeActivity : WifiSecurityActivity() {
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_SELECT_STATUS
 
         showCustomTutorialDialog(
-            "You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown. (TODO: Make this interactive)",
+            "You can manually update your current work status (e.g., 'On Break', 'Off Duty') using this dropdown to reflect your availability.",
             statusSpinnerView,
             5,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
         ) {
-            if (tutorialOverlay.visibility == View.VISIBLE) {
-                tutorialOverlay.visibility = View.GONE
-            }
-            Toast.makeText(this, "Select a status now.", Toast.LENGTH_SHORT).show()
-
-            // TODO: Select a status now.
-            // For now, to simulate progress for testing:
-            // getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE).edit().putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, 3).apply()
-            // updateNavHeaderTutorialProgress()
-            // showExcuseLetterButtonTutorialStep_New() // Manually call next instruction
-            showExcuseLetterButtonTutorialStep_New()
+             showExcuseLetterButtonTutorialStep_New()
         }
     }
 
@@ -2596,7 +2870,7 @@ class HomeActivity : WifiSecurityActivity() {
         // TODO: Set expectedInteractiveTutorialAction = ACTION_USER_CLICK_EXCUSE_LETTER
 
         showCustomTutorialDialog(
-            "If you're unable to attend or need to submit an excuse, you can do so by tapping here. (TODO: Make this interactive)",
+            "If you're unable to attend or need to submit an excuse, you can do so by tapping here.",
             excuseLetterButton,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS,
             TOTAL_ATTENDANCE_TUTORIAL_STEPS
@@ -2604,9 +2878,7 @@ class HomeActivity : WifiSecurityActivity() {
             if (tutorialOverlay.visibility == View.VISIBLE) {
                 tutorialOverlay.visibility = View.GONE
             }
-            // This is the last step's instruction.
-            // Actual completion and 100% update would happen after user performs the excuse letter action.
-            // For now, to simulate completion for testing:
+            // Finish Tutorial
             val tutorialPrefs = getSharedPreferences(PREFS_TUTORIAL, Context.MODE_PRIVATE)
             tutorialPrefs.edit()
                 .putInt(KEY_ATTENDANCE_GUIDE_CURRENT_STEP, TOTAL_ATTENDANCE_TUTORIAL_STEPS)
@@ -2616,12 +2888,10 @@ class HomeActivity : WifiSecurityActivity() {
 
             Toast.makeText(
                 this@HomeActivity,
-                "Attendance Workflow Guide Completed! 🎉 (Partially interactive)",
+                "Attendance Workflow Guide Completed! 🎉",
                 Toast.LENGTH_SHORT
             ).show()
-            isInteractiveTutorialActive = false
-            currentInteractiveTutorialName = null
-            expectedInteractiveTutorialAction = null
+            
             hideNavHeaderTutorialProgressAfterCompletion()
         }
     }

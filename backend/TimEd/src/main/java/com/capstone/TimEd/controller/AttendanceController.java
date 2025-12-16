@@ -52,132 +52,165 @@ public class AttendanceController {
         this.firebaseEmailService = firebaseEmailService;
     }
 
-
-@PostMapping("/{eventId}/{userId}")
-public ResponseEntity<String> markAttendance(
-        @PathVariable String eventId,
-        @PathVariable String userId) {
-    try {
-        System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
-
-        String result = attendanceService.markAttendance(eventId, userId);
-        System.out.println("Attendance marked result: " + result);
-
-        // Only proceed if the user hasn't already timed in
-        if (!result.contains("Already timed in")) {
-            try {
-                System.out.println("Processing certificate email for userId: " + userId + " in eventId: " + eventId);
-                
-                List<QueryDocumentSnapshot> attendeeDocs = FirestoreClient.getFirestore()
-                        .collection("events")
-                        .document(eventId)
-                        .collection("attendees")
-                        .whereEqualTo("userId", userId)
-                        .whereEqualTo("type", "event_time_in")
-                        .get()
-                        .get()
-                        .getDocuments();
-
-                if (!attendeeDocs.isEmpty()) {
-                    DocumentSnapshot userDoc = attendeeDocs.get(0);
-
-                    String email = userDoc.getString("email");
-                    String firstName = userDoc.getString("firstName");
-                    String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
-
-                    if (email == null || email.isEmpty()) {
-                        System.err.println("Email is missing for userId: " + userId);
-                        return ResponseEntity.ok(result + " (Note: Email not found)");
-                    }
-
-                    Map<String, String> userAttendance = new HashMap<>();
-                    userAttendance.put("userId", userId);
-                    userAttendance.put("email", email);
-                    userAttendance.put("firstName", firstName);
-                    userAttendance.put("lastName", lastName);
-                    userAttendance.put("manualEntry", "false");
-                    userAttendance.put("checkinMethod", "false"); // QR code check-in
-                    userAttendance.put("timeIn", userDoc.getString("timestamp"));
-                    userAttendance.put("timeOut", "");
-
-                    System.out.println("Generating certificate for " + firstName + " " + lastName);
-                    byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-
-                    System.out.println("Sending certificate via Firebase to " + email);
-                    firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
-                    System.out.println("Certificate email successfully queued via Firebase for " + email);
-                } else {
-                    System.err.println("No attendee record found for userId: " + userId + " on first attempt. Retrying after delay...");
-                    
-                    // Retry after a short delay to handle Firestore eventual consistency
-                    try {
-                        Thread.sleep(2000); // Wait 2 seconds for Firestore consistency
-                        
-                        List<QueryDocumentSnapshot> retryAttendeeDocs = FirestoreClient.getFirestore()
-                                .collection("events")
-                                .document(eventId)
-                                .collection("attendees")
-                                .whereEqualTo("userId", userId)
-                                .whereEqualTo("type", "event_time_in")
-                                .get()
-                                .get()
-                                .getDocuments();
-                        
-                        if (!retryAttendeeDocs.isEmpty()) {
-                            System.out.println("Retry successful: Found attendee record for userId: " + userId);
-                            DocumentSnapshot userDoc = retryAttendeeDocs.get(0);
-
-                            String email = userDoc.getString("email");
-                            String firstName = userDoc.getString("firstName");
-                            String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
-
-                            if (email != null && !email.isEmpty()) {
-                                Map<String, String> userAttendance = new HashMap<>();
-                                userAttendance.put("userId", userId);
-                                userAttendance.put("email", email);
-                                userAttendance.put("firstName", firstName);
-                                userAttendance.put("lastName", lastName);
-                                userAttendance.put("manualEntry", "false");
-                                userAttendance.put("checkinMethod", "false"); // QR code check-in
-                                userAttendance.put("timeIn", userDoc.getString("timestamp"));
-                                userAttendance.put("timeOut", "");
-
-                                System.out.println("Generating certificate for " + firstName + " " + lastName + " (retry)");
-                                byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
-
-                                System.out.println("Sending certificate via Firebase to " + email + " (retry)");
-                                firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
-                                System.out.println("Certificate email successfully queued via Firebase for " + email + " (retry)");
-                                
-                                return ResponseEntity.ok(result); // Success: certificate sent
-                            } else {
-                                System.err.println("Email is missing for userId: " + userId + " (retry)");
-                                return ResponseEntity.ok(result + " (Note: Email not found)");
-                            }
-                        } else {
-                            System.err.println("Retry failed: Still no attendee record found for userId: " + userId);
-                            return ResponseEntity.ok(result + " (Note: No attendee record found)");
-                        }
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        System.err.println("Retry interrupted for userId: " + userId);
-                        return ResponseEntity.ok(result + " (Note: Certificate processing interrupted)");
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error during certificate generation or email sending: " + e.getMessage());
-                e.printStackTrace();
-                return ResponseEntity.ok(result + " (Note: Certificate/email failed)");
-            }
-        }
-
+    @PostMapping("/{eventId}/{userId}/refresh-selfie")
+    public ResponseEntity<String> refreshSelfie(
+            @PathVariable String eventId,
+            @PathVariable String userId) {
+        String result = attendanceService.refreshSelfie(eventId, userId);
         return ResponseEntity.ok(result);
-    } catch (Exception e) {
-        System.err.println("Error marking attendance: " + e.getMessage());
-        e.printStackTrace();
-        return ResponseEntity.status(500).body("Error marking attendance: " + e.getMessage());
     }
-}
+
+    @PostMapping("/{eventId}/{userId}")
+    public ResponseEntity<String> markAttendance(
+            @PathVariable String eventId,
+            @PathVariable String userId,
+            @org.springframework.web.bind.annotation.RequestBody(required = false) Map<String, String> payload) {
+        try {
+            System.out.println("Marking attendance for userId: " + userId + " in eventId: " + eventId);
+
+            String requestFirstName = null;
+            String requestLastName = null;
+            boolean isManualEntry = false;
+            if (payload != null) {
+                requestFirstName = payload.get("firstName");
+                requestLastName = payload.get("lastName");
+                // Check if this is a manual entry
+                String checkinMethod = payload.get("checkinMethod");
+                isManualEntry = "true".equalsIgnoreCase(checkinMethod) || "manual".equalsIgnoreCase(checkinMethod);
+                System.out.println("Received user details from client - firstName: " + requestFirstName + ", lastName: "
+                        + requestLastName + ", isManualEntry: " + isManualEntry);
+            }
+
+            String result = attendanceService.markAttendance(eventId, userId, requestFirstName, requestLastName,
+                    isManualEntry);
+            System.out.println("Attendance marked result: " + result);
+
+            // Only proceed if the user hasn't already timed in
+            if (!result.contains("Already timed in")) {
+                try {
+                    System.out
+                            .println("Processing certificate email for userId: " + userId + " in eventId: " + eventId);
+
+                    List<QueryDocumentSnapshot> attendeeDocs = FirestoreClient.getFirestore()
+                            .collection("events")
+                            .document(eventId)
+                            .collection("attendees")
+                            .whereEqualTo("userId", userId)
+                            .whereEqualTo("type", "event_time_in")
+                            .get()
+                            .get()
+                            .getDocuments();
+
+                    if (!attendeeDocs.isEmpty()) {
+                        DocumentSnapshot userDoc = attendeeDocs.get(0);
+
+                        String email = userDoc.getString("email");
+                        // Use request names if available, otherwise fallback to document
+                        String firstName = (requestFirstName != null && !requestFirstName.isEmpty()) ? requestFirstName
+                                : userDoc.getString("firstName");
+                        String lastName = (requestLastName != null && !requestLastName.isEmpty()) ? requestLastName
+                                : (userDoc.contains("lastName") ? userDoc.getString("lastName") : "");
+
+                        if (email == null || email.isEmpty()) {
+                            System.err.println("Email is missing for userId: " + userId);
+                            return ResponseEntity.ok(result + " (Note: Email not found)");
+                        }
+
+                        Map<String, String> userAttendance = new HashMap<>();
+                        userAttendance.put("userId", userId);
+                        userAttendance.put("email", email);
+                        userAttendance.put("firstName", firstName);
+                        userAttendance.put("lastName", lastName);
+                        userAttendance.put("manualEntry", String.valueOf(isManualEntry));
+                        userAttendance.put("checkinMethod", String.valueOf(isManualEntry)); // true for manual, false
+                                                                                            // for QR
+                        userAttendance.put("timeIn", userDoc.getString("timestamp"));
+                        userAttendance.put("timeOut", "");
+
+                        System.out.println("Generating certificate using - FirstName: '" + firstName + "', LastName: '"
+                                + lastName + "'");
+                        byte[] certificatePdf = certificateService.generateCertificate(userAttendance, eventId);
+
+                        System.out.println("Sending certificate via Firebase to " + email);
+                        firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
+                        System.out.println("Certificate email successfully queued via Firebase for " + email);
+                    } else {
+                        System.err.println("No attendee record found for userId: " + userId
+                                + " on first attempt. Retrying after delay...");
+
+                        // Retry after a short delay to handle Firestore eventual consistency
+                        try {
+                            Thread.sleep(2000); // Wait 2 seconds for Firestore consistency
+
+                            List<QueryDocumentSnapshot> retryAttendeeDocs = FirestoreClient.getFirestore()
+                                    .collection("events")
+                                    .document(eventId)
+                                    .collection("attendees")
+                                    .whereEqualTo("userId", userId)
+                                    .whereEqualTo("type", "event_time_in")
+                                    .get()
+                                    .get()
+                                    .getDocuments();
+
+                            if (!retryAttendeeDocs.isEmpty()) {
+                                System.out.println("Retry successful: Found attendee record for userId: " + userId);
+                                DocumentSnapshot userDoc = retryAttendeeDocs.get(0);
+
+                                String email = userDoc.getString("email");
+                                String firstName = userDoc.getString("firstName");
+                                String lastName = userDoc.contains("lastName") ? userDoc.getString("lastName") : "";
+
+                                if (email != null && !email.isEmpty()) {
+                                    Map<String, String> userAttendance = new HashMap<>();
+                                    userAttendance.put("userId", userId);
+                                    userAttendance.put("email", email);
+                                    userAttendance.put("firstName", firstName);
+                                    userAttendance.put("lastName", lastName);
+                                    userAttendance.put("manualEntry", "false");
+                                    userAttendance.put("checkinMethod", "false"); // QR code check-in
+                                    userAttendance.put("timeIn", userDoc.getString("timestamp"));
+                                    userAttendance.put("timeOut", "");
+
+                                    System.out.println(
+                                            "Generating certificate for " + firstName + " " + lastName + " (retry)");
+                                    byte[] certificatePdf = certificateService.generateCertificate(userAttendance,
+                                            eventId);
+
+                                    System.out.println("Sending certificate via Firebase to " + email + " (retry)");
+                                    firebaseEmailService.sendCertificateEmail(email, eventId, certificatePdf);
+                                    System.out.println("Certificate email successfully queued via Firebase for " + email
+                                            + " (retry)");
+
+                                    return ResponseEntity.ok(result); // Success: certificate sent
+                                } else {
+                                    System.err.println("Email is missing for userId: " + userId + " (retry)");
+                                    return ResponseEntity.ok(result + " (Note: Email not found)");
+                                }
+                            } else {
+                                System.err
+                                        .println("Retry failed: Still no attendee record found for userId: " + userId);
+                                return ResponseEntity.ok(result + " (Note: No attendee record found)");
+                            }
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            System.err.println("Retry interrupted for userId: " + userId);
+                            return ResponseEntity.ok(result + " (Note: Certificate processing interrupted)");
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error during certificate generation or email sending: " + e.getMessage());
+                    e.printStackTrace();
+                    return ResponseEntity.ok(result + " (Note: Certificate/email failed)");
+                }
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error marking attendance: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error marking attendance: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/{eventId}/{userId}/timeout")
     public ResponseEntity<String> markTimeOut(

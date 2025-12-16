@@ -61,7 +61,7 @@ const fontFamilies = [
   'Didot',
   'Cambria',
   'Copperplate',
-  'Optima', 
+  'Optima',
   'Calibri',
   'Candara',
   'Century Gothic',
@@ -77,7 +77,7 @@ const defaultCertificate = {
   title: 'CERTIFICATE',
   subtitle: 'OF ACHIEVEMENT',
   recipientText: 'THIS CERTIFICATE IS PROUDLY PRESENTED TO',
-  recipientName: '{FirstName, LastName}',
+  recipientName: '{Recipient Name}',
   description: 'For outstanding participation in the event and demonstrating exceptional dedication throughout the program.',
   signatories: [
     { name: 'John Doe', title: 'REPRESENTATIVE' },
@@ -142,9 +142,9 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   const handleColorChange = (field, value) => {
     // Validate the color value is a proper hex color (with # prefix)
     const validColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-    const colorToApply = validColorRegex.test(value) ? value : 
+    const colorToApply = validColorRegex.test(value) ? value :
       (value.startsWith('#') ? value : `#${value}`);
-    
+
     setCertificate(prev => ({
       ...prev,
       [field]: colorToApply
@@ -194,7 +194,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         alert('Please enter a certificate title');
         return;
       }
-      
+
       // Ensure all the data is properly set before saving
       const finalCertificate = {
         ...certificate,
@@ -203,14 +203,14 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         // Ensure we have a subtitle
         subtitle: certificate.subtitle || 'OF ACHIEVEMENT',
         // Make sure eventName is not the placeholder if we're in an event context
-        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName 
-          ? initialData.eventName 
+        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName
+          ? initialData.eventName
           : certificate.eventName
       };
-      
+
       // Call the parent component's save function with the complete data
       onSave(finalCertificate);
-      
+
     } catch (error) {
       console.error('Error saving certificate template:', error);
       alert('Failed to save certificate template. Please try again.');
@@ -224,23 +224,23 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         alert('Please enter a certificate title');
         return;
       }
-      
+
       // Ensure all the data is properly set before applying
       const finalCertificate = {
         ...certificate,
         title: certificate.title.trim() ? certificate.title : 'CERTIFICATE',
         subtitle: certificate.subtitle || 'OF ACHIEVEMENT',
         // Make sure eventName is not the placeholder if we're in an event context
-        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName 
-          ? initialData.eventName 
+        eventName: certificate.eventName === '{Event Name}' && initialData?.eventName
+          ? initialData.eventName
           : certificate.eventName
       };
-      
+
       // Call the onApply function to apply the template to current event form
       if (onApply) {
         onApply(finalCertificate);
       }
-      
+
     } catch (error) {
       console.error('Error applying certificate template:', error);
       alert('Failed to apply certificate template. Please try again.');
@@ -257,7 +257,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
 
     try {
       const formData = new FormData();
-      
+
       if (signatoryName) {
         formData.append('signatures[' + signatoryName + ']', file);
       } else {
@@ -279,7 +279,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64String = reader.result.split(',')[1];
-          
+
           if (signatoryName) {
             setCertificate(prev => ({
               ...prev,
@@ -341,10 +341,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
     // Helper function to render decorative corners
     const renderCorners = () => {
       if (!certificate.decorativeCorners) return null;
-      
+
       const cornerSize = 30;
       const cornerColor = certificate.headerColor || '#1E3A8A';
-      
+
       return (
         <>
           {/* Top Left Corner */}
@@ -358,7 +358,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             borderLeft: `2px solid ${cornerColor}`,
             borderTop: `2px solid ${cornerColor}`,
           }} />
-          
+
           {/* Top Right Corner */}
           <Box sx={{
             position: 'absolute',
@@ -370,7 +370,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             borderRight: `2px solid ${cornerColor}`,
             borderTop: `2px solid ${cornerColor}`,
           }} />
-          
+
           {/* Bottom Left Corner */}
           <Box sx={{
             position: 'absolute',
@@ -382,7 +382,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             borderLeft: `2px solid ${cornerColor}`,
             borderBottom: `2px solid ${cornerColor}`,
           }} />
-          
+
           {/* Bottom Right Corner */}
           <Box sx={{
             position: 'absolute',
@@ -397,16 +397,16 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         </>
       );
     };
-    
+
     // Helper function to render frame based on style
     const renderFrame = () => {
       if (!certificate.showBorder || !certificate.frameStyle || certificate.frameStyle === 'none') {
         return null;
       }
-      
+
       const borderColor = certificate.borderColor || '#D1D5DB';
       const borderWidth = certificate.borderWidth || 1;
-      
+
       switch (certificate.frameStyle) {
         case 'classic':
           return (
@@ -421,7 +421,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               pointerEvents: 'none',
             }} />
           );
-        
+
         case 'double':
           return (
             <>
@@ -447,7 +447,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               }} />
             </>
           );
-        
+
         case 'ornate':
           return (
             <Box sx={{
@@ -472,7 +472,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               }
             }} />
           );
-          
+
         case 'modern':
           return (
             <Box sx={{
@@ -505,19 +505,19 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               pointerEvents: 'none',
             }} />
           );
-          
+
         default:
           return null;
       }
     };
-    
+
     // Helper function to render ribbon
     const renderRibbon = () => {
       if (!certificate.showRibbon) return null;
-      
+
       const ribbonColor = certificate.ribbonColor || '#D4AF37';
-      
-      switch(certificate.ribbonPosition) {
+
+      switch (certificate.ribbonPosition) {
         case 'bottom-center':
           return (
             <Box sx={{
@@ -596,15 +596,15 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           return null;
       }
     };
-    
+
     // Helper function to render seal
     const renderSeal = () => {
       if (!certificate.showSeal) return null;
-      
+
       const sealColor = certificate.sealColor || '#C0C0C0';
       let sealPosition = {};
-      
-      switch(certificate.sealPosition) {
+
+      switch (certificate.sealPosition) {
         case 'bottom-right':
           sealPosition = {
             bottom: '50px',
@@ -635,7 +635,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             right: '40px',
           };
       }
-      
+
       return (
         <Box sx={{
           position: 'absolute',
@@ -688,7 +688,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         </Box>
       );
     };
-    
+
     return (
       <Box
         sx={{
@@ -697,7 +697,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           backgroundColor: certificate.backgroundColor || '#ffffff',
           position: 'relative',
           overflow: 'hidden',
-          border: certificate.showBorder && (!certificate.frameStyle || certificate.frameStyle === 'none') ? 
+          border: certificate.showBorder && (!certificate.frameStyle || certificate.frameStyle === 'none') ?
             `${certificate.borderWidth}px ${certificate.borderStyle || 'solid'} ${certificate.borderColor || '#000000'}` : 'none',
           borderRadius: '8px',
           display: 'flex',
@@ -705,10 +705,21 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           alignItems: 'center',
           justifyContent: 'space-between',
           color: certificate.textColor || '#000000',
-          fontFamily: certificate.fontFamily || 'Times New Roman',
-          padding: '20px 24px',
-          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)',
-          backgroundImage: 'linear-gradient(0deg, rgba(250,250,250,0.4) 0%, rgba(255,255,255,0) 100%)',
+          fontFamily: certificate.fontFamily || 'Georgia, Times New Roman, serif',
+          padding: '24px 28px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(255,255,255,0.1)',
+          backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(250,248,245,0.9) 50%, rgba(255,255,255,0.95) 100%)`,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.03) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          },
         }}
       >
         {/* Background Image */}
@@ -738,23 +749,23 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         {/* Decorative elements */}
         {certificate.showDecorations && (
           <>
-            <Box sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              height: '6px', 
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '6px',
               background: `linear-gradient(90deg, transparent, ${certificate.headerColor || '#000'}, transparent)`,
               opacity: 0.5,
               zIndex: 1
             }} />
 
-            <Box sx={{ 
-              position: 'absolute', 
-              bottom: 0, 
-              left: 0, 
-              right: 0, 
-              height: '6px', 
+            <Box sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '6px',
               background: `linear-gradient(90deg, transparent, ${certificate.headerColor || '#000'}, transparent)`,
               opacity: 0.5,
               zIndex: 1
@@ -789,10 +800,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             }}
           />
         )}
-        
-        <Box sx={{ 
-          zIndex: 2, 
-          width: '100%', 
+
+        <Box sx={{
+          zIndex: 2,
+          width: '100%',
           textAlign: 'center',
           display: 'flex',
           flexDirection: 'column',
@@ -801,53 +812,77 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           position: 'relative',
           paddingTop: '20px'
         }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography 
-              variant="h4" 
+          <Box sx={{ mb: 2, position: 'relative' }}>
+            <Typography
+              variant="h4"
               component="div"
-              sx={{ 
-                fontWeight: 'bold', 
-                fontSize: { xs: '26px', sm: '32px' },
-                letterSpacing: '2px',
-                color: certificate.headerColor || certificate.textColor || '#000000',
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: '28px', sm: '36px' },
+                letterSpacing: '4px',
+                color: certificate.headerColor || '#1E3A8A',
                 textTransform: 'uppercase',
                 position: 'relative',
                 display: 'inline-block',
+                textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                background: `linear-gradient(180deg, ${certificate.headerColor || '#1E3A8A'} 0%, ${certificate.headerColor ? certificate.headerColor + 'CC' : '#2E4A9A'} 100%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
               }}
             >
               {certificate.title}
             </Typography>
-            <Typography 
-              variant="h5" 
+            <Typography
+              variant="h5"
               component="div"
-              sx={{ 
-                fontWeight: 'bold', 
-                fontSize: { xs: '18px', sm: '22px' },
-                letterSpacing: '3px',
+              sx={{
+                fontWeight: 600,
+                fontSize: { xs: '16px', sm: '20px' },
+                letterSpacing: '5px',
+                mt: 0.5,
                 mb: 1,
                 textTransform: 'uppercase',
+                color: certificate.headerColor || '#1E3A8A',
+                opacity: 0.85,
               }}
             >
               {certificate.subtitle}
             </Typography>
           </Box>
-          
-          <Box sx={{ 
-            width: '180px', 
-            margin: '0 auto', 
+
+          <Box sx={{
+            width: '220px',
+            margin: '0 auto',
             mb: 3,
             position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
           }}>
-            <Divider sx={{ 
-              borderWidth: '2px',
-              borderColor: certificate.textColor || '#000000',
-              opacity: 0.6
+            <Box sx={{
+              width: '60px',
+              height: '2px',
+              background: `linear-gradient(90deg, transparent, #D4AF37)`,
+            }} />
+            <Box sx={{
+              width: '8px',
+              height: '8px',
+              backgroundColor: '#D4AF37',
+              transform: 'rotate(45deg)',
+              boxShadow: '0 0 8px rgba(212,175,55,0.4)',
+            }} />
+            <Box sx={{
+              width: '60px',
+              height: '2px',
+              background: `linear-gradient(90deg, #D4AF37, transparent)`,
             }} />
           </Box>
-          
-          <Typography 
+
+          <Typography
             variant="body2"
-            sx={{ 
+            sx={{
               fontSize: { xs: '13px', sm: '15px' },
               mb: 0.5,
               fontWeight: 500,
@@ -856,11 +891,11 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           >
             {certificate.recipientText}
           </Typography>
-          
-          <Typography 
+
+          <Typography
             variant="h6"
             component="div"
-            sx={{ 
+            sx={{
               fontStyle: 'italic',
               fontWeight: 'bold',
               fontSize: { xs: '20px', sm: '26px' },
@@ -879,12 +914,12 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               }
             }}
           >
-            {certificate.recipientName}
+            {'{Recipient Name}'}
           </Typography>
-          
-          <Typography 
+
+          <Typography
             variant="body2"
-            sx={{ 
+            sx={{
               fontSize: { xs: '11px', sm: '14px' },
               mb: 2.5,
               maxWidth: '85%',
@@ -892,37 +927,42 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               lineHeight: 1.6,
               fontStyle: 'italic',
               position: 'relative',
-               color:'#1e1e1e'
+              color: '#1e1e1e'
             }}
           >
             {certificate.description}
           </Typography>
-          
+
           <Box sx={{
-            mb: 1,
-            backgroundColor: 'rgba(0,0,0,0.02)',
-            padding: '8px 16px',
-            borderRadius: '4px',
+            mb: 2,
+            background: 'linear-gradient(135deg, rgba(30,58,138,0.05) 0%, rgba(212,175,55,0.08) 100%)',
+            padding: '12px 24px',
+            borderRadius: '8px',
             display: 'inline-block',
             margin: '0 auto',
-            color:'#1e1e1e'
+            color: '#1e1e1e',
+            border: '1px solid rgba(212,175,55,0.2)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}>
-            <Typography 
+            <Typography
               variant="body2"
-              sx={{ 
-                fontSize: { xs: '13px', sm: '16px' },
-                fontWeight: 'bold',
-                mb: 0.5
+              sx={{
+                fontSize: { xs: '14px', sm: '18px' },
+                fontWeight: 700,
+                mb: 0.5,
+                color: certificate.headerColor || '#1E3A8A',
+                letterSpacing: '0.5px',
               }}
             >
               {certificate.eventName}
             </Typography>
-            
-            <Typography 
+
+            <Typography
               variant="caption"
-              sx={{ 
+              sx={{
                 fontSize: { xs: '11px', sm: '13px' },
-                opacity: 0.8
+                opacity: 0.75,
+                fontStyle: 'italic',
               }}
             >
               {certificate.eventDate}
@@ -930,37 +970,55 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           </Box>
 
           {/* Signatures */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-around', 
-            width: '100%', 
-            mt: 4 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            width: '100%',
+            mt: 4,
+            mb: 2,
           }}>
             {certificate.signatories.map((signatory, index) => (
-              <Box key={index} sx={{ 
-                textAlign: 'center', 
-                minWidth: 180,
-                padding: '10px',
-                borderTop: '1px dotted rgba(0,0,0,0.1)'
+              <Box key={index} sx={{
+                textAlign: 'center',
+                minWidth: 160,
+                padding: '12px 16px',
+                position: 'relative',
               }}>
                 {certificate.signatureImages?.[signatory.name] ? (
                   <Box
                     component="img"
                     src={`data:image/png;base64,${certificate.signatureImages[signatory.name]}`}
                     sx={{
-                      width: 150,
-                      height: 60,
+                      width: 140,
+                      height: 55,
                       objectFit: 'contain',
                       mb: 1
                     }}
                   />
                 ) : (
-                  <Divider sx={{ width: 150, margin: '0 auto', mb: 1 }} />
+                  <Box sx={{
+                    width: 140,
+                    height: 55,
+                    margin: '0 auto',
+                    mb: 1,
+                    borderBottom: '2px solid #1E3A8A',
+                  }} />
                 )}
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '14px' }}>
+                <Typography variant="subtitle1" sx={{
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  color: '#1E3A8A',
+                  letterSpacing: '0.5px',
+                }}>
                   {signatory.name}
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '12px', letterSpacing: '0.5px' }}>
+                <Typography variant="body2" sx={{
+                  fontSize: '11px',
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase',
+                  opacity: 0.7,
+                  mt: 0.3,
+                }}>
                   {signatory.title}
                 </Typography>
               </Box>
@@ -968,9 +1026,9 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           </Box>
 
           {/* Certificate number - bottom left */}
-          <Typography 
+          <Typography
             variant="caption"
-            sx={{ 
+            sx={{
               position: 'absolute',
               bottom: 0,
               left: 0,
@@ -1031,32 +1089,32 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   };
 
   return (
-    <Box sx={{ 
-      height: '100%', 
-      display: 'flex', 
+    <Box sx={{
+      height: '100%',
+      display: 'flex',
       flexDirection: 'column',
       bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
     }}>
       {/* Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        p: 2, 
+        p: 2,
         borderBottom: '1px solid',
         borderColor: darkMode ? '#333333' : '#E2E8F0',
         bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
       }}>
-        <Typography variant="h6" sx={{ 
+        <Typography variant="h6" sx={{
           color: darkMode ? '#f5f5f5' : 'inherit'
         }}>
           Certificate Template Editor
         </Typography>
         <Box>
           {onApply && (
-            <Button 
-              variant="outlined" 
-              startIcon={<BrandingWatermark />} 
+            <Button
+              variant="outlined"
+              startIcon={<BrandingWatermark />}
               onClick={handleApply}
               sx={{
                 mr: 1,
@@ -1071,9 +1129,9 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               Apply Template
             </Button>
           )}
-          <Button 
-            variant="contained" 
-            startIcon={<Save />} 
+          <Button
+            variant="contained"
+            startIcon={<Save />}
             onClick={handleSave}
             sx={{
               mr: 1,
@@ -1086,9 +1144,9 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           >
             Save Template
           </Button>
-          <IconButton 
+          <IconButton
             onClick={onClose}
-            sx={{ 
+            sx={{
               color: darkMode ? '#aaaaaa' : '#64748B',
               '&:hover': {
                 bgcolor: darkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
@@ -1101,30 +1159,30 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
       </Box>
 
       {/* Main content - split into two columns */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        flex: 1, 
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        flex: 1,
         overflow: 'hidden',
         height: 'calc(100% - 60px)',
         bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
       }}>
         {/* Left column - Certificate Preview */}
-        <Box sx={{ 
-          width: '45%', 
-          p: 2, 
+        <Box sx={{
+          width: '45%',
+          p: 2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           borderRight: '1px solid',
           borderColor: darkMode ? '#333333' : '#E2E8F0',
           bgcolor: darkMode ? '#2d2d2d' : '#f8fafc',
-             color: darkMode ? '#2d2d2d' : '#f8fafc'
+          color: darkMode ? '#2d2d2d' : '#f8fafc'
         }}>
-          <Paper 
-            elevation={3} 
+          <Paper
+            elevation={3}
             ref={certificateRef}
-            sx={{ 
+            sx={{
               width: '100%',
               maxHeight: '100%',
               display: 'flex',
@@ -1139,16 +1197,16 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
         </Box>
 
         {/* Right column - Controls */}
-        <Box sx={{ 
-          width: '55%', 
-          display: 'flex', 
+        <Box sx={{
+          width: '55%',
+          display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           bgcolor: darkMode ? '#1e1e1e' : '#ffffff'
         }}>
           {/* Tabs for editing */}
-          <Tabs 
-            value={activeTab} 
+          <Tabs
+            value={activeTab}
             onChange={handleTabChange}
             sx={{
               borderBottom: '1px solid',
@@ -1164,43 +1222,45 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               }
             }}
           >
-            <Tab 
-              label="Content" 
-              sx={{ 
+            <Tab
+              label="Content"
+              sx={{
                 textTransform: 'none',
                 fontSize: '0.875rem',
                 fontWeight: 500
-              }} 
+              }}
             />
-            <Tab 
-              label="Style" 
-              sx={{ 
+            {/*
+            <Tab
+              label="Style"
+              sx={{
                 textTransform: 'none',
                 fontSize: '0.875rem',
                 fontWeight: 500
-              }} 
+              }}
+            />*/}
+            <Tab
+              label="Signatories"
+              sx={{
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}
             />
-            <Tab 
-              label="Images" 
-              sx={{ 
+            <Tab
+              label="Images"
+              sx={{
                 textTransform: 'none',
                 fontSize: '0.875rem',
                 fontWeight: 500
-              }} 
-            />
-            <Tab 
-              label="Signatories" 
-              sx={{ 
-                textTransform: 'none',
-                fontSize: '0.875rem',
-                fontWeight: 500
-              }} 
+              }}
             />
           </Tabs>
 
+
           {/* Tab content area with scrolling */}
-          <Box sx={{ 
-            flex: 1, 
+          <Box sx={{
+            flex: 1,
             overflow: 'auto',
             p: 2,
             bgcolor: darkMode ? '#2d2d2d' : '#f8fafc',
@@ -1219,135 +1279,236 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
             }
           }}>
             {activeTab === 0 && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Title"
-                    value={certificate.title}
-                    onChange={(e) => handleTextChange('title', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
-                        '& fieldset': {
-                          borderColor: darkMode ? '#333333' : '#E2E8F0',
+              <Box>
+                {/* Title & Header Section */}
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Title & Header
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Title"
+                      value={certificate.title}
+                      onChange={(e) => handleTextChange('title', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                        '&:hover fieldset': {
-                          borderColor: darkMode ? '#555555' : '#CBD5E1',
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                        '&.Mui-focused fieldset': {
-                          borderColor: darkMode ? '#90caf9' : '#0288d1',
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Subtitle"
+                      value={certificate.subtitle}
+                      onChange={(e) => handleTextChange('subtitle', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: darkMode ? '#aaaaaa' : '#64748B',
-                        '&.Mui-focused': {
-                          color: darkMode ? '#90caf9' : '#0288d1',
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
                         },
-                      },
-                      '& input': {
-                        color: darkMode ? '#f5f5f5' : 'inherit',
-                      },
-                    }}
-                  />
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Subtitle"
-                    value={certificate.subtitle}
-                    onChange={(e) => handleTextChange('subtitle', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
+
+                {/* Recipient Information Section */}
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Recipient Information
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Recipient Text"
+                      value={certificate.recipientText}
+                      onChange={(e) => handleTextChange('recipientText', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      helperText="Text displayed above recipient name"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                        '& .MuiFormHelperText-root': { color: darkMode ? '#777777' : '#94a3b8' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      value={certificate.description}
+                      onChange={(e) => handleTextChange('description', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      multiline
+                      rows={3}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& textarea': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Recipient Text"
-                    value={certificate.recipientText}
-                    onChange={(e) => handleTextChange('recipientText', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Recipient Name Placeholder"
-                    value={certificate.recipientName}
-                    onChange={(e) => handleTextChange('recipientName', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    helperText="This will be replaced with actual recipient names"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    value={certificate.description}
-                    onChange={(e) => handleTextChange('description', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    multiline
-                    rows={3}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Event Name"
-                    value={certificate.eventName}
-                    onChange={(e) => handleTextChange('eventName', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Event Date"
-                    value={certificate.eventDate}
-                    onChange={(e) => handleTextChange('eventDate', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Certificate Number"
-                    value={certificate.certificateNumber}
-                    onChange={(e) => handleTextChange('certificateNumber', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    helperText="This will be replaced with an actual certificate number"
-                  />
-                </Grid>
-              </Grid>
+
+                {/* Event Details Section */}
+                {/*
+                <Typography variant="subtitle2" sx={{
+                  mb: 1.5,
+                  fontWeight: 600,
+                  color: darkMode ? '#90caf9' : '#0288d1',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Event Details
+                </Typography>*/}
+
+                {/*
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Event Name"
+                      value={certificate.eventName}
+                      onChange={(e) => handleTextChange('eventName', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Event Date"
+                      value={certificate.eventDate}
+                      onChange={(e) => handleTextChange('eventDate', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                      }}
+                    />
+                  </Grid>
+                  {/*  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Certificate Number"
+                      value={certificate.certificateNumber}
+                      onChange={(e) => handleTextChange('certificateNumber', e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      helperText="This will be replaced with an actual certificate number"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
+                          '& fieldset': { borderColor: darkMode ? '#333333' : '#E2E8F0' },
+                          '&:hover fieldset': { borderColor: darkMode ? '#555555' : '#CBD5E1' },
+                          '&.Mui-focused fieldset': { borderColor: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: darkMode ? '#aaaaaa' : '#64748B',
+                          '&.Mui-focused': { color: darkMode ? '#90caf9' : '#0288d1' },
+                        },
+                        '& input': { color: darkMode ? '#f5f5f5' : 'inherit' },
+                        '& .MuiFormHelperText-root': { color: darkMode ? '#777777' : '#94a3b8' },
+                      }}
+                    />
+                  </Grid> 
+                </Grid>*/}
+              </Box>
             )}
 
+            {/*
             {activeTab === 1 && (
-              <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
-                <Typography variant="h6" sx={{ 
-                  mb: 2, 
-                  fontWeight: 500,
-                  color: darkMode ? '#f5f5f5' : 'inherit'
-                }}>
-                  Style Settings
-                </Typography>
-                
+              <Box>
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Colors
                   </Typography>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <TextField
@@ -1396,7 +1557,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         }}
                       />
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
@@ -1444,7 +1605,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         }}
                       />
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
@@ -1495,15 +1656,19 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   </Grid>
                 </Box>
 
-                {/* Font Settings */}
+                 Font Settings 
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Typography
                   </Typography>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small">
@@ -1537,10 +1702,10 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                           }}
                         >
                           {fontFamilies.map((font) => (
-                            <MenuItem 
-                              key={font} 
-                              value={font} 
-                              sx={{ 
+                            <MenuItem
+                              key={font}
+                              value={font}
+                              sx={{
                                 fontFamily: font,
                                 bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
                                 color: darkMode ? '#f5f5f5' : 'inherit',
@@ -1563,16 +1728,20 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     </Grid>
                   </Grid>
                 </Box>
-                
-                {/* Border Settings */}
+
+       
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ 
-                    mb: 1,
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Border & Frame
                   </Typography>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <FormControlLabel
@@ -1606,13 +1775,21 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                   </Grid>
                 </Box>
               </Box>
-            )}
+            )}*/}
+
+
+
 
             {activeTab === 2 && (
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ 
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Background Image
                   </Typography>
@@ -1640,7 +1817,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     </Button>
                     {certificate.backgroundImage && (
                       <>
-                        <IconButton 
+                        <IconButton
                           onClick={() => handleImageDelete('background')}
                           sx={{
                             color: darkMode ? '#ef5350' : '#ef5350',
@@ -1651,11 +1828,14 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         >
                           <Delete />
                         </IconButton>
-                        <Typography variant="body2" sx={{ 
+                        {/*
+                        <Typography variant="body2" sx={{
                           color: darkMode ? '#aaaaaa' : '#64748B'
                         }}>
                           Opacity:
-                        </Typography>
+                        </Typography>*/}
+
+                        {/*
                         <Slider
                           value={certificate.backgroundImageOpacity}
                           onChange={(e, value) => handleTextChange('backgroundImageOpacity', value)}
@@ -1675,15 +1855,21 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                               bgcolor: darkMode ? '#90caf9' : '#0288d1',
                             },
                           }}
-                        />
+                        />*/}
                       </>
+
                     )}
                   </Box>
                 </Grid>
-
+                {/*
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ 
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     Logo
                   </Typography>
@@ -1711,7 +1897,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     </Button>
                     {certificate.logoImage && (
                       <>
-                        <IconButton 
+                        <IconButton
                           onClick={() => handleImageDelete('logo')}
                           sx={{
                             color: darkMode ? '#ef5350' : '#ef5350',
@@ -1843,7 +2029,16 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>Watermark</Typography>
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Watermark
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                       variant="outlined"
@@ -1880,8 +2075,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ 
-                    color: darkMode ? '#f5f5f5' : 'inherit'
+                  <Typography variant="subtitle2" sx={{
+                    mb: 1.5,
+                    fontWeight: 600,
+                    color: darkMode ? '#90caf9' : '#0288d1',
+                    textTransform: 'uppercase',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.5px'
                   }}>
                     QR Code Settings
                   </Typography>
@@ -1913,6 +2113,8 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         </Typography>
                       }
                     />
+
+
                     {certificate.showQRCode && (
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
@@ -1979,19 +2181,19 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                       </FormControl>
                     )}
                   </Box>
-                </Grid>
+                </Grid>*/}
               </Grid>
             )}
 
-            {activeTab === 3 && (
+            {activeTab === 1 && (
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                   <Typography variant="subtitle1" sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
                     {certificate.signatories.length} of 3 signatories
                   </Typography>
-                  <Button 
-                    size="small" 
-                    startIcon={<Add />} 
+                  <Button
+                    size="small"
+                    startIcon={<Add />}
                     onClick={handleAddSignatory}
                     disabled={certificate.signatories.length >= 3}
                     variant="outlined"
@@ -2011,13 +2213,13 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                     Add Signatory
                   </Button>
                 </Box>
-                
+
                 {certificate.signatories.map((signatory, index) => (
-                  <Paper 
-                    key={index} 
+                  <Paper
+                    key={index}
                     elevation={1}
-                    sx={{ 
-                      p: 2, 
+                    sx={{
+                      p: 2,
                       mb: 2,
                       borderRadius: '8px',
                       bgcolor: darkMode ? '#1e1e1e' : '#ffffff',
@@ -2025,17 +2227,17 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                       borderColor: darkMode ? '#333333' : '#E2E8F0'
                     }}
                   >
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
+                    <Box sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
                       alignItems: 'center',
                       mb: 2
                     }}>
                       <Typography variant="subtitle2" sx={{ color: darkMode ? '#f5f5f5' : 'inherit' }}>
                         Signatory {index + 1}
                       </Typography>
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         onClick={() => handleRemoveSignatory(index)}
                         disabled={certificate.signatories.length <= 1}
                         sx={{
@@ -2051,7 +2253,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
                         <Delete fontSize="small" />
                       </IconButton>
                     </Box>
-                    
+
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={6}>
                         <TextField
@@ -2125,6 +2327,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
           </Box>
         </Box>
       </Box>
-    </Box>
+    </Box >
   );
 } 

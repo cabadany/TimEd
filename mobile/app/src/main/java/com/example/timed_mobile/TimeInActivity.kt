@@ -195,19 +195,44 @@ class TimeInActivity : WifiSecurityActivity() {
                 Toast.makeText(this, "Please position your face correctly.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            timeInButton.isEnabled = false
-            timeInButton.text = "Processing..."
+            
+            // SECURITY: Force sync server time and check for manipulation RIGHT NOW
+            TimeSettingsManager.refreshServerTimeSync()
+            // Give a small delay to let the sync complete, then check
             Handler(Looper.getMainLooper()).postDelayed({
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                if (currentUser == null) {
-                    signInAnonymouslyForStorage { success ->
-                        if (success) checkAndCapturePhoto(userId ?: "")
-                        else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                // Combined check: AUTO_TIME disabled OR server offset too large
+                if (TimeSettingsManager.isTimeTampered(this)) {
+                    val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                    UiDialogs.showErrorPopup(
+                        this,
+                        "⚠️ Time Security Violation",
+                        "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings. App will restart for security verification."
+                    ) {
+                        // SECURITY: Reset state and redirect to Splash Screen
+                        TimeSettingsManager.resetSecurityState()
+                        val intent = Intent(this, SplashActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
                     }
-                } else {
-                    checkAndCapturePhoto(userId ?: currentUser.uid)
+                    resetTimeInButton()
+                    return@postDelayed
                 }
-            }, 2000)
+                
+                timeInButton.isEnabled = false
+                timeInButton.text = "Processing..."
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser == null) {
+                        signInAnonymouslyForStorage { success ->
+                            if (success) checkAndCapturePhoto(userId ?: "")
+                            else { Toast.makeText(this, "Auth failed.", Toast.LENGTH_SHORT).show(); resetTimeInButton() }
+                        }
+                    } else {
+                        checkAndCapturePhoto(userId ?: currentUser.uid)
+                    }
+                }, 2000)
+            }, 500) // 500ms delay to let Firebase sync complete
         }
     }
 
@@ -436,6 +461,8 @@ class TimeInActivity : WifiSecurityActivity() {
 
     override fun onResume() {
         super.onResume()
+        // SECURITY: Re-sync server time to detect device time manipulation
+        TimeSettingsManager.refreshServerTimeSync()
         if (allPermissionsGranted() && !isInTutorialMode) {
             startCamera()
         }
@@ -548,7 +575,8 @@ class TimeInActivity : WifiSecurityActivity() {
     }
 
     private fun checkAlreadyTimedIn(uid: String, callback: (Boolean) -> Unit) {
-        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        // SECURITY: Use Philippine timezone to prevent device time manipulation
+        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
         FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(uid)
             .orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -674,6 +702,8 @@ class TimeInActivity : WifiSecurityActivity() {
 
     private fun logTimeIn(imageUrl: String, studentUid: String) {
         val attendanceBadge = if (TimeSettingsManager.isLate()) "Late" else "On Time"
+        // Set status to "On Break" if timing in during break window, otherwise "On Duty"
+        val initialStatus = if (TimeSettingsManager.isInBreak()) "On Break" else "On Duty"
         val log = mapOf(
             "timestamp" to System.currentTimeMillis(),
             "type" to "TimeIn",
@@ -681,12 +711,12 @@ class TimeInActivity : WifiSecurityActivity() {
             "email" to userEmail,
             "firstName" to userFirstName,
             "userId" to studentUid,
-            "status" to "On Duty",
+            "status" to initialStatus,
             "attendanceBadge" to attendanceBadge
         )
         val ref = FirebaseDatabase.getInstance().getReference(DB_PATH_TIME_LOGS).child(studentUid)
         ref.push().setValue(log)
-            .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid") }
+            .addOnSuccessListener { Log.d(TAG, "Time-In log successfully written for UID: $studentUid with status: $initialStatus") }
             .addOnFailureListener { e -> Log.e(TAG, "Failed to write Time-In log for UID: $studentUid", e); UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to record time-in: ${e.message}") }
     }
 
@@ -789,32 +819,55 @@ class TimeInActivity : WifiSecurityActivity() {
         progressTextView.text = "Step $currentStep of $totalSteps (Time-In Screen)"
         messageTextView.text = message
 
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val density = resources.displayMetrics.density
+        val margin = (16 * density).toInt().coerceAtLeast(1)
+
         dialogView.measure(
-            View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(resources.displayMetrics.heightPixels, View.MeasureSpec.AT_MOST)
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
         )
-        val dialogWidth = dialogView.measuredWidth.takeIf { it > 0 } ?: (resources.displayMetrics.widthPixels * 0.8).toInt()
-        val dialogHeight = dialogView.measuredHeight.takeIf { it > 0 } ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val measuredWidth = dialogView.measuredWidth.takeIf { it > 0 }
+            ?: (screenWidth * 0.8f).toInt()
+        val maxDialogWidth = (screenWidth * 0.92f).toInt().coerceAtLeast(margin * 2)
+        val dialogWidth = measuredWidth.coerceAtMost(maxDialogWidth)
+
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(dialogWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(screenHeight - margin * 2, View.MeasureSpec.AT_MOST)
+        )
+        val measuredHeight = dialogView.measuredHeight.takeIf { it > 0 }
+            ?: (screenHeight * 0.4f).toInt().coerceAtLeast(margin * 4)
+        val maxDialogHeight = (screenHeight * 0.7f).toInt().coerceAtLeast(margin * 6)
+        val dialogHeight = measuredHeight.coerceAtMost(maxDialogHeight)
 
         var finalDialogX: Int
         var finalDialogY: Int
         val currentTargetLocationOnScreen = IntArray(2)
-        targetView.getLocationOnScreen(currentTargetLocationOnScreen)
-
-        val margin = (16 * resources.displayMetrics.density).toInt()
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-
-        finalDialogY = currentTargetLocationOnScreen[1] + targetView.height + margin / 2
-        if (finalDialogY + dialogHeight > screenHeight - margin) {
-            finalDialogY = currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
-            if (finalDialogY < margin) {
-                finalDialogY = (screenHeight - dialogHeight) / 2
-            }
+        val targetIsReady = targetView.visibility == View.VISIBLE && targetView.width > 0 && targetView.height > 0 && targetView.isAttachedToWindow
+        if (targetIsReady) {
+            targetView.getLocationOnScreen(currentTargetLocationOnScreen)
+        } else {
+            currentTargetLocationOnScreen[0] = (screenWidth - targetView.width.coerceAtLeast(0)) / 2
+            currentTargetLocationOnScreen[1] = (screenHeight - targetView.height.coerceAtLeast(0)) / 2
         }
-        finalDialogX = currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2
-        if (finalDialogX < margin) finalDialogX = margin
-        if (finalDialogX + dialogWidth > screenWidth - margin) finalDialogX = screenWidth - dialogWidth - margin
+
+        val spaceBelow = screenHeight - (currentTargetLocationOnScreen[1] + targetView.height)
+        val spaceAbove = currentTargetLocationOnScreen[1]
+
+        finalDialogY = if (targetIsReady && spaceBelow >= dialogHeight + margin / 2) {
+            currentTargetLocationOnScreen[1] + targetView.height + margin / 2
+        } else if (targetIsReady && spaceAbove >= dialogHeight + margin / 2) {
+            currentTargetLocationOnScreen[1] - dialogHeight - margin / 2
+        } else {
+            (screenHeight - dialogHeight) / 2
+        }
+
+        finalDialogX = (currentTargetLocationOnScreen[0] + targetView.width / 2 - dialogWidth / 2)
+            .coerceIn(margin, screenWidth - dialogWidth - margin)
+
+        finalDialogY = finalDialogY.coerceIn(margin, screenHeight - dialogHeight - margin)
 
         val popupWindow = PopupWindow(dialogView, dialogWidth, dialogHeight, true)
         currentTutorialPopupWindow = popupWindow

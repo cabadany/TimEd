@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
+import {
+  Box,
+  Typography,
+  Paper,
   useTheme,
   alpha,
   CircularProgress
@@ -16,31 +16,31 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlaceIcon from '@mui/icons-material/Place';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 
-const EventCalendar = ({ 
-  events, 
+const EventCalendar = ({
+  events,
   onEventClick
 }) => {
   const theme = useTheme();
   const { darkMode } = useCustomTheme();
-  
+
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Simulate loading effect
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 800);
-    
+
     return () => clearTimeout(timer);
   }, []);
-  
+
   // Get color based on event status
   const getStatusColor = (status) => {
     if (!status) return theme.palette.grey[500];
-    
+
     // Normalize status to lowercase for case-insensitive comparison
     const normalizedStatus = status.toLowerCase();
-    
+
     if (normalizedStatus.includes('schedul') || normalizedStatus.includes('upcoming')) {
       return theme.palette.primary.main;
     } else if (normalizedStatus.includes('ongoing') || normalizedStatus.includes('active')) {
@@ -53,7 +53,7 @@ const EventCalendar = ({
       return theme.palette.grey[500];
     }
   };
-  
+
   // Get event priority class based on event type or importance
   const getEventPriorityClass = (event) => {
     // This can be customized based on your event properties
@@ -66,12 +66,9 @@ const EventCalendar = ({
     }
     return '';
   };
-  
+
   // Format events for FullCalendar
   const calendarEvents = events.map(event => {
-    // Debug logging
-    console.log('Processing event for calendar:', event);
-    
     // Parse date from event
     let eventDate;
     try {
@@ -85,7 +82,7 @@ const EventCalendar = ({
           // Format like "May 5, 2023 10:30 AM"
           const dateMatch = event.date.match(/([A-Za-z]+\s\d+,\s\d{4})/);
           const timeMatch = event.date.match(/(\d{1,2}:\d{2}(?::\d{2})?\s[AP]M)/);
-          
+
           if (dateMatch && timeMatch) {
             const dateStr = dateMatch[0];
             const timeStr = timeMatch[0];
@@ -102,7 +99,7 @@ const EventCalendar = ({
         // If it's already a Date object or timestamp
         eventDate = new Date(event.date);
       }
-      
+
       // Validate the parsed date
       if (isNaN(eventDate.getTime())) {
         console.warn('Invalid date parsed for event:', event);
@@ -112,7 +109,7 @@ const EventCalendar = ({
       console.error('Error parsing event date:', error, event);
       eventDate = new Date(); // Fallback to current date
     }
-    
+
     // Calculate end time using duration
     let endDate = new Date(eventDate);
     try {
@@ -121,7 +118,7 @@ const EventCalendar = ({
         const hours = durationParts[0] || 0;
         const minutes = durationParts[1] || 0;
         const seconds = durationParts[2] || 0;
-        
+
         endDate.setHours(endDate.getHours() + hours);
         endDate.setMinutes(endDate.getMinutes() + minutes);
         endDate.setSeconds(endDate.getSeconds() + seconds);
@@ -133,14 +130,13 @@ const EventCalendar = ({
       console.error('Error calculating end date:', error, event);
       endDate.setHours(endDate.getHours() + 1); // Default 1 hour
     }
-    
+
     // Ensure we have a valid title and ID
     const title = event.eventName || event.name || 'Unnamed Event';
     const id = event.eventId || event.id || `event-${Math.random().toString(36).substr(2, 9)}`;
     const status = event.status || 'Unknown';
-    
-    console.log(`Calendar event processed: "${title}" (${id}), Start: ${eventDate.toLocaleString()}, Status: ${status}`);
-    
+
+
     // Return formatted event for calendar
     return {
       id: id,
@@ -157,14 +153,14 @@ const EventCalendar = ({
       }
     };
   });
-  
+
   // Handler for event click
   const handleEventClick = (info) => {
     if (onEventClick) {
       onEventClick(info.event.extendedProps);
     }
   };
-  
+
   // Custom render for calendar header
   const renderCalendarHeader = () => {
     return {
@@ -173,18 +169,20 @@ const EventCalendar = ({
       end: 'dayGridMonth,timeGridWeek,timeGridDay'
     };
   };
-  
+
   return (
-    <Paper 
-      elevation={2} 
-      className="calendar-container"
-      sx={{ 
-        p: 3, 
-        borderRadius: 2, 
-        boxShadow: theme => `0 4px 20px 0 ${alpha(theme.palette.grey[500], 0.2)}`,
+    <Paper
+      elevation={0}
+      className={`calendar-container ${darkMode ? 'dark-mode' : ''}`}
+      sx={{
+        p: 3,
+        borderRadius: 3,
+        boxShadow: darkMode
+          ? '0 4px 24px rgba(0, 0, 0, 0.4)'
+          : '0 4px 24px rgba(0, 0, 0, 0.08)',
         overflow: 'hidden',
         position: 'relative',
-        bgcolor: darkMode ? '#1e1e1e' : 'background.paper'
+        bgcolor: 'transparent'
       }}
     >
       {isLoading && (
@@ -192,12 +190,26 @@ const EventCalendar = ({
           <CircularProgress size={40} color="primary" />
         </Box>
       )}
-    
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight="600" color={darkMode ? '#f5f5f5' : 'primary'}>Event Calendar</Typography>
+
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            background: darkMode
+              ? 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)'
+              : 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em'
+          }}
+        >
+          Event Calendar
+        </Typography>
       </Box>
-      
-      <Box sx={{ 
+
+      <Box sx={{
         height: '650px',
         '& .fc-header-toolbar': {
           mb: 2,
@@ -294,12 +306,12 @@ const EventCalendar = ({
           eventContent={(info) => {
             const timeText = info.timeText;
             const title = info.event.title;
-            
+
             return (
-              <Box sx={{ 
-                p: 0.5, 
-                width: '100%', 
-                overflow: 'hidden', 
+              <Box sx={{
+                p: 0.5,
+                width: '100%',
+                overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 display: 'flex',
                 flexDirection: 'column',

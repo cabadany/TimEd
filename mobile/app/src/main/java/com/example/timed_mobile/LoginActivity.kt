@@ -37,6 +37,7 @@ class LoginActivity : WifiSecurityActivity() {
         const val KEY_USER_ID = "userId"
         const val KEY_EMAIL = "email"
         const val KEY_FIRST_NAME = "firstName"
+        const val KEY_LAST_NAME = "lastName"
         const val KEY_ID_NUMBER = "idNumber"
         const val KEY_DEPARTMENT = "department"
     }
@@ -158,6 +159,7 @@ class LoginActivity : WifiSecurityActivity() {
                 // Get user data first
                 val userId = userDoc.id // This is the crucial Firebase document ID
                 val firstName = userDoc.getString("firstName") ?: ""
+                val lastName = userDoc.getString("lastName") ?: ""
                 val email = userDoc.getString("email") ?: ""
                 val department = when (val dep = userDoc.get("department")) {
                     is Map<*, *> -> dep["abbreviation"]?.toString() ?: "N/A"
@@ -167,7 +169,7 @@ class LoginActivity : WifiSecurityActivity() {
 
                 // Try Firebase Auth first (for users who reset their password)
                 // If that fails, fall back to bcrypt verification
-                attemptFirebaseAuthLogin(email, password, userDoc, userId, firstName, department, schoolIdValue)
+                attemptFirebaseAuthLogin(email, password, userDoc, userId, firstName, lastName, department, schoolIdValue)
             }
             .addOnFailureListener { e ->
                 Log.e("LOGIN", "Firestore error", e)
@@ -184,7 +186,8 @@ class LoginActivity : WifiSecurityActivity() {
         password: String, 
         userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
         userId: String, 
-        firstName: String, 
+        firstName: String,
+        lastName: String,
         department: String, 
         schoolIdValue: String
     ) {
@@ -193,10 +196,10 @@ class LoginActivity : WifiSecurityActivity() {
                 if (task.isSuccessful) {
                     // Firebase Auth login successful - user has reset their password
                     Log.d("LOGIN", "Firebase Auth login successful - new password used")
-                    proceedWithLogin(userId, firstName, email, department, schoolIdValue)
+                    proceedWithLogin(userId, firstName, lastName, email, department, schoolIdValue)
                 } else {
                     // Check if user exists in Firebase Auth (meaning they've reset their password)
-                    checkIfUserHasFirebaseAccount(email, password, userDoc, userId, firstName, department, schoolIdValue)
+                    checkIfUserHasFirebaseAccount(email, password, userDoc, userId, firstName, lastName, department, schoolIdValue)
                 }
             }
     }
@@ -206,7 +209,8 @@ class LoginActivity : WifiSecurityActivity() {
         password: String, 
         userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
         userId: String, 
-        firstName: String, 
+        firstName: String,
+        lastName: String,
         department: String, 
         schoolIdValue: String
     ) {
@@ -226,12 +230,12 @@ class LoginActivity : WifiSecurityActivity() {
                     } else {
                         // User doesn't exist in Firebase Auth, try bcrypt (original password)
                         Log.d("LOGIN", "User doesn't have Firebase Auth account, trying bcrypt")
-                        attemptBcryptLogin(password, userDoc, userId, firstName, email, department, schoolIdValue)
+                        attemptBcryptLogin(password, userDoc, userId, firstName, lastName, email, department, schoolIdValue)
                     }
                 } else {
                     // Error checking Firebase Auth, fallback to bcrypt
                     Log.d("LOGIN", "Error checking Firebase Auth, trying bcrypt")
-                    attemptBcryptLogin(password, userDoc, userId, firstName, email, department, schoolIdValue)
+                    attemptBcryptLogin(password, userDoc, userId, firstName, lastName, email, department, schoolIdValue)
                 }
             }
     }
@@ -240,7 +244,8 @@ class LoginActivity : WifiSecurityActivity() {
         password: String, 
         userDoc: com.google.firebase.firestore.QueryDocumentSnapshot,
         userId: String, 
-        firstName: String, 
+        firstName: String,
+        lastName: String,
         email: String, 
         department: String, 
         schoolIdValue: String
@@ -251,7 +256,7 @@ class LoginActivity : WifiSecurityActivity() {
         if (result.verified) {
             // bcrypt verification successful
             Log.d("LOGIN", "Bcrypt verification successful")
-            proceedWithLogin(userId, firstName, email, department, schoolIdValue)
+            proceedWithLogin(userId, firstName, lastName, email, department, schoolIdValue)
         } else {
             // Both Firebase Auth and bcrypt failed
             UiDialogs.showErrorPopup(
@@ -264,7 +269,8 @@ class LoginActivity : WifiSecurityActivity() {
 
     private fun proceedWithLogin(
         userId: String, 
-        firstName: String, 
+        firstName: String,
+        lastName: String,
         email: String, 
         department: String, 
         schoolIdValue: String
@@ -275,6 +281,7 @@ class LoginActivity : WifiSecurityActivity() {
             putBoolean(KEY_IS_LOGGED_IN, true)
             putString(KEY_USER_ID, userId) // Storing Firebase document ID
             putString(KEY_FIRST_NAME, firstName)
+            putString(KEY_LAST_NAME, lastName)
             putString(KEY_EMAIL, email)
             putString(KEY_ID_NUMBER, schoolIdValue) // Storing schoolId
             putString(KEY_DEPARTMENT, department)
@@ -302,6 +309,7 @@ class LoginActivity : WifiSecurityActivity() {
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                putExtra("lastName", lastName)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
             }
             startActivity(intent)
@@ -312,6 +320,7 @@ class LoginActivity : WifiSecurityActivity() {
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_ID, userId)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_EMAIL, email)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_FIRST_NAME, firstName)
+                putExtra("lastName", lastName)
                 putExtra(NewUserWelcomeActivity.EXTRA_ID_NUMBER, schoolIdValue)
                 putExtra(NewUserWelcomeActivity.EXTRA_USER_DEPARTMENT, department)
             }

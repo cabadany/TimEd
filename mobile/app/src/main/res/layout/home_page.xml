@@ -41,12 +41,83 @@
                             android:scaleType="fitXY"
                             android:src="@drawable/animated_wave_top" />
 
+                    <!-- Schedule Display (Top Left) - Hidden by default -->
+                    <LinearLayout
+                        android:id="@+id/schedule_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_alignParentStart="true"
+                        android:layout_alignParentTop="true"
+                        android:layout_marginTop="@dimen/space_xl"
+                        android:visibility="gone"
+                        android:background="@drawable/bg_schedule_tooltip"
+                        android:elevation="4dp"
+                        android:layout_marginStart="56dp"> <!-- Offset to right of button -->
+
+                        <TextView
+                            android:id="@+id/tv_schedule_time_in"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Time In: --:--"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                            android:shadowColor="#80000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2" />
+
+                        <TextView
+                            android:id="@+id/tv_schedule_break"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Break: --:-- - --:--"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                            android:layout_marginTop="3dp"
+                            android:shadowColor="#80000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2" />
+
+                        <TextView
+                            android:id="@+id/tv_schedule_time_out"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Time Out: --:--"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                            android:layout_marginTop="3dp"
+                            android:shadowColor="#80000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2" />
+                    </LinearLayout>
+
+                    <!-- Schedule Toggle Button (Clock Icon) -->
+                    <!-- Increased size to 48dp for better touch target (Accessibility) -->
+                    <ImageView
+                        android:id="@+id/btn_view_schedule"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:padding="12dp"
+                        android:layout_alignParentStart="true"
+                        android:layout_alignParentTop="true"
+                        android:layout_marginStart="@dimen/space_xs"
+                        android:layout_marginTop="@dimen/space_lg"
+                        android:src="@drawable/ic_clock"
+                        android:contentDescription="View Schedule"
+                        app:tint="@color/white"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true" />
+
                     <ImageView
                             android:id="@+id/btn_help"
                             android:layout_width="@dimen/toolbar_icon_lg"
                             android:layout_height="@dimen/toolbar_icon_lg"
                             android:layout_alignParentEnd="true"
-                            android:layout_marginTop="@dimen/space_sm"
+                            android:layout_marginTop="@dimen/space_2xl"
                             android:layout_marginEnd="@dimen/space_lg"
                             android:src="@drawable/ic_info"
                             android:contentDescription="Help"
@@ -79,7 +150,7 @@
                             android:layout_width="@dimen/toolbar_icon_lg"
                             android:layout_height="@dimen/toolbar_icon_lg"
                             android:layout_toStartOf="@id/btn_help"
-                            android:layout_marginTop="@dimen/space_sm"
+                            android:layout_marginTop="@dimen/space_2xl"
                             android:layout_marginEnd="@dimen/space_md"
                             android:src="@drawable/ic_calendar_outline"
                             android:contentDescription="Calendar"

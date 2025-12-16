@@ -1,68 +1,103 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="220dp"
-        android:maxWidth="300dp"
-        android:background="@drawable/tutorial_dialog_background"
-        android:elevation="8dp"
-        >
-
-    <ImageButton
-            android:id="@+id/btn_close_tutorial_step"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_close"
-            app:tint="@color/primary_medium_blue"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentEnd="true"
-            android:layout_marginTop="4dp"
-            android:layout_marginEnd="4dp"
-            android:contentDescription="Close tutorial step" />
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="260dp"
+    android:maxWidth="320dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="12dp"
+    app:cardBackgroundColor="@color/white"
+    android:layout_margin="8dp">
 
     <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header / Progress Area -->
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:gravity="center_horizontal">
+            android:paddingStart="20dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp">
 
-        <TextView
+            <TextView
                 android:id="@+id/tutorial_progress_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Step 1 of 4"
-                android:textSize="12sp"
-                android:textColor="@color/neutral_text_gray"
-                android:layout_marginBottom="6dp"
-                android:layout_marginTop="16dp" />
+                android:text="STEP 1 OF 4"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:textStyle="bold"
+                android:textColor="@color/primary_deep_blue"
+                android:layout_centerVertical="true" />
 
-        <TextView
+            <ImageButton
+                android:id="@+id/btn_close_tutorial_step"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/neutral_text_gray"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="centerInside"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="Close tutorial" />
+        </RelativeLayout>
+
+        <!-- Divider (Optional, subtle) -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#F0F0F0"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Content Area -->
+        <ScrollView
+            android:id="@+id/tutorial_message_scroller"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="240dp"
+            android:scrollbars="vertical"
+            android:overScrollMode="ifContentScrolls">
+
+            <TextView
                 android:id="@+id/tutorial_message"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Message"
+                android:text="Message body goes here."
                 android:textSize="15sp"
-                android:textColor="@color/black"
-                android:gravity="center"
-                android:paddingHorizontal="4dp"
-                android:paddingVertical="2dp"
-                android:lineSpacingExtra="2dp"
-                android:layout_marginBottom="16dp"/>
+                android:lineSpacingExtra="4dp"
+                android:fontFamily="sans-serif"
+                android:textColor="#212121"
+                android:paddingHorizontal="24dp"
+                android:paddingBottom="4dp" />
+        </ScrollView>
 
-        <Button
+        <!-- Action Area -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <Button
                 android:id="@+id/tutorial_next_button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Next"
-                android:backgroundTint="@color/primary_deep_blue"
+                android:textSize="14sp"
+                android:textStyle="bold"
                 android:textColor="@color/white"
-                android:textSize="13sp"
-                android:layout_marginTop="8dp"/>
+                android:backgroundTint="@color/primary_deep_blue"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                app:cornerRadius="8dp"
+                android:paddingVertical="12dp"/>
+        </FrameLayout>
+
     </LinearLayout>
-</RelativeLayout>
+
+</androidx.cardview.widget.CardView>

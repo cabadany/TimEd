@@ -43,7 +43,8 @@ export const EVENTS = {
   USER_UPDATED: 'user_updated',
   USER_DELETED: 'user_deleted',
   REFRESH_ACCOUNTS: 'refresh_accounts',
-  REFRESH_ACCOUNT_REQUESTS: 'refresh_account_requests'
+  REFRESH_ACCOUNT_REQUESTS: 'refresh_account_requests',
+  EVENT_CREATED: 'event_created'
 };
 
 export default eventEmitter; 

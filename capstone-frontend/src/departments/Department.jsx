@@ -84,7 +84,7 @@ export default function DepartmentManagement() {
   const filterMenuOpen = Boolean(filterAnchorEl);
   const [activeFilter, setActiveFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: '',
@@ -159,15 +159,15 @@ export default function DepartmentManagement() {
         console.error('Name and abbreviation are required');
         return;
       }
-      
+
       const response = await axios.post(getApiUrl(API_ENDPOINTS.CREATE_DEPARTMENT), formData);
-      
+
       // Add the new department to the state
       setDepartments([...departments, response.data]);
-      
+
       // Close the modal and reset form
       handleCloseModal();
-      
+
       console.log('Department added successfully:', response.data);
     } catch (error) {
       console.error('Error adding department:', error);
@@ -181,17 +181,17 @@ export default function DepartmentManagement() {
         console.error('Selected department and form fields are required');
         return;
       }
-      
+
       const response = await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_DEPARTMENT(selectedDepartment.departmentId)), formData);
-      
+
       // Update the department in the state
-      setDepartments(departments.map(dept => 
+      setDepartments(departments.map(dept =>
         dept.departmentId === selectedDepartment.departmentId ? response.data : dept
       ));
-      
+
       // Close the modal and reset form
       handleCloseModal();
-      
+
       console.log('Department updated successfully:', response.data);
     } catch (error) {
       console.error('Error updating department:', error);
@@ -203,12 +203,12 @@ export default function DepartmentManagement() {
     setSelectedDepartment(null); // Reset to trigger skeleton loading
     setModalMode('view');
     setShowModal(true);
-    
+
     // Simulate loading state for better demonstration of skeleton loading
     const modalLoading = setTimeout(() => {
       setSelectedDepartment(department);
     }, 1000); // Simulate network delay of 1 second
-    
+
     // Cleanup timeout on component unmount
     return () => clearTimeout(modalLoading);
   };
@@ -237,7 +237,7 @@ export default function DepartmentManagement() {
     });
     setModalMode('edit');
     setShowModal(true);
-    
+
     // Simulate loading state for better demonstration of skeleton loading
     const modalLoading = setTimeout(() => {
       setSelectedDepartment(department);
@@ -248,7 +248,7 @@ export default function DepartmentManagement() {
         offeredPrograms: [...department.offeredPrograms]
       });
     }, 1000); // Simulate network delay of 1 second
-    
+
     // Cleanup timeout on component unmount
     return () => clearTimeout(modalLoading);
   };
@@ -278,35 +278,35 @@ export default function DepartmentManagement() {
     setActiveFilter(filterType);
     handleFilterClose();
   };
-  
+
   // Search handler
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1); // Reset to first page when searching
   };
-  
+
   // Get filtered departments based on search query
   const getFilteredDepartments = () => {
     if (!searchQuery) return departments;
-    
-    return departments.filter(dept => 
+
+    return departments.filter(dept =>
       dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       dept.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
-  
+
   // Pagination
   const itemsPerPage = 5;
   const filteredDepartments = getFilteredDepartments();
   const pageCount = Math.ceil(filteredDepartments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentDepartments = filteredDepartments.slice(startIndex, startIndex + itemsPerPage);
-  
+
   // Pagination handlers
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
-  
+
   const handleNextPage = () => {
     setCurrentPage(prev => Math.min(prev + 1, pageCount));
   };
@@ -337,7 +337,7 @@ export default function DepartmentManagement() {
       ))}
     </>
   );
-  
+
   // Skeleton loading component for the header section
   const DepartmentHeaderSkeleton = () => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -349,7 +349,7 @@ export default function DepartmentManagement() {
       </Box>
     </Box>
   );
-  
+
   // Skeleton loading component for the department modal
   const DepartmentModalSkeleton = () => (
     <Box>
@@ -391,14 +391,14 @@ export default function DepartmentManagement() {
   const handleDeleteDepartment = async () => {
     try {
       await axios.delete(getApiUrl(API_ENDPOINTS.DELETE_DEPARTMENT(departmentToDelete.departmentId)));
-      
+
       // Update the departments list
       setDepartments(departments.filter(dept => dept.departmentId !== departmentToDelete.departmentId));
-      
+
       // Close the confirmation dialog
       setDeleteConfirmOpen(false);
       setDepartmentToDelete(null);
-      
+
       // Show success message
       setSnackbar({
         open: true,
@@ -439,11 +439,11 @@ export default function DepartmentManagement() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Paper
               elevation={0}
-              sx={{ 
-                p: '2px 4px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                width: 300, 
+              sx={{
+                p: '2px 4px',
+                display: 'flex',
+                alignItems: 'center',
+                width: 300,
                 bgcolor: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 borderRadius: '4px'
@@ -459,8 +459,8 @@ export default function DepartmentManagement() {
                 onChange={handleSearchChange}
               />
             </Paper>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               startIcon={<FilterList />}
               size="small"
               onClick={handleFilterClick}
@@ -484,7 +484,7 @@ export default function DepartmentManagement() {
               onClose={handleFilterClose}
               PaperProps={{
                 elevation: 3,
-                sx: { 
+                sx: {
                   width: 180,
                   mt: 1,
                   '& .MuiMenuItem-root': {
@@ -531,7 +531,7 @@ export default function DepartmentManagement() {
             </Button>
           </Box>
         </Box>
-        
+
         {/* Departments Table */}
         <Box sx={{ mb: 3 }}>
           {/* Departments Table */}
@@ -551,7 +551,7 @@ export default function DepartmentManagement() {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Department / Grade Level</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Abbreviation</TableCell>
-              {/*    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>*/}
+                  {/*    <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Number of Faculty</TableCell>*/}
                   <TableCell sx={{ fontWeight: 600, color: '#475569', bgcolor: '#F8FAFC' }}>Programs Offered</TableCell>
                   <TableCell sx={{ width: 120, bgcolor: '#F8FAFC', textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
@@ -572,20 +572,20 @@ export default function DepartmentManagement() {
                     <TableRow key={department.departmentId} sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
                       <TableCell sx={{ fontWeight: 500 }}>{department.name}</TableCell>
                       <TableCell>{department.abbreviation}</TableCell>
-                     {/* <TableCell>{department.numberOfFaculty}</TableCell>*/}
+                      {/* <TableCell>{department.numberOfFaculty}</TableCell>*/}
                       <TableCell>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {department.offeredPrograms && department.offeredPrograms.length > 0 ? (
                             department.offeredPrograms.map((program, i) => (
-                              <Chip 
-                                key={i} 
-                                label={program} 
-                                size="small" 
-                                sx={{ 
-                                  fontSize: '0.75rem', 
+                              <Chip
+                                key={i}
+                                label={program}
+                                size="small"
+                                sx={{
+                                  fontSize: '0.75rem',
                                   bgcolor: '#E0F2FE',
                                   color: '#0369A1'
-                                }} 
+                                }}
                               />
                             ))
                           ) : (
@@ -597,31 +597,79 @@ export default function DepartmentManagement() {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                          <Tooltip title="View Details">
-                            <IconButton 
-                              size="small" 
+                          <Tooltip title="View Details" arrow placement="top">
+                            <IconButton
+                              size="small"
                               onClick={() => handleViewDepartment(department)}
-                              sx={{ color: '#64748B' }}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                border: '1px solid #e2e8f0',
+                                color: '#64748B',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #64748B 0%, #475569 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(100, 116, 139, 0.4)',
+                                  border: '1px solid transparent',
+                                }
+                              }}
                             >
-                              <Visibility fontSize="small" />
+                              <Visibility sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Edit Department">
-                            <IconButton 
-                              size="small" 
+                          <Tooltip title="Edit Department" arrow placement="top">
+                            <IconButton
+                              size="small"
                               onClick={() => handleEditDepartment(department)}
-                              sx={{ color: '#0288d1' }}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                                border: '1px solid #bfdbfe',
+                                color: '#3B82F6',
+                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                                  border: '1px solid transparent',
+                                }
+                              }}
                             >
-                              <Edit fontSize="small" />
+                              <Edit sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete Department">
-                            <IconButton 
-                              size="small" 
+                          <Tooltip title="Delete Department" arrow placement="top">
+                            <IconButton
+                              size="small"
                               onClick={() => handleOpenDeleteConfirm(department)}
-                              sx={{ color: '#EF4444' }}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)',
+                                border: '1px solid #fca5a5',
+                                color: '#EF4444',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                                  border: '1px solid transparent',
+                                }
+                              }}
                             >
-                              <Delete fontSize="small" />
+                              <Delete sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
                         </Box>
@@ -632,7 +680,7 @@ export default function DepartmentManagement() {
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           {/* Pagination Controls */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
             <Typography variant="body2" color={darkMode ? '#aaaaaa' : '#64748B'} sx={{ mr: 2 }}>
@@ -644,9 +692,9 @@ export default function DepartmentManagement() {
               startIcon={<ChevronLeft />}
               onClick={handlePreviousPage}
               disabled={currentPage === 1 || pageCount === 0}
-              sx={{ 
-                minWidth: 100, 
-                textTransform: 'none', 
+              sx={{
+                minWidth: 100,
+                textTransform: 'none',
                 mr: 1,
                 borderColor: darkMode ? '#555555' : '#E2E8F0',
                 color: darkMode ? (currentPage === 1 || pageCount === 0 ? '#666666' : '#90caf9') : '#64748B',
@@ -668,8 +716,8 @@ export default function DepartmentManagement() {
               endIcon={<ChevronRight />}
               onClick={handleNextPage}
               disabled={currentPage === pageCount || pageCount === 0}
-              sx={{ 
-                minWidth: 100, 
+              sx={{
+                minWidth: 100,
                 textTransform: 'none',
                 borderColor: darkMode ? '#555555' : '#E2E8F0',
                 color: darkMode ? (currentPage === pageCount || pageCount === 0 ? '#666666' : '#90caf9') : '#64748B',
@@ -688,7 +736,7 @@ export default function DepartmentManagement() {
           </Box>
         </Box>
       </Box>
-      
+
       {/* Department Modal (View/Add/Edit) */}
       <Modal
         open={showModal}
@@ -707,23 +755,23 @@ export default function DepartmentManagement() {
           overflow: 'hidden',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 3, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <Box sx={{
+            p: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
           }}>
             <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
-              {modalMode === 'view' ? 'Department Details' : 
-               modalMode === 'add' ? 'Add New Department' : 'Edit Department'}
+              {modalMode === 'view' ? 'Department Details' :
+                modalMode === 'add' ? 'Add New Department' : 'Edit Department'}
             </Typography>
             <IconButton onClick={handleCloseModal} sx={{ color: darkMode ? '#aaaaaa' : 'inherit' }}>
               <Close />
             </IconButton>
           </Box>
-          
+
           <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
             {loading && modalMode === 'view' ? (
               <DepartmentModalSkeleton />
@@ -752,16 +800,16 @@ export default function DepartmentManagement() {
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                     {selectedDepartment?.offeredPrograms && selectedDepartment.offeredPrograms.length > 0 ? (
                       selectedDepartment.offeredPrograms.map((program, i) => (
-                        <Chip 
-                          key={i} 
-                          label={program} 
-                          size="small" 
-                          sx={{ 
-                            fontSize: '0.75rem', 
+                        <Chip
+                          key={i}
+                          label={program}
+                          size="small"
+                          sx={{
+                            fontSize: '0.75rem',
                             bgcolor: darkMode ? '#1e293b' : '#E0F2FE',
                             color: darkMode ? '#90caf9' : '#0369A1',
                             border: darkMode ? '1px solid #333333' : 'none'
-                          }} 
+                          }}
                         />
                       ))
                     ) : (
@@ -928,13 +976,13 @@ export default function DepartmentManagement() {
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                     {formData.offeredPrograms.length > 0 ? (
                       formData.offeredPrograms.map((program, i) => (
-                        <Chip 
-                          key={i} 
-                          label={program} 
+                        <Chip
+                          key={i}
+                          label={program}
                           onDelete={() => handleRemoveProgram(program)}
-                          size="small" 
-                          sx={{ 
-                            fontSize: '0.75rem', 
+                          size="small"
+                          sx={{
+                            fontSize: '0.75rem',
                             bgcolor: darkMode ? '#1e293b' : '#E0F2FE',
                             color: darkMode ? '#90caf9' : '#0369A1',
                             border: darkMode ? '1px solid #333333' : 'none',
@@ -944,7 +992,7 @@ export default function DepartmentManagement() {
                                 color: darkMode ? '#42a5f5' : '#0277bd',
                               },
                             },
-                          }} 
+                          }}
                         />
                       ))
                     ) : (
@@ -957,13 +1005,13 @@ export default function DepartmentManagement() {
               </Grid>
             )}
           </Box>
-          
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: 1, 
+
+          <Box sx={{
+            p: 2,
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 1,
             borderTop: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0'
           }}>
@@ -1104,8 +1152,8 @@ export default function DepartmentManagement() {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           variant="filled"
           sx={{ width: '100%' }}

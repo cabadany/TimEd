@@ -46,11 +46,14 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.net.URL
 import java.net.HttpURLConnection
+import org.json.JSONObject
 
 // import android.widget.Toast // Already imported
 // import androidx.camera.core.ImageProxy // Already imported
 
 class TimeInEventActivity : WifiSecurityActivity() {
+
+    private var isTutorialSampleEvent: Boolean = false
 
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner
@@ -69,13 +72,44 @@ class TimeInEventActivity : WifiSecurityActivity() {
     private var isScanningEnabled = false
     private var isQrScanned = false
     private var isFrontCamera = false
+    private var isManualEntry = false // Flag for manual code entry
 
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var userLastName: String? = null
 
     private var currentScannedEventId: String? = null
     private var currentScannedEventName: String? = null
+    private var currentScannedDepartmentId: String? = null
+    private var currentScannedVenue: String? = null
+    private var currentScannedDateIso: String? = null
+
+    // Optional expectations passed from caller to enforce title/department consistency
+    private val expectedEventId: String? by lazy {
+        intent.getStringExtra("expectedEventId")?.trim()
+            ?: intent.getStringExtra("eventId")?.trim()
+    }
+    private val expectedEventName: String? by lazy {
+        intent.getStringExtra("expectedEventName")?.trim()
+            ?: intent.getStringExtra("eventTitle")?.trim()
+            ?: intent.getStringExtra("eventName")?.trim()
+    }
+    private val expectedDepartmentId: String? by lazy {
+        intent.getStringExtra("expectedDepartmentId")?.trim()
+            ?: intent.getStringExtra("departmentId")?.trim()
+    }
+    private val expectedVenue: String? by lazy {
+        intent.getStringExtra("expectedVenue")?.trim()
+            ?: intent.getStringExtra("eventVenue")?.trim()
+            ?: intent.getStringExtra("venue")?.trim()
+    }
+    private val expectedDateIso: String? by lazy {
+        intent.getStringExtra("expectedDateIso")?.trim()
+            ?: intent.getStringExtra("eventDateIso")?.trim()
+            ?: intent.getStringExtra("dateIso")?.trim()
+            ?: intent.getStringExtra("eventDate")?.trim()
+    } // e.g., 2025-12-11
 
     private lateinit var manualCodeButton: Button
 
@@ -89,16 +123,33 @@ class TimeInEventActivity : WifiSecurityActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.time_in_event_page)
 
+        isTutorialSampleEvent = intent.getBooleanExtra("isTutorialSampleEvent", false)
+        isManualEntry = intent.getBooleanExtra("isManualEntry", false) // Check for manual entry flag
+        val manualEventId = intent.getStringExtra("manualEventId") // Check for manual event ID
+
         // Initialize user data first
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        userLastName = intent.getStringExtra("lastName")
+
+        if (isTutorialSampleEvent) {
+             // Simulate a successful time-in for the sample event and return immediately.
+            Handler(Looper.getMainLooper()).postDelayed({
+                notifyEventTutorialTimeInCompleted()
+                Toast.makeText(this, "Sample event time-in simulated.", Toast.LENGTH_SHORT).show()
+                setResult(RESULT_OK)
+                finish()
+            }, 400)
+            return
+        }
 
         if (userId.isNullOrEmpty()) {
             val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
             userId = prefs.getString("userId", null)
             userEmail = prefs.getString("email", null)
             userFirstName = prefs.getString("firstName", null)
+            userLastName = prefs.getString("lastName", null)
         }
 
         if (userId.isNullOrEmpty()) {
@@ -110,6 +161,17 @@ class TimeInEventActivity : WifiSecurityActivity() {
         ensureFirebaseAuthUser {
             // Initialize the rest of the activity after authentication
             initializeActivity()
+            
+            // If manual event ID is passed, process it immediately
+            if (!manualEventId.isNullOrEmpty()) {
+                Log.d(TAG, "Manual Event ID detected: $manualEventId")
+                // Delay slightly to allow UI initialization
+                Handler(Looper.getMainLooper()).postDelayed({
+                    isQrScanned = false
+                    isScanningEnabled = false // Disable scanner as we have the code
+                    handleQrCodeScannedUpdated(manualEventId)
+                }, 500)
+            }
         }
     }
 
@@ -159,10 +221,21 @@ class TimeInEventActivity : WifiSecurityActivity() {
         if (allPermissionsGranted()) {
             setupCameraPreview()
             startCameraPreviewOnly()
-            scanButton.text = getString(R.string.button_start_scanning)
-            selfieReminder.text = getString(R.string.timein_event_qr_scan_instruction)
-            scannerOverlay.visibility = View.GONE
-            shutterButton.visibility = View.GONE
+            
+            if (isManualEntry) {
+                 // For manual entry, we essentially skip the "Scanning" state ui
+                 scanButton.text = getString(R.string.button_take_selfie) // Prepare for selfie
+                 selfieReminder.text = "Event verified! Please take a selfie."
+                 scannerOverlay.visibility = View.GONE
+                 shutterButton.visibility = View.VISIBLE
+                 // startCamera() removed - duplicate/unresolved. startCameraPreviewOnly() called above.
+                 // Let's rely on handleQrCodeScannedUpdated to switch the state properly
+            } else {
+                scanButton.text = getString(R.string.button_start_scanning)
+                selfieReminder.text = getString(R.string.timein_event_qr_scan_instruction)
+                scannerOverlay.visibility = View.GONE
+                shutterButton.visibility = View.GONE
+            }
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
@@ -190,10 +263,12 @@ class TimeInEventActivity : WifiSecurityActivity() {
     private fun sendCertificateEmail(eventName: String, eventId: String, userEmail: String, userName: String) {
         Log.d(TAG, "sendCertificateEmail called for event: $eventName, email: $userEmail")
 
+        val resolvedUserName = userDisplayName().ifEmpty { userName }
+
         val db = FirebaseFirestore.getInstance()
         val certificateData = hashMapOf(
             "recipientEmail" to userEmail,
-            "recipientName" to userName,
+            "recipientName" to resolvedUserName,
             "eventId" to eventId,
             "eventName" to eventName,
             "issueDate" to FieldValue.serverTimestamp(),
@@ -211,7 +286,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     "template" to mapOf(
                         "name" to "event_certificate_notification", // Example template name
                         "data" to mapOf(
-                            "userName" to userName,
+                            "userName" to resolvedUserName,
                             "eventName" to eventName,
                             "eventId" to eventId,
                             "issueDate" to SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
@@ -228,6 +303,11 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 Log.e(TAG, "Failed to create certificate request", exception)
                 Toast.makeText(this, "Failed to process certificate request", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun userDisplayName(): String {
+        val names = listOfNotNull(userFirstName?.trim(), userLastName?.trim()).filter { it.isNotEmpty() }
+        return names.joinToString(" ")
     }
 
     private fun handleQrCodeScannedUpdated(qrContent: String) {
@@ -288,9 +368,85 @@ class TimeInEventActivity : WifiSecurityActivity() {
         eventDocRef.get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val eventName = document.getString("eventName") ?: "Unnamed Event"
+                    val eventName = document.getString("eventName")?.trim()
+                    val status = document.getString("status")?.lowercase(Locale.getDefault())
+                    val departmentId = document.getString("departmentId")?.trim()
+                    val venue = document.getString("venue")?.trim()
+                    val dateIso = run {
+                        val raw = document.get("date")
+                        when (raw) {
+                            is com.google.firebase.Timestamp -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw.toDate())
+                            is java.util.Date -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw)
+                            else -> document.getString("date")?.trim()
+                        }
+                    }
+
+                    if (expectedEventId.isNullOrBlank().not() && !eventId.equals(expectedEventId, ignoreCase = true)) {
+                        showInvalidEventDialog("This QR belongs to a different event ID. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (eventName.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing or empty title. Please use a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (departmentId.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing department. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (venue.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing venue. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (dateIso.isNullOrBlank()) {
+                        showInvalidEventDialog("Invalid event: missing date. Please scan a valid event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedEventName.isNullOrBlank() && !eventName.equals(expectedEventName, ignoreCase = true)) {
+                        showInvalidEventDialog("This QR belongs to '$eventName', not the expected '${expectedEventName}'. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedDepartmentId.isNullOrBlank() && !departmentId.isNullOrBlank() && !departmentId.equals(expectedDepartmentId, ignoreCase = true)) {
+                        showInvalidEventDialog("This event belongs to another department. Please use the correct event QR code.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedVenue.isNullOrBlank() && !venue.isNullOrBlank() && !venue.equals(expectedVenue, ignoreCase = true)) {
+                        showInvalidEventDialog("This event is at '$venue', not the expected '${expectedVenue}'. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    if (!expectedDateIso.isNullOrBlank() && !dateIso.isNullOrBlank() && !dateIso.equals(expectedDateIso, ignoreCase = true)) {
+                        showInvalidEventDialog("This event date does not match the expected date. Please scan the correct event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
+                    val allowedActiveStatuses = setOf("ongoing", "active", "open", "in_progress")
+                    if (status.isNullOrBlank() || status !in allowedActiveStatuses) {
+                        showInvalidEventDialog("This event is not active (status: ${status ?: "unknown"}). Please scan an ongoing event.")
+                        resetForNewScan()
+                        return@addOnSuccessListener
+                    }
+
                     currentScannedEventId = eventId // Store for later use (e.g., selfie)
                     currentScannedEventName = eventName
+                    currentScannedDepartmentId = departmentId
+                    currentScannedVenue = venue
+                    currentScannedDateIso = dateIso
 
                     // Show "Joining event" message for a moment, then proceed to selfie
                     Handler(Looper.getMainLooper()).postDelayed({
@@ -327,10 +483,93 @@ class TimeInEventActivity : WifiSecurityActivity() {
             return
         }
 
-        selfieReminder.text = "Processing attendance..." // Update UI
+        val attendanceTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
-        // First, validate that the user exists in the backend users collection
-        validateUserAndCallAPI(eventIdForLog, selfieUrl, timestampPhoto)
+        // Ensure we have full profile (including last name) before writing/issuing certificates
+        ensureUserProfileIfMissing {
+            ensureWebEventAttendanceRecord(eventIdForLog, eventNameForLog, selfieUrl, attendanceTimestamp)
+
+            selfieReminder.text = "Processing attendance..." // Update UI
+
+            // First, validate that the user exists in the backend users collection
+            validateUserAndCallAPI(eventIdForLog, selfieUrl, timestampPhoto)
+        }
+    }
+
+    private fun ensureUserProfileIfMissing(onComplete: () -> Unit) {
+        if (!userFirstName.isNullOrBlank() && !userLastName.isNullOrBlank()) {
+            onComplete()
+            return
+        }
+
+        val currentUserId = userId
+        if (currentUserId.isNullOrEmpty()) {
+            Log.w(TAG, "ensureUserProfileIfMissing: userId missing; proceeding without profile fetch")
+            onComplete()
+            return
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(currentUserId)
+            .get()
+            .addOnSuccessListener { userDoc ->
+                userDoc.getString("firstName")?.let { fetched -> if (userFirstName.isNullOrBlank()) userFirstName = fetched }
+                userDoc.getString("lastName")?.let { fetched -> if (userLastName.isNullOrBlank()) userLastName = fetched }
+                userDoc.getString("email")?.let { fetched -> if (userEmail.isNullOrBlank()) userEmail = fetched }
+                onComplete()
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "ensureUserProfileIfMissing: failed to fetch user profile", e)
+                onComplete()
+            }
+    }
+
+    private fun ensureWebEventAttendanceRecord(eventId: String, eventName: String?, selfieUrl: String?, timestamp: String) {
+        val currentUserId = userId
+        if (currentUserId.isNullOrEmpty()) {
+            Log.w(TAG, "Skipping web attendance write: userId is null")
+            return
+        }
+
+        val attendeeRef = FirebaseFirestore.getInstance()
+            .collection("events")
+            .document(eventId)
+            .collection("attendees")
+            .document(currentUserId)
+
+        attendeeRef.get()
+            .addOnSuccessListener { existing ->
+                if (existing.exists()) {
+                    Log.d(TAG, "Web attendance already exists for user $currentUserId in event $eventId")
+                    return@addOnSuccessListener
+                }
+
+                val payload = hashMapOf(
+                    "userId" to currentUserId,
+                    "firstName" to userFirstName,
+                    "lastName" to userLastName,
+                    "email" to userEmail,
+                    "eventName" to eventName,
+                    "timestamp" to timestamp,
+                    "selfieUrl" to selfieUrl,
+                    "hasTimedOut" to false,
+                    "type" to "event_time_in",
+                    // QR/selfie flow, so false
+                    "checkinMethod" to false
+                )
+
+                attendeeRef.set(payload)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Web attendance record created for user $currentUserId in event $eventId")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Failed to write web attendance record", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to check existing web attendance", e)
+            }
     }
     
     private fun validateUserAndCallAPI(eventId: String, selfieUrl: String, timestamp: String) {
@@ -350,15 +589,18 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (userDoc.exists()) {
                     val userEmail = userDoc.getString("email")
                     val userFirstName = userDoc.getString("firstName")
+                    val userLastName = userDoc.getString("lastName")
                     
                     Log.d(TAG, "User validation SUCCESS:")
                     Log.d(TAG, "- User exists in backend")
                     Log.d(TAG, "- Email: $userEmail")
                     Log.d(TAG, "- FirstName: $userFirstName")
+                    Log.d(TAG, "- LastName: $userLastName")
                     
-                    // Update local variables with backend data (in case they differ)
-                    this.userEmail = userEmail
-                    this.userFirstName = userFirstName
+                    // Update local variables with backend data only if valid (not null AND not empty), otherwise keep existing
+                    this.userEmail = if (!userEmail.isNullOrEmpty()) userEmail else this.userEmail
+                    this.userFirstName = if (!userFirstName.isNullOrEmpty()) userFirstName else this.userFirstName
+                    this.userLastName = if (!userLastName.isNullOrEmpty()) userLastName else this.userLastName
                     
                     // Now call the backend API
                     callBackendAttendanceAPI(eventId, selfieUrl, timestamp)
@@ -392,6 +634,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
         Log.d(TAG, "UserId: $userId")
         Log.d(TAG, "UserEmail: $userEmail")
         Log.d(TAG, "UserFirstName: $userFirstName")
+        Log.d(TAG, "UserLastName: $userLastName")
         Log.d(TAG, "SelfieUrl: $selfieUrl")
         Log.d(TAG, "========================")
         
@@ -420,12 +663,27 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 val url = java.net.URL(attendanceUrl)
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true // Enable writing to the connection
                 connection.connectTimeout = 15000 // Increased timeout
                 connection.readTimeout = 15000 // Increased timeout
+
+                // Create JSON body with user details
+                val jsonBody = JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                }
+                
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
                 
                 Log.d(TAG, "Making HTTP POST request to: $attendanceUrl")
+                Log.d(TAG, "Request Body: $jsonBody")
+
                 
                 val responseCode = connection.responseCode
                 val responseMessage = if (responseCode == 200) {
@@ -478,7 +736,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (responseMessage.contains("Already timed in", ignoreCase = true)) {
                     AlertDialog.Builder(this)
                         .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
+                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate. Please check Event Records to confirm your attendance.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                             notifyEventTutorialTimeInCompleted()
@@ -496,19 +754,19 @@ class TimeInEventActivity : WifiSecurityActivity() {
                     }, 2000) // Wait 2 seconds for Firestore consistency
                 } else {
                     // Success - attendance recorded and certificate email sent
-                    AlertDialog.Builder(this)
-                        .setTitle("Time-In Recorded")
-                        .setMessage("Successfully timed in for '${currentScannedEventName}'! A certificate will be sent to your email.")
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            notifyEventTutorialTimeInCompleted()
-                            val resultIntent = Intent()
-                            setResult(RESULT_OK, resultIntent)
-                            startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
-                            finish()
-                        }
-                        .setCancelable(false)
-                        .show()
+                    UiDialogs.showSuccessPopup(
+                        this,
+                        "Time-In Recorded",
+                        "Event Time In Successfully"
+                    ) {
+                        notifyEventTutorialTimeInCompleted()
+                        val resultIntent = Intent()
+                        setResult(RESULT_OK, resultIntent)
+                        startActivity(Intent(this, HomeActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        })
+                        finish()
+                    }
                 }
             }
             else -> {
@@ -537,12 +795,26 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 val url = java.net.URL(attendanceUrl)
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true
                 connection.connectTimeout = 15000 // Increased timeout
                 connection.readTimeout = 15000 // Increased timeout
+
+                // Create JSON body with user details
+                val jsonBody = JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                }
+
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
                 
                 Log.d(TAG, "Making RETRY HTTP POST request to: $attendanceUrl")
+                Log.d(TAG, "Request Body: $jsonBody")
                 
                 val responseCode = connection.responseCode
                 val responseMessage = if (responseCode == 200) {
@@ -646,15 +918,15 @@ class TimeInEventActivity : WifiSecurityActivity() {
         val record = hashMapOf(
             "userId" to userId,
             "firstName" to userFirstName,
+            "lastName" to userLastName,
             "email" to userEmail,
             "eventId" to eventId,
             "eventName" to currentScannedEventName,
             "timestamp" to FieldValue.serverTimestamp(),
             "selfieUrl" to selfieUrl,
             "type" to "event_time_in",
-            "hasTimedOut" to false,
-            // Indicate this was via QR/selfie (false = QR/selfie)
-            "checkinMethod" to false
+            "checkinMethod" to isManualEntry, // Use the flag (true = manual, false = QR)
+            "hasTimedOut" to false
         )
 
         val db = FirebaseFirestore.getInstance()
@@ -667,7 +939,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 if (document.exists()) {
                     AlertDialog.Builder(this)
                         .setTitle("Already Timed In")
-                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate.")
+                        .setMessage("You have already timed in for '${currentScannedEventName}' and received a certificate. Please check Event Records to confirm your attendance.")
                         .setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                             startActivity(Intent(this, HomeActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP) })
@@ -722,6 +994,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             val currentUserId = prefs.getString("userId", null)
             val currentUserEmail = prefs.getString("email", null)
             val currentUserFirstName = prefs.getString("firstName", null)
+            val currentUserLastName = prefs.getString("lastName", null)
 
 
             if (currentUserId.isNullOrEmpty()) {
@@ -732,6 +1005,7 @@ class TimeInEventActivity : WifiSecurityActivity() {
             if (userId.isNullOrEmpty()) userId = currentUserId
             if (userEmail.isNullOrEmpty()) userEmail = currentUserEmail
             if (userFirstName.isNullOrEmpty()) userFirstName = currentUserFirstName
+            if (userLastName.isNullOrEmpty()) userLastName = currentUserLastName
 
 
             // Directly call the QR scanned handler logic
@@ -798,6 +1072,13 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 putExtra("userId", userId)
                 putExtra("email", userEmail)
                 putExtra("firstName", userFirstName)
+                putExtra("lastName", userLastName)
+                // Prefer the currently scanned event details; fall back to pre-set expectations if not scanned yet
+                putExtra("expectedEventId", currentScannedEventId ?: expectedEventId)
+                putExtra("expectedEventName", currentScannedEventName ?: expectedEventName)
+                putExtra("expectedDepartmentId", currentScannedDepartmentId ?: expectedDepartmentId)
+                putExtra("expectedVenue", currentScannedVenue ?: expectedVenue)
+                putExtra("expectedDateIso", currentScannedDateIso ?: expectedDateIso)
             }
             startActivity(intent)
         }
@@ -1078,32 +1359,75 @@ class TimeInEventActivity : WifiSecurityActivity() {
             return
         }
         
-        // Use Firebase Auth UID for storage path (for security rules) but keep metadata about app userId
-        val firebaseUid = currentUser.uid
-        val selfiePath = "event_selfies/$firebaseUid/selfie_event_${currentScannedEventId}_$timestamp.jpg"
+        // Ensure we have the user profile (FirstName/LastName) for the path
+        if (userLastName.isNullOrEmpty()) {
+            FirebaseFirestore.getInstance().collection("users").document(currentUserId)
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        userFirstName = doc.getString("firstName")
+                        userLastName = doc.getString("lastName")
+                    }
+                    // Proceed with upload even if fetch fails or is partial (will use defaults)
+                    performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+                }
+                .addOnFailureListener {
+                    // Start upload anyway with defaults
+                    performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+                }
+        } else {
+            performSelfieUpload(photoUri, currentUserId, storageRef, timestamp)
+        }
+    }
+
+    private fun performSelfieUpload(photoUri: Uri, currentUserId: String, storageRef: com.google.firebase.storage.StorageReference, timestamp: String) {
+        // Use App User ID for storage path
+        // Path: /event_selfies/{userId}/selfie_event_{eventId}.jpg
+        val selfiePath = "event_selfies/$currentUserId/selfie_event_$currentScannedEventId.jpg"
         val selfieRef = storageRef.child(selfiePath)
-        Log.d(TAG, "Uploading selfie to: $selfiePath (Firebase UID: $firebaseUid, App User ID: $currentUserId)")
+        Log.d(TAG, "Uploading selfie to: $selfiePath")
 
         selfieRef.putFile(photoUri)
             .addOnSuccessListener {
                 Log.d(TAG, "Selfie upload successful. Getting download URL.")
                 selfieRef.downloadUrl.addOnSuccessListener { downloadUrl ->
                     Log.d(TAG, "Download URL: $downloadUrl")
-                    logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp) // Pass timestamp if needed by log function
+                    if (!isFinishing && !isDestroyed) {
+                         logTimeInToFirestoreUpdated(downloadUrl.toString(), timestamp)
+                    }
                 }.addOnFailureListener { e ->
                     Log.e(TAG, "Failed to get download URL", e)
-                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to get download URL: ${e.message}")
-                    scanButton.isEnabled = true; shutterButton.isEnabled = true
+                    if (!isFinishing && !isDestroyed) {
+                        UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Failed to get download URL: ${e.message}")
+                        scanButton.isEnabled = true; shutterButton.isEnabled = true
+                    }
                 }
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Selfie upload failed", e)
-                UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "Selfie upload failed: ${e.message}")
-                scanButton.isEnabled = true; shutterButton.isEnabled = true
+                if (!isFinishing && !isDestroyed) {
+                    var errorMessage = "Selfie upload failed: ${e.message}"
+                    
+                    // Check for key terms in the message or string representation (covers 412 and service account issues)
+                    val fullError = e.toString() + (e.message ?: "")
+                    
+                    if (fullError.contains("412") || fullError.contains("service account", ignoreCase = true)) {
+                        errorMessage = "Server configuration error (412): Service account missing permissions. Please contact the developer."
+                    } else if (e is com.google.firebase.storage.StorageException) {
+                        if (e.errorCode == com.google.firebase.storage.StorageException.ERROR_NOT_AUTHORIZED) {
+                             errorMessage = "Permission denied. You may not be authorized to upload selfies."
+                        }
+                    }
+                    
+                    UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), errorMessage)
+                    scanButton.isEnabled = true; shutterButton.isEnabled = true
+                }
             }
             .addOnProgressListener { snapshot ->
-                val progress = (100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount
-                selfieReminder.text = "Uploading selfie: ${progress.toInt()}%"
+                if (!isFinishing && !isDestroyed) {
+                    val progress = (100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount
+                    selfieReminder.text = "Uploading selfie: ${progress.toInt()}%"
+                }
             }
     }
 
@@ -1132,6 +1456,19 @@ class TimeInEventActivity : WifiSecurityActivity() {
                 .show()
         } else {
             Log.w(TAG, "Activity is finishing, cannot show error dialog: $message")
+        }
+    }
+
+    private fun showInvalidEventDialog(message: String) {
+        if (isFinishing || isDestroyed) return
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            AlertDialog.Builder(this)
+                .setTitle("Invalid Event")
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .setCancelable(false)
+                .show()
         }
     }
 

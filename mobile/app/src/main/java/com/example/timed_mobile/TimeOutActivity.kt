@@ -28,6 +28,7 @@ class TimeOutActivity : WifiSecurityActivity() {
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var isFlexibleTimeOut: Boolean = false
 
     private lateinit var iconBackButton: ImageView
     private lateinit var titleName: TextView
@@ -55,6 +56,7 @@ class TimeOutActivity : WifiSecurityActivity() {
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        isFlexibleTimeOut = intent.getBooleanExtra("isFlexibleTimeOut", false)
 
         iconBackButton = findViewById(R.id.icon_back_button)
         titleName = findViewById(R.id.titleName)
@@ -110,21 +112,51 @@ class TimeOutActivity : WifiSecurityActivity() {
 
         dialog.show()
     }
+    
+    override fun onResume() {
+        super.onResume()
+        // SECURITY: Re-sync server time to detect device time manipulation
+        TimeSettingsManager.refreshServerTimeSync()
+    }
 
     private fun logTimeOutToFirebase() {
         if (userId == null) {
             UiDialogs.showErrorPopup(this, getString(R.string.popup_title_error), "User ID missing. Cannot log time-out.")
             return
         }
-
+        
+        // SECURITY: Force sync server time and check for manipulation RIGHT NOW
+        TimeSettingsManager.refreshServerTimeSync()
+        // Give a small delay to let the sync complete, then check
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // Combined check: AUTO_TIME disabled OR server offset too large
+            if (TimeSettingsManager.isTimeTampered(this)) {
+                val reason = TimeSettingsManager.getTimeTamperingReason(this)
+                UiDialogs.showErrorPopup(
+                    this,
+                    "⚠️ Time Security Violation",
+                    "Time tampering detected!\n\n$reason\n\nPlease enable automatic time in your device settings. App will restart for security verification."
+                ) {
+                    // SECURITY: Reset state and redirect to Splash Screen
+                    TimeSettingsManager.resetSecurityState()
+                    val intent = android.content.Intent(this, SplashActivity::class.java)
+                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                    finish()
+                }
+                return@postDelayed
+            }
+            
+            // Proceed with actual time-out logic
+            performTimeOutCheck()
+        }, 500) // 500ms delay to let Firebase sync complete
+    }
+    
+    private fun performTimeOutCheck() {
         val dbRef = FirebaseDatabase.getInstance().getReference("timeLogs").child(userId!!)
 
-        val todayStart = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        // SECURITY: Use Philippine timezone to prevent device time manipulation
+        val todayStart = TimeSettingsManager.getTodayStartInPhilippineTime()
 
         dbRef.orderByChild("timestamp").startAt(todayStart.toDouble())
             .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
@@ -158,13 +190,15 @@ class TimeOutActivity : WifiSecurityActivity() {
                     }
 
                     // --- TIME-OUT WINDOW CHECK ---
-                    if (TimeSettingsManager.isTooEarlyToTimeOut()) {
+                    // Skip time restriction if this is a flexible time-out (from Off Duty status)
+                    if (!isFlexibleTimeOut && TimeSettingsManager.isTooEarlyToTimeOut()) {
                          val (start, end) = TimeSettingsManager.getTimeWindowString()
-                         UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You cannot time out before $end.")
+                         UiDialogs.showErrorPopup(this@TimeOutActivity, "Too Early to Time-Out", "You cannot time out before $end.\n\nCurrent Time: ${TimeSettingsManager.getCurrentPhilippineTimeFormatted()}")
                          return
                     }
                     
-                    val now = Calendar.getInstance()
+                    // SECURITY: Use Philippine timezone for logging
+                    val now = TimeSettingsManager.getNowInPhilippineTime()
                     val log = mapOf(
                         "timestamp" to now.timeInMillis,
                         "type" to "TimeOut",
@@ -172,7 +206,8 @@ class TimeOutActivity : WifiSecurityActivity() {
                         "firstName" to userFirstName,
                         "userId" to userId,
                         "status" to "Off Duty",
-                        "attendanceBadge" to "Timed-Out"
+                        "attendanceBadge" to "Timed-Out",
+                        "timeOutType" to if (isFlexibleTimeOut) "Flexible" else "Regular"
                     )
 
                     dbRef.push().setValue(log)

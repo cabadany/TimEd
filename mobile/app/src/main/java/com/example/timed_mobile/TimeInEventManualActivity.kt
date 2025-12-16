@@ -37,10 +37,37 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
     private lateinit var manualCodeSubtitle: TextView
     private lateinit var manualCodeInstructions: TextView
 
+    // Optional expectations passed from caller to enforce title/department consistency
+    private val expectedEventId: String? by lazy {
+        intent.getStringExtra("expectedEventId")?.trim()
+            ?: intent.getStringExtra("eventId")?.trim()
+    }
+    private val expectedEventName: String? by lazy {
+        intent.getStringExtra("expectedEventName")?.trim()
+            ?: intent.getStringExtra("eventTitle")?.trim()
+            ?: intent.getStringExtra("eventName")?.trim()
+    }
+    private val expectedDepartmentId: String? by lazy {
+        intent.getStringExtra("expectedDepartmentId")?.trim()
+            ?: intent.getStringExtra("departmentId")?.trim()
+    }
+    private val expectedVenue: String? by lazy {
+        intent.getStringExtra("expectedVenue")?.trim()
+            ?: intent.getStringExtra("eventVenue")?.trim()
+            ?: intent.getStringExtra("venue")?.trim()
+    }
+    private val expectedDateIso: String? by lazy {
+        intent.getStringExtra("expectedDateIso")?.trim()
+            ?: intent.getStringExtra("eventDateIso")?.trim()
+            ?: intent.getStringExtra("dateIso")?.trim()
+            ?: intent.getStringExtra("eventDate")?.trim()
+    }
+
 
     private var userId: String? = null
     private var userEmail: String? = null
     private var userFirstName: String? = null
+    private var userLastName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,12 +77,21 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         userId = intent.getStringExtra("userId")
         userEmail = intent.getStringExtra("email")
         userFirstName = intent.getStringExtra("firstName")
+        userLastName = intent.getStringExtra("lastName")
 
+        // Fallback to SharedPreferences for any missing user data
+        val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
         if (userId.isNullOrEmpty()) {
-            val prefs = getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
             userId = prefs.getString("userId", null)
+        }
+        if (userEmail.isNullOrEmpty()) {
             userEmail = prefs.getString("email", null)
+        }
+        if (userFirstName.isNullOrEmpty()) {
             userFirstName = prefs.getString("firstName", null)
+        }
+        if (userLastName.isNullOrEmpty()) {
+            userLastName = prefs.getString("lastName", null)
         }
 
         if (userId.isNullOrEmpty()) {
@@ -167,6 +203,14 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         verifyButton.text = "Verifying..."
 
         val eventId = codeInput.text.toString().trim()
+
+        // Early guard: ensure the entered code matches the currently chosen/expected event
+        if (!expectedEventId.isNullOrBlank() && !eventId.equals(expectedEventId, ignoreCase = true)) {
+            showInvalidEventDialog("This code belongs to a different event. Please enter the correct event code.")
+            resetButton()
+            return
+        }
+
         val db = FirebaseFirestore.getInstance()
 
         db.collection("events").document(eventId).get()
@@ -181,6 +225,80 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                     return@addOnSuccessListener
                 }
 
+                val eventName = eventDocument.getString("eventName")?.trim()
+                val status = eventDocument.getString("status")?.lowercase(Locale.getDefault())
+                val departmentId = eventDocument.getString("departmentId")?.trim()
+                val venue = eventDocument.getString("venue")?.trim()
+                val dateIso = run {
+                    val raw = eventDocument.get("date")
+                    when (raw) {
+                        is com.google.firebase.Timestamp -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw.toDate())
+                        is java.util.Date -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(raw)
+                        else -> eventDocument.getString("date")?.trim()
+                    }
+                }
+
+                if (!expectedEventId.isNullOrBlank() && !eventId.equals(expectedEventId, ignoreCase = true)) {
+                    showInvalidEventDialog("This code belongs to a different event ID. Please enter the correct event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (eventName.isNullOrBlank()) {
+                    showInvalidEventDialog("Invalid event: missing or empty title. Please enter a valid event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (departmentId.isNullOrBlank()) {
+                    showInvalidEventDialog("Invalid event: missing department. Please enter a valid event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (venue.isNullOrBlank()) {
+                    showInvalidEventDialog("Invalid event: missing venue. Please enter a valid event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (dateIso.isNullOrBlank()) {
+                    showInvalidEventDialog("Invalid event: missing date. Please enter a valid event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                val allowedActiveStatuses = setOf("ongoing", "active", "open", "in_progress")
+                if (status.isNullOrBlank() || status !in allowedActiveStatuses) {
+                    showInvalidEventDialog("This event is not active (status: ${status ?: "unknown"}). Please use an ongoing event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (!expectedEventName.isNullOrBlank() && !eventName.equals(expectedEventName, ignoreCase = true)) {
+                    showInvalidEventDialog("This code belongs to '$eventName', not the expected '${expectedEventName}'. Please enter the correct event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (!expectedDepartmentId.isNullOrBlank() && !departmentId.isNullOrBlank() && !departmentId.equals(expectedDepartmentId, ignoreCase = true)) {
+                    showInvalidEventDialog("This event belongs to another department. Please enter the correct event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (!expectedVenue.isNullOrBlank() && !venue.isNullOrBlank() && !venue.equals(expectedVenue, ignoreCase = true)) {
+                    showInvalidEventDialog("This event is at '$venue', not the expected '${expectedVenue}'. Please enter the correct event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
+                if (!expectedDateIso.isNullOrBlank() && !dateIso.isNullOrBlank() && !dateIso.equals(expectedDateIso, ignoreCase = true)) {
+                    showInvalidEventDialog("This event date does not match the expected date. Please enter the correct event code.")
+                    resetButton()
+                    return@addOnSuccessListener
+                }
+
                 // FIX: Check for duplicates in the location EventLogActivity reads from.
                 db.collection("events").document(eventId).collection("attendees")
                     .whereEqualTo("userId", userId)
@@ -191,12 +309,13 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
                             UiDialogs.showErrorPopup(
                                 this@TimeInEventManualActivity,
                                 title = "Already Timed-In",
-                                message = "You have already timed in for this event."
+                                message = "You have already timed in for this event. Please check Event Records to confirm your attendance."
                             )
                             resetButton()
                         } else {
-                            // Not timed in yet, proceed to log attendance
-                            logAttendanceToFirestore(eventId, eventDocument.getString("eventName") ?: "Unknown Event")
+                            // Not timed in yet, call backend API which handles both
+                            // Firestore write AND certificate generation
+                            callBackendAttendanceAPI(eventId, eventName ?: "Unknown Event")
                         }
                     }
                     .addOnFailureListener { e ->
@@ -218,38 +337,74 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
             }
     }
 
-    private fun logAttendanceToFirestore(eventId: String, eventName: String) {
-        val db = FirebaseFirestore.getInstance()
+    /**
+     * Call the backend API to mark attendance and trigger certificate generation.
+     * The backend handles both the Firestore write AND certificate generation,
+     * avoiding the race condition where local write happens before backend can generate certificate.
+     */
+    private fun callBackendAttendanceAPI(eventId: String, eventName: String) {
+        val apiBaseUrl = "https://timed-utd9.onrender.com/api"
+        val attendanceUrl = "$apiBaseUrl/attendance/$eventId/$userId"
 
-        // FIX: Create a timestamp string, as expected by EventLogActivity.
-        val formattedTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        Thread {
+            try {
+                val url = java.net.URL(attendanceUrl)
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                connection.setRequestProperty("Accept", "application/json")
+                connection.doOutput = true
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
 
-        // FIX: Create a data map that matches the fields used by EventLogActivity.
-        val attendanceData = hashMapOf(
-            "userId" to userId,
-            "timestamp" to formattedTimestamp,
-            "hasTimedOut" to false,
-            // You can include other details; they just won't be used by the log screen
-            "firstName" to userFirstName,
-            "email" to userEmail,
-            // Indicate this was a manual code entry
-            "checkinMethod" to true
-        )
+                // Create JSON body with user details for certificate generation
+                // Include checkinMethod to indicate this is a manual entry
+                val jsonBody = org.json.JSONObject().apply {
+                    put("firstName", userFirstName ?: "")
+                    put("lastName", userLastName ?: "")
+                    put("checkinMethod", "true") // Indicates manual entry (true = manual, false = QR)
+                }
 
-        // FIX: Log to the 'attendees' sub-collection, which is where EventLogActivity reads from.
-        db.collection("events").document(eventId).collection("attendees")
-            .add(attendanceData)
-            .addOnSuccessListener {
-                showSuccessDialog(eventName)
+                // Write JSON to output stream
+                connection.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
+
+                val responseCode = connection.responseCode
+                val responseMessage = if (responseCode == 200) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP Error: $responseCode"
+                }
+
+                runOnUiThread {
+                    if (responseCode == 200) {
+                        // Backend successfully marked attendance and generated certificate
+                        showSuccessDialog(eventName)
+                    } else {
+                        // Backend failed, show error
+                        UiDialogs.showErrorPopup(
+                            this@TimeInEventManualActivity,
+                            title = "Time-In Failed",
+                            message = "Failed to record attendance: $responseMessage"
+                        )
+                        resetButton()
+                    }
+                }
+
+            } catch (e: Exception) {
+                // Network error - show error to user
+                runOnUiThread {
+                    UiDialogs.showErrorPopup(
+                        this@TimeInEventManualActivity,
+                        title = "Network Error",
+                        message = "Failed to connect to server: ${e.message}"
+                    )
+                    resetButton()
+                }
             }
-            .addOnFailureListener { e ->
-                UiDialogs.showErrorPopup(
-                    this@TimeInEventManualActivity,
-                    title = "Save Failed",
-                    message = "Failed to save attendance: ${e.message}"
-                )
-                resetButton()
-            }
+        }.start()
     }
 
     private fun resetButton() {
@@ -286,6 +441,19 @@ class TimeInEventManualActivity : WifiSecurityActivity() {
         }
 
         dialog.show()
+    }
+
+    private fun showInvalidEventDialog(message: String) {
+        if (isFinishing || isDestroyed) return
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Invalid Event")
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .setCancelable(false)
+                .show()
+        }
     }
 
     // Removed local Toast-based error dialog in favor of UiDialogs.showErrorPopup usages above.

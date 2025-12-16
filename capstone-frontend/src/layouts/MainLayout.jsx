@@ -217,86 +217,100 @@ const MainLayout = ({ children, title }) => {
       <Box 
         className={`sidebar-container ${collapsed ? 'sidebar-collapsed' : ''}`}
         sx={{ 
-          width: collapsed ? 70 : 240, 
-          bgcolor: darkMode ? '#1e1e1e' : 'background.paper', 
-          borderRight: '1px solid',
-          borderColor: darkMode ? '#333333' : 'divider',
+          width: collapsed ? 78 : 260, 
+          background: darkMode 
+            ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)' 
+            : 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', 
+          borderRight: 'none',
+          boxShadow: darkMode 
+            ? '4px 0 24px rgba(0, 0, 0, 0.3)' 
+            : '4px 0 24px rgba(0, 0, 0, 0.06)',
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
-          transition: 'width 0.3s ease',
+          transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'visible',
+          zIndex: 100
         }}
       >
         {/* Logo Section */}
         <Box sx={{ 
-          p: collapsed ? 1 : 3, 
+          p: collapsed ? 1.5 : 2.5, 
           borderBottom: '1px solid', 
-          borderColor: darkMode ? '#333333' : 'divider', 
+          borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', 
           display: 'flex', 
           justifyContent: 'center',
           alignItems: 'center',
-          transition: 'padding 0.3s ease',
-          position: 'relative'
+          transition: 'padding 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          position: 'relative',
+          minHeight: collapsed ? 70 : 120,
+          background: darkMode 
+            ? 'rgba(255,255,255,0.02)' 
+            : 'rgba(25, 118, 210, 0.02)'
         }}>
           <img 
             src="/timeed.png" 
             alt="TimeED Logo" 
             style={{ 
-              height: collapsed ? 40 : 100,
-              transition: 'height 0.3s ease'
+              height: collapsed ? 45 : 90,
+              transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              filter: darkMode ? 'brightness(1.1)' : 'none'
             }} 
             className="logo-image"
           />
           
-          {/* Sidebar toggle button */}
-          <Box 
-            className="sidebar-toggle"
-            onClick={() => setCollapsed(!collapsed)}
-            sx={{
-              position: 'fixed',
-              left: collapsed ? 70 : 240,
-              top: 70,
-              transform: 'translateX(-50%)',
-              zIndex: 1300,
-              width: 30, 
-              height: 30,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              borderRadius: '50%',
-              backgroundColor: 'primary.main',
-              color: '#fff',
-              boxShadow: '0 3px 5px rgba(0, 0, 0, 0.2)',
-              transition: 'all 0.3s ease, left 0.3s ease',
-              border: '2px solid white',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-                transform: 'translateX(-50%) scale(1.1)',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
-              }
-            }}
-          >
-            {collapsed ? 
-              <ChevronRight sx={{ fontSize: 20 }} /> : 
-              <ChevronLeft sx={{ fontSize: 20 }} />
+        </Box>
+        
+        {/* Sidebar toggle button - positioned on the edge */}
+        <Box 
+          className="sidebar-toggle"
+          onClick={() => setCollapsed(!collapsed)}
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: 55,
+            transform: 'translateX(50%)',
+            zIndex: 1301,
+            width: 26, 
+            height: 26,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(25, 118, 210, 0.4)',
+            transition: 'all 0.2s ease',
+            border: '2px solid',
+            borderColor: darkMode ? '#121212' : '#f8fafc',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+              transform: 'translateX(50%) scale(1.1)',
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.5)'
             }
-          </Box>
+          }}
+        >
+          {collapsed ? 
+            <ChevronRight sx={{ fontSize: 16 }} /> : 
+            <ChevronLeft sx={{ fontSize: 16 }} />
+          }
         </Box>
 
         {/* Menu Items */}
         <Box 
           className="sidebar-menu"
           sx={{ 
-            p: collapsed ? 1 : 2, 
+            p: collapsed ? 1.5 : 2, 
+            pt: 3,
             display: 'flex', 
             flexDirection: 'column', 
-            gap: collapsed ? 3 : 1,
-            transition: 'padding 0.3s ease',
+            gap: collapsed ? 1.5 : 0.75,
+            transition: 'padding 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             flex: 1,
             overflowY: 'auto',
+            overflowX: 'hidden',
             '&::-webkit-scrollbar': {
               width: '4px',
             },
@@ -304,11 +318,11 @@ const MainLayout = ({ children, title }) => {
               background: 'transparent',
             },
             '&::-webkit-scrollbar-thumb': {
-              background: darkMode ? '#555' : '#ccc',
+              background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
               borderRadius: '4px',
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              background: darkMode ? '#777' : '#aaa',
+              background: darkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
             }
           }}
         >
@@ -320,11 +334,17 @@ const MainLayout = ({ children, title }) => {
               arrow
               PopperProps={{
                 sx: {
-                  // Fix for tooltip initial position
                   "& .MuiTooltip-tooltip": {
                     position: "relative",
-                    // This ensures tooltip is properly positioned right away
-                    animation: "none !important"
+                    animation: "none !important",
+                    backgroundColor: darkMode ? '#2d3748' : '#1976d2',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    padding: '8px 12px',
+                    borderRadius: '8px'
+                  },
+                  "& .MuiTooltip-arrow": {
+                    color: darkMode ? '#2d3748' : '#1976d2'
                   }
                 }
               }}
@@ -338,58 +358,94 @@ const MainLayout = ({ children, title }) => {
                 sx={{ 
                   justifyContent: collapsed ? 'center' : 'flex-start', 
                   color: isActive(item.path) 
-                    ? 'primary.main' 
-                    : darkMode ? '#f5f5f5' : 'text.secondary',
+                    ? '#1976d2' 
+                    : darkMode ? 'rgba(255,255,255,0.75)' : '#64748b',
                   fontWeight: isActive(item.path) ? 600 : 500,
-                  py: 1.5,
-                  px: collapsed ? 1 : 2,
+                  fontSize: '0.85rem',
+                  letterSpacing: '0.02em',
+                  py: 1.4,
+                  px: collapsed ? 1.5 : 2,
                   textAlign: 'left',
-                  borderRadius: '8px',
-                  transition: 'none',
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
                   position: 'relative',
                   overflow: 'hidden',
                   minWidth: 'unset',
+                  background: isActive(item.path) 
+                    ? darkMode 
+                      ? 'linear-gradient(135deg, rgba(25, 118, 210, 0.2) 0%, rgba(25, 118, 210, 0.1) 100%)'
+                      : 'linear-gradient(135deg, rgba(25, 118, 210, 0.12) 0%, rgba(25, 118, 210, 0.06) 100%)'
+                    : 'transparent',
+                  border: isActive(item.path) 
+                    ? '1px solid' 
+                    : '1px solid transparent',
+                  borderColor: isActive(item.path) 
+                    ? darkMode ? 'rgba(25, 118, 210, 0.3)' : 'rgba(25, 118, 210, 0.2)' 
+                    : 'transparent',
+                  '& .MuiButton-startIcon': {
+                    marginRight: collapsed ? 0 : '12px',
+                    color: isActive(item.path) 
+                      ? '#1976d2' 
+                      : darkMode ? 'rgba(255,255,255,0.6)' : '#94a3b8',
+                    transition: 'color 0.2s ease'
+                  },
                   '&:hover': {
-                    backgroundColor: 'transparent', // Let CSS handle the hover effect
-                    transform: 'none'
+                    backgroundColor: darkMode 
+                      ? 'rgba(255,255,255,0.06)' 
+                      : 'rgba(25, 118, 210, 0.06)',
+                    color: darkMode ? '#ffffff' : '#1976d2',
+                    '& .MuiButton-startIcon': {
+                      color: '#1976d2'
+                    }
                   }
                 }}
               >
                 {collapsed ? (
-                  // Only show icon when collapsed
-                  <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    position: 'relative',
+                    color: isActive(item.path) ? '#1976d2' : 'inherit'
+                  }}>
                     {item.icon}
                     <Badge 
                       badgeContent={item.badge} 
                       color="error"
                       sx={{
                         position: 'absolute',
-                        top: -8,
-                        right: -8,
+                        top: -10,
+                        right: -10,
                         visibility: item.badge ? 'visible' : 'hidden',
                         '& .MuiBadge-badge': {
-                          fontSize: '0.5rem',
-                          height: 14,
-                          minWidth: 14,
-                          padding: '0 2px',
-                          transform: 'scale(1) translate(25%, -25%)'
+                          fontSize: '0.65rem',
+                          height: 16,
+                          minWidth: 16,
+                          padding: '0 4px',
+                          fontWeight: 600,
+                          boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)'
                         }
                       }}
                     />
                   </Box>
                 ) : (
-                  // Show text when expanded
                   <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{item.text}</span>
+                    <span style={{ 
+                      textTransform: 'none',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>{item.text}</span>
                     <Badge 
                       badgeContent={item.badge} 
                       color="error"
                       sx={{
                         visibility: item.badge ? 'visible' : 'hidden',
                         '& .MuiBadge-badge': {
-                          fontSize: '0.6rem',
-                          height: 16,
-                          minWidth: 16
+                          fontSize: '0.65rem',
+                          height: 18,
+                          minWidth: 18,
+                          fontWeight: 600,
+                          boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)'
                         }
                       }}
                     />

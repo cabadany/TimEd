@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText, 
-  Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert, 
-  CircularProgress, LinearProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton,
+  Box, Typography, Button, IconButton, InputBase, Paper, TextField, Menu, MenuItem, ListItemIcon, ListItemText,
+  Avatar, Badge, Modal, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert,
+  CircularProgress, LinearProgress, Select, FormControl, Chip, Divider, List, ListItem, Skeleton, Tooltip,
   Tabs, Tab, Zoom, Card, Grid, Collapse, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -50,7 +50,7 @@ function TabPanel(props) {
 // Date formatting helper function
 const formatDate = (dateObj) => {
   if (!dateObj) return 'N/A';
-  
+
   // Handle Firestore timestamp format
   if (dateObj.seconds) {
     const date = new Date(dateObj.seconds * 1000);
@@ -60,7 +60,7 @@ const formatDate = (dateObj) => {
       day: 'numeric',
     });
   }
-  
+
   // Handle ISO string date
   try {
     const date = new Date(dateObj);
@@ -77,7 +77,7 @@ const formatDate = (dateObj) => {
 // Time formatting helper function
 const formatTime = (timeString) => {
   if (!timeString) return 'N/A';
-  
+
   try {
     const date = new Date(timeString);
     return date.toLocaleTimeString('en-US', {
@@ -128,16 +128,17 @@ const AccountTableSkeleton = () => (
   <>
     {[...Array(5)].map((_, index) => (
       <TableRow key={index}>
+        <TableCell sx={{ textAlign: 'center' }}><Skeleton variant="circular" width={44} height={44} /></TableCell>
         <TableCell><Skeleton variant="text" width="70%" /></TableCell>
         <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+        <TableCell><Skeleton variant="text" width="60%" /></TableCell>
         <TableCell><Skeleton variant="text" width="80%" /></TableCell>
-        <TableCell><Skeleton variant="text" width="40%" /></TableCell>
-        <TableCell><Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} /></TableCell>
+        <TableCell><Skeleton variant="text" width="60%" /></TableCell>
         <TableCell>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Skeleton variant="circular" width={30} height={30} />
-            <Skeleton variant="circular" width={30} height={30} />
-            <Skeleton variant="circular" width={30} height={30} />
+          <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'center' }}>
+            <Skeleton variant="circular" width={34} height={34} />
+            <Skeleton variant="circular" width={34} height={34} />
+            <Skeleton variant="circular" width={34} height={34} />
           </Box>
         </TableCell>
       </TableRow>
@@ -193,14 +194,14 @@ export default function AccountPage() {
   // Edit professor modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProfessor, setEditingProfessor] = useState({
-    userId:"",
+    userId: "",
     firstName: "",
     lastName: "",
     email: "",
     departmentId: "",
     schoolId: "",
     role: "USER",
-    password:"",
+    password: "",
     profilePictureUrl: ""
   });
 
@@ -290,15 +291,15 @@ export default function AccountPage() {
   // Handle status card click to show modal
   const handleStatusCardClick = (statusType) => {
     setSelectedStatusType(statusType);
-    
+
     // Get users with the selected status from todayTimeline
     const userFinalStatus = new Map();
-    
+
     // Process timeline entries to determine each user's final status for the day
     todayTimeline.forEach(entry => {
       const userId = entry.userId;
       const currentEntry = userFinalStatus.get(userId);
-      
+
       // If we don't have this user yet, or if this entry is more recent, update it
       if (!currentEntry || entry.timestamp > currentEntry.timestamp) {
         userFinalStatus.set(userId, {
@@ -311,7 +312,7 @@ export default function AccountPage() {
         });
       }
     });
-    
+
     // Filter users by selected status
     const filteredUsers = Array.from(userFinalStatus.values()).filter(user => {
       if (statusType === 'On Duty') {
@@ -323,7 +324,7 @@ export default function AccountPage() {
       }
       return false;
     });
-    
+
     // Get full professor details for each user
     const usersWithDetails = filteredUsers.map(user => {
       const professor = professors.find(p => p.userId === user.userId);
@@ -334,7 +335,7 @@ export default function AccountPage() {
         schoolId: professor?.schoolId
       };
     });
-    
+
     setStatusModalUsers(usersWithDetails);
     setShowStatusModal(true);
   };
@@ -400,19 +401,19 @@ export default function AccountPage() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       console.log('🔍 FIRESTORE DATA CONSISTENCY CHECK:');
       console.log('Expected: Document ID should match userId field for each user');
-      
+
       let consistentCount = 0;
       let inconsistentCount = 0;
-      
+
       // Analyze data consistency
       response.data.forEach((user, index) => {
         const documentId = user.id || user.documentId;
         const userId = user.userId;
         const idsMatch = documentId === userId;
-        
+
         if (idsMatch) {
           consistentCount++;
           console.log(`✅ User ${user.firstName} ${user.lastName}: Data is consistent`);
@@ -423,12 +424,12 @@ export default function AccountPage() {
           console.warn(`   userId field: ${userId || 'MISSING'}`);
         }
       });
-      
+
       console.log(`📊 SUMMARY: ${consistentCount} consistent, ${inconsistentCount} inconsistent users`);
       if (inconsistentCount > 0) {
         console.log(`💡 SOLUTION: Click "Fix Data Issues" button to automatically fix inconsistencies`);
       }
-      
+
       setProfessors(response.data);
       setError(null);
     } catch (err) {
@@ -439,7 +440,7 @@ export default function AccountPage() {
       setIsLoading(false);
     }
   };
-//test
+  //test
   // Fetch departments from API
   const fetchDepartments = async () => {
     setDepartmentsLoading(true);
@@ -524,17 +525,17 @@ export default function AccountPage() {
   const handleAvatarClose = () => {
     setAvatarAnchorEl(null);
   };
-//test
+  //test
   const handleLogout = () => {
     // Remove authentication token and user role from localStorage or sessionStorage
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     console.log('Logging out...');
-    
+
     // Redirect to login page after logout
     navigate('/login');
-    
+
     handleAvatarClose();
   };
 
@@ -593,7 +594,7 @@ export default function AccountPage() {
           profilePictureUrl = await getDownloadURL(storageRef);
 
           // Update the user's profile picture URL
-          await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(response.data.userId)), 
+          await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(response.data.userId)),
             { profilePictureUrl },
             {
               headers: {
@@ -602,7 +603,7 @@ export default function AccountPage() {
             }
           );
         }
-        
+
         showSnackbar('Faculty added successfully', 'success');
         setNewProfessor({
           firstName: "",
@@ -659,7 +660,7 @@ export default function AccountPage() {
 
       // Remove password from the payload if it's empty or null
       const { password, ...professorWithoutPassword } = editingProfessor;
-      
+
       const updatePayload = {
         ...professorWithoutPassword,
         department: {
@@ -667,7 +668,7 @@ export default function AccountPage() {
         },
         profilePictureUrl
       };
-      
+
       await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_USER(editingProfessor.userId)), updatePayload, {
         headers: {
           'Content-Type': 'application/json',
@@ -702,7 +703,7 @@ export default function AccountPage() {
   const handleNavigateToSettings = () => {
     navigate('/profile');
   };
-  
+
   const handleDeleteProfessor = async (professorId) => {
     if (window.confirm('Are you sure you want to delete this professor?')) {
       try {
@@ -727,21 +728,21 @@ export default function AccountPage() {
     const departmentName = departmentId ? getDepartmentName(departmentId).toLowerCase() : '';
     const departmentAbbr = departmentId ? getDepartmentAbbreviation(departmentId).toLowerCase() : '';
     const isAdmin = professor.role === 'ADMIN';
-    
+
     // First apply admin filter if active
     if (showAdminOnly && !isAdmin) return false;
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) ||
       professor.schoolId?.toString().includes(searchTerm) ||
       departmentName.includes(searchTerm.toLowerCase()) ||
       departmentAbbr.includes(searchTerm.toLowerCase()) ||
       professor.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (!activeFilter) return matchesSearch;
-    
+
     // Apply additional filtering based on activeFilter if needed
-    switch(activeFilter) {
+    switch (activeFilter) {
       case 'Department':
         return matchesSearch && professor.department?.departmentId;
       case 'ID':
@@ -766,9 +767,12 @@ export default function AccountPage() {
     if (!sortConfig.key) return 0;
 
     let aValue, bValue;
-    if (sortConfig.key === 'name') {
-      aValue = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
-      bValue = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
+    if (sortConfig.key === 'lastName') {
+      aValue = (a.lastName || '').toLowerCase();
+      bValue = (b.lastName || '').toLowerCase();
+    } else if (sortConfig.key === 'firstName') {
+      aValue = (a.firstName || '').toLowerCase();
+      bValue = (b.firstName || '').toLowerCase();
     } else if (sortConfig.key === 'email') {
       aValue = (a.email || '').toLowerCase();
       bValue = (b.email || '').toLowerCase();
@@ -820,12 +824,12 @@ export default function AccountPage() {
       // Use the todayTimeline data that's already fetched and filtered for the selected date
       // Count unique users and their final status from the timeline
       const userFinalStatus = new Map();
-      
+
       // Process timeline entries to determine each user's final status for the day
       todayTimeline.forEach(entry => {
         const userId = entry.userId;
         const currentEntry = userFinalStatus.get(userId);
-        
+
         // If we don't have this user yet, or if this entry is more recent, update it
         if (!currentEntry || entry.timestamp > currentEntry.timestamp) {
           userFinalStatus.set(userId, {
@@ -836,19 +840,19 @@ export default function AccountPage() {
           });
         }
       });
-      
+
       // Count statuses
       let onDutyCount = 0;
       let onBreakCount = 0;
       let offDutyCount = 0;
-      
+
       userFinalStatus.forEach((data, userId) => {
         console.log(`User ${data.name} final status on ${selectedDate.toLocaleDateString()}:`, {
           status: data.status,
           type: data.type,
           timestamp: new Date(data.timestamp).toLocaleString()
         });
-        
+
         if (data.status === 'On Duty') {
           onDutyCount++;
         } else if (data.status === 'On Break') {
@@ -892,7 +896,7 @@ export default function AccountPage() {
   const handleExportToExcel = async () => {
     try {
       setTimelineLoading(true);
-      
+
       // Get current date for filename
       const today = new Date();
       const monthNames = ["January", "February", "March", "April", "May", "June",
@@ -908,33 +912,33 @@ export default function AccountPage() {
       // Get timeline data from Firebase
       const timeLogs = dbRef(database, 'timeLogs');
       const timelineSnapshot = await get(timeLogs);
-      
+
       const exportData = [];
-      
+
       // Current date in milliseconds (start and end of day)
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayTimestamp = todayStart.getTime();
-      
+
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
       const todayEndTimestamp = todayEnd.getTime();
-      
+
       // Create a map to store all activities by user for today only
       const activitiesByUser = new Map();
-      
+
       // Process Firebase data to extract today's activities
       if (timelineSnapshot.exists()) {
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
           const userData = userSnap.val();
-          
+
           Object.entries(userData).forEach(([entryId, entry]) => {
             if (entry.timestamp && entry.userId) {
-              const entryTimestamp = typeof entry.timestamp === 'string' 
-                ? parseInt(entry.timestamp) 
+              const entryTimestamp = typeof entry.timestamp === 'string'
+                ? parseInt(entry.timestamp)
                 : entry.timestamp;
-              
+
               // Only include entries from today
               if (entryTimestamp >= todayTimestamp && entryTimestamp <= todayEndTimestamp) {
                 const activity = {
@@ -945,13 +949,13 @@ export default function AccountPage() {
                     hour: '2-digit', minute: '2-digit', second: '2-digit'
                   }),
                   date: new Date(entryTimestamp).toLocaleDateString('en-US'),
-                  activity: entry.type === 'TimeIn' 
+                  activity: entry.type === 'TimeIn'
                     ? (entry.status === 'On Break' ? 'Break' : 'Time In')
                     : 'Time Out',
                   status: entry.status || 'N/A',
                   timestamp: entryTimestamp
                 };
-                
+
                 if (!activitiesByUser.has(entry.userId)) {
                   activitiesByUser.set(entry.userId, []);
                 }
@@ -961,14 +965,14 @@ export default function AccountPage() {
           });
         });
       }
-      
+
       // Process each faculty member
       exportFacultyUsers.forEach(faculty => {
         const facultyActivities = activitiesByUser.get(faculty.userId) || [];
-        
+
         // Sort activities by timestamp
         facultyActivities.sort((a, b) => a.timestamp - b.timestamp);
-        
+
         if (facultyActivities.length > 0) {
           facultyActivities.forEach((activity, index) => {
             exportData.push({
@@ -1027,7 +1031,7 @@ export default function AccountPage() {
 
       // Save file
       XLSX.writeFile(workbook, filename);
-      
+
       showSnackbar(`Exported successfully: ${filename}`, 'success');
     } catch (err) {
       console.error('Error exporting to Excel:', err);
@@ -1044,36 +1048,36 @@ export default function AccountPage() {
       // Get timeline data from Firebase
       const timeLogs = dbRef(database, 'timeLogs');
       const timelineSnapshot = await get(timeLogs);
-      
+
       const timelineData = [];
-      
+
       // Get start and end of the selected date
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const startTimestamp = startOfDay.getTime();
-      
+
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
       const endTimestamp = endOfDay.getTime();
-      
+
       if (timelineSnapshot.exists()) {
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
           const userLogs = userSnap.val();
-          
+
           if (typeof userLogs === 'string') return;
-          
+
           Object.entries(userLogs).forEach(([logId, entry]) => {
             if (!entry || !entry.timestamp) return;
-            
-            const entryTimestamp = typeof entry.timestamp === 'string' 
-              ? parseInt(entry.timestamp) 
+
+            const entryTimestamp = typeof entry.timestamp === 'string'
+              ? parseInt(entry.timestamp)
               : entry.timestamp;
-            
+
             if (entryTimestamp >= startTimestamp && entryTimestamp <= endTimestamp) {
               let status = entry.status || '';
               let description = '';
-              
+
               if (entry.type === 'TimeIn') {
                 if (status === 'On Break') {
                   description = 'Started break';
@@ -1090,15 +1094,26 @@ export default function AccountPage() {
                 } else {
                   description = 'Timed out';
                 }
+              } else if (entry.type === 'StatusChange') {
+                // Handle status change log entries
+                if (status === 'On Duty') {
+                  description = 'Changed to On Duty';
+                } else if (status === 'On Break') {
+                  description = 'Changed to On Break';
+                } else if (status === 'Off Duty') {
+                  description = 'Changed to Off Duty';
+                } else {
+                  description = `Changed status to ${status}`;
+                }
               }
-              
+
               const timelineEntry = {
                 id: `${userId}_${logId}`,
                 name: entry.firstName || 'Unknown User',
                 status: status,
                 description: description,
                 time: new Date(entryTimestamp).toLocaleTimeString('en-US', {
-                  hour: '2-digit', 
+                  hour: '2-digit',
                   minute: '2-digit'
                 }),
                 timestamp: entryTimestamp,
@@ -1106,13 +1121,13 @@ export default function AccountPage() {
                 type: entry.type,
                 email: entry.email
               };
-              
+
               timelineData.push(timelineEntry);
             }
           });
         });
       }
-      
+
       timelineData.sort((a, b) => a.timestamp - b.timestamp);
       setTodayTimeline(timelineData);
     } catch (err) {
@@ -1130,27 +1145,27 @@ export default function AccountPage() {
       // Get timeline data from Firebase
       const timeLogs = dbRef(database, 'timeLogs');
       const timelineSnapshot = await get(timeLogs);
-      
+
       const historyByDate = new Map();
-      
+
       if (timelineSnapshot.exists()) {
         // Process timeline data from all users
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
           const userLogs = userSnap.val();
-          
+
           // Skip if this is just the userId field
           if (typeof userLogs === 'string') return;
-          
+
           // Process each time log entry for this user
           Object.entries(userLogs).forEach(([logId, entry]) => {
             if (!entry || !entry.timestamp) return;
-            
+
             // Convert timestamp to number if it's a string
-            const historyEntryTimestamp = typeof entry.timestamp === 'string' 
-              ? parseInt(entry.timestamp) 
+            const historyEntryTimestamp = typeof entry.timestamp === 'string'
+              ? parseInt(entry.timestamp)
               : entry.timestamp;
-            
+
             // Get date string for grouping (YYYY-MM-DD)
             const historyEntryDate = new Date(historyEntryTimestamp);
             const dateKey = historyEntryDate.toISOString().split('T')[0];
@@ -1160,10 +1175,10 @@ export default function AccountPage() {
               month: 'long',
               day: 'numeric'
             });
-            
+
             let status = entry.status || '';
             let description = '';
-            
+
             if (entry.type === 'TimeIn') {
               description = status === 'On Duty' ? 'Started shift' : 'Timed in';
             } else if (entry.type === 'TimeOut') {
@@ -1175,7 +1190,7 @@ export default function AccountPage() {
                 description = 'Timed out';
               }
             }
-            
+
             const timelineEntry = {
               id: `${userId}_${logId}`,
               name: entry.firstName || 'Unknown User',
@@ -1190,7 +1205,7 @@ export default function AccountPage() {
               type: entry.type,
               email: entry.email
             };
-            
+
             if (!historyByDate.has(dateKey)) {
               historyByDate.set(dateKey, {
                 dateKey,
@@ -1198,12 +1213,12 @@ export default function AccountPage() {
                 entries: []
               });
             }
-            
+
             historyByDate.get(dateKey).entries.push(timelineEntry);
           });
         });
       }
-      
+
       // Convert map to array and sort by date (newest first)
       const historyArray = Array.from(historyByDate.values())
         .map(dayData => {
@@ -1212,7 +1227,7 @@ export default function AccountPage() {
           return dayData;
         })
         .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
-      
+
       setAttendanceHistory(historyArray);
     } catch (err) {
       console.error('Error fetching attendance history:', err);
@@ -1254,7 +1269,7 @@ export default function AccountPage() {
       const storageRef = ref(storage, `profilePictures/${userId}/profile.${file.name.split('.').pop()}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      
+
       // Update the user's profile picture URL in the backend
       await axios.put(getApiUrl(API_ENDPOINTS.UPDATE_PROFILE_PICTURE(userId)), {
         profilePictureUrl: downloadURL
@@ -1265,7 +1280,7 @@ export default function AccountPage() {
       });
 
       // Update the professors list with the new profile picture
-      setProfessors(professors.map(prof => 
+      setProfessors(professors.map(prof =>
         prof.userId === userId ? { ...prof, profilePictureUrl: downloadURL } : prof
       ));
 
@@ -1316,31 +1331,31 @@ export default function AccountPage() {
       // Get timeline data from Firebase
       const timeLogs = dbRef(database, 'timeLogs');
       const timelineSnapshot = await get(timeLogs);
-      
+
       const exportData = [];
-      
+
       // Get start and end of the selected date
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const startTimestamp = startOfDay.getTime();
-      
+
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
       const endTimestamp = endOfDay.getTime();
-      
+
       if (timelineSnapshot.exists()) {
         timelineSnapshot.forEach(userSnap => {
           const userId = userSnap.key;
           const userLogs = userSnap.val();
-          
+
           if (typeof userLogs === 'string') return;
-          
+
           // Get all entries for this user on the selected date
           const entries = Object.entries(userLogs)
             .filter(([_, entry]) => {
               if (!entry || !entry.timestamp) return false;
-              const entryTimestamp = typeof entry.timestamp === 'string' 
-                ? parseInt(entry.timestamp) 
+              const entryTimestamp = typeof entry.timestamp === 'string'
+                ? parseInt(entry.timestamp)
                 : entry.timestamp;
               return entryTimestamp >= startTimestamp && entryTimestamp <= endTimestamp;
             })
@@ -1348,20 +1363,20 @@ export default function AccountPage() {
               ...entry,
               timestamp: typeof entry.timestamp === 'string' ? parseInt(entry.timestamp) : entry.timestamp
             }));
-          
+
           // Sort entries by timestamp
           entries.sort((a, b) => a.timestamp - b.timestamp);
-          
+
           // Find the faculty details
           const faculty = professors.find(p => p.userId === userId);
-          
+
           if (entries.length > 0) {
             entries.forEach(entry => {
               let status = entry.status || '';
-              let activity = entry.type === 'TimeIn' 
+              let activity = entry.type === 'TimeIn'
                 ? (status === 'On Break' ? 'Started Break' : 'Time In')
                 : (status === 'Off Duty' ? 'Time Out' : status);
-              
+
               exportData.push({
                 'Faculty Name': faculty ? `${faculty.firstName} ${faculty.lastName}` : entry.firstName || 'Unknown',
                 'Email': faculty ? faculty.email : entry.email || 'N/A',
@@ -1416,7 +1431,7 @@ export default function AccountPage() {
 
       // Save file
       XLSX.writeFile(workbook, filename);
-      
+
       showSnackbar(`Exported successfully: ${filename}`, 'success');
     } catch (err) {
       console.error('Error exporting to Excel:', err);
@@ -1428,64 +1443,64 @@ export default function AccountPage() {
 
   return (
     <Box>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 1 
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 1
       }}>
       </Box>
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="account tabs">
-          <Tab 
+          <Tab
             icon={<Person sx={{ mr: 1 }} />}
             iconPosition="start"
-            label="Faculty Accounts" 
-            sx={{ 
-              textTransform: 'none', 
+            label="Faculty Accounts"
+            sx={{
+              textTransform: 'none',
               fontWeight: 600,
               fontSize: '1rem',
               color: tabValue === 0 ? 'primary.main' : 'text.secondary',
               '&.Mui-selected': { color: 'primary.main' }
-            }} 
+            }}
           />
-          <Tab 
+          <Tab
             icon={<AccessTime sx={{ mr: 1 }} />}
             iconPosition="start"
-            label="Faculty Status" 
-            sx={{ 
-              textTransform: 'none', 
+            label="Faculty Status"
+            sx={{
+              textTransform: 'none',
               fontWeight: 600,
               fontSize: '1rem',
               color: tabValue === 1 ? 'primary.main' : 'text.secondary',
               '&.Mui-selected': { color: 'primary.main' }
-            }} 
+            }}
           />
         </Tabs>
       </Box>
 
       {/* Faculty Accounts Tab */}
       <TabPanel value={tabValue} index={0}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           mb: 3
         }}>
           <Typography variant="h5" fontWeight="600" color="#1E293B">
             Faculty Accounts
-          </Typography>  
-         
+          </Typography>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Paper
               elevation={0}
-              sx={{ 
-                p: '2px 4px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                width: 300, 
+              sx={{
+                p: '2px 4px',
+                display: 'flex',
+                alignItems: 'center',
+                width: 300,
                 bgcolor: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 borderRadius: '4px'
@@ -1529,8 +1544,8 @@ export default function AccountPage() {
                 ))}
               </Select>
             </FormControl>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               startIcon={<FilterList />}
               size="small"
               onClick={handleFilterClick}
@@ -1565,7 +1580,7 @@ export default function AccountPage() {
             >
               Add Faculty
             </Button>
-        {/*    <Button
+            {/*    <Button
               variant="outlined"
               startIcon={<Refresh />}
               onClick={async () => {
@@ -1601,9 +1616,9 @@ export default function AccountPage() {
         </Box>
 
         {/* Faculty Table */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
+        <Paper
+          elevation={0}
+          sx={{
             mb: 3,
             border: '1px solid #E2E8F0',
             borderRadius: '8px',
@@ -1614,28 +1629,47 @@ export default function AccountPage() {
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 70, textAlign: 'center' }}>Photo</TableCell>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>School ID</TableCell>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       backgroundColor: '#F8FAFC',
                       cursor: 'pointer',
                       '&:hover': { bgcolor: '#F1F5F9' }
                     }}
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort('lastName')}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      Name
-                      {sortConfig.key === 'name' && (
-                        sortConfig.direction === 'asc' ? 
-                          <ArrowUpward sx={{ fontSize: 16 }} /> : 
+                      Last Name
+                      {sortConfig.key === 'lastName' && (
+                        sortConfig.direction === 'asc' ?
+                          <ArrowUpward sx={{ fontSize: 16 }} /> :
                           <ArrowDownward sx={{ fontSize: 16 }} />
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
-                      fontWeight: 600, 
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
+                      backgroundColor: '#F8FAFC',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: '#F1F5F9' }
+                    }}
+                    onClick={() => handleSort('firstName')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      First Name
+                      {sortConfig.key === 'firstName' && (
+                        sortConfig.direction === 'asc' ?
+                          <ArrowUpward sx={{ fontSize: 16 }} /> :
+                          <ArrowDownward sx={{ fontSize: 16 }} />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 600,
                       backgroundColor: '#F8FAFC',
                       cursor: 'pointer',
                       '&:hover': { bgcolor: '#F1F5F9' }
@@ -1645,14 +1679,14 @@ export default function AccountPage() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       Email
                       {sortConfig.key === 'email' && (
-                        sortConfig.direction === 'asc' ? 
-                          <ArrowUpward sx={{ fontSize: 16 }} /> : 
+                        sortConfig.direction === 'asc' ?
+                          <ArrowUpward sx={{ fontSize: 16 }} /> :
                           <ArrowDownward sx={{ fontSize: 16 }} />
                       )}
                     </Box>
                   </TableCell>
                   <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Dept / Grade</TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 180 }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC', width: 160, textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1660,39 +1694,51 @@ export default function AccountPage() {
                   <AccountTableSkeleton />
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'error.main' }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'error.main' }}>
                       {error}
                     </TableCell>
                   </TableRow>
                 ) : sortedProfessors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                       No faculty members found
                     </TableCell>
                   </TableRow>
                 ) : (
                   sortedProfessors.map((professor) => (
-                    <TableRow 
+                    <TableRow
                       key={professor.userId}
                       sx={{ '&:hover': { bgcolor: '#F1F5F9' } }}
                     >
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar
-                            src={professor.profilePictureUrl}
-                            alt={`${professor.firstName} ${professor.lastName}`}
-                            sx={{ 
-                              width: 40, 
-                              height: 40, 
-                              cursor: 'pointer',
-                              '&:hover': { opacity: 0.8 }
-                            }}
-                            onClick={() => handleProfileClick(professor)}
-                          />
-                          {professor.schoolId}
-                        </Box>
+                      <TableCell sx={{ textAlign: 'center', padding: '8px' }}>
+                        <Avatar
+                          src={professor.profilePictureUrl}
+                          alt={`${professor.firstName} ${professor.lastName}`}
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            cursor: 'pointer',
+                            margin: '0 auto',
+                            border: '2px solid #E2E8F0',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              transform: 'scale(1.1)',
+                              borderColor: '#3B82F6',
+                              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                            }
+                          }}
+                          onClick={() => handleProfileClick(professor)}
+                        >
+                          {professor.firstName?.charAt(0)}{professor.lastName?.charAt(0)}
+                        </Avatar>
                       </TableCell>
-                      <TableCell>{`${professor.firstName} ${professor.lastName}`}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500} color="#334155">
+                          {professor.schoolId || 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{professor.lastName}</TableCell>
+                      <TableCell>{professor.firstName}</TableCell>
                       <TableCell>{professor.email}</TableCell>
                       <TableCell>
                         {(() => {
@@ -1703,7 +1749,7 @@ export default function AccountPage() {
                                   <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
                                     ADMINISTRATOR
                                   </Typography>
-                          
+
                                 </Box>
                               );
                             } else if (professor.department && professor.department.departmentId) {
@@ -1725,71 +1771,82 @@ export default function AccountPage() {
                         })()}
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleViewClick(professor)}
-                            sx={{ color: '#64748B' }}
-                            title="View Details"
-                          >
-                            <VisibilityOutlined fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleEditClick(professor)}
-                            sx={{ color: '#0288d1' }}
-                            title="Edit"
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleDeleteProfessor(professor.userId)}
-                            sx={{ color: '#EF4444' }}
-                            title="Delete"
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                          {/* Data consistency debug button 
-                          <IconButton 
-                            size="small" 
-                            onClick={async () => {
-                              console.log('🔍 TESTING DATA CONSISTENCY for:', professor);
-                              const documentId = professor.id || professor.documentId;
-                              const userId = professor.userId;
-                              
-                              console.log('Document ID:', documentId);
-                              console.log('User ID field:', userId);
-                              console.log('IDs match:', documentId === userId);
-                              
-                              if (documentId === userId) {
-                                showSnackbar(`✅ ${professor.firstName}: Data is consistent`, 'success');
-                                
-                                // Test API call with the consistent ID
-                                try {
-                                  const response = await axios.get(getApiUrl(API_ENDPOINTS.GET_USER(userId)), {
-                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                                  });
-                                  console.log('✅ API call successful:', response.data);
-                                  showSnackbar(`✅ API works for ${professor.firstName}`, 'success');
-                                } catch (err) {
-                                  console.error('❌ API call failed even with consistent data:', err);
-                                  showSnackbar(`❌ API failed for ${professor.firstName}: ${err.response?.status}`, 'error');
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          <Tooltip title="View Details" arrow placement="top">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewClick(professor)}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                border: '1px solid #e2e8f0',
+                                color: '#64748B',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #64748B 0%, #475569 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(100, 116, 139, 0.4)',
+                                  border: '1px solid transparent',
                                 }
-                              } else {
-                                showSnackbar(`❌ ${professor.firstName}: Data inconsistent - Document ID ≠ userId field`, 'error');
-                                console.error('❌ DATA INCONSISTENCY:');
-                                console.error(`   Document ID: ${documentId || 'MISSING'}`);
-                                console.error(`   userId field: ${userId || 'MISSING'}`);
-                                console.error('   This will cause 404 errors on edit/delete operations');
-                                console.error('   SOLUTION: Fix Firestore data so document ID matches userId field');
-                              }
-                            }}
-                            sx={{ color: '#9C27B0' }}
-                            title="Debug - Check data consistency"
-                          >
-                            🔍
-                          </IconButton>*/}
+                              }}
+                            >
+                              <VisibilityOutlined sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Faculty" arrow placement="top">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditClick(professor)}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                                border: '1px solid #bfdbfe',
+                                color: '#3B82F6',
+                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                                  border: '1px solid transparent',
+                                }
+                              }}
+                            >
+                              <Edit sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Faculty" arrow placement="top">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteProfessor(professor.userId)}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)',
+                                border: '1px solid #fca5a5',
+                                color: '#EF4444',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                  color: '#ffffff',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                                  border: '1px solid transparent',
+                                }
+                              }}
+                            >
+                              <Delete sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -1805,7 +1862,7 @@ export default function AccountPage() {
       <TabPanel value={tabValue} index={1}>
         {/* Current Status Section */}
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ 
+          <Box sx={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -1818,10 +1875,10 @@ export default function AccountPage() {
               <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                 Last updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
               </Typography>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={handleRefreshStatus}
-                sx={{ 
+                sx={{
                   color: '#0288d1',
                   '&:hover': { color: '#01579b' }
                 }}
@@ -1868,8 +1925,8 @@ export default function AccountPage() {
           </Card>*/}
 
           {/* Status Cards */}
-          <Box sx={{ 
-            display: 'flex', 
+          <Box sx={{
+            display: 'flex',
             gap: 2,
             mb: 4,
             flexDirection: { xs: 'column', sm: 'row' }
@@ -1898,11 +1955,11 @@ export default function AccountPage() {
                 }
               }}
             >
-              <Box sx={{ 
-                height: 10, 
-                width: 10, 
-                borderRadius: '50%', 
-                bgcolor: '#4CAF50', 
+              <Box sx={{
+                height: 10,
+                width: 10,
+                borderRadius: '50%',
+                bgcolor: '#4CAF50',
                 position: 'absolute',
                 top: 15,
                 left: 15,
@@ -1962,11 +2019,11 @@ export default function AccountPage() {
                 }
               }}
             >
-              <Box sx={{ 
-                height: 10, 
-                width: 10, 
-                borderRadius: '50%', 
-                bgcolor: '#FF9800', 
+              <Box sx={{
+                height: 10,
+                width: 10,
+                borderRadius: '50%',
+                bgcolor: '#FF9800',
                 position: 'absolute',
                 top: 15,
                 left: 15,
@@ -2026,11 +2083,11 @@ export default function AccountPage() {
                 }
               }}
             >
-              <Box sx={{ 
-                height: 10, 
-                width: 10, 
-                borderRadius: '50%', 
-                bgcolor: '#F44336', 
+              <Box sx={{
+                height: 10,
+                width: 10,
+                borderRadius: '50%',
+                bgcolor: '#F44336',
                 position: 'absolute',
                 top: 15,
                 left: 15,
@@ -2070,7 +2127,7 @@ export default function AccountPage() {
 
         {/* Today's Timeline Section */}
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ 
+          <Box sx={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -2159,27 +2216,27 @@ export default function AccountPage() {
                   }}
                 />
               </LocalizationProvider>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: 0.5,
                 border: '1px solid',
                 borderColor: darkMode ? '#333333' : '#E2E8F0',
                 borderRadius: 1,
                 bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
               }}>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => handleDateChange('prev')}
                   sx={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                 >
                   <ChevronLeft />
                 </IconButton>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => handleDateChange('next')}
                   disabled={selectedDate.toDateString() === new Date().toDateString()}
-                  sx={{ 
+                  sx={{
                     color: darkMode ? '#aaaaaa' : '#64748B',
                     '&.Mui-disabled': {
                       color: darkMode ? '#555555' : 'rgba(0, 0, 0, 0.26)'
@@ -2189,9 +2246,9 @@ export default function AccountPage() {
                   <ChevronRight />
                 </IconButton>
               </Box>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 startIcon={<FileDownload fontSize="small" />}
                 onClick={handleExportToExcel}
                 disabled={timelineLoading}
@@ -2209,7 +2266,7 @@ export default function AccountPage() {
                 size="small"
                 onClick={() => fetchTimelineForDate(selectedDate)}
                 disabled={timelineLoading}
-                sx={{ 
+                sx={{
                   color: '#0288d1',
                   '&:hover': { color: '#01579b' }
                 }}
@@ -2252,19 +2309,19 @@ export default function AccountPage() {
             ) : (
               <Box>
                 {todayTimeline.map((item, index) => (
-                  <Box 
-                    key={item.id} 
-                    sx={{ 
-                      display: 'flex', 
+                  <Box
+                    key={item.id}
+                    sx={{
+                      display: 'flex',
                       mb: index < todayTimeline.length - 1 ? 2 : 0,
                       py: 1,
                       position: 'relative'
                     }}
                   >
-                    <Box sx={{ 
-                      width: '80px', 
-                      textAlign: 'right', 
-                      pr: 2, 
+                    <Box sx={{
+                      width: '80px',
+                      textAlign: 'right',
+                      pr: 2,
                       color: '#64748B',
                       position: 'relative',
                       zIndex: 1
@@ -2273,10 +2330,10 @@ export default function AccountPage() {
                         {item.time}
                       </Typography>
                     </Box>
-                    <Box sx={{ 
+                    <Box sx={{
                       position: 'relative',
-                    
-                    
+
+
                       pl: 3,
                       pb: index < todayTimeline.length - 1 ? 3 : 0,
                       flex: 1
@@ -2285,19 +2342,19 @@ export default function AccountPage() {
                         width: 10,
                         height: 10,
                         borderRadius: '50%',
-                        
+
                         position: 'absolute',
                         left: -6,
                         top: 5,
-                      
+
                         zIndex: 1
                       }} />
                       <Box sx={{
-                     
+
                         p: 2,
                         borderRadius: 1,
                         border: '3px dashed',
-                      
+
                       }}>
                         <Typography variant="body2" fontWeight="600" color="#1E293B">
                           {item.description}
@@ -2316,7 +2373,7 @@ export default function AccountPage() {
 
         {/* Attendance Status History Section */}
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ 
+          <Box sx={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -2326,9 +2383,9 @@ export default function AccountPage() {
               Attendance Status History
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 startIcon={<FileDownload fontSize="small" />}
                 onClick={() => handleExportDayToExcel(selectedDate)}
                 disabled={timelineLoading}
@@ -2346,7 +2403,7 @@ export default function AccountPage() {
                 size="small"
                 onClick={() => fetchTimelineForDate(selectedDate)}
                 disabled={timelineLoading}
-                sx={{ 
+                sx={{
                   color: '#0288d1',
                   '&:hover': { color: '#01579b' }
                 }}
@@ -2392,7 +2449,7 @@ export default function AccountPage() {
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Faculty Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Activity</TableCell>
                       <TableCell sx={{ fontWeight: 600, backgroundColor: '#F8FAFC' }}>Status</TableCell>
-                    
+
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2415,24 +2472,24 @@ export default function AccountPage() {
                           </TableCell>
                           <TableCell>{entry.description}</TableCell>
                           <TableCell>
-                            <Chip 
-                              label={entry.status} 
+                            <Chip
+                              label={entry.status}
                               size="small"
-                              sx={{ 
-                                bgcolor: entry.status === 'On Duty' ? '#F0FDF4' : 
-                                        entry.status === 'On Break' ? '#FFF7ED' : 
-                                        entry.status === 'Off Duty' ? '#FEF2F2' : 
-                                        '#F8FAFC',
-                                color: entry.status === 'On Duty' ? '#15803D' : 
-                                       entry.status === 'On Break' ? '#9A3412' : 
-                                       entry.status === 'Off Duty' ? '#991B1B' : 
-                                       '#64748B',
+                              sx={{
+                                bgcolor: entry.status === 'On Duty' ? '#F0FDF4' :
+                                  entry.status === 'On Break' ? '#FFF7ED' :
+                                    entry.status === 'Off Duty' ? '#FEF2F2' :
+                                      '#F8FAFC',
+                                color: entry.status === 'On Duty' ? '#15803D' :
+                                  entry.status === 'On Break' ? '#9A3412' :
+                                    entry.status === 'Off Duty' ? '#991B1B' :
+                                      '#64748B',
                                 fontWeight: 500,
                                 fontSize: '0.75rem'
                               }}
                             />
                           </TableCell>
-                
+
                         </TableRow>
                       );
                     })}
@@ -2463,11 +2520,11 @@ export default function AccountPage() {
           overflow: 'hidden',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
+          <Box sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
@@ -2634,7 +2691,7 @@ export default function AccountPage() {
                 }}
               />
               <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Chip 
+                <Chip
                   label={`Strength: ${passwordStrength.label}`}
                   size="small"
                   sx={{
@@ -2644,8 +2701,8 @@ export default function AccountPage() {
                   }}
                 />
                 <Box sx={{ flex: 1 }}>
-                  <LinearProgress 
-                    variant="determinate" 
+                  <LinearProgress
+                    variant="determinate"
                     value={(passwordStrength.score / 5) * 100}
                     sx={{
                       height: 6,
@@ -2657,58 +2714,58 @@ export default function AccountPage() {
                   />
                 </Box>
               </Box>
-            <Box sx={{ mt: 1.5 }}>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748B' }}>
-                Password must contain:
-              </Typography>
-              <List dense sx={{ py: 0 }}>
-                <ListItem sx={{ py: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 28 }}>
-                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.length ? '#16A34A' : '#94A3B8' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={<Typography variant="caption" sx={{ color: passwordChecks.length ? '#16A34A' : '#94A3B8' }}>At least 6 characters</Typography>}
-                  />
-                </ListItem>
-                <ListItem sx={{ py: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 28 }}>
-                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={<Typography variant="caption" sx={{ color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }}>At least 1 uppercase letter (A-Z)</Typography>}
-                  />
-                </ListItem>
-                <ListItem sx={{ py: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 28 }}>
-                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={<Typography variant="caption" sx={{ color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }}>At least 1 lowercase letter (a-z)</Typography>}
-                  />
-                </ListItem>
-                <ListItem sx={{ py: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 28 }}>
-                    <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.number ? '#16A34A' : '#94A3B8' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={<Typography variant="caption" sx={{ color: passwordChecks.number ? '#16A34A' : '#94A3B8' }}>At least 1 number (0-9)</Typography>}
-                  />
-                </ListItem>
-              </List>
-            </Box>
+              <Box sx={{ mt: 1.5 }}>
+                <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748B' }}>
+                  Password must contain:
+                </Typography>
+                <List dense sx={{ py: 0 }}>
+                  <ListItem sx={{ py: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.length ? '#16A34A' : '#94A3B8' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="caption" sx={{ color: passwordChecks.length ? '#16A34A' : '#94A3B8' }}>At least 6 characters</Typography>}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ py: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="caption" sx={{ color: passwordChecks.uppercase ? '#16A34A' : '#94A3B8' }}>At least 1 uppercase letter (A-Z)</Typography>}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ py: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="caption" sx={{ color: passwordChecks.lowercase ? '#16A34A' : '#94A3B8' }}>At least 1 lowercase letter (a-z)</Typography>}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ py: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <CheckCircleOutline sx={{ fontSize: 16, color: passwordChecks.number ? '#16A34A' : '#94A3B8' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="caption" sx={{ color: passwordChecks.number ? '#16A34A' : '#94A3B8' }}>At least 1 number (0-9)</Typography>}
+                    />
+                  </ListItem>
+                </List>
+              </Box>
             </Box>
           </Box>
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: 2, 
+          <Box sx={{
+            p: 2,
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
             borderTop: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0'
           }}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               onClick={() => setShowAddModal(false)}
               sx={{
                 borderColor: darkMode ? '#555555' : '#E2E8F0',
@@ -2723,8 +2780,8 @@ export default function AccountPage() {
             >
               Cancel
             </Button>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleAddProfessor}
               disabled={!isAddPasswordValid || addingFaculty}
               sx={{
@@ -2742,7 +2799,7 @@ export default function AccountPage() {
           </Box>
         </Box>
       </Modal>
-      
+
       {/* Edit Professor Modal */}
       <Modal
         open={showEditModal}
@@ -2762,11 +2819,11 @@ export default function AccountPage() {
           overflow: 'hidden',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
+          <Box sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
@@ -2933,17 +2990,17 @@ export default function AccountPage() {
               </FormControl>
             </Box>
           </Box>
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC', 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: 2, 
+          <Box sx={{
+            p: 2,
+            bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
             borderTop: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0'
           }}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               onClick={() => setShowEditModal(false)}
               sx={{
                 borderColor: darkMode ? '#555555' : '#E2E8F0',
@@ -2958,8 +3015,8 @@ export default function AccountPage() {
             >
               Cancel
             </Button>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleUpdateProfessor}
               sx={{
                 bgcolor: darkMode ? '#90caf9' : '#0288d1',
@@ -2996,11 +3053,11 @@ export default function AccountPage() {
           overflow: 'hidden',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
+          <Box sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
@@ -3015,10 +3072,10 @@ export default function AccountPage() {
           {viewingProfessor && (
             <Box sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
               <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar 
+                <Avatar
                   src={viewingProfessor.profilePictureUrl}
-                  sx={{ 
-                    width: 64, 
+                  sx={{
+                    width: 64,
                     height: 64,
                     bgcolor: darkMode ? '#90caf9' : '#0288d1',
                     fontSize: '1.5rem'
@@ -3032,16 +3089,16 @@ export default function AccountPage() {
                   </Typography>
                 </Box>
               </Box>
-              
+
               <Divider sx={{ my: 2, borderColor: darkMode ? '#333333' : '#E2E8F0' }} />
-              
+
               <Box sx={{ mb: 3 }}>
                 <List disablePadding>
                   <ListItem disablePadding sx={{ mb: 2 }}>
                     <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
                       <Badge fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary={
                         <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           School ID
@@ -3051,31 +3108,31 @@ export default function AccountPage() {
                       secondaryTypographyProps={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                     />
                   </ListItem>
-                  
+
                   <ListItem disablePadding sx={{ mb: 2 }}>
                     <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
                       <Group fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary={
                         <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           Department
                         </Typography>
                       }
                       secondary={
-                        viewingProfessor.department?.departmentId 
+                        viewingProfessor.department?.departmentId
                           ? `${getDepartmentName(viewingProfessor.department.departmentId)} (${getDepartmentAbbreviation(viewingProfessor.department.departmentId)})`
                           : viewingProfessor.role === 'ADMIN' ? 'Administrator' : 'Not assigned'
                       }
                       secondaryTypographyProps={{ color: darkMode ? '#aaaaaa' : '#64748B' }}
                     />
                   </ListItem>
-                  
+
                   <ListItem disablePadding sx={{ mb: 2 }}>
                     <ListItemIcon sx={{ minWidth: 36, color: darkMode ? '#aaaaaa' : '#64748B' }}>
                       <Email fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary={
                         <Typography variant="body2" fontWeight="600" color={darkMode ? '#f5f5f5' : '#1E293B'}>
                           Email
@@ -3114,11 +3171,11 @@ export default function AccountPage() {
           flexDirection: 'column',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
+          <Box sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
             bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC'
@@ -3130,7 +3187,7 @@ export default function AccountPage() {
               <Close />
             </IconButton>
           </Box>
-          
+
           <Box sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
             {loadingEvents ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -3151,8 +3208,8 @@ export default function AccountPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ 
-                        fontWeight: 600, 
+                      <TableCell sx={{
+                        fontWeight: 600,
                         backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                         color: darkMode ? '#f5f5f5' : 'inherit',
                         borderBottom: '1px solid',
@@ -3160,8 +3217,8 @@ export default function AccountPage() {
                       }}>
                         Event Name
                       </TableCell>
-                      <TableCell sx={{ 
-                        fontWeight: 600, 
+                      <TableCell sx={{
+                        fontWeight: 600,
                         backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                         color: darkMode ? '#f5f5f5' : 'inherit',
                         borderBottom: '1px solid',
@@ -3199,7 +3256,7 @@ export default function AccountPage() {
           }
         }}
       >
-        <DialogTitle sx={{ 
+        <DialogTitle sx={{
           bgcolor: darkMode ? '#2d2d2d' : '#F8FAFC',
           borderBottom: '1px solid',
           borderColor: darkMode ? '#333333' : '#E2E8F0',
@@ -3211,18 +3268,18 @@ export default function AccountPage() {
             <Typography variant="h6" fontWeight="600" color={darkMode ? '#f5f5f5' : 'inherit'}>
               Faculty Members - {selectedStatusType}
             </Typography>
-            <Chip 
+            <Chip
               label={statusModalUsers.length}
               size="small"
               sx={{
-                bgcolor: selectedStatusType === 'On Duty' ? '#F0FDF4' : 
-                        selectedStatusType === 'On Break' ? '#FFF7ED' : 
-                        selectedStatusType === 'Off Duty' ? '#FEF2F2' : 
-                        '#F8FAFC',
-                color: selectedStatusType === 'On Duty' ? '#15803D' : 
-                       selectedStatusType === 'On Break' ? '#9A3412' : 
-                       selectedStatusType === 'Off Duty' ? '#991B1B' : 
-                       '#64748B',
+                bgcolor: selectedStatusType === 'On Duty' ? '#F0FDF4' :
+                  selectedStatusType === 'On Break' ? '#FFF7ED' :
+                    selectedStatusType === 'Off Duty' ? '#FEF2F2' :
+                      '#F8FAFC',
+                color: selectedStatusType === 'On Duty' ? '#15803D' :
+                  selectedStatusType === 'On Break' ? '#9A3412' :
+                    selectedStatusType === 'Off Duty' ? '#991B1B' :
+                      '#64748B',
                 fontWeight: 600
               }}
             />
@@ -3248,29 +3305,29 @@ export default function AccountPage() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ 
-                      fontWeight: 600, 
+                    <TableCell sx={{
+                      fontWeight: 600,
                       backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                       color: darkMode ? '#f5f5f5' : 'inherit'
                     }}>
                       Faculty Member
                     </TableCell>
-                    <TableCell sx={{ 
-                      fontWeight: 600, 
+                    <TableCell sx={{
+                      fontWeight: 600,
                       backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                       color: darkMode ? '#f5f5f5' : 'inherit'
                     }}>
                       Email
                     </TableCell>
-                    <TableCell sx={{ 
-                      fontWeight: 600, 
+                    <TableCell sx={{
+                      fontWeight: 600,
                       backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                       color: darkMode ? '#f5f5f5' : 'inherit'
                     }}>
                       Department
                     </TableCell>
-                    <TableCell sx={{ 
-                      fontWeight: 600, 
+                    <TableCell sx={{
+                      fontWeight: 600,
                       backgroundColor: darkMode ? '#2d2d2d' : '#F8FAFC',
                       color: darkMode ? '#f5f5f5' : 'inherit'
                     }}>
@@ -3280,11 +3337,11 @@ export default function AccountPage() {
                 </TableHead>
                 <TableBody>
                   {statusModalUsers.map((user) => (
-                    <TableRow 
+                    <TableRow
                       key={user.userId}
-                      sx={{ 
-                        '&:hover': { 
-                          bgcolor: darkMode ? '#2d2d2d' : '#F1F5F9' 
+                      sx={{
+                        '&:hover': {
+                          bgcolor: darkMode ? '#2d2d2d' : '#F1F5F9'
                         },
                         borderBottom: '1px solid',
                         borderColor: darkMode ? '#333333' : '#E2E8F0'
@@ -3367,10 +3424,10 @@ export default function AccountPage() {
           overflow: 'hidden',
           border: darkMode ? '1px solid #333333' : 'none'
         }}>
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <Box sx={{
+            p: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid',
             borderColor: darkMode ? '#333333' : '#E2E8F0',
@@ -3383,14 +3440,14 @@ export default function AccountPage() {
               <Close />
             </IconButton>
           </Box>
-          
+
           {selectedProfile && (
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, bgcolor: darkMode ? '#1e1e1e' : 'background.paper' }}>
               <Avatar
                 src={selectedProfile.profilePictureUrl}
                 alt={`${selectedProfile.firstName} ${selectedProfile.lastName}`}
-                sx={{ 
-                  width: 200, 
+                sx={{
+                  width: 200,
                   height: 200,
                   boxShadow: darkMode ? '0 0 10px rgba(255,255,255,0.1)' : '0 0 10px rgba(0,0,0,0.1)'
                 }}
@@ -3398,7 +3455,7 @@ export default function AccountPage() {
               <Typography variant="h6" color={darkMode ? '#f5f5f5' : 'inherit'}>
                 {`${selectedProfile.firstName} ${selectedProfile.lastName}`}
               </Typography>
-              
+
               <Box>
                 <input
                   accept="image/*"
@@ -3441,11 +3498,12 @@ export default function AccountPage() {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }
+        }
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
           sx={{ width: '100%' }}
         >
           {snackbar.message}
