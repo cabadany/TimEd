@@ -87,18 +87,18 @@ const defaultCertificate = {
   eventDate: '{Event Date}',
   certificateNumber: '{Certificate Number}',
   backgroundColor: '#ffffff',
-  headerColor: '#3B5998',  // Timeed blue
+  headerColor: '#1E3A8A',
   textColor: '#333333',
   fontFamily: 'Georgia',
   fontSize: 12,
   dateFormat: 'MMMM dd, yyyy',
   showBorder: true,
   borderWidth: 1,
-  borderColor: '#C8B432',  // Gold accent for dotted border
-  borderStyle: 'dashed',
-  frameStyle: 'blueWave',  // New Timeed blue wave design
+  borderColor: '#D1D5DB',
+  borderStyle: 'solid',
+  frameStyle: 'classic',
   showDecorations: true,
-  decorativeCorners: false,  // Disabled for blueWave style
+  decorativeCorners: true,
   showRibbon: false,
   ribbonPosition: 'bottom-center',
   ribbonColor: '#D4AF37',
@@ -108,24 +108,19 @@ const defaultCertificate = {
   margins: { top: 50, right: 50, bottom: 50, left: 50 },
   backgroundImage: null,
   backgroundImageOpacity: 0.3,
-  logoImage: null,  // Will be set from timeed.png when available
+  logoImage: null,
   logoWidth: 100,
   logoHeight: 100,
-  logoPosition: 'top-left',  // Timeed logo in top-left corner
+  logoPosition: 'top-center',
   watermarkImage: null,
   watermarkImageOpacity: 0.1,
   signatureImages: {},
-  showQRCode: false,
+  showQRCode: true,
   qrCodePosition: 'bottom-right'
 };
 
 export default function CertificateEditor({ initialData, onSave, onClose, onApply }) {
-  // Merge initialData with defaults so existing certificates get new field defaults
-  const mergedData = initialData
-    ? { ...defaultCertificate, ...initialData }
-    : defaultCertificate;
-
-  const [certificate, setCertificate] = useState(mergedData);
+  const [certificate, setCertificate] = useState(initialData || defaultCertificate);
   const [activeTab, setActiveTab] = useState(0);
   const certificateRef = useRef(null);
   const { darkMode } = useTheme();
@@ -133,8 +128,7 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
   useEffect(() => {
     if (initialData) {
       console.log('CertificateEditor initialData:', initialData);
-      // Merge with defaults to ensure new fields have values
-      setCertificate(prev => ({ ...defaultCertificate, ...initialData }));
+      setCertificate(initialData);
     }
   }, [initialData]);
 
@@ -510,63 +504,6 @@ export default function CertificateEditor({ initialData, onSave, onClose, onAppl
               zIndex: 1,
               pointerEvents: 'none',
             }} />
-          );
-
-        case 'blueWave':
-          // Timeed blue wave design with organic curved corner shapes and gold dotted border
-          return (
-            <>
-              {/* Top-right corner wave - organic curved shape */}
-              <Box sx={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                width: '180px',
-                height: '140px',
-                background: '#3B5998',
-                borderRadius: '0 0 0 100%',
-                zIndex: 1,
-                pointerEvents: 'none',
-              }} />
-
-              {/* Bottom-left corner wave - larger organic curved shape */}
-              <Box sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '200px',
-                height: '180px',
-                background: '#3B5998',
-                borderRadius: '0 100% 0 0',
-                zIndex: 1,
-                pointerEvents: 'none',
-              }} />
-
-              {/* Additional bottom-left accent wave for organic look */}
-              <Box sx={{
-                position: 'absolute',
-                bottom: '80px',
-                left: 0,
-                width: '70px',
-                height: '140px',
-                background: '#3B5998',
-                borderRadius: '0 80% 50% 0',
-                zIndex: 1,
-                pointerEvents: 'none',
-              }} />
-
-              {/* Gold dotted inner border */}
-              <Box sx={{
-                position: 'absolute',
-                top: 35,
-                left: 35,
-                right: 35,
-                bottom: 35,
-                border: '2px dashed #C8B432',
-                zIndex: 1,
-                pointerEvents: 'none',
-              }} />
-            </>
           );
 
         default:
